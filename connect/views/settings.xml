@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <record model="ir.actions.server" id="connect_settings_action">
+      <field name="type">ir.actions.server</field>
+      <field name="name">General Settings</field>
+      <field name="state">code</field>
+      <field name="model_id" ref="model_connect_settings"/>
+      <field name="code">action = model.open_settings_form()</field>
+  </record>
+
+  <menuitem id="settings_menu" parent="connect.connect_settings_menu"
+      groups="connect.group_connect_admin"
+      action="connect_settings_action" name="General" sequence="70"/>
+
+  <record id="cancel_subscription_action" model="ir.actions.act_window">
+        <field name="name">Cancel Subscription</field>
+        <field name="res_model">connect.cancel_subscription_wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+  <record id='connect_settings_form' model='ir.ui.view'>
+      <field name='name'>connect.settings.form</field>
+      <field name='model'>connect.settings</field>
+      <field name='type'>form</field>
+      <field name='arch' type='xml'>
+        <form create="false" delete="false">
+            <sheet>
+              <notebook>
+                <page name="general" string="General"
+                    invisible="is_eula_accepted ==  False or is_subscribed == False">
+                  <group>
+                    <group>
+                      <field name="is_subscribed" invisible="1"/>
+                      <field name="is_registered" invisible="1"/>
+                      <field name="is_eula_accepted" invisible="1"/>
+                      <field name="debug_mode"/>
+                    </group>
+                  </group>
+                </page>
+                <page name="keys" string="API Keys"
+                    invisible="is_eula_accepted ==  False or is_subscribed == False">
+                  <group>
+                    <group string="Twilio" name="twilio_api">
+                      <field name="account_sid"/>
+                      <field name="display_auth_token" string="Auth Token" password="1"/>
+                      <field name="twilio_api_key" string="API Key SID"/>
+                      <field name="display_twilio_api_secret" string="API Key Secret" password="1"/>
+                      <button colspan="2" name="sync" type="object" string="SYNC TWILIO ACCOUNT" class="btn btn-primary"/>
+                    </group>
+                    <group name="openai_api" string="OpenAI">
+                      <field name="display_openai_api_key" string="OpenAI API Key" password="1"/>
+                    </group>
+                  </group>
+                </page>
+                <page name="calls" string="Calls" invisible="is_eula_accepted ==  False or is_subscribed == False">
+                  <group>
+                    <group >
+                      <field name="proxy_recordings"/>
+                      <small colspan="2">If you disable it remove the HTTP AUTH in Twilio. Read <a target="new" href="https://help.twilio.com/articles/15827821586843">more</a>.</small>
+                    </group>
+                    <group>
+                      <button colspan="2" name="reformat_numbers_button" string="FORMAT NUMBERS" type="object"/>
+                    </group>
+                  </group>
+                </page>
+                <page name="transcription" string="Transcription"
+                    invisible="is_eula_accepted ==  False or is_subscribed == False">
+                  <group>
+                    <group>
+                      <field name="transcript_calls"/>
+                      <field name="summary_prompt" invisible="transcript_calls == False"/>
+                      <field name="register_summary" invisible="transcript_calls == False"/>
+                      <field name="remove_recording_after_transcript" invisible="transcript_calls == False"/>
+                    </group>
+                    <group string="Transcribe Rules" invisible="transcript_calls == False">
+                      <field name="transcription_rules" nolabel="1" colspan="2">
+                        <tree editable="bottom">
+                          <field name="calling_number"/>
+                          <field name="called_number"/>
+                        </tree>
+                      </field>
+                    </group>
+                  </group>
+                </page>
+                <page string="Development" groups="base.group_no_one">
+                  <group>
+                    <group>
+                      <field name="twilio_verify_requests"/>
+                      <field name="media_url"/>
+                    </group>
+                  </group>
+                </page>
+              </notebook>
+            </sheet>
+        </form>
+      </field>
+  </record>
+
+</odoo>

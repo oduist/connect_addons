@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_connect_message" model="ir.actions.act_window">
+        <field name="name">Messages</field>
+        <field name="res_model">connect.message</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="connect_sms_menu"
+              name="Messages"
+              action="action_connect_message"
+              sequence="60"
+              parent="connect.connect_voice_menu"/>
+
+    <record id="view_connect_sms_message_tree" model="ir.ui.view">
+        <field name="name">connect.message.tree</field>
+        <field name="model">connect.message</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" delete="false" decoration-danger="has_error">
+                <field name="has_error" invisible="1"/>
+                <field name="create_date"/>
+                <field name="from_number"/>
+                <field name="to_number"/>
+                <field name="body"/>
+                <field name="from_city"/>
+                <field name="from_country"/>
+                <field name="message_type" optional="hide"/>
+                <field name="status" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_connect_sms_message_form" model="ir.ui.view">
+        <field name="name">connect.message.form</field>
+        <field name="model">connect.message</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false" delete="false">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="from_number" widget="phone"/>
+                            <field name="to_number" widget="phone"/>
+                            <field name="body"/>
+                            <field name="num_media"/>
+                            <div class="d-flex flex-row" colspan="2" cols="3">
+                                <div class="d-flex flex-column" calspan="1" style="flex: 1">
+                                    <field name="partner"/>
+                                    <field name="partner_img" style="float: left" widget="image" class="oe_avatar" invisible="partner == False"/>
+                                    <div invisible="partner == False">Partner</div>
+                                </div>
+                                <div class="d-flex flex-column" calspan="1" invisible="sender_user == False" style="flex: 1">
+                                    <field name="sender_user"/>
+                                    <field name="sender_user_img" style="float: left" widget="image" class="oe_avatar"/>
+                                    <div>Sender User</div>
+                                </div>
+                                <div class="d-flex flex-column" calspan="1" invisible="receiver_user == False" style="flex: 1">
+                                    <field name="receiver_user"/>
+                                    <field name="receiver_user_img" style="float: left" widget="image" class="oe_avatar"/>
+                                    <div>Receiver User</div>
+                                </div>
+                            </div>
+                        </group>
+                        <group>
+                            <field name="from_city" string="City"/>
+                            <field name="from_state" string="State"/>
+                            <field name="from_country" string="Country"/>
+                            <field name="from_zip" string="Zip"/>
+                            <field name="status"/>
+                            <field name="error_code" invisible="not error_code"/>
+                            <field name="error_message" invisible="not error_message"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Technical Information" groups="base.group_no_one">
+                            <group>
+                                <group>
+                                    <field name="message_sid"/>
+                                    <field name="account_sid"/>
+                                    <field name="messaging_service_sid"/>
+                                    <field name="message_type"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>

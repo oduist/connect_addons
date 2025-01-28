@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="outgoing_callerid_action" model="ir.actions.act_window">
+        <field name="name">Outgoing CallerIds</field>
+        <field name="res_model">connect.outgoing_callerid</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="connect.outgoing_callerids_menu"
+            sequence="600"
+            parent="connect.connect_voice_menu"
+            name="Outgoing CallerIds"
+            action="connect.outgoing_callerid_action"/>
+
+    <record id="connect.outgoing_callerid_list" model="ir.ui.view">
+        <field name="name">connect.outgoing_callerid_list</field>
+        <field name="model">connect.outgoing_callerid</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="friendly_name"/>
+                <field name="number"/>
+                <field name="callerid_users" widget="many2many_tags" string="CallerID Users"/>
+                <field name="callerid_type"/>
+                <field name="is_default"/>
+                <field name="status"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="connect_outgoing_callerid_form" model="ir.ui.view" >
+        <field name="name">connect_outgoing_callerid_form</field>
+        <field name="model">connect.outgoing_callerid</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="validate" string="Validate" type="object" class="btn-primary"
+                        invisible="callerid_type != 'outgoing_callerid' or id == False or status == 'validated'"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="friendly_name"/>
+                            <field name="id" invisible="1"/>
+                            <field name="number" readonly="id != False"/>
+                        </group>
+                        <group>
+                            <field name="is_default"/>
+                            <field name="callerid_type"/>
+                            <field name="status"
+                                invisible="callerid_type != 'outgoing_callerid' or id == False"/>
+                            <field name="validation_code"
+                                invisible="callerid_type != 'outgoing_callerid' or id == False or status == 'validated'"/>
+                            <small invisible="callerid_type != 'outgoing_callerid' or id == False or status == 'validated'" colspan="2">Enter the code in DTMF mode and press #</small>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="connect_outgoing_callerid_search" model="ir.ui.view" >
+        <field name="name">connect_outgoing_callerid_search</field>
+        <field name="model">connect.outgoing_callerid</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="friendly_name"/>
+                <field name="number"/>
+                <field name="callerid_type"/>
+                <filter name="by_type" string="CallerId Type" context="{'group_by': 'callerid_type'}"/>
+            </search>
+        </field>
+    </record>
+
+</odoo>

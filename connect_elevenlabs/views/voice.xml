@@ -1,0 +1,54 @@
+<odoo>
+    <!-- Form View for ElevenlabsVoice -->
+    <record id="view_elevenlabs_voice_form" model="ir.ui.view">
+        <field name="name">connect.elevenlabs_voice.form</field>
+        <field name="model">connect.elevenlabs_voice</field>
+        <field name="arch" type="xml">
+            <form string="Elevenlabs Voice">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="preview_audio" widget="html" nolabel="1" colspan="2"/>
+                        </group>
+                        <group>
+                            <field name="language"/>
+                            <field name="accent"/>
+                            <field name="age"/>
+                            <field name="gender"/>
+                            <field name="description"/>
+                            <field name="voice_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- List View for ElevenlabsVoice -->
+    <record id="view_elevenlabs_voice_list" model="ir.ui.view">
+        <field name="name">connect.elevenlabs_voice.tree</field>
+        <field name="model">connect.elevenlabs_voice</field>
+        <field name="arch" type="xml">
+            <tree string="Elevenlabs Voice">
+                <field name="preview_audio" widget="html" optional="show"/>
+                <field name="voice_id" optional="hide"/>
+                <field name="name" optional="show"/>
+                <field name="language" optional="show"/>
+                <field name="accent" optional="show"/>
+                <field name="age" optional="show"/>
+                <field name="gender" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Action to open ElevenlabsVoice views -->
+    <record id="action_elevenlabs_voice" model="ir.actions.act_window">
+        <field name="name">Elevenlabs Voices</field>
+        <field name="res_model">connect.elevenlabs_voice</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_elevenlabs_voice" parent="elevenlabs_menu"
+        name="Voices" action="action_elevenlabs_voice" sequence="1000"/>
+</odoo>

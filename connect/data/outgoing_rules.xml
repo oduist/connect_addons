@@ -1,0 +1,8 @@
+<odoo><data noupdate="1">
+
+    <record id="a_z_rule" model="connect.outgoing_rule">
+        <field name="name">All destinations</field>
+        <field name="pattern">+</field>
+    </record>
+
+</data></odoo>

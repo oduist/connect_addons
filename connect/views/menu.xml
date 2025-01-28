@@ -1,0 +1,24 @@
+<odoo>
+
+  <menuitem id="connect_top_menu" name="Connect"
+      groups="connect.group_connect_user,connect.group_connect_admin"
+      sequence="8" web_icon='connect,static/description/icon.png'/>
+
+  <menuitem id="connect_voice_menu" name="Voice"
+        parent="connect_top_menu" sequence="100"/>
+
+  <menuitem id="connect_ai_menu" name="AI"
+        parent="connect_top_menu" sequence="200"/>
+
+  <menuitem id="connect_reports_menu" name="Reports"
+        sequence="300" parent="connect_top_menu"/>
+
+  <menuitem id="connect_settings_menu" name="Settings"
+        sequence="400" parent="connect_top_menu"/>
+
+  <menuitem id="connect_debug_menu" name="Debug"
+      groups="base.group_no_one"
+      sequence="500" parent="connect_top_menu"/>
+
+
+</odoo>

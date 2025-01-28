@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="domain_action" model="ir.actions.act_window">
+        <field name="name">Domains</field>
+        <field name="res_model">connect.domain</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="connect.domains_menu"
+            sequence="1900"
+            parent="connect.connect_voice_menu"
+            name="Domains"
+            action="connect.domain_action"/>
+
+    <record id="connect.domain_list" model="ir.ui.view">
+        <field name="name">connect.domain_list</field>
+        <field name="model">connect.domain</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="friendly_name"/>
+                <field name="domain_name"/>
+                <field name="delete_protection"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="connect_domain_form" model="ir.ui.view" >
+        <field name="name">connect_domain_form</field>
+        <field name="model">connect.domain</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <label class="oe_edit_only" for="friendly_name"/>
+                            <field name="friendly_name" placeholder="Friendly name..."/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="subdomain"/>
+                            <field name="application"/>
+                        </group>
+                        <group>
+                            <field name="delete_protection"/>
+                            <field name="domain_name" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>

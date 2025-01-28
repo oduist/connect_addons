@@ -1,0 +1,320 @@
+<odoo>
+
+  <!-- Settings -->
+  <record id="connect_settings_user" model="ir.model.access">
+    <field name="name">connect_settings_user</field>
+    <field name="model_id" ref="connect.model_connect_settings"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+  <!--  Wizard -->
+  <record id="connect_transfer_wizard_user" model="ir.model.access">
+    <field name="name">connect_transfer_wizard_user</field>
+    <field name="model_id" ref="connect.model_connect_transfer_wizard"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
+  </record>
+
+  <record id="connect_cancel_subscription_user" model="ir.model.access">
+    <field name="name">connect_cancel_subscription_user</field>
+    <field name="model_id" ref="connect.model_connect_cancel_subscription_wizard"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
+  </record>
+
+  <record id="connect_manage_partner_callout_wizard_user" model="ir.model.access">
+    <field name="name">connect_manage_partner_callout_wizard</field>
+    <field name="model_id" ref="connect.model_connect_manage_partner_callout_wizard"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
+  </record>
+
+  <!-- Domains -->
+  <record id="connect_domain_user" model="ir.model.access">
+    <field name="name">connect_domain_user</field>
+    <field name="model_id" ref="connect.model_connect_domain"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+  <!-- BYOC -->
+  <record id="connect_byoc_user" model="ir.model.access">
+    <field name="name">connect_byoc_user</field>
+    <field name="model_id" ref="connect.model_connect_byoc"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+<!-- User -->
+  <record id="connect_user_user" model="ir.model.access">
+    <field name="name">connect_user_user</field>
+    <field name="model_id" ref="connect.model_connect_user"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+  <!-- TwiML -->
+  <record id="connect_twiml_user" model="ir.model.access">
+    <field name="name">connect_twiml_user</field>
+    <field name="model_id" ref="connect.model_connect_twiml"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+  <!-- Exten -->
+  <record id="connect_exten_user" model="ir.model.access">
+    <field name="name">connect_exten_user</field>
+    <field name="model_id" ref="connect.model_connect_exten"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+<!-- Number -->
+  <record id="connect_number_user" model="ir.model.access">
+    <field name="name">connect_number_user</field>
+    <field name="model_id" ref="connect.model_connect_number"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+<!-- Outgoing callerid -->
+  <record id="connect_outgoing_callerid_user" model="ir.model.access">
+    <field name="name">connect_outgoing_callerid_user</field>
+    <field name="model_id" ref="connect.model_connect_outgoing_callerid"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+<!-- Outgoing Rules -->
+  <record id="connect_outgoing_rule_user" model="ir.model.access">
+    <field name="name">connect_outgoing_rule_user</field>
+    <field name="model_id" ref="connect.model_connect_outgoing_rule"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+<!-- Callflow -->
+  <record id="connect_callflow_user" model="ir.model.access">
+    <field name="name">connect_callflow_user</field>
+    <field name="model_id" ref="connect.model_connect_callflow"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
+  </record>
+
+<!-- Callflow Gather Choice -->
+  <record id="connect_callflow_choice_user" model="ir.model.access">
+    <field name="name">connect_callflow_choice_user</field>
+    <field name="model_id" ref="connect.model_connect_callflow_choice"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
+  </record>
+
+<!-- Callout -->
+  <record id="connect_callout_user" model="ir.model.access">
+    <field name="name">connect_callout_user</field>
+    <field name="model_id" ref="connect.model_connect_callout"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
+  </record>
+
+<!-- Callout Choice -->
+  <record id="connect_callout_choice_user" model="ir.model.access">
+    <field name="name">connect_callout_choice_user</field>
+    <field name="model_id" ref="connect.model_connect_callout_choice"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
+  </record>
+
+<!-- Callout Contact -->
+  <record id="connect_callout_contact_user" model="ir.model.access">
+    <field name="name">connect_callout_contact_user</field>
+    <field name="model_id" ref="connect.model_connect_callout_contact"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
+  </record>
+
+<!-- Callout Log -->
+  <record id="connect_callout_log_user" model="ir.model.access">
+    <field name="name">connect_callout_log_user</field>
+    <field name="model_id" ref="connect.model_connect_callout_log"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+<!-- Call -->
+  <record id="connect_call_user" model="ir.model.access">
+    <field name="name">connect_call_user</field>
+    <field name="model_id" ref="connect.model_connect_call"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+<!-- Channel -->
+  <record id="connect_channel_user" model="ir.model.access">
+    <field name="name">connect_channel_user</field>
+    <field name="model_id" ref="connect.model_connect_channel"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+<!-- Debug -->
+  <record id="connect_debug_user" model="ir.model.access">
+    <field name="name">connect_debug_user</field>
+    <field name="model_id" ref="connect.model_connect_debug"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+<!-- Recording -->
+  <record id="connect_recording_user" model="ir.model.access">
+    <field name="name">connect_recording_user</field>
+    <field name="model_id" ref="connect.model_connect_recording"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+<!-- Transcription rules -->
+  <record id="connect_transcription_rule_user" model="ir.model.access">
+    <field name="name">connect_transcription_rule_user</field>
+    <field name="model_id" ref="connect.model_connect_transcription_rule"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+<!-- Queues -->
+  <record id="connect_queue_user" model="ir.model.access">
+    <field name="name">connect_queue_user</field>
+    <field name="model_id" ref="connect.model_connect_queue"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+  <!-- Query -->
+  <record id="connect_query_user" model="ir.model.access">
+    <field name="name">connect_query_user</field>
+    <field name="model_id" ref="connect.model_connect_query"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+  <!-- Query Prompt -->
+  <record id="connect_query_prompt_user" model="ir.model.access">
+    <field name="name">connect_query_prompt_user</field>
+    <field name="model_id" ref="connect.model_connect_query_prompt"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+  <!-- Query Source -->
+  <record id="connect_query_source_user" model="ir.model.access">
+    <field name="name">connect_query_source_user</field>
+    <field name="model_id" ref="connect.model_connect_query_source"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+  <!-- Favorites -->
+  <record id="connect_favorite_user" model="ir.model.access">
+    <field name="name">connect_favorite_user</field>
+    <field name="model_id" ref="connect.model_connect_favorite"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
+  </record>
+
+  <!-- Message -->
+  <record id="connect_message_user" model="ir.model.access">
+    <field name="name">connect_message_user</field>
+    <field name="model_id" ref="connect.model_connect_message"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+</odoo>

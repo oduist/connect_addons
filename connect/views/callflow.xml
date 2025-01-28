@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="callflow_action" model="ir.actions.act_window">
+        <field name="name">Call Flows</field>
+        <field name="res_model">connect.callflow</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="connect.callflows_menu"
+            sequence="175"
+            parent="connect.connect_voice_menu"
+            name="Call Flows"
+            action="connect.callflow_action"/>
+
+    <record id="connect.callflow_list" model="ir.ui.view">
+        <field name="name">connect.callflow_list</field>
+        <field name="model">connect.callflow</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="exten_number" string="Exten"/>
+                <field name="record_calls"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="connect_callflow_form" model="ir.ui.view" >
+        <field name="name">connect_callflow_form</field>
+        <field name="model">connect.callflow</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="create_extension" type="object" string="Extension" class="btn btn-primary"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <label class="oe_edit_only" for="name"/>
+                            <field name="name" placeholder="Call Flow name..."/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="language" placeholder='en-US'/>
+                            <field name="prompt_message"/>
+                            <field name="gather_input"/>
+                            <field name="gather_input_type" invisible="gather_input == False"/>
+                            <field name="gather_timeout" invisible="gather_input == False"/>
+                            <field name="gather_digits" invisible="gather_input == False"/>
+                            <field name="invalid_input_message" invisible="gather_input == False"/>
+                            <field name="choices" invisible="gather_input == False">
+                                <tree editable="bottom">
+                                    <field name="choice_digits" string="Digits"/>
+                                    <field name="exten"/>
+                                    <field name="speech"/>
+                                </tree>
+                            </field>
+                        </group>
+                        <group>
+                            <div id="see_more" colspan="2">
+                                <small>See available voices <a target="_new" href="https://www.twilio.com/docs/voice/twiml/say/text-speech#available-voices-and-languages">here</a></small>
+                            </div>
+                            <field name="voice" placeholder="Man"/>
+                            <field name="ring_users" widget="many2many_tags"/>
+                            <field name="record_calls"/>
+                            <field name="voicemail_enabled"/>
+                            <field name="voicemail_prompt"
+                                invisible="not voicemail_enabled"
+                                required="voicemail_enabled"/>
+                            <field name="exten_number"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="connect_callflow_search" model="ir.ui.view" >
+        <field name="name">connect_callflow_search</field>
+        <field name="model">connect.callflow</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+            </search>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="elevenlabs_callflow_form" model="ir.ui.view" >
+        <field name="name">elevenlabs_callflow_form</field>
+        <field name="model">connect.callflow</field>
+        <field name="inherit_id" ref="connect.connect_callflow_form"/>
+        <field name="arch" type="xml">
+            <field name="prompt_message" position="after">
+                <field name="elevenlabs_enabled" invisible="1"/>
+                <field name="prompt_message_widget" nolabel="1" colspan="2"
+                    invisible="not elevenlabs_enabled"/>
+            </field>
+            <field name="invalid_input_message" position="after">
+                <field name="invalid_input_message_widget" nolabel="1" colspan="2"
+                    invisible="not elevenlabs_enabled or not gather_input"/>
+            </field>
+            <field name="voicemail_prompt" position="after">
+                <field name="voicemail_prompt_widget" nolabel="1" colspan="2"
+                    invisible="not elevenlabs_enabled or not voicemail_enabled"/>
+            </field>
+            <field name="language" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+            <field name="voice" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+            <div id="see_more" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </div>
+        </field>
+    </record>
+</odoo>

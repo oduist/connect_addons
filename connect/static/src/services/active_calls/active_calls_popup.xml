@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="connect.active_calls_popup" owl="1">
+        <div t-if="state.isDisplay" class="o_active_calls">
+            <div t-if="state.calls.length > 0" class="o_list_view" t-on-mouseover="_onMouseOver"
+                 t-on-mouseout="_onMouseOut">
+                <div class="table-responsive">
+                    <table class="o_list_table table table-sm table-hover table-striped o_list_table_ungrouped">
+                        <thead>
+                            <tr class="table-title d-flex">
+                                <th>Caller</th>
+                                <th>Called</th>
+                                <th>Caller User</th>
+                                <th>Called User</th>
+                                <th class="partner-th">Partner</th>
+                                <th>Direction</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="state.calls" t-as="call" t-key="call.id">
+                                <tr class="table-body d-flex" t-on-click="() => this._OpenActiveCallForm(call.id)">
+                                    <td t-attf-title="{{call.caller ? call.caller : ''}}"><t t-out="call.caller"/></td>
+                                    <td t-attf-title="{{call.called ? call.called : ''}}"><t t-out="call.called"/></td>
+                                    <td t-attf-title="{{call.caller_user ? call.caller_user[1] : ''}}"><t t-if="call.caller_user" t-out="call.caller_user[1]"/></td>
+                                    <td t-attf-title="{{call.called_users ? call.called_users[1] : ''}}"><t t-if="call.called_users" t-out="call.called_users[1]"/></td>
+                                    <td class="partner-td" t-attf-title="{{call.partner ? call.partner[1] : ''}}" t-on-click="(ev) => this._openPartnerForm(ev, call.partner)">
+                                        <t t-if="call.partner" t-out="call.partner[1]"/>
+                                    </td>
+                                    <td t-attf-title="{{call.direction ? call.direction : ''}}">
+                                        <t t-out="call.direction"/>
+                                    </td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div t-else="" class="no-active-calls text-center o_no_activity">
+                <span>No active calls.</span>
+            </div>
+        </div>
+        <div t-else=""/>
+    </t>
+
+</templates>

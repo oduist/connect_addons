@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="user_action" model="ir.actions.act_window">
+        <field name="name">Users</field>
+        <field name="res_model">connect.user</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="connect.users_menu"
+            sequence="75"
+            parent="connect.connect_voice_menu"
+            name="Users"
+            action="connect.user_action"/>
+
+    <record id="connect.user_list" model="ir.ui.view">
+        <field name="name">connect.user_list</field>
+        <field name="model">connect.user</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="username"/>
+                <field name="user"/>
+                <field name="exten_number" string="Exten"/>
+                <field name="outgoing_callerid"/>
+                <field name="user"/>
+                <field name="ring_first"/>
+                <field name="sip_enabled" string="SIP"/>
+                <field name="client_enabled" string="Web"/>
+                <field name="application"/>
+                <field name="record_calls"/>
+                <field name="domain"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="connect_user_form" model="ir.ui.view" >
+        <field name="name">connect_user_form</field>
+        <field name="model">connect.user</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="create_extension" type="object" string="Extension" class="btn btn-primary"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <label class="oe_edit_only" for="user"/>
+                            <field name="user" required="client_enabled == True" placeholder="Odoo account..."/>
+                        </h1>
+                    </div>
+                    <field name="id" invisible="1"/>
+                    <notebook>
+                        <page name="phone" string="Phone">
+                            <group>
+                                <group>
+                                    <field name="username" placeholder="PBX username..."
+                                        readonly="id != False"/>
+                                    <field name="domain"
+                                        readonly="id != False"/>
+                                </group>
+                                <group>
+                                    <field name="exten_number" widget="phone"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="SIP Phone">
+                                    <field name="sip_enabled" string="Enabled"/>
+                                    <field name="password" password="1"
+                                        invisible="sip_enabled == False"/>
+                                    <field name="sip_ring_timeout" string="Ring Timeout"
+                                        required="sip_enabled == True"
+                                        invisible="sip_enabled == False"/>
+                                    <field name='uri' invisible="sip_enabled == False"/>
+                                </group>
+                                <group string="WEB Phone">
+                                    <field name="client_enabled" string="Enabled"/>
+                                    <field name="client_ring_timeout" string="Ring Timeout"
+                                        invisible="client_enabled == False"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="callflow" string="CallFlow">
+                            <group>
+                                <group>
+                                    <field name="outgoing_callerid" placeholder="Outgoing CallerId number or empty for the default..."/>
+                                    <field name="record_calls"/>
+                                    <field name="ring_first" readonly="sip_enabled == False or client_enabled == False"/>
+                                </group>
+                                <group>
+                                    <field name="voicemail_enabled"/>
+                                    <field name="voicemail_prompt"
+                                        invisible="not voicemail_enabled"
+                                        required="voicemail_enabled"/>
+                                    <field name="application"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="settings" string="Settings">
+                            <group>
+                                <group>
+                                    <field name="missed_calls_notify"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="twiml_action" model="ir.actions.act_window">
+        <field name="name">TwiML</field>
+        <field name="res_model">connect.twiml</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="connect.twimls_menu"
+            sequence="200"
+            parent="connect.connect_voice_menu"
+            name="TwiML"
+            action="connect.twiml_action"/>
+
+    <record id="connect.twiml_list" model="ir.ui.view">
+        <field name="name">connect.twiml_list</field>
+        <field name="model">connect.twiml</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="exten"/>
+                <field name="description"/>
+                <field name="code_type"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="connect_twiml_form" model="ir.ui.view" >
+        <field name="name">connect_twiml_form</field>
+        <field name="model">connect.twiml</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="create_extension" type="object" string="Extension" class="btn btn-primary"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <label class="oe_edit_only" for="name"/>
+                            <field name="name" placeholder="TwiML name..."/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="description"/>
+                            <field name="code_type"/>
+                        </group>
+                        <group>
+                            <field name="exten_number"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="twipy" widget="ace" options="{'mode': 'python'}" invisible="code_type != 'twipy'" required="code_type == 'twipy'"/>
+                        <field name="model" invisible="code_type != 'model_method'" required="code_type == 'model_method'"/>
+                        <field name="method" invisible="code_type != 'model_method'" required="code_type == 'model_method'"/>
+                        <field name="twiml" widget="ace"
+                            invisible="code_type != 'twiml'" readonly="code_type in ['twipy','python']" required="code_type == 'twiml'"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="connect_twiml_search" model="ir.ui.view" >
+        <field name="name">connect_twiml_search</field>
+        <field name="model">connect.twiml</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="exten_number"/>
+                <field name="twiml"/>
+                <field name="twipy"/>
+                <field name="code_type"/>
+                <filter name="by_type" context="{'group_by': 'code_type'}"/>
+            </search>
+        </field>
+    </record>
+
+
+</odoo>

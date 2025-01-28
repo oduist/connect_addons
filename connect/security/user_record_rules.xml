@@ -1,0 +1,159 @@
+<odoo>
+
+    <!-- Callflow -->
+    <record id="connect_callflow_user_rule" model="ir.rule">
+        <field name="name">connect_callflow_user</field>
+        <field name="model_id" ref="connect.model_connect_callflow"/>
+        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
+        <field name="domain_force">[('create_uid', '=', user.id)]</field>
+        <field name="perm_read" eval="0"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="0"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+
+    <!-- Callflow Gather Choice -->
+    <record id="connect_callflow_choice_user_rule" model="ir.rule">
+        <field name="name">connect_callflow_choice_user</field>
+        <field name="model_id" ref="connect.model_connect_callflow_choice"/>
+        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
+        <field name="domain_force">[('create_uid', '=', user.id)]</field>
+        <field name="perm_read" eval="0"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="0"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+
+    <!-- Callout -->
+    <record id="connect_callout_user_rule" model="ir.rule">
+        <field name="name">connect_callout_user</field>
+        <field name="model_id" ref="connect.model_connect_callout"/>
+        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
+        <field name="domain_force">[('create_uid', '=', user.id)]</field>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <!-- Callout Choice -->
+    <record id="connect_callout_choice_user_rule" model="ir.rule">
+        <field name="name">connect_callout_choice_user</field>
+        <field name="model_id" ref="connect.model_connect_callout_choice"/>
+        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
+        <field name="domain_force">[('create_uid', '=', user.id)]</field>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <!-- Callout Contact -->
+    <record id="connect_callout_contact_user_rule" model="ir.rule">
+        <field name="name">connect_callout_contact_user</field>
+        <field name="model_id" ref="connect.model_connect_callout_contact"/>
+        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
+        <field name="domain_force">[('create_uid', '=', user.id)]</field>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <!-- Callout Log -->
+    <record id="connect_callout_log_user_rule" model="ir.rule">
+        <field name="name">connect_callout_log_user</field>
+        <field name="model_id" ref="connect.model_connect_callout_log"/>
+        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
+        <field name="domain_force">[('create_uid', '=', user.id)]</field>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="0"/>
+        <field name="perm_create" eval="0"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+
+    <!-- Call -->
+    <record id="connect_call_user_rule" model="ir.rule">
+        <field name="name">connect_call_user</field>
+        <field name="model_id" ref="connect.model_connect_call"/>
+        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
+        <field name="domain_force">['|', '|', ('caller_user', '=', user.id), ('called_users', '=', user.id), ('answered_user', '=', user.id)]</field>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="0"/>
+        <field name="perm_create" eval="0"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+
+    <!-- Channel -->
+    <record id="connect_channel_user_rule" model="ir.rule">
+        <field name="name">connect_channel_user</field>
+        <field name="model_id" ref="connect.model_connect_channel"/>
+        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
+        <field name="domain_force">['|', ('caller_user', '=', user.id), ('called_user', '=', user.id)]</field>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="0"/>
+        <field name="perm_create" eval="0"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+
+    <!-- Recording -->
+    <record id="connect_recording_user_rule" model="ir.rule">
+        <field name="name">connect_recording_user</field>
+        <field name="model_id" ref="connect.model_connect_recording"/>
+        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
+        <field name="domain_force">['|', ('caller_user', '=', user.id), ('called_user', '=', user.id)]</field>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+
+    <!-- Favorites -->
+    <record id="connect_favorite_user_rule" model="ir.rule">
+        <field name="name">connect_favorite_user</field>
+        <field name="model_id" ref="connect.model_connect_favorite"/>
+        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
+        <field name="domain_force">[('create_uid', '=', user.id)]</field>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <!-- Query -->
+    <record id="connect_query_user_rule" model="ir.rule">
+        <field name="name">connect_query_user</field>
+        <field name="model_id" ref="connect.model_connect_query"/>
+        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
+        <field name="domain_force">[('create_uid', '=', user.id)]</field>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <!-- Query Source -->
+    <record id="connect_query_source_user_rule" model="ir.rule">
+        <field name="name">connect_query_source_user</field>
+        <field name="model_id" ref="connect.model_connect_query_source"/>
+        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
+        <field name="domain_force">[('create_uid', '=', user.id)]</field>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <!-- Call -->
+    <record id="connect_message_user_rule" model="ir.rule">
+        <field name="name">connect_message_user</field>
+        <field name="model_id" ref="connect.model_connect_message"/>
+        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
+        <field name="domain_force">['|', ('sender_user', '=', user.id), ('receiver_user', '=', user.id)]</field>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+
+</odoo>

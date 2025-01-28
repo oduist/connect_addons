@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="recording_action" model="ir.actions.act_window">
+        <field name="name">Recording</field>
+        <field name="res_model">connect.recording</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="connect.recordings_menu"
+            sequence="100"
+            parent="connect.connect_voice_menu"
+            name="Recordings"
+            action="connect.recording_action"/>
+
+    <record id="connect.recording_list" model="ir.ui.view">
+        <field name="name">connect.recording_list</field>
+        <field name="model">connect.recording</field>
+        <field name="arch" type="xml">
+            <tree edit="false" create="false">
+                <field name="start_time"/>
+                <field name="summary" widget="html" optional="hide"/>
+                <field name="caller_number" optional="hide"/>
+                <field name="caller_user"/>
+                <field name="called_number" optional="hide"/>
+                <field name="called_user"/>
+                <field name="partner"/>
+                <field name="duration_human" string="Duration" optional="show"/>
+                <field name="duration" sum="1" optional="hide" string="Duration, sec"/>
+                <field name="status" optional="hide"/>
+                <field name="price" optional="hide" sum="1"/>
+                <field name="price_unit" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="connect_recording_form" model="ir.ui.view" >
+        <field name="name">connect_recording_form</field>
+        <field name="model">connect.recording</field>
+        <field name="arch" type="xml">
+            <form edit="false" create="false">
+                <header>
+                    <button name="get_transcript" type="object" string="Transcribe"/>
+                    <button name="sync" type="object" string="Sync"/>
+                </header>
+                <sheet>
+                <notebook>
+                    <page string="Info">
+                    <group>
+                        <group>
+                            <field name="summary" widget="html"/>
+                            <field name="recording_widget" widget="html"/>
+                            <field name="start_time"/>
+                            <field name="caller_number"/>
+                            <field name="called_number"/>
+                            <field name="status"/>
+                        </group>
+                        <group>
+                            <field name="partner"/>
+                            <field name="called_user"/>
+                            <field name="caller_user"/>
+                            <field name="call"/>
+                            <field name="channel"/>
+                            <field name="price"/>
+                            <field name="price_unit"/>
+                        </group>
+                    </group>
+                    </page>
+                    <page string="Transcription">
+                        <group>
+                            <group>
+                                <field name="transcription_error" invisible="transcription_error == False"/>
+                                <field name="transcription_price"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="transcript"/>
+                        </group>
+                    </page>
+                </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="connect_recording_search" model="ir.ui.view" >
+        <field name="name">connect_recording_search</field>
+        <field name="model">connect.recording</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="partner"/>
+                <field name="caller_user"/>
+                <field name="called_user"/>
+                <field name="caller_number"/>
+                <field name="called_number"/>
+                <filter name="partners" string="Partners" domain="[('partner','!=', False)]"/>
+                <filter name="by_partner" string="Partner" context="{'group_by': 'partner'}"/>
+                <filter name="by_caller" string="Caller User" context="{'group_by': 'caller_user'}"/>
+                <filter name="by_called" string="Called User" context="{'group_by': 'called_user'}"/>
+            </search>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="outgoing_rule_action" model="ir.actions.act_window">
+        <field name="name">Outgoing Rule</field>
+        <field name="res_model">connect.outgoing_rule</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="connect.outgoing_rules_menu"
+            sequence="600"
+            parent="connect.connect_voice_menu"
+            name="Outgoing Rules"
+            action="connect.outgoing_rule_action"/>
+
+    <record id="connect.outgoing_rule_list" model="ir.ui.view">
+        <field name="name">connect.outgoing_rule_list</field>
+        <field name="model">connect.outgoing_rule</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="name"/>
+                <field name="pattern"/>
+                <field name="byoc"/>
+                <field name="is_enabled"/>
+            </tree>
+        </field>
+    </record>
+
+
+    <record id="connect_outgoing_rule_search" model="ir.ui.view" >
+        <field name="name">connect_outgoing_rule_search</field>
+        <field name="model">connect.outgoing_rule</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="pattern"/>
+                <filter name="enabled" string="Enabled" domain="[('is_enabled','=', True)]"/>
+                <filter name="disabled" string="Disabled" domain="[('is_enabled','=', False)]"/>
+                <filter name="by_enabled" string="Enabled" context="{'group_by': 'is_enabled'}"/>
+                <filter name="by_byoc" string="BYOC" context="{'group_by': 'byoc'}"/>
+            </search>
+        </field>
+    </record>
+
+</odoo>

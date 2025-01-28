@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="query_action" model="ir.actions.act_window">
+        <field name="name">Queries</field>
+        <field name="res_model">connect.query</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="connect.queries_menu"
+              sequence="120"
+              parent="connect.connect_ai_menu"
+              name="Queries"
+              action="connect.query_action"/>
+
+    <record id="connect.query_list" model="ir.ui.view">
+        <field name="name">connect.query_list</field>
+        <field name="model">connect.query</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="prompt"/>
+                <field name="status"/>
+                <field name="price"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="connect_query_form" model="ir.ui.view">
+        <field name="name">connect_query_form</field>
+        <field name="model">connect.query</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="submit_query" type="object" string="Submit" class="btn btn-primary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="query_prompt" placeholder="Select a prompt from a list..."/>
+                            <field name="prompt" placeholder="Or enter the prompt here..."/>
+                            <field name="sources" widget="many2many_tags"/>
+                            <field name="result"/>
+                        </group>
+                        <group>
+                            <field name="status"/>
+                            <field name="price"/>
+                            <field name="error" invisible="error == False"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

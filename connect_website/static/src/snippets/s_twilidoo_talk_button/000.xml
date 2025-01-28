@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="connect_website.connect_talk_button_body">
+        <button class="btn btn-info btn-lg m-1 s_talk_button">Let's Talk</button>
+    </t>
+</templates>

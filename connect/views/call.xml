@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="call_action" model="ir.actions.act_window">
+        <field name="name">Calls</field>
+        <field name="res_model">connect.call</field>
+        <field name="view_mode">tree,form,graph,pivot</field>
+    </record>
+
+
+    <record id="call_channels_action" model="ir.actions.act_window">
+        <field name="name">Channels</field>
+        <field name="res_model">connect.channel</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('call', '=', active_id)]</field>
+    </record>
+
+    <menuitem id="connect.calls_menu"
+              sequence="50"
+              parent="connect.connect_voice_menu"
+              name="Calls"
+              action="connect.call_action"/>
+
+    <record id="connect.connect_call_list" model="ir.ui.view">
+        <field name="name">connect.connect_call_list</field>
+        <field name="model">connect.call</field>
+        <field name="arch" type="xml">
+            <tree edit="false" create="false" decoration-danger="has_error">
+                <field name="has_error" column_invisible="1"/>
+                <field name="create_date"/>
+                <field name="summary" optional="hide"/>
+                <field name="caller" optional="hide"/>
+                <field name="called" optional="hide"/>
+                <field name="partner" optional="show"/>
+                <field name="caller_user" optional="show"/>
+                <field name="called_users" widget="many2many_tags" optional="show"/>
+                <field name="answered_user" optional="show"/>
+                <field name="caller_pbx_user" optional="hide"/>
+                <field name="called_pbx_users" optional="hide" widget="many2many_tags"/>
+                <field name="duration" optional="hide"/>
+                <field name="duration_minutes" optional="hide" sum="1"/>
+                <field name="duration_human" optional="show" sum="1"/>
+                <field name="direction" optional="show"/>
+                <field name="status" optional="show"/>
+                <field name="recording_icon" widget="html" optional="show"/>
+                <field name="voicemail_icon" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="connect_call_form" model="ir.ui.view">
+        <field name="name">connect_call_form</field>
+        <field name="model">connect.call</field>
+        <field name="arch" type="xml">
+            <form create="false">
+                <header>
+                    <button string="Partner" name="create_partner_button" type="object"
+                            class="btn-primary" icon='fa-user-plus'/>
+                    <!--
+                    <button name="transfer" type="object" string="Transfer"/>
+                    <button name="redial" type="object" string="Redial"/>
+                    -->
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" string="Channels" icon="fa-list"
+                                name="%(call_channels_action)d" type="action"/>
+                    </div>
+                    <notebook>
+                        <page name="call" string="Call">
+                            <group>
+                                <group>
+                                    <field name="called" widget="phone"/>
+                                    <field name="caller" widget="phone"/>
+                                    <div class="d-flex flex-row" colspan="2" cols="3">
+                                        <div class="d-flex flex-column" calspan="1" style="flex: 1">
+                                            <field name="partner"/>
+                                            <field name="partner_img" style="float: left" widget="image"  class="oe_avatar" invisible="partner == False"/>
+                                            <div invisible="partner == False">Partner</div>
+                                        </div>
+                                        <div class="d-flex flex-column" calspan="1" invisible="caller_user == False" style="flex: 1">
+                                            <field name="caller_user"/>
+                                            <field name="caller_user_img" style="float: left" widget="image" class="oe_avatar"/>
+                                            <div>Caller User</div>
+                                        </div>
+                                        <div class="d-flex flex-column" calspan="1" invisible="answered_user == False" style="flex: 1">
+                                            <field name="answered_user"/>
+                                            <field name="answered_user_img" style="float: left" widget="image" class="oe_avatar"/>
+                                            <div>Answered User</div>
+                                        </div>
+                                    </div>
+                                </group>
+                                <group>
+                                    <field name="called_users" widget="many2many_tags"/>
+                                    <field name="summary" widget="html"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="recording" string="Recording" invisible="recording == False">
+                            <group>
+                                <group>
+                                    <field name="recording_widget" widget="html" nolabel="1"/>
+                                </group>
+                                <group>
+                                    <field name="recording"/>
+                                </group>
+                            </group>
+                            <group>
+                                <field name="transcript"/>
+                            </group>
+                        </page>
+                        <page name="details" string="Details">
+                            <group>
+                                <group>
+                                    <field name="create_date"/>
+                                    <field name="direction"/>
+                                    <field name="status"/>
+                                    <field name="duration"/>
+                                    <field name="duration_minutes"/>
+                                    <field name="duration_human"/>
+                                </group>
+                                <group>
+                                    <field name="parent_call" ivisible="not parent_call"/>
+                                    <field name="caller_pbx_user"/>
+                                    <field name="called_pbx_users" widget="many2many_tags"/>
+                                    <field name="answered_pbx_user"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="voicemail" string="VoiceMail" invisible="voicemail_widget == ''">
+                            <group>
+                                <field name="voicemail_widget" widget="html"/>
+                            </group>
+                        </page>
+                        <page name="channels" string="Channels" groups="base.group_no_one">
+                            <group>
+                                <field name="channels">
+                                    <tree>
+                                        <field name="sid"/>
+                                        <field name="id"/>
+                                        <field name="parent_channel"/>
+                                        <field name="duration"/>
+                                        <field name="technical_direction"/>
+                                        <field name="status"/>
+                                        <field name="caller_number"/>
+                                        <field name="called_number"/>
+                                    </tree>
+                                </field>
+                            </group>
+                        </page>
+                        <field name="has_error" invisible="1"/>
+                        <page name="error" string="Error" invisible="has_error == False">
+                            <group>
+                                <field name="error_code"/>
+                                <field name="error_message"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="connect_call_search" model="ir.ui.view">
+        <field name="name">connect_call_search</field>
+        <field name="model">connect.call</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="partner"/>
+                <field name="caller"/>
+                <field name="called"/>
+                <field name="caller_user"/>
+                <field name="answered_user"/>
+                <field name="called_users"/>
+                <field name="caller_pbx_user"/>
+                <field name="called_pbx_users"/>
+                <field name="answered_pbx_user"/>
+                <filter name="by_partner" context="{'group_by': 'partner'}"/>
+                <filter name="by_caller_user" context="{'group_by': 'caller_user'}"/>
+                <filter name="by_called_user" context="{'group_by': 'called_users'}"/>
+                <filter name="by_answered_user" context="{'group_by': 'answered_user'}"/>
+                <filter name="by_direction" context="{'group_by': 'direction'}"/>
+                <filter name="by_status" context="{'group_by': 'status'}"/>
+                <filter name="by_created" context="{'group_by': 'create_date'}"/>
+                <filter name="has_error" string="Failed Calls" domain="[('has_error', '=', True)]"/>
+            </search>
+        </field>
+    </record>
+
+</odoo>
