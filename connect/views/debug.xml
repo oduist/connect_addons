@@ -4,7 +4,7 @@
     <record id="connect_debug_action" model="ir.actions.act_window">
       <field name="name">Debug Messages</field>
       <field name="res_model">connect.debug</field>
-      <field name="view_mode">tree</field>
+      <field name="view_mode">list</field>
     </record>
     
     <menuitem id="connect_debug_messages_menu"
@@ -15,11 +15,11 @@
       <field name="name">asterisk.plus.debug.message.list</field>
       <field name="model">connect.debug</field>
       <field name="arch" type="xml">
-        <tree edit="false" create="false" duplicate="false">
+        <list edit="false" create="false" duplicate="false">
           <field name="model" />
           <field name="message" />
           <field name="create_date" />
-        </tree>
+        </list>
       </field>
     </record>
 

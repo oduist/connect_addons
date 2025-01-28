@@ -4,7 +4,7 @@
     <record id="callout_action" model="ir.actions.act_window">
         <field name="name">Callout</field>
         <field name="res_model">connect.callout</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
     </record>
 
     <menuitem id="connect.callouts_menu"
@@ -17,11 +17,11 @@
         <field name="name">connect.callout_list</field>
         <field name="model">connect.callout</field>
         <field name="arch" type="xml">
-            <tree>
+            <list>
                 <field name="name"/>
                 <field name="status"/>
                 <field name="outgoing_callerid"/>
-            </tree>
+            </list>
         </field>
     </record>
 
@@ -57,13 +57,13 @@
                             </group>
                             <group>
                                 <field name="choices">
-                                    <tree editable="bottom">
+                                    <list editable="bottom">
                                         <field name="choice_digits" string="Digits"/>
                                         <field name="twiml"/>
                                         <field name="stop"/>
                                         <field name="skip"/>
                                         <field name="speech"/>
-                                    </tree>
+                                    </list>
                                 </field>
                                 <field name="gather_timeout"/>
                                 <field name="gather_digits"/>
@@ -75,7 +75,7 @@
                     <page name="contacts" string="Contacts">
                         <group>
                             <field name="contacts">
-                                <tree editable="bottom">
+                                <list editable="bottom">
                                     <field name="phone_number"/>
                                     <field name="partner"/>
                                     <field name="status"/>
@@ -88,7 +88,7 @@
                                     <field name="ref_model" optional="hide"/>
                                     <field name="ref_res_id" optional="hide"/>
                                     <field name="error_message"/>
-                                </tree>
+                                </list>
                             </field>
                         </group>
                     </page>
@@ -103,10 +103,10 @@
                         </group>
                         <group>
                             <field name="logs">
-                                <tree create="false" edit="false" delete="false">
+                                <list create="false" edit="false" delete="false">
                                     <field name="create_date"/>
                                     <field name="message"/>
-                                </tree>
+                                </list>
                             </field>
                         </group>
                     </page>

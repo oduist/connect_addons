@@ -2,7 +2,10 @@
 
 import publicWidget from "@web/legacy/js/public/public_widget"
 import {loadJS} from "@web/core/assets"
-import {session} from "@web/session"
+import {rpc} from "@web/core/network/rpc";
+import {user} from "@web/core/user"
+
+const uid = user.userId
 
 const ConnectTalkButtonWidget = publicWidget.Widget.extend({
     selector: '.s_connect_talk',
@@ -16,7 +19,7 @@ const ConnectTalkButtonWidget = publicWidget.Widget.extend({
 
     init() {
         this._super(...arguments);
-        this.rpc = this.bindService("rpc")
+        this.rpc = rpc
         this.notification = this.bindService('notification')
     },
 
@@ -122,7 +125,7 @@ const ConnectTalkButtonWidget = publicWidget.Widget.extend({
             To: self.number,
             Called: self.number,
             Source: 'website',
-            UserId: session.user_id
+            UserId: uid
         }
 
         self.session = await self.userAgent.connect({params})

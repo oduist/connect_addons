@@ -5,9 +5,7 @@
             <field name="name">Vacuum Connect debug</field>
             <field name="interval_number">1</field>
             <field name="interval_type">days</field>
-            <field name="numbercall">-1</field>
-            <field name="doall" eval="False"/>
-            <field name="model_id" ref="model_connect_debug"></field>
+            <field name="model_id" ref="model_connect_debug"/>
             <field name="code">model.vacuum(hours=24)</field>
             <field name="state">code</field>
         </record>

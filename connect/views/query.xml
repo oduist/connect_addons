@@ -4,7 +4,7 @@
     <record id="query_action" model="ir.actions.act_window">
         <field name="name">Queries</field>
         <field name="res_model">connect.query</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
     </record>
 
     <menuitem id="connect.queries_menu"
@@ -17,11 +17,11 @@
         <field name="name">connect.query_list</field>
         <field name="model">connect.query</field>
         <field name="arch" type="xml">
-            <tree>
+            <list>
                 <field name="prompt"/>
                 <field name="status"/>
                 <field name="price"/>
-            </tree>
+            </list>
         </field>
     </record>
 

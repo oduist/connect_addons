@@ -2,9 +2,9 @@
 import {registry} from "@web/core/registry"
 import {PhoneSysTray} from "@connect/components/phone/tray/tray"
 import {Phone} from "@connect/components/phone/phone/phone"
-import {session} from "@web/session"
+import {user} from "@web/core/user"
 
-const uid = session.uid
+const uid = user.userId
 const serviceRegistry = registry.category("services")
 const sysTrayRegistry = registry.category("systray")
 const mainComponents = registry.category("main_components")
@@ -14,7 +14,7 @@ export const phoneService = {
     dependencies: ["orm"],
     async start(env, {orm}) {
         const pathname = document.location.pathname
-        if (pathname.includes("/web")) {
+        if (pathname.includes("/odoo")) {
             const token = await orm.call('connect.user', 'get_client_token')
             if (token) {
                 let bus = new EventBus()

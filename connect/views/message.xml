@@ -3,7 +3,7 @@
     <record id="action_connect_message" model="ir.actions.act_window">
         <field name="name">Messages</field>
         <field name="res_model">connect.message</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
     </record>
 
     <menuitem id="connect_sms_menu"
@@ -12,11 +12,11 @@
               sequence="60"
               parent="connect.connect_voice_menu"/>
 
-    <record id="view_connect_sms_message_tree" model="ir.ui.view">
-        <field name="name">connect.message.tree</field>
+    <record id="view_connect_sms_message_list" model="ir.ui.view">
+        <field name="name">connect.message.list</field>
         <field name="model">connect.message</field>
         <field name="arch" type="xml">
-            <tree create="false" edit="false" delete="false" decoration-danger="has_error">
+            <list create="false" edit="false" delete="false" decoration-danger="has_error">
                 <field name="has_error" invisible="1"/>
                 <field name="create_date"/>
                 <field name="from_number"/>
@@ -26,7 +26,7 @@
                 <field name="from_country"/>
                 <field name="message_type" optional="hide"/>
                 <field name="status" optional="hide"/>
-            </tree>
+            </list>
         </field>
     </record>
 

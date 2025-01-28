@@ -2,9 +2,9 @@
 
 import {useService} from "@web/core/utils/hooks"
 import {Component, useState, onWillStart} from "@odoo/owl"
-import {session} from "@web/session"
+import {user} from "@web/core/user"
 
-const uid = session.uid
+const uid = user.userId
 
 export class Favorites extends Component {
     static template = 'connect.favorites'

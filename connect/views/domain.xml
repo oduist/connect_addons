@@ -4,7 +4,7 @@
     <record id="domain_action" model="ir.actions.act_window">
         <field name="name">Domains</field>
         <field name="res_model">connect.domain</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
     </record>
 
     <menuitem id="connect.domains_menu"
@@ -17,11 +17,11 @@
         <field name="name">connect.domain_list</field>
         <field name="model">connect.domain</field>
         <field name="arch" type="xml">
-            <tree>
+            <list>
                 <field name="friendly_name"/>
                 <field name="domain_name"/>
                 <field name="delete_protection"/>
-            </tree>
+            </list>
         </field>
     </record>
 

@@ -1,7 +1,7 @@
 <odoo>
     <template id="place_into_bar" inherit_id="website.snippets" name="Place into bar">
-        <xpath expr="//div[@id='snippet_content']/div[hasclass('o_panel_body')]" position="inside">
-            <t t-snippet="connect_website.connect_talk_button" t-thumbnail="/connect_website/static/src/img/talk_button.png"/>
+        <xpath expr="//snippets[@id='snippet_content']" position="inside">
+            <t t-snippet="connect_website.connect_talk_button"  string="Website Talk Button" t-thumbnail="/connect_website/static/src/img/talk_button.png"/>
         </xpath>
     </template>
 </odoo>

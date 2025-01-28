@@ -4,7 +4,7 @@
     <record id="query_prompt_action" model="ir.actions.act_window">
         <field name="name">Query Prompt</field>
         <field name="res_model">connect.query_prompt</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
     </record>
 
     <menuitem id="connect.query_prompt_menu"
@@ -18,10 +18,10 @@
         <field name="name">connect.query_prompt.list</field>
         <field name="model">connect.query_prompt</field>
         <field name="arch" type="xml">
-            <tree string="Query Prompt List">
+            <list string="Query Prompt List">
                 <field name="name"/>
                 <field name="content"/>
-            </tree>
+            </list>
         </field>
     </record>
 

@@ -27,10 +27,10 @@
 
     <!-- List View for ElevenlabsVoice -->
     <record id="view_elevenlabs_voice_list" model="ir.ui.view">
-        <field name="name">connect.elevenlabs_voice.tree</field>
+        <field name="name">connect.elevenlabs_voice.list</field>
         <field name="model">connect.elevenlabs_voice</field>
         <field name="arch" type="xml">
-            <tree string="Elevenlabs Voice">
+            <list string="Elevenlabs Voice">
                 <field name="preview_audio" widget="html" optional="show"/>
                 <field name="voice_id" optional="hide"/>
                 <field name="name" optional="show"/>
@@ -38,7 +38,7 @@
                 <field name="accent" optional="show"/>
                 <field name="age" optional="show"/>
                 <field name="gender" optional="show"/>
-            </tree>
+            </list>
         </field>
     </record>
 
@@ -46,7 +46,7 @@
     <record id="action_elevenlabs_voice" model="ir.actions.act_window">
         <field name="name">Elevenlabs Voices</field>
         <field name="res_model">connect.elevenlabs_voice</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
     </record>
 
     <menuitem id="menu_elevenlabs_voice" parent="elevenlabs_menu"

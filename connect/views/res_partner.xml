@@ -4,7 +4,7 @@
     <record id='connect_calls_action' model='ir.actions.act_window'>
         <field name='name'>Calls</field>
         <field name='res_model'>connect.call</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
         <field name="domain">['|', ('partner','=', active_id), ('partner.parent_id','=', active_id)]</field>
     </record>
 
@@ -25,13 +25,13 @@
                       groups="connect.group_connect_user,connect.group_connect_admin">
                     <div class="p-4">
                         <field name="connect_recorded_calls" nolabel="1">
-                            <tree edit="false" create="false" limit="7">
+                            <list edit="false" create="false" limit="7">
                                 <field name="recording_widget" widget="html" string="Listen"/>
                                 <field name="duration_human" string="Duration"/>
                                 <field name="start_time"/>
                                 <field name="caller_user"/>
                                 <field name="called_user"/>
-                            </tree>
+                            </list>
                         </field>
                     </div>
                 </page>
