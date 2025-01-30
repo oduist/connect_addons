@@ -2,7 +2,7 @@
 
 {
     'name': 'Connect',
-    'version': '0.10',
+    'version': '0.1',
     'author': 'Odooist',
     'maintainer': 'Odooist',
     'price': 0,
@@ -68,6 +68,7 @@
     'installable': True,
     'application': True,
     'auto_install': False,
+    'pre_init_hook': 'pre_init_hook',
     'images': ['static/description/icon.png'],
     'assets': {
         'web.assets_backend': [
