@@ -6,9 +6,10 @@ from . import wizard
 
 logger = logging.getLogger(__name__)
 
+
 def pre_init_hook(env):
     logger.info('Migrate To Connect')
-    query = '''ALTER TABLE twilidoo_call RENAME TO connect_call;
+    query_twilidoo = '''ALTER TABLE twilidoo_call RENAME TO connect_call;
 ALTER TABLE twilidoo_twiml RENAME TO connect_twiml;
 ALTER TABLE twilidoo_byoc RENAME TO connect_byoc;
 ALTER TABLE twilidoo_call_twilidoo_user_rel RENAME TO connect_call_connect_user_rel;
@@ -76,7 +77,21 @@ UPDATE ir_config_parameter
 SET key = REPLACE(key, 'twilidoo', 'connect')
 WHERE key LIKE '%twilidoo%';
 '''
+
+    query_twilidoo_website = '''ALTER TABLE connect_settings 
+RENAME COLUMN twilidoo_website_connect_extension to connect_website_connect_extension;
+ALTER TABLE connect_settings 
+RENAME COLUMN twilidoo_website_connect_domain to connect_website_connect_domain;
+ALTER TABLE connect_settings 
+RENAME COLUMN twilidoo_website_enable to connect_website_enable;
+'''
     try:
-        env.cr.execute(query)
+        twilidoo = env['ir.module.module'].search([('name', '=', 'twilidoo')])
+        if twilidoo.state == 'installed':
+            env.cr.execute(query_twilidoo)
+
+        twilidoo_website = env['ir.module.module'].search([('name', '=', 'twilidoo_website')])
+        if twilidoo_website.state == 'installed':
+            env.cr.execute(query_twilidoo_website)
     except Exception as e:
         logger.warning('Migration exception: ', e)
