@@ -17,9 +17,9 @@
         'python': ['twilio', 'openai'],
     },
     'data': [
-        #'data/dev.xml',
         'data/res_users.xml',
         'data/data.xml',
+        'data/functions.xml',
         'data/ir_cron.xml',
         'data/ref.xml',
         'data/twiml.xml',
@@ -35,7 +35,6 @@
         # Views
         'views/menu.xml',
         'views/settings.xml',
-        'views/billing.xml',
         'views/domain.xml',
         'views/user.xml',
         'views/twiml.xml',

@@ -33,7 +33,6 @@
                 <field name="caller_pbx_user" optional="hide"/>
                 <field name="called_pbx_user" optional="hide"/>
                 <field name="duration" optional="hide"/>
-                <field name="duration_billing" optional="hide"/>
                 <field name="duration_minutes" optional="hide" sum="1"/>
                 <field name="duration_human" optional="show"/>
             </list>

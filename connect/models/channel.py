@@ -93,7 +93,6 @@ class Channel(models.Model):
                 'technical_direction': params['Direction'],
                 'status': params['CallStatus'],
                 'duration': int(params.get('CallDuration', 0)),
-                'duration_billing': float(params.get('Duration', 0)),
                 'caller': params.get('Caller'),
             }
             # Find an existing parent channel.
@@ -125,7 +124,6 @@ class Channel(models.Model):
                 'technical_direction': params['Direction'],
                 'status': params['CallStatus'],
                 'duration': int(params.get('CallDuration', 0)),
-                'duration_billing': float(params.get('Duration', 0)),
                 'caller': params.get('Caller'),
             }
             # Check if channel has parent_sid without channel

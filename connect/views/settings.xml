@@ -29,18 +29,17 @@
             <sheet>
               <notebook>
                 <page name="general" string="General"
-                    invisible="is_eula_accepted ==  False or is_subscribed == False">
+                      invisible="is_registered == False">
                   <group>
                     <group>
-                      <field name="is_subscribed" invisible="1"/>
-                      <field name="is_registered" invisible="1"/>
-                      <field name="is_eula_accepted" invisible="1"/>
+                      <field name="api_url"/>
+                      <field name="api_fallback_url"/>
                       <field name="debug_mode"/>
                     </group>
                   </group>
                 </page>
                 <page name="keys" string="API Keys"
-                    invisible="is_eula_accepted ==  False or is_subscribed == False">
+                      invisible="is_registered == False">
                   <group>
                     <group string="Twilio" name="twilio_api">
                       <field name="account_sid"/>
@@ -54,7 +53,8 @@
                     </group>
                   </group>
                 </page>
-                <page name="calls" string="Calls" invisible="is_eula_accepted ==  False or is_subscribed == False">
+                <page name="calls" string="Calls"
+                      invisible="is_registered == False">
                   <group>
                     <group >
                       <field name="proxy_recordings"/>
@@ -66,7 +66,7 @@
                   </group>
                 </page>
                 <page name="transcription" string="Transcription"
-                    invisible="is_eula_accepted ==  False or is_subscribed == False">
+                      invisible="is_registered == False">
                   <group>
                     <group>
                       <field name="transcript_calls"/>
@@ -89,6 +89,74 @@
                     <group>
                       <field name="twilio_verify_requests"/>
                       <field name="media_url"/>
+                    </group>
+                  </group>
+                </page>
+                <!-- REGISTRATION PAGE -->
+                <page name="registration" string="Registration">
+                  <group invisible="is_registered">
+                    <div colspan="2" style="font-size: small;">
+                      <strong >Registration is required to activate and use this product. We use it only for internal sales and support processes. Please read our <a target="_new" href="https://oduist.com/privacy">data privacy policy.</a></strong>
+                    </div>
+                    <div colspan="2" style="font-size: small;">
+                      <field name="i_agree_to_register" nolabel="1"/>
+                      <label for="i_agree_to_register" string="I agree to create an account in the Oduist users portal to receive free technical support from Oduist team."/>
+                    </div>
+                    <div colspan="2" style="font-size: small;">
+                    <field name="i_agree_to_receive"/>
+                    <label for="i_agree_to_receive" string="I agree to receive important product notifications, including security advisories, major updates, and critical patches that may affect my installation."/>
+                    </div>
+                    <div colspan="2" style="font-size: small;">
+                      <field name="i_agree_to_contact"/>
+                      <label for="i_agree_to_contact" string="I agree to be contacted by sales representatives who can help me understand additional services and support options available for my installation."/>
+                    </div>
+                  </group>
+                  <group>
+                    <group name="registration" string="Registration">
+                      <field name="show_partner_code" invisible="1"/>
+                      <field colspan="2" name="partner_code"
+                             invisible="show_partner_code == False"
+                             readonly="is_registered == True"/>
+                      <button colspan="2" name="register_instance" class="btn btn-info btn-lg me-1" type="object" string="SUBMIT REGISTRATION"
+                              invisible="is_registered or not i_agree_to_register or not i_agree_to_receive or not i_agree_to_contact"/>
+                      <field name="is_registered" invisible="1"/>
+                      <button colspan="2" name="unregister_instance" class="btn btn-lg btn-danger me-1" type="object" string="DELETE REGISTRATION"
+                              invisible="is_registered != True"/>
+                      <p colspan="2"
+                         invisible="is_registered or (i_agree_to_register and i_agree_to_receive and i_agree_to_contact)">
+                        Our product is <b>open source and free to use</b>, but it's <b>also a commercial solution used in business-critical environments</b>.<br/>
+                        While we're committed to keeping the product open source, <b>we need sustainable ways to support its development and maintenance</b>.<br/>
+                        We want to share why we ask for these permissions:
+                        <ul>
+                        <li><strong>Security First:</strong> We take security very seriously. If a critical bug or vulnerability is discovered, we need to ensure we can reach <strong>every user</strong> to provide an immediate fix.</li>
+                        <li><strong>Ongoing Development:</strong> Even though the core product is free, we still need resources to maintain, improve, and support it. By staying connected, you help us continue innovating.</li>
+                        <li><strong>Value-Added Services:</strong> We offer optional premium services that provide additional benefits, including SLA support, consulting, and advanced features. Having your contact details allows us to inform you about solutions that might help your business grow.</li>
+                        <li><strong>Community and Support</strong>: Registering in our portal gives you access to knowledge bases, user forums, and troubleshooting help from other users and our team.</li>
+                        </ul>
+                        Your privacy is our priority - your registration data remains strictly confidential. We do not sell or misuse your information.<br/>
+                        <strong>Thanks a lot for your trust, understanding and support! Welcome to our community!</strong>
+                      </p>
+                    </group>
+                    <group string="Technical Support" invisible="not is_registered">
+                      <p colspan="2" >
+                        <a role="button" class="btn btn-primary" href="https://oduist.com/knowledge/article/39" target="_new">DOCUMENTATION</a> |
+                        <a role="button" class="btn btn-info" href="https://oduist.com/forum/user-support-portal-1" target="_new">FREE SUPPORT</a> |
+                        <a role="button" class="btn btn-success" href="https://oduist.com/support" target="_new">COMMERCIAL SUPPORT</a>
+                      </p>
+                      <img alt="Great support!" colspan="2" src="/asterisk_plus/static/description/support.jpg" width="100%"/>
+                    </group>
+                    <group name="registration_data" string="Registration Data" invisible="is_registered">
+                      <field name="company_name"/>
+                      <field name="company_email"/>
+                      <field name="company_phone"/>
+                      <field name="company_country"/>
+                      <field name="company_city"/>
+                      <button colspan="2" name="update_company_data_button" string="UPDATE COMPANY DATA" type="object"/>
+                      <field name="admin_name"/>
+                      <field name="admin_email"/>
+                      <field name="admin_phone"/>
+                      <button colspan="2" name="update_admin_data_button" string="UPDATE ADMIN DATA" type="object"/>
+                      <field name="web_base_url"/>
                     </group>
                   </group>
                 </page>

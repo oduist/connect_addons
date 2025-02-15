@@ -8,7 +8,7 @@ export class ConnectActiveCallsTray extends Component {
     }
 
     _onClick() {
-        this.props.bus.trigger('connect_active_calls_toggle_display');
+        this.props.bus.trigger('connect_active_calls_toggle_display')
     }
 }
 

@@ -209,10 +209,6 @@ class Recording(models.Model):
 
     @api.model
     def on_recording_status(self, params):
-        # Check access only for Twilio Service agent.
-        if not self.env.user.has_group('connect.group_connect_billing'):
-            logger.error('Access to Twilio webhook is denied!')
-            return False
         # Check Twilio request
         if not self.env['connect.settings'].check_twilio_request(params):
             return False
