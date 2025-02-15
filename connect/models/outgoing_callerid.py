@@ -80,10 +80,6 @@ class OutgoingCallerID(models.Model):
 
     @api.model
     def update_status(self, params):
-        # Check access only for Twilio Service agent.
-        if not self.env.user.has_group('connect.group_connect_billing'):
-            logger.error('Access to Twilio webhook is denied!')
-            return '<Response><Say>Access to Twilio webhook is denied!</Say></Response>'
         # Check Twilio request
         if not self.env['connect.settings'].check_twilio_request(params):
             return False
@@ -105,9 +101,7 @@ class OutgoingCallerID(models.Model):
         if self.sid:
             raise ValidationError('Outgoing callerid is already validated!')
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        instance_uid = self.env['connect.settings'].sudo().get_param('instance_uid')
-        status_url = urljoin(api_url,
-            'twilio/webhook/{}/outgoing_callerid'.format(instance_uid))
+        status_url = urljoin(api_url, 'twilio/webhook/outgoing_callerid')
         client = self.env['connect.settings'].get_client()
         try:
             validation_request = client.validation_requests.create(

@@ -43,21 +43,15 @@ class Number(models.Model):
     ]
 
     def _get_twilio_urls(self):
-        instance_uid = self.env['connect.settings'].get_param('instance_uid')
         api_url = self.env['connect.settings'].get_param('api_url')
         fallback_url = self.env['connect.settings'].get_param('api_fallback_url')
         for rec in self:
-            rec.voice_status_url = urljoin(api_url,
-                'twilio/webhook/{}/callstatus'.format(instance_uid))
-            rec.voice_url = urljoin(api_url,
-                'twilio/webhook/{}/number'.format(instance_uid))
-            rec.message_url = urljoin(api_url,
-                'twilio/webhook/{}/message'.format(instance_uid))
-            rec.message_fallback_url = urljoin(api_url,
-                'twilio/webhook/{}/message'.format(instance_uid))
+            rec.voice_status_url = urljoin(api_url, 'twilio/webhook/callstatus')
+            rec.voice_url = urljoin(api_url, 'twilio/webhook/number')
+            rec.message_url = urljoin(api_url, 'twilio/webhook/message')
+            rec.message_fallback_url = urljoin(api_url, 'twilio/webhook/message')
             if fallback_url:
-                rec.voice_fallback_url = urljoin(fallback_url,
-                    'twilio/webhook/{}/number'.format(instance_uid))
+                rec.voice_fallback_url = urljoin(fallback_url, 'twilio/webhook/number')
             else:
                 rec.voice_fallback_url = ''
 
@@ -130,10 +124,6 @@ class Number(models.Model):
 
     @api.model
     def route_call(self, request):
-        # Check access only for Twilio Service agent.
-        if not self.env.user.has_group('connect.group_connect_billing'):
-            logger.error('Access to Twilio webhook is denied!')
-            return '<Response><Say>Access to Twilio webhook is denied!</Say></Response>'
         # Check Twilio request
         if not self.env['connect.settings'].check_twilio_request(request):
             return '<Response><Say>Invalid Twilio request!</Say></Response>'

@@ -30,12 +30,9 @@ class Queue(models.Model):
 
     def _get_urls(self):
         api_url = self.env['connect.settings'].get_param('api_url')
-        instance_uid = self.env['connect.settings'].get_param('instance_uid')
         for rec in self:
-            rec.action_url = urljoin(api_url,
-                'twilio/webhook/{}/queue/{}/on_action'.format(instance_uid, rec.id))
-            rec.wait_url = urljoin(api_url,
-                'twilio/webhook/{}/queue/{}/render_wait_app'.format(instance_uid, rec.id))
+            rec.action_url = urljoin(api_url, 'twilio/webhook/queue/{}/on_action'.format(rec.id))
+            rec.wait_url = urljoin(api_url, 'twilio/webhook/queue/{}/render_wait_app'.format(rec.id))
 
     def create_extension(self):
         self.ensure_one()
@@ -43,11 +40,6 @@ class Queue(models.Model):
 
     @api.model
     def on_action(self, q_id, request):
-        # Check access only for Twilio Service agent.
-        # Check access only for Twilio Service agent.
-        if not self.env.user.has_group('connect.group_connect_billing'):
-            logger.error('Access to Twilio webhook is denied!')
-            return '<Response><Say>Access to Twilio webhook is denied!</Say></Response>'
         # Check Twilio request
         if not self.env['connect.settings'].check_twilio_request(request):
             return '<Response><Say>Invalid Twilio request!</Say></Response>'
@@ -64,10 +56,6 @@ class Queue(models.Model):
 
     @api.model
     def render_wait_app(self, q_id, request):
-        # Check access only for Twilio Service agent.
-        if not self.env.user.has_group('connect.group_connect_billing'):
-            logger.error('Access to Twilio webhook is denied!')
-            return '<Response><Say>Access to Twilio webhook is denied!</Say></Response>'
         # Check Twilio request
         if not self.env['connect.settings'].check_twilio_request(request):
             return '<Response><Say>Invalid Twilio request!</Say></Response>'
@@ -76,9 +64,7 @@ class Queue(models.Model):
         # Call agents
         client = self.env['connect.settings'].get_client()
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        instance_uid = self.env['connect.settings'].sudo().get_param('instance_uid')
-        record_status_url = urljoin(api_url,
-            'twilio/webhook/{}/recordingstatus'.format(instance_uid))
+        record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus')
         user = self.env['connect.user'].get_user_by_uri(request.get('From'))
         if user:
             callerId = user.exten.number or user.callerid_number.phone_number
@@ -111,8 +97,7 @@ class Queue(models.Model):
                 to = '{}:{}'.format(channel, agent.uri)
                 get_param = self.env['connect.settings'].sudo().get_param
                 api_url = get_param('api_url')
-                instance_uid = get_param('instance_uid', '')
-                status_url = urljoin(api_url, 'twilio/webhook/{}/callstatus'.format(instance_uid))
+                status_url = urljoin(api_url, 'twilio/webhook/callstatus')
                 call = client.calls.create(
                     twiml=twiml,
                     to=to,

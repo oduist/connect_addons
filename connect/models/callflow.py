@@ -57,18 +57,11 @@ class CallFlow(models.Model):
 
     def _get_gather_action_url(self):
         api_url = self.env['connect.settings'].get_param('api_url')
-        instance_uid = self.env['connect.settings'].get_param('instance_uid')
         for rec in self:
-            rec.gather_action_url = urljoin(api_url,
-                'twilio/webhook/{}/callflow/{}/gather'.format(
-                    instance_uid, rec.id))
+            rec.gather_action_url = urljoin(api_url, 'twilio/webhook/callflow/{}/gather'.format(rec.id))
 
     @api.model
     def gather_action(self, flow_id, request):
-        # Check access only for Twilio Service agent.
-        if not self.env.user.has_group('connect.group_connect_billing'):
-            logger.error('Access to Twilio webhook is denied!')
-            return '<Response><Say>Access to Twilio webhook is denied!</Say></Response>'
         # Check Twilio request
         if not self.env['connect.settings'].check_twilio_request(request):
             return '<Response><Say>Invalid Twilio request!</Say></Response>'
@@ -86,15 +79,10 @@ class CallFlow(models.Model):
     def render(self, request={}, params={}):
         self.ensure_one()
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        instance_uid = self.env['connect.settings'].sudo().get_param('instance_uid')
-        voicemail_record_status_url = urljoin(api_url,
-            'twilio/webhook/{}/vm_recordingstatus'.format(instance_uid))
-        status_url = urljoin(api_url,
-            'twilio/webhook/{}/callstatus'.format(instance_uid))
-        action_url = urljoin(api_url,
-            'twilio/webhook/{}/connect.callflow/call_action/{}'.format(instance_uid, self.id))
-        record_status_url = urljoin(api_url,
-            'twilio/webhook/{}/recordingstatus'.format(instance_uid))
+        voicemail_record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus')
+        status_url = urljoin(api_url, 'twilio/webhook/callstatus')
+        action_url = urljoin(api_url, 'twilio/webhook/connect.callflow/call_action/{}'.format(self.id))
+        record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus')
         invalid_input = params.get('invalid_input')
         response = VoiceResponse()
         if invalid_input:
@@ -184,10 +172,6 @@ class CallFlow(models.Model):
 
     @api.model
     def on_call_action(self, flow_id, request):
-        # Check access only for Twilio Service agent.
-        if not self.env.user.has_group('connect.group_connect_billing'):
-            logger.error('Access to Twilio webhook is denied!')
-            return '<Response><Say>Access to Twilio webhook is denied!</Say></Response>'
         # Check Twilio request
         if not self.env['connect.settings'].check_twilio_request(request):
             return '<Response><Say>Invalid Twilio request!</Say></Response>'
@@ -197,9 +181,7 @@ class CallFlow(models.Model):
             # The call was not connected, point to the voicemail
             if callflow.voicemail_prompt:
                 api_url = self.env['connect.settings'].sudo().get_param('api_url')
-                instance_uid = self.env['connect.settings'].sudo().get_param('instance_uid')
-                record_status_url = urljoin(api_url,
-                    'twilio/webhook/{}/vm_recordingstatus'.format(instance_uid))
+                record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus')
                 response.pause(length=1)
                 response.say(callflow.voicemail_prompt, language=callflow.language, voice=callflow.voice)
                 response.record(

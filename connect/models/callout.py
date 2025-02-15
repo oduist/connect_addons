@@ -161,8 +161,7 @@ class CallOut(models.Model):
     def render(self, request={}, params={}):
         self.ensure_one()
         get_param = self.env['connect.settings'].sudo().get_param
-        gather_action_url = urljoin(get_param('api_url'),
-            'twilio/webhook/{}/calloutaction'.format(get_param('instance_uid')))
+        gather_action_url = urljoin(get_param('api_url'), 'twilio/webhook/calloutaction')
         response = VoiceResponse()
         gather = Gather(
             action=gather_action_url,
@@ -188,8 +187,7 @@ class CallOut(models.Model):
                 'Callout CallerID number not set / Default CallerID number not set.')
             return False
         api_url = get_param('api_url')
-        instance_uid = get_param('instance_uid', '')
-        status_url = urljoin(api_url, 'twilio/webhook/{}/calloutstatus'.format(instance_uid))
+        status_url = urljoin(api_url, 'twilio/webhook/calloutstatus')
         # Check if it has a test number.
         if self.test_to:
             number = self.test_to
@@ -210,10 +208,6 @@ class CallOut(models.Model):
 
     @api.model
     def on_callout_status(self, params):
-        # Check access only for Twilio Service agent.
-        if not self.env.user.has_group('connect.group_connect_billing'):
-            logger.error('Access to Twilio webhook is denied!')
-            return False
         # Check Twilio request
         if not self.env['connect.settings'].check_twilio_request(params):
             return False
@@ -247,10 +241,6 @@ class CallOut(models.Model):
 
     @api.model
     def on_callout_action(self, params):
-        # Check access only for Twilio Service agent.
-        if not self.env.user.has_group('connect.group_connect_billing'):
-            logger.error('Access to Twilio webhook is denied!')
-            return '<Response><Say>Access to Twilio webhook is denied!</Say></Response>'
         # Check Twilio request
         if not self.env['connect.settings'].check_twilio_request(params):
             return '<Response><Say>Invalid Twilio request!</Say></Response>'
