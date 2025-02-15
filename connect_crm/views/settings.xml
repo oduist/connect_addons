@@ -7,7 +7,7 @@
     <field name="arch" type="xml">
       <page name="transcription" position="after">
         <page name="crm" string="CRM"
-            invisible="is_eula_accepted ==  False or is_subscribed == False">
+            invisible="is_registered == False">
           <group>
             <group string="Incoming Calls">
               <field name="auto_create_leads_for_in_calls" string="Auto Create Leads"/>
