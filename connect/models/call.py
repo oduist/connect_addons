@@ -148,9 +148,6 @@ class Call(models.Model):
     def on_call_status(self, params, skip_twilio_check=False):
         # Check access only for Twilio Service agent.
         if not skip_twilio_check:
-            if not self.env.user.has_group('connect.group_connect_billing'):
-                logger.error('Access to Twilio webhook is denied!')
-                return False
             # Check Twilio request
             if not self.env['connect.settings'].check_twilio_request(params):
                 return False
@@ -250,10 +247,6 @@ class Call(models.Model):
 
     @api.model
     def on_vm_recording_status(self, params):
-        # Check access only for Twilio Service agent.
-        if not self.env.user.has_group('connect.group_connect_billing'):
-            logger.error('Access to Twilio webhook is denied!')
-            return False
         # Check Twilio request
         if not self.env['connect.settings'].check_twilio_request(params):
             return False
@@ -268,10 +261,6 @@ class Call(models.Model):
 
     @api.model
     def on_call_action(self, params):
-        # Check access only for Twilio Service agent.
-        if not self.env.user.has_group('connect.group_connect_billing'):
-            logger.error('Access to Twilio webhook is denied!')
-            return '<Response><Say>Access to Twilio webhook is denied!</Say></Response>'
         # Check Twilio request
         if not self.env['connect.settings'].check_twilio_request(params):
             return '<Response><Say>Invalid Twilio request!</Say></Response>'

@@ -4,15 +4,13 @@ import inspect
 import json
 import logging
 import requests
-import os
 import random
 import re
 import string
 from urllib.parse import urljoin
 import uuid
 from odoo import fields, models, api, release
-from odoo.modules.module import get_module_path
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
 from twilio.rest import Client
 from twilio.request_validator import RequestValidator
 
@@ -21,12 +19,9 @@ logger = logging.getLogger(__name__)
 
 TWILIO_LOG_LEVEL = logging.WARNING
 
-
-############### BILLING SETTINGS #####################################
+############### SETTINGS #####################################
 MODULE_NAME = 'connect'
-PRODUCT_CODE = 'prod_RFq8TVNljCDJmH'
-BILLING_USER = 'connect.user_connect_billing'
-API_URL = 'https://api-{}.connect.com/'
+API_URL = 'https://eu-central-1.api.oduist.com'
 # Starting from Odoo 12.0 there is admin user with ID 2.
 ADMIN_USER_ID = 1 if release.version_info[0] <= 11 else 2
 
@@ -92,8 +87,6 @@ class Settings(models.Model):
 
     name = fields.Char(compute='_get_name')
     debug_mode = fields.Boolean()
-    eula = fields.Text('EULA', compute='_get_eula')
-    is_eula_accepted = fields.Boolean()
     account_sid = fields.Char(string='Account SID')
     auth_token = fields.Char(groups="base.group_erp_manager,connect.group_connect_billing")
     display_auth_token = fields.Char()
@@ -112,366 +105,62 @@ class Settings(models.Model):
     register_summary = fields.Boolean(help='Register summary at partner of reference chat.')
     remove_recording_after_transcript = fields.Boolean()
     #############  BILLING FIELDS   ###############################################
-    webhook_region = fields.Selection(
-        [('eu-central-1', 'Europe'), ('us-east-1', 'US East')],
-        required=True, default='us-east-1')
-    webhook_fallback_region = fields.Selection(
-        [('eu-central-1', 'Europe'),
-         ('us-east-1', 'US East'),
-         ('none', 'None'),
-        ],
-        required=True, default='eu-central-1')
     instance_uid = fields.Char('Instance UID', compute='_get_instance_data')
     api_key = fields.Char('API Key', compute='_get_instance_data')
     api_url = fields.Char('API URL', compute='_get_instance_data')
-    api_fallback_url = fields.Char('API Fallback URL', compute='_get_instance_data')
-    product_code = fields.Char(compute='_get_instance_data')
-    credits = fields.Char(readonly=True)
-    is_subscribed = fields.Boolean()
-    subscription_pricing = fields.Text('Pricing', readonly=True)
-    is_registered = fields.Boolean(compute='_get_instance_data')
-    registration_id = fields.Char('Registration Number', compute='_get_instance_data')
-    module_name = fields.Char(compute='_get_instance_data')
-    module_version = fields.Char(compute='_get_instance_data')
-    partner_code = fields.Char()
-    discount_code = fields.Char()
-    show_partner_code = fields.Boolean(default=True)
-    show_discount_code = fields.Boolean(default=True)
-    admin_name = fields.Char(required=True, default=lambda x: x.get_registration_defaults('admin_name'))
-    admin_phone = fields.Char(default=lambda x: x.get_registration_defaults('admin_phone'))
-    admin_email = fields.Char(default=lambda x: x.get_registration_defaults('admin_email'))
-    company_name = fields.Char(compute='_get_instance_data')
-    company_phone = fields.Char(compute='_get_instance_data')
-    company_email = fields.Char(compute='_get_instance_data')
-    company_address = fields.Char(compute='_get_instance_data')
-    web_base_url = fields.Char('Odoo Access URL',
-                               required=True, default=lambda x: x.get_registration_defaults('web_base_url'))
+    api_fallback_url = fields.Char('API Fallback URL')
     twilio_verify_requests = fields.Boolean(default=True, string='Verify Twilio Requests')
     media_url = fields.Char()
-
-    def get_registration_defaults(self, field):
-        defaults = {
-            'admin_name': self.env['res.users'].sudo().browse(ADMIN_USER_ID).partner_id.name,
-            'admin_phone': self.env['res.users'].sudo().browse(ADMIN_USER_ID).partner_id.phone or "+1234567890",
-            'admin_email': self.env['res.users'].sudo().browse(ADMIN_USER_ID).partner_id.email,
-            'web_base_url': self.env['ir.config_parameter'].sudo().get_param('web.base.url'),
-        }
-        return defaults[field]
-
-    def _get_eula(self):
-        for rec in self:
-            module_path = get_module_path(MODULE_NAME)
-            license_file_path = os.path.join(module_path, 'LICENSE')
-            if os.path.exists(license_file_path):
-                with open(license_file_path, 'r') as license_file:
-                    rec.eula = license_file.read()
-            else:
-                raise ValidationError("LICENSE file not found!")
-
-    def confirm_eula(self):
-        self.set_param('is_eula_accepted', True)
+    # Registration fields
+    partner_code = fields.Char()
+    show_partner_code = fields.Boolean(default=True)
+    is_registered = fields.Boolean()
+    i_agree_to_register = fields.Boolean()
+    i_agree_to_contact = fields.Boolean()
+    i_agree_to_receive = fields.Boolean()
+    installation_date = fields.Datetime(compute='_get_instance_data')
+    module_version = fields.Char(compute='_get_instance_data')
+    odoo_version = fields.Char(compute='_get_instance_data')
+    admin_name = fields.Char(compute='_get_instance_data')
+    admin_phone = fields.Char(compute='_get_instance_data')
+    admin_email = fields.Char(compute='_get_instance_data')
+    company_name = fields.Char(compute='_get_instance_data')
+    company_email = fields.Char(compute='_get_instance_data')
+    company_phone = fields.Char(compute='_get_instance_data')
+    company_country = fields.Char(compute='_get_instance_data')
+    company_state_name = fields.Char(compute='_get_instance_data')
+    company_country_code = fields.Char(compute='_get_instance_data')
+    company_country_name = fields.Char(compute='_get_instance_data')
+    company_city = fields.Char(compute='_get_instance_data')
+    web_base_url = fields.Char(compute='_get_instance_data', string='Odoo URL')
 
     def _get_instance_data(self):
         module = self.env['ir.module.module'].sudo().search([('name', '=', MODULE_NAME)])
         for rec in self:
-            rec.product_code = self.env['ir.config_parameter'].sudo().get_param(
-                'connect.{}_product_code'.format(MODULE_NAME)) or PRODUCT_CODE
-            rec.module_name = MODULE_NAME
             rec.module_version = module.installed_version[-3:]
+            version = self.env['ir.module.module'].search([('name', '=', 'base')], limit=1).latest_version
+            major_version = version.split('.')[0] + '.' + version.split('.')[1]
+            rec.odoo_version = major_version
             rec.instance_uid = self.env['ir.config_parameter'].sudo().get_param('connect.instance_uid')
-            # Adjust API URL to the region
-            api_url = self.env['ir.config_parameter'].sudo().get_param('connect.api_url')
-            api_region = self.get_param('webhook_region')
-            api_fallback_region = self.get_param('webhook_fallback_region')
             # Format API URL according to the preferred region or dev URL.
-            rec.api_url = api_url if api_url else API_URL.format(api_region)
-            rec.api_fallback_url = API_URL.format(api_fallback_region) if api_fallback_region != 'none' else ''
+            rec.installation_date = self.env['ir.config_parameter'].sudo().get_param('connect.installation_date')
+            rec.api_url = self.env['ir.config_parameter'].sudo().get_param('connect.api_url')
             rec.api_key = self.env['ir.config_parameter'].sudo().get_param('connect.api_key')
-            rec.company_name = self.env.user.company_id.name
             rec.company_email = self.env.user.company_id.email
+            rec.company_name = self.env.user.company_id.name
             rec.company_phone = self.env.user.company_id.phone
-            company_address = re.sub(
-                r'\n(\s|\n)*', ', ', self.env.user.company_id.partner_id.contact_address).strip().strip(',')
-            rec.company_address = company_address
-            rec.registration_id = self.env['ir.config_parameter'].sudo().get_param('connect.registration_id')
-            rec.is_registered = True if rec.api_key else False
+            rec.company_country = self.env.user.company_id.country_id.name
+            rec.company_city = self.env.user.company_id.city
+            rec.company_country_code = self.env.user.company_id.country_id.code
+            rec.company_country_name = self.env.user.company_id.country_id.name
+            rec.company_state_name = self.env.user.company_id.partner_id.state_id.name
+            rec.admin_name = self.env['res.users'].browse(ADMIN_USER_ID).partner_id.name
+            rec.admin_email = self.env['res.users'].browse(ADMIN_USER_ID).partner_id.email
+            rec.admin_phone = self.env['res.users'].browse(ADMIN_USER_ID).partner_id.phone
+            rec.web_base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
 
 ####################################################################################
 ##### BILLING REGISTRATION ##### NO CHANGES ALLOWED HERE ###########################
-
-    def get_registration_code(self):
-        # Send registration code to admin.
-        if self.get_param('admin_email') == 'admin@example.com':
-            raise ValidationError('Please set your real email address, not admin@example.com.')
-        url = urljoin(self.get_param('api_url'), 'signup')
-        res = requests.post(url,
-            json={
-                'email': self.get_param('admin_email'),
-                'name': self.get_param('admin_name'),
-            },
-            headers={'x-instance-uid': self.get_param('instance_uid')}
-        )
-        if not res.ok:
-            raise ValidationError(res.text)
-        # Notify works in Odoo starting from 12.0
-        if release.version_info[0] >= 12:
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': "Signup",
-                    'message': 'Check mail for %s for the registration code!' % self.get_param('admin_email'),
-                    'sticky': False,
-                    'type': 'info',
-                }
-            }
-
-
-    def create_subscription(self):
-        # Reset billing user password.
-        # This billing account has very limited access (portal) and does not consume Odoo user license.
-        # It is used only by our billing system to account resources of this application.
-        # Don't change its password manually otherwise your subscription will be interrupted.
-        billing_user = self.env.ref(BILLING_USER)
-        billing_password = str(uuid.uuid4()) + '1!A'
-        billing_user.password = billing_password
-        self.env.cr.commit()
-        admin_email = self.get_param('admin_email')
-        admin_phone = self.get_param('admin_phone')
-        if not admin_email or not admin_phone:
-            raise ValidationError('Please enter all required fields: '
-                                  'admin email, and admin phone!')
-        if admin_email == 'admin@example.com':
-            raise ValidationError('Please set your real email address, not admin@example.com.')
-        url = urljoin(self.get_param('api_url'), 'subscription')
-        try:
-            res = requests.post(url,
-                json={
-                    'name': self.get_param('company_name'),
-                    'company_phone': self.env.user.company_id.partner_id.phone,
-                    'company_email': self.env.user.company_id.partner_id.email,
-                    'address_line1': self.env.user.company_id.partner_id.street,
-                    'address_line2': self.env.user.company_id.partner_id.street2,
-                    'city': self.env.user.company_id.partner_id.city,
-                    'state_code': self.env.user.company_id.partner_id.state_id.code,
-                    'state_name': self.env.user.company_id.partner_id.state_id.name,
-                    'postal_code': self.env.user.company_id.partner_id.zip,
-                    'country_code': self.env.user.company_id.partner_id.country_id.code,
-                    'admin_name': self.get_param('admin_name'),
-                    'admin_email': admin_email,
-                    'admin_phone': admin_phone,
-                    'odoo_url': self.get_param('web_base_url'),
-                    'odoo_password': billing_password,
-                    'odoo_version': release.major_version,
-                    'odoo_db': self.env.cr.dbname,
-                    'odoo_uid': billing_user.id,
-                    'odoo_user': billing_user.login,
-                    'module_version': self.get_param('module_version'),
-                    'module_name': self.get_param('module_name'),
-                    'promotion_code': self.get_param('discount_code'),
-                    'partner_code': self.get_param('partner_code'),
-                    'product_id': self.get_param('product_code'),
-                },
-                headers={
-                    'x-instance-uid': self.get_param('instance_uid'),
-                    'x-api-key': self.get_param('api_key') or '',
-                })
-            if not res.ok:
-                raise ValidationError(res.text)
-            data = res.json()
-            # If this is the first subscription we must get an API key.
-            if data.get('api_key'):
-                self.env['ir.config_parameter'].sudo().set_param(
-                    'connect.api_key', data['api_key'])
-                self.env['ir.config_parameter'].sudo().set_param(
-                    'connect.registration_id', data['registration_id'])
-            self.set_param('is_subscribed', True)
-            self.set_param('subscription_pricing', data['pricing'])
-        except requests.exceptions.SSLError:
-            raise ValidationError('Cannot connect to the Billing! Are you trying to connect to HTTP using HTTPS?')
-        except Exception as e:
-            raise ValidationError(e)
-
-    def billing_session_url_action(self):
-        api_url = self.get_param('api_url')
-        instance_uid = self.get_param('instance_uid') or ''
-        api_key = self.get_param('api_key') or ''
-        locale = self.env['res.lang'].search(
-            [('code','=', self.env.user.lang)]).iso_code
-        res = requests.get(urljoin(api_url, 'customer'),
-            json={
-                'create_billing_session': True,
-                'locale': locale,
-                'module_name': MODULE_NAME,
-            },
-            headers={'x-instance-uid': instance_uid, 'x-api-key': api_key})
-        if not res.ok:
-            raise ValidationError(res.text)
-        data = res.json()
-        self.set_param('credits', data['credits'])
-        # Set subscription status.
-        self.set_param('is_subscribed', data['is_subscribed'])
-        if data.get('is_subscribed') == False:
-            self.env['connect.settings' ].connect_notify(
-                title="Attention!",
-                warning=True,
-                sticky=True,
-                message='Your subscription was cancelled!'
-            )
-        return {
-            'type': 'ir.actions.act_url',
-            'url': data.get('session_url')
-        }
-
-    def check_balance(self):
-        api_url = self.get_param('api_url')
-        instance_uid = self.get_param('instance_uid') or ''
-        api_key = self.get_param('api_key') or ''
-        res = requests.get(
-            urljoin(api_url, 'balance'),
-            json={'module_name': MODULE_NAME},
-            headers={'x-instance-uid': instance_uid, 'x-api-key': api_key})
-        if not res.ok:
-            raise ValidationError(res.text)
-        data = res.json()
-        self.set_param('credits', data['balance'])
-        self.set_param('subscription_pricing', data.get('pricing'))
-        self.set_param('is_subscribed', data.get('is_subscribed'))
-        if data.get('is_subscribed') == False:
-            self.env['connect.settings' ].connect_notify(
-                title="Attention!",
-                warning=True,
-                sticky=True,
-                message='Your subscription was cancelled!'
-            )
-        # Check Twilio balance
-        twilio_balance = None
-        try:
-            client = self.get_client()
-            balance_data = client.api.account.balance.fetch()
-            self.set_param('twilio_balance', balance_data.balance)
-            twilio_balance = balance_data.balance
-            self.env['connect.settings' ].connect_notify(
-                title="Current Balance",
-                message='Connect Credits: {}<br/>Twilio Balance: {}'.format(data['balance'], twilio_balance))
-        except Exception as e:
-            if 'Credentials are required to create a TwilioClient' in str(e):
-                raise ValidationError('You must enter your Twilio auth / api keys!')
-            elif 'Unable to fetch record:' in str(e):
-                self.env['connect.settings' ].connect_notify(
-                    title="Unable to fetch balance from subaccount!", message='')
-            else:
-                raise
-
-    def unsubscribe_product(self):
-        api_url = self.get_param('api_url')
-        url = urljoin(api_url, 'subscription')
-        res = requests.delete(url,
-            json={
-                'module_name': self.get_param('module_name'),
-            },
-            headers={
-                'x-instance-uid': self.get_param('instance_uid') or '',
-                'x-api-key': self.get_param('api_key') or ''
-            })
-        if not res.ok:
-            raise ValidationError(res.text)
-        else:
-            self.set_param('is_subscribed', False)
-            self.set_param('subscription_pricing', False)
-            logger.info('Unsubscribe result: %s', res.text)
-            # This is checked in the wizard to show the notification dialog.
-            return True
-
-    def update_billing_data(self):
-        if not self.get_param('is_registered'):
-            raise ValidationError('Not registered!')
-        # Change also billing user password.
-        billing_user = self.env.ref(BILLING_USER)
-        billing_password = str(uuid.uuid4()) + '1!A'
-        billing_user.password = billing_password
-        self.env.cr.commit()
-        api_url = self.get_param('api_url')
-        url = urljoin(api_url, 'subscription')
-        res = requests.put(url,
-            json={
-                'name': self.get_param('company_name'),
-                'admin_name': self.get_param('admin_name'),
-                'admin_email': self.get_param('admin_email'),
-                'admin_phone': self.get_param('admin_phone'),
-                'company_phone': self.env.user.company_id.partner_id.phone,
-                'company_email': self.env.user.company_id.partner_id.phone,
-                'address_line1': self.env.user.company_id.partner_id.street,
-                'address_line2': self.env.user.company_id.partner_id.street2,
-                'city': self.env.user.company_id.partner_id.city,
-                'state_code': self.env.user.company_id.partner_id.state_id.code,
-                'state_name': self.env.user.company_id.partner_id.state_id.name,
-                'postal_code': self.env.user.company_id.partner_id.zip,
-                'country_code': self.env.user.company_id.partner_id.country_id.code,
-                'odoo_url': self.get_param('web_base_url'),
-                'odoo_password': billing_password,
-                'odoo_version': release.major_version,
-                'odoo_db': self.env.cr.dbname,
-                'module_version': self.get_param('module_version'),
-                'odoo_uid': billing_user.id,
-                'odoo_user': billing_user.login,
-                'module_name': MODULE_NAME,
-            },
-            headers={
-                'x-instance-uid': self.get_param('instance_uid'),
-                'x-api-key': self.get_param('api_key')
-            })
-        if not res.ok:
-            raise ValidationError(res.text)
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': "Status",
-                'message': 'Billing data updated',
-                'sticky': False,
-                'type': 'info',
-            }
-        }
-
-    def add_credits(self):
-        # Fetch formula from the billing
-        if not self.get_param('is_registered'):
-            raise ValidationError('Not registered!')
-        api_url = self.get_param('api_url')
-        url = urljoin(api_url, 'balance')
-        res = requests.get(url,
-            json={
-                'module_name': self.get_param('module_name'),
-                'balance_history': True,
-            },
-            headers={
-                'x-instance-uid': self.get_param('instance_uid') or '',
-                'x-api-key': self.get_param('api_key') or ''
-            })
-        if not res.ok:
-            raise ValidationError(res.text)
-        data = res.json()
-        if data['monthly_average'] == 0:
-            raise ValidationError('You can add credits only after one month of using the subscription!')
-        context = {
-            'default_pay_amount': data['monthly_average'] * 12,
-            'default_formula': data['formula'],
-            'default_monthly_average': data['monthly_average'],
-        }
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'connect.add_credits_wizard',
-            'view_mode': 'form',
-            'name': 'Add Credits Wizard',
-            'target': 'new',
-            'context': context,
-        }
-
-    @api.constrains('webhook_region', 'webhook_fallback_region')
-    def _check_regions(self):
-        if self.webhook_region == self.webhook_fallback_region:
-            raise ValidationError('Regions must differ!')
 
     @api.model
     def connect_notify(self, message, title='Connect', notify_uid=None,
@@ -530,24 +219,20 @@ class Settings(models.Model):
                 msg
             )
 
-    def get_pricing(self):
-        api_url = self.get_param('api_url')
-        url = urljoin(api_url, 'subscription')
-        res = requests.get(url,
-            json={
-                'module_name': self.get_param('module_name'),
-            },
-            headers={
-                'x-instance-uid': self.get_param('instance_uid') or '',
-                'x-api-key': self.get_param('api_key') or ''
-            })
-        if not res.ok:
-            raise ValidationError(res.text)
-        else:
-            self.set_param('subscription_pricing', res.json().get('pricing'))
-
 
 ####################################################################################
+    @api.model
+    def set_defaults(self):
+        # Called on installation to set default value
+        api_url = self.get_param('api_url')
+        if not api_url:
+            # Set default value
+            web_base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+            self.env['ir.config_parameter'].set_param('connect.api_url', web_base_url)
+        installation_date = self.env['ir.config_parameter'].sudo().get_param('connect.installation_date')
+        if not installation_date:
+            installation_date = fields.Datetime.now()
+            self.env['ir.config_parameter'].set_param('connect.installation_date', installation_date)
 
     @api.model
     def _get_name(self):
@@ -560,8 +245,6 @@ class Settings(models.Model):
             rec = self.sudo().with_context(no_constrains=True).create({})
         else:
             rec = rec[0]
-        if not rec.is_subscribed:
-            return self.open_billing_form()
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'connect.settings',
@@ -619,6 +302,106 @@ class Settings(models.Model):
                 instance_uid = str(uuid.uuid4())
             self.env['ir.config_parameter'].set_param('connect.instance_uid', instance_uid)
 
+    def register_instance(self):
+        if not self.env.user.has_group('base.group_system'):
+            raise ValidationError('Only Odoo admin can do it!')
+        if self.get_param('is_registered'):
+            raise ValidationError('This instance is already registered!')
+        admin_email = self.get_param('admin_email')
+        admin_phone = self.get_param('admin_phone')
+        company_email = self.get_param('company_email')
+        if not company_email or not admin_email or not admin_phone:
+            raise ValidationError('Please enter all required fields: company email, '
+                                  'your email, and your phone!')
+        if admin_email == 'admin@example.com' or company_email == 'admin@example.com':
+            raise ValidationError('Please set your real email address, not admin@example.com.')
+        data = {
+            'company_name': self.get_param('company_name'),
+            'company_country': self.get_param('company_country'),
+            'company_state_name': self.get_param('company_state_name'),
+            'company_country_code': self.get_param('company_country_code'),
+            'company_country_name': self.get_param('company_country_name'),
+            'company_email': company_email,
+            'company_city': self.get_param('company_city'),
+            'company_phone': self.get_param('company_phone'),
+            'admin_name': self.get_param('admin_name'),
+            'admin_email': admin_email,
+            'admin_phone': admin_phone,
+            'module_version': self.get_param('module_version'),
+            'module_name': MODULE_NAME,
+            'odoo_version': self.get_param('odoo_version'),
+            'odoo_url': self.get_param('web_base_url'),
+            'installation_date': self.get_param('installation_date').strftime("%Y-%m-%d"),
+            'partner_code': self.get_param('partner_code'),
+        }
+        res = self.make_api_request(API_URL, requests.post, data=data)
+        if not res and self.get_param('api_fallback_url'):
+            # Make a request and give error if fallback API endpoint is not available.
+            logger.warning('Making a request to API fallback.')
+            res = self.make_api_request(
+                self.get_param('api_fallback_url'), requests.post, data=data, raise_on_error=True)
+        # The register function must return json data with api_key.
+        res = res.json()
+        self.env['ir.config_parameter'].sudo().set_param('connect.api_key', res['api_key'])
+        self.set_param('is_registered', True)
+
+    def unregister_instance(self):
+        if not self.env.user.has_group('base.group_system'):
+            raise ValidationError('Only Odoo admin can do it!')
+        if not self.get_param('api_key'):
+            raise ValidationError('This instance is not registered!')
+        instance_uid = self.get_param('instance_uid') or ''
+        api_key = self.get_param('api_key') or ''
+        res = self.make_api_request(
+            urljoin(API_URL, 'registration'),  requests.delete, headers={'x-api-key': api_key})
+        if not res and self.get_param('api_fallback_url'):
+            logger.warning('Making a request to API fallback.')
+            res = self.make_api_request(
+                urljoin(self.get_param('api_fallback_url'), 'registration'), requests.delete,
+                headers={'x-api-key': api_key}, raise_on_error=True)
+        self.env['ir.config_parameter'].set_param('connect.api_key', '')
+        self.set_param('is_registered', False)
+
+    def update_company_data_button(self):
+        main_company = self.env.company
+        if not main_company:
+            raise UserError("No main company found.")
+        return {
+            'type': 'ir.actions.act_window',
+            'name': main_company.name,
+            'res_model': 'res.company',
+            'view_mode': 'form',
+            'res_id': main_company.id,
+            'target': 'new',
+        }
+
+    def update_admin_data_button(self):
+        return {
+            'type': 'ir.actions.act_window',
+            'name': self.env.user.partner_id.name,
+            'res_model': 'res.partner',
+            'view_mode': 'form',
+            'res_id': self.env.user.partner_id.id,
+            'target': 'new',
+        }
+
+    def make_api_request(self, url, method, data={}, headers={}, raise_on_error=False):
+        headers.update({'x-instance-uid': self.get_param('instance_uid')})
+        res = None
+        try:
+            res = method(
+                urljoin(url, 'registration'), json=data, headers=headers)
+            if res.status_code == 200:
+                return res
+            if res.status_code == 412:
+                raise ValidationError(res.text)
+            elif raise_on_error:
+                # API gateway error
+                raise ValidationError(res.text)
+        except Exception as e:
+            if raise_on_error:
+                raise ValidationError(str(e))
+
     @api.model_create_multi
     def create(self, vals_list):
         if release.version_info[0] >= 17:
@@ -668,7 +451,7 @@ class Settings(models.Model):
     @api.model
     def get_client(self):
         try:
-            self.check_access_rights('read')
+            self.check_access('read')
             account_sid = self.sudo().get_param('account_sid')
             auth_token = self.sudo().get_param('auth_token')
             client = Client(account_sid, auth_token)
@@ -765,7 +548,7 @@ class Settings(models.Model):
             callerId = default_number.number
         api_url = self.sudo().get_param('api_url')
         instance_uid = self.sudo().get_param('instance_uid', '')
-        status_url = urljoin(api_url, 'twilio/webhook/{}/callstatus'.format(instance_uid))
+        status_url = urljoin(api_url, 'twilio/webhook/callstatus')
         if exten:
             # Internal call to an extension.
             twiml = exten.render()
@@ -798,12 +581,6 @@ class Settings(models.Model):
             'called': number,
             'caller': callerId,
         })
-
-    def post_subscribe_product(self):
-        try:
-            self.sync()
-        except Exception as e:
-            logger.error('Could not sync the settings: %s', e)
 
     @api.onchange('transcript_calls')
     def _require_openai_key(self):

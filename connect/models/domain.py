@@ -239,16 +239,12 @@ class Domain(models.Model):
             odoo_domain.create_twilio_domain(client)
         # Update what exists in both.
         for sid in common_recs:
-            odoo_domain = self.search([('sid','=', sid)])
+            odoo_domain = self.search([('sid', '=', sid)])
             odoo_domain.update_twilio_domain(client)
 
     @api.model
     def route_call(self, request, params={}):
         debug(self, 'Domain call to %s' % request.get('To'))
-        # Check access only for Twilio Service agent.
-        if not self.env.user.has_group('connect.group_connect_billing'):
-            logger.error('Access to Twilio webhook is denied!')
-            return '<Response><Say>Access to Twilio webhook is denied!</Say></Response>'
         # Check Twilio request
         if not self.env['connect.settings'].check_twilio_request(request):
             return '<Response><Say>Invalid Twilio request!</Say></Response>'
@@ -300,11 +296,8 @@ class Domain(models.Model):
             return '<Response><Say>You must select a default number for caller ID!</Say></Response>'
         response = VoiceResponse()
         api_url = self.env['connect.settings'].get_param('api_url')
-        instance_uid = self.env['connect.settings'].get_param('instance_uid')
-        status_url = urljoin(api_url,
-            'twilio/webhook/{}/callstatus'.format(instance_uid))
-        record_status_url = urljoin(api_url,
-            'twilio/webhook/{}/recordingstatus'.format(instance_uid))
+        status_url = urljoin(api_url, 'twilio/webhook/callstatus')
+        record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus')
         if user.record_calls:
             dial = Dial(timeout=60,
                         callerId=callerId,
