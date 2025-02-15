@@ -5,7 +5,6 @@ def migrate(cr, version):
     env = api.Environment(cr, SUPERUSER_ID, {})
     # Reset subscription
     env['connect.settings'].set_param('is_registered', False)
-    env['connect.settings'].set_param('is_subscribed', False)
     # Remove API URL is it's based on the region now.
     env['ir.config_parameter'].search([('key', '=', 'connect.api_url')]).unlink()
     # Reset the key for new subscription process.
