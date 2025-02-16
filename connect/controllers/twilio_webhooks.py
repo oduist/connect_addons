@@ -41,7 +41,7 @@ class ConnectPlusController(http.Controller):
 
     @http.route('/twilio/webhook/<string:model_name>/call_action/<int:record_id>', methods=['POST'], type='http', auth='public', csrf=False)
     def call_action_edit_webhook(self, model_name, record_id, **kw):
-        res = http.request.env[model_name].browse(record_id).on_call_action(kw)
+        res = http.request.env[model_name].sudo().on_call_action(record_id, kw)
         return f'{res}'
 
     @http.route('/twilio/webhook/recordingstatus', methods=['POST'], type='http', auth='public', csrf=False)
