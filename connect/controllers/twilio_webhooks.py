@@ -69,7 +69,7 @@ class ConnectPlusController(http.Controller):
         res = http.request.env['connect.twiml'].browse(twiml_id).render(kw)
         return f'{res}'
 
-    @http.route('/twilio/webhook/queue/<int:q_id>/str:method>', methods=['POST'], type='http', auth='public', csrf=False)
+    @http.route('/twilio/webhook/queue/<int:q_id>/<str:method>', methods=['POST'], type='http', auth='public', csrf=False)
     def queue_webhook(self, q_id, method, **kw):
         res = getattr(http.request.env['connect.queue'], method).browse(q_id)(kw)
         return f'{res}'
