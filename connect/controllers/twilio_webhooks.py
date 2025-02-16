@@ -39,7 +39,7 @@ class ConnectPlusController(http.Controller):
         res = http.request.env['connect.call'].on_vm_recording_status(kw)
         return f'{res}'
 
-    @http.route('/twilio/webhook/<str:model_name>/call_action/<int:record_id>', methods=['POST'], type='http', auth='public', csrf=False)
+    @http.route('/twilio/webhook/<string:model_name>/call_action/<int:record_id>', methods=['POST'], type='http', auth='public', csrf=False)
     def call_action_webhook(self, model_name, record_id, **kw):
         res = http.request.env[model_name].browse(record_id).on_call_action(kw)
         return f'{res}'
@@ -69,7 +69,7 @@ class ConnectPlusController(http.Controller):
         res = http.request.env['connect.twiml'].browse(twiml_id).render(kw)
         return f'{res}'
 
-    @http.route('/twilio/webhook/queue/<int:q_id>/<str:method>', methods=['POST'], type='http', auth='public', csrf=False)
+    @http.route('/twilio/webhook/queue/<int:q_id>/<string:method>', methods=['POST'], type='http', auth='public', csrf=False)
     def queue_webhook(self, q_id, method, **kw):
         res = getattr(http.request.env['connect.queue'], method).browse(q_id)(kw)
         return f'{res}'
