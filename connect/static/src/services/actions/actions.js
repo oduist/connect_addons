@@ -12,6 +12,7 @@ export const pbxActionService = {
     dependencies: ["action", "notification", 'bus_service'],
 
     start(env, {action, notification, bus_service}) {
+        this.bus = env.bus
         this.action = action
         this.notification = notification
 
@@ -55,13 +56,9 @@ export const pbxActionService = {
 
     connect_handle_reload_view: function (message) {
         const action = this.action.currentController.action
-
-        if (action.res_model !== message.model) {
-            // console.log('Not message model view')
-            return
+        if (action.res_model === message.model) {
+            this.bus.trigger("ROUTE_CHANGE")
         }
-
-        this.bus.trigger("ROUTE_CHANGE")
     },
 
     connect_handle_notify: function ({title, message, sticky, warning}) {
