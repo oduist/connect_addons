@@ -2,7 +2,7 @@
 
 {
     'name': 'Connect',
-    'version': '0.10',
+    'version': '0.11',
     'author': 'Odooist',
     'maintainer': 'Odooist',
     'price': 0,
@@ -21,7 +21,6 @@
         'data/data.xml',
         'data/functions.xml',
         'data/ir_cron.xml',
-        'data/ref.xml',
         'data/twiml.xml',
         'data/query_prompt.xml',
         'data/outgoing_rules.xml',
