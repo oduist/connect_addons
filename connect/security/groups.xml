@@ -15,7 +15,7 @@
     <record model="res.groups" id="group_connect_billing">
         <field name="name">Billing</field>
         <field name="category_id" ref="connect.module_connect_category"/>
-        <field name="users" eval="[(4, ref('connect.user_connect_billing'))]"/>
+        <field name="users" eval="[(4, ref('connect.user_connect_webhook'))]"/>
     </record>
 
     <record model="res.groups" id="group_connect_user">
