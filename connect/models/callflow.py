@@ -62,9 +62,6 @@ class CallFlow(models.Model):
 
     @api.model
     def gather_action(self, flow_id, request):
-        # Check Twilio request
-        if not self.env['connect.settings'].check_twilio_request(request):
-            return '<Response><Say>Invalid Twilio request!</Say></Response>'
         callflow = self.browse(flow_id)
         choice = callflow.choices.filtered(
             lambda x: x.choice_digits == request.get('Digits') or
@@ -172,9 +169,6 @@ class CallFlow(models.Model):
 
     @api.model
     def on_call_action(self, flow_id, request):
-        # Check Twilio request
-        if not self.env['connect.settings'].check_twilio_request(request):
-            return '<Response><Say>Invalid Twilio request!</Say></Response>'
         response = VoiceResponse()
         if request.get('DialCallStatus') != 'completed':
             callflow = self.browse(flow_id)

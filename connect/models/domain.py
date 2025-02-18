@@ -245,9 +245,6 @@ class Domain(models.Model):
     @api.model
     def route_call(self, request, params={}):
         debug(self, 'Domain call to %s' % request.get('To'))
-        # Check Twilio request
-        if not self.env['connect.settings'].check_twilio_request(request):
-            return '<Response><Say>Invalid Twilio request!</Say></Response>'
         # Create call
         self.env['connect.call'].on_call_status(request, skip_twilio_check=True)
         # Check if it is a SIP call and extract To from it.

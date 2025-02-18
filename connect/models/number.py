@@ -124,9 +124,6 @@ class Number(models.Model):
 
     @api.model
     def route_call(self, request):
-        # Check Twilio request
-        if not self.env['connect.settings'].check_twilio_request(request):
-            return '<Response><Say>Invalid Twilio request!</Say></Response>'
         debug(self, 'Route number call: %s' % json.dumps(request, indent=2))
         # Create call
         self.env['connect.call'].sudo().on_call_status(request, skip_twilio_check=True)
