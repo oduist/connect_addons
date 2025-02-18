@@ -12,7 +12,7 @@
               name="Messages" action="connect_debug_action"/>
 
     <record id="connect_debug_message_list" model="ir.ui.view">
-      <field name="name">asterisk.plus.debug.message.list</field>
+      <field name="name">connect.debug.message.list</field>
       <field name="model">connect.debug</field>
       <field name="arch" type="xml">
         <list edit="false" create="false" duplicate="false">

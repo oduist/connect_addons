@@ -305,9 +305,6 @@ class User(models.Model):
 
     @api.model
     def on_call_action(self, record_id, request):
-        # Check Twilio request
-        if not self.env['connect.settings'].check_twilio_request(request):
-            return '<Response><Say>Invalid Twilio request!</Say></Response>'
         debug(self, 'Call action: {}'.format(json.dumps(request, indent=2)))
         response = VoiceResponse()
         user = self.browse(record_id)

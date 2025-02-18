@@ -143,7 +143,7 @@
                         <a role="button" class="btn btn-info" href="https://oduist.com/forum/user-support-portal-1" target="_new">FREE SUPPORT</a> |
                         <a role="button" class="btn btn-success" href="https://oduist.com/support" target="_new">COMMERCIAL SUPPORT</a>
                       </p>
-                      <img alt="Great support!" colspan="2" src="/asterisk_plus/static/description/support.jpg" width="100%"/>
+                      <img alt="Great support!" colspan="2" src="/connect/static/description/support.jpg" width="100%"/>
                     </group>
                     <group name="registration_data" string="Registration Data" invisible="is_registered">
                       <field name="company_name"/>
