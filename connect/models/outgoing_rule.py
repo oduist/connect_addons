@@ -23,7 +23,7 @@ class OutgoingRule(models.Model):
     @api.model
     def find_rule(self, number):
         rules = {}
-        for rule in self.search([('is_enabled', '=', True)]):
+        for rule in self.sudo().search([('is_enabled', '=', True)]):
             if re.match(r'^\{}'.format(rule.pattern), number):
                 rules[rule.pattern] = rule.id
         # Get the deepest match.

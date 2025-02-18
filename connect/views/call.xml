@@ -79,13 +79,15 @@
                                             <div attrs="{'invisible': [('partner', '=', False)]}">Partner</div>
                                         </div>
                                         <field name="caller_user" attrs="{'invisible': 1}"/>
-                                        <div class="d-flex flex-column" calspan="1" attrs="{'invisible': [('caller_user', '=', False)]}" style="flex: 1">
+                                        <div class="d-flex flex-column" calspan="1" style="flex: 1"
+                                             attrs="{'invisible': [('caller_user', '=', False)]}">
                                             <field name="caller_user"/>
                                             <field name="caller_user_img" style="float: left" widget="image" class="oe_avatar"/>
                                             <div>Caller User</div>
                                         </div>
                                         <field name="answered_user" attrs="{'invisible': 1}"/>
-                                        <div class="d-flex flex-column" calspan="1" attrs="{'invisible': [('answered_user', '=', False)]}" style="flex: 1">
+                                        <div class="d-flex flex-column" calspan="1" style="flex: 1"
+                                             attrs="{'invisible': [('answered_user', '=', False)]}">
                                             <field name="answered_user"/>
                                             <field name="answered_user_img" style="float: left" widget="image" class="oe_avatar"/>
                                             <div>Answered User</div>
@@ -98,7 +100,8 @@
                                 </group>
                             </group>
                         </page>
-                        <page name="recording" string="Recording" attrs="{'invisible': [('recording', '=', False)]}">
+                        <page name="recording" string="Recording"
+                              attrs="{'invisible': [('recording', '=', False)]}">
                             <group>
                                 <group>
                                     <field name="recording_widget" widget="html" nolabel="1"/>
@@ -129,7 +132,8 @@
                                 </group>
                             </group>
                         </page>
-                        <page name="voicemail" string="VoiceMail" attrs="{'invisible': [('voicemail_widget', '=', '')]}">
+                        <page name="voicemail" string="VoiceMail"
+                              attrs="{'invisible': [('voicemail_widget', '=', '')]}">
                             <group>
                                 <field name="voicemail_widget" widget="html"/>
                             </group>
@@ -151,7 +155,8 @@
                             </group>
                         </page>
                         <field name="has_error"/>
-                        <page name="error" string="Error" attrs="{'invisible': [('has_error', '=', False)]}">
+                        <page name="error" string="Error"
+                              attrs="{'invisible': [('has_error', '=', False)]}">
                             <group>
                                 <field name="error_code"/>
                                 <field name="error_message"/>

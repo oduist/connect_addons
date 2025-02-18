@@ -45,7 +45,8 @@
                     <div class="oe_title">
                         <h1>
                             <label class="oe_edit_only" for="user"/>
-                            <field name="user" attrs="{'required': [('client_enabled', '=', True)]}" placeholder="Odoo account..."/>
+                            <field name="user" placeholder="Odoo account..."
+                                   attrs="{'required': [('client_enabled', '=', True)]}"/>
                         </h1>
                     </div>
                     <field name="id" attrs="{'invisible': 1}"/>
@@ -54,9 +55,9 @@
                             <group>
                                 <group>
                                     <field name="username" placeholder="PBX username..."
-                                        attrs="{'required': [('id', '!=', False)]}"/>
+                                           attrs="{'required': [('id', '!=', False)]}"/>
                                     <field name="domain"
-                                        attrs="{'required': [('id', '!=', False)]}"/>
+                                           attrs="{'required': [('id', '!=', False)]}"/>
                                 </group>
                                 <group>
                                     <field name="exten_number" widget="phone"/>
@@ -68,13 +69,14 @@
                                     <field name="password" password="1"
                                         attrs="{'invisible': [('sip_enabled', '=', False)]}"/>
                                     <field name="sip_ring_timeout" string="Ring Timeout"
-                                        attrs="{'required': [('sip_enabled', '=', True)], 'invisible': [('sip_enabled', '=', False)]}"/>
+                                        attrs="{'invisible': [('sip_enabled', '=', False)],
+                                                'required': [('sip_enabled', '=', True)]}"/>
                                     <field name='uri' attrs="{'invisible': [('sip_enabled', '=', False)]}"/>
                                 </group>
                                 <group string="WEB Phone">
                                     <field name="client_enabled" string="Enabled"/>
                                     <field name="client_ring_timeout" string="Ring Timeout"
-                                        attrs="{'invisible': [('client_enabled', '=', False)]}"/>
+                                           attrs="{'invisible': [('client_enabled', '=', False)]}"/>
                                 </group>
                             </group>
                         </page>
@@ -88,7 +90,8 @@
                                 <group>
                                     <field name="voicemail_enabled"/>
                                     <field name="voicemail_prompt"
-                                        attrs="{'invisible': [('voicemail_enabled', '=', False)], 'required': [('voicemail_enabled', '=', True)]}"/>
+                                           attrs="{'invisible': [('voicemail_enabled', '=', False)],
+                                                   'required': [('voicemail_enabled', '=', True)]}"/>
                                     <field name="application"/>
                                 </group>
                             </group>

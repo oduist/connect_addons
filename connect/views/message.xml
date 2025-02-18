@@ -45,15 +45,18 @@
                             <div class="d-flex flex-row" colspan="2" cols="3">
                                 <div class="d-flex flex-column" calspan="1" style="flex: 1">
                                     <field name="partner"/>
-                                    <field name="partner_img" style="float: left" widget="image" class="oe_avatar" attrs="{'invisible': [('partner', '=', False)]}"/>
+                                    <field name="partner_img" style="float: left" widget="image" class="oe_avatar"
+                                           attrs="{'invisible': [('partner', '=', False)]}"/>
                                     <div attrs="{'invisible': [('partner', '=', False)]}">Partner</div>
                                 </div>
-                                <div class="d-flex flex-column" calspan="1" attrs="{'invisible': [('sender_user', '=', False)]}" style="flex: 1">
+                                <div class="d-flex flex-column" calspan="1" style="flex: 1"
+                                     attrs="{'invisible': [('sender_user', '=', False)]}">
                                     <field name="sender_user"/>
                                     <field name="sender_user_img" style="float: left" widget="image" class="oe_avatar"/>
                                     <div>Sender User</div>
                                 </div>
-                                <div class="d-flex flex-column" calspan="1" attrs="{'invisible': [('receiver_user', '=', False)]}" style="flex: 1">
+                                <div class="d-flex flex-column" calspan="1" style="flex: 1"
+                                     attrs="{'invisible': [('receiver_user', '=', False)]}">
                                     <field name="receiver_user"/>
                                     <field name="receiver_user_img" style="float: left" widget="image" class="oe_avatar"/>
                                     <div>Receiver User</div>

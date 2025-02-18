@@ -4,7 +4,6 @@ import publicWidget from "web.public.widget"
 import {loadJS} from "@web/core/assets"
 import {session} from "@web/session"
 
-
 const ConnectTalkButtonWidget = publicWidget.Widget.extend({
     selector: '.s_connect_talk',
     disabledInEditableMode: true,
@@ -123,6 +122,7 @@ const ConnectTalkButtonWidget = publicWidget.Widget.extend({
             Source: 'website',
             UserId: session.user_id
         }
+
         self.session = await self.userAgent.connect({params})
 
         self.startCall()

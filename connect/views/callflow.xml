@@ -66,7 +66,8 @@
                             <field name="record_calls"/>
                             <field name="voicemail_enabled"/>
                             <field name="voicemail_prompt"
-                                attrs="{'invisible': [('voicemail_enabled', '=', False)], 'required': [('voicemail_enabled', '=', True)]}"/>
+                                attrs="{'invisible': [('voicemail_enabled', '=', False)],
+                                        'required': [('voicemail_enabled', '=', True)]}"/>
                             <field name="exten_number"/>
                         </group>
                     </group>

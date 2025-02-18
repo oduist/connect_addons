@@ -51,11 +51,18 @@
                         </group>
                     </group>
                     <group>
-                        <field name="twipy" widget="ace" options="{'mode': 'python'}" attrs="{'invisible': [('code_type', '!=', 'twipy')], 'required': [('code_type', '=', 'twipy')]}"/>
-                        <field name="model" attrs="{'invisible': [('code_type', '!=', 'model_method')], 'required': [('code_type', '=', 'model_method')]}"/>
-                        <field name="method" attrs="{'invisible': [('code_type', '!=', 'model_method')], 'required': [('code_type', '=', 'model_method')]}"/>
+                        <field name="twipy" widget="ace" options="{'mode': 'python'}"
+                               attrs="{'invisible': [('code_type', '!=', 'twipy')],
+                                       'required': [('code_type', '=', 'twipy')]}"/>
+                        <field name="model"
+                               attrs="{'invisible': [('code_type', '!=', 'model_method')],
+                                       'required': [('code_type', '=', 'model_method')]}"/>
+                        <field name="method"
+                               attrs="{'invisible': [('code_type', '!=', 'model_method')],
+                                       'required': [('code_type', '=', 'model_method')]}"/>
                         <field name="twiml" widget="ace"
-                            attrs="{'invisible': [('code_type', '!=', 'twiml')], 'readonly': [('code_type', 'in', ['twipy','python'])], 'required': [('code_type', '=', 'twiml')]}"/>
+                               attrs="{'invisible': [('code_type', '!=', 'twiml')], 'readonly': [('code_type', 'in', ['twipy','python'])],
+                                       'required': [('code_type', '=', 'twiml')]}"/>
                     </group>
                 </sheet>
             </form>

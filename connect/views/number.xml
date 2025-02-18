@@ -47,10 +47,18 @@
                             <group>
                                 <field name="friendly_name"/>
                                 <field name="destination"/>
-                                <field name="twiml" attrs="{'invisible': [('destination', '!=', 'twiml')], 'required': [('destination', '=', 'twiml')]}"/>
-                                <field name="user" attrs="{'invisible': [('destination', '!=', 'user')], 'required': [('destination', '=', 'user')]}"/>
-                                <field name="callflow" attrs="{'invisible': [('destination', '!=', 'callflow')], 'required': [('destination', '=', 'callflow')]}"/>
-                                <field name="queue" attrs="{'invisible': [('destination', '!=', 'queue')], 'required': [('destination', '=', 'queue')]}"/>
+                                <field name="twiml"
+                                       attrs="{'invisible': [('destination', '!=', 'twiml')],
+                                               'required': [('destination', '=', 'twiml')]}"/>
+                                <field name="user"
+                                       attrs="{'invisible': [('destination', '!=', 'user')],
+                                               'required': [('destination', '=', 'user')]}"/>
+                                <field name="callflow"
+                                       attrs="{'invisible': [('destination', '!=', 'callflow')],
+                                               'required': [('destination', '=', 'callflow')]}"/>
+                                <field name="queue"
+                                       attrs="{'invisible': [('destination', '!=', 'queue')],
+                                               'required': [('destination', '=', 'queue')]}"/>
                             </group>
                             <group>
                                 <field name="is_ignored"/>

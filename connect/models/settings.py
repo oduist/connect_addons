@@ -522,7 +522,14 @@ class Settings(models.Model):
         if len(number) > MAX_EXTEN_LEN:
             number = '+{}'.format(number)
         client = self.get_client()
-        partner_id = res_id if res_model == 'res.partner' else False
+        partner_id = False
+        obj = self.env[res_model].browse(res_id)
+        if res_model == 'res.partner':
+            partner_id = res_id
+        elif hasattr(obj, 'partner_id'):
+            partner_id = obj.partner_id.id
+        elif hasattr(obj, 'partner'):
+            partner_id = obj.partner.id
         # If user is not set use current user.
         if not user:
             user = self.env.user
@@ -537,6 +544,7 @@ class Settings(models.Model):
         if not to:
             # Get available option.
             to = list(ring_options.items())[0][1]
+        to += '&From={}'.format(number)
         exten = self.env['connect.exten'].search([('number', '=', number)], limit=1)
         default_number = self.env['connect.outgoing_callerid'].search([('is_default', '=', True)], limit=1)
         if exten:
@@ -566,11 +574,10 @@ class Settings(models.Model):
                 'byoc="{}"'.format(rule.byoc.sid) if rule.byoc else '',
                 status_url, number)
         record = self.env.user.connect_user.record_calls
-        channel = client.calls.create(twiml=twiml, to=to, from_=number,
+        channel = client.calls.create(twiml=twiml, to=to, from_=callerId,
             status_callback=status_url,
             record=record, recording_channels='dual',
             status_callback_event=['initiated','answered', 'completed'],
-            status_callback_method='POST'
         )
         self.env['connect.channel'].sudo().create({
             'sid': channel.sid,

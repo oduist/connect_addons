@@ -32,9 +32,7 @@
                       attrs="{'invisible': [('is_registered', '=', False)]}">
                   <group>
                     <group>
-                      <field name="is_subscribed" attrs="{'invisible': 1}"/>
                       <field name="is_registered" attrs="{'invisible': 1}"/>
-                      <field name="is_eula_accepted" attrs="{'invisible': 1}"/>
                       <field name="debug_mode"/>
                     </group>
                   </group>
@@ -67,7 +65,7 @@
                   </group>
                 </page>
                 <page name="transcription" string="Transcription"
-                    attrs="{'invisible': [('is_registered', '=', False)]}">
+                      attrs="{'invisible': [('is_registered', '=', False)]}">
                   <group>
                     <group>
                       <field name="transcript_calls"/>

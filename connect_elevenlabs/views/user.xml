@@ -7,8 +7,8 @@
         <field name="arch" type="xml">
             <field name="voicemail_prompt" position="after">
                 <field name="elevenlabs_enabled" invisible="1"/>
-                <field name="voicemail_prompt_widget" widget="html" nolabel="1" colspan="2"
-                    attrs="{'invisible': ['|', ('elevenlabs_enabled', '=', False), ('voicemail_enabled', '=', False)]}"/>
+                <field name="voicemail_prompt_widget" nolabel="1" colspan="2"
+                       attrs="{'invisible': ['|', ('elevenlabs_enabled', '=', False), ('voicemail_enabled', '=', False)]}"  widget="html"/>
             </field>
         </field>
     </record>

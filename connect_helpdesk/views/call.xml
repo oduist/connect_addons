@@ -28,7 +28,7 @@
                         </group>
                         <group>
                             <button name="unlink_ticket" type="object" string="Unlink"
-                                attrs="{'invisible': [('ticket', '=', False)]}"/>
+                                    attrs="{'invisible': [('ticket', '=', False)]}"/>
                         </group>
                     </group>
                 </page>

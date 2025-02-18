@@ -411,7 +411,8 @@ export class Phone extends Component {
         // HANDLE RTCSession
         self.userAgent.on("incoming", async function (session) {
             self.state.isContactList = false
-            const phoneNumber = session.parameters.From
+            let phoneNumber = session.customParameters.get('From')
+            phoneNumber = phoneNumber ? phoneNumber : session.parameters.From
             const callCallerName = session.customParameters.get('CallerName')
             const callPartnerId = session.customParameters.get('Partner')
             const autoAnswer = session.customParameters.get('autoAnswer')
