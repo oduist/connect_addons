@@ -146,11 +146,6 @@ class Call(models.Model):
 
     @api.model
     def on_call_status(self, params, skip_twilio_check=False):
-        # Check access only for Twilio Service agent.
-        if not skip_twilio_check:
-            # Check Twilio request
-            if not self.env['connect.settings'].check_twilio_request(params):
-                return False
         self = self.sudo()
         # Create channel
         channel = self.env['connect.channel'].on_call_status(params)
@@ -247,9 +242,6 @@ class Call(models.Model):
 
     @api.model
     def on_vm_recording_status(self, params):
-        # Check Twilio request
-        if not self.env['connect.settings'].check_twilio_request(params):
-            return False
         debug(self.sudo(), 'On recording status: %s' % json.dumps(params, indent=2))
         channel = self.sudo().env['connect.channel'].search([('sid', '=', params['CallSid'])])
         if channel and channel.call:
@@ -261,9 +253,6 @@ class Call(models.Model):
 
     @api.model
     def on_call_action(self, params):
-        # Check Twilio request
-        if not self.env['connect.settings'].check_twilio_request(params):
-            return '<Response><Say>Invalid Twilio request!</Say></Response>'
         debug(self, 'On call action: %s' % params)
         return '<Response><Hangup/></Response>'
 

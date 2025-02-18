@@ -40,9 +40,6 @@ class Queue(models.Model):
 
     @api.model
     def on_action(self, q_id, request):
-        # Check Twilio request
-        if not self.env['connect.settings'].check_twilio_request(request):
-            return '<Response><Say>Invalid Twilio request!</Say></Response>'
         q = self.sudo().browse(q_id)
         debug(self, 'On queue action: %s' % json.dumps(request, indent=2))
         # Update sid
@@ -56,9 +53,6 @@ class Queue(models.Model):
 
     @api.model
     def render_wait_app(self, q_id, request):
-        # Check Twilio request
-        if not self.env['connect.settings'].check_twilio_request(request):
-            return '<Response><Say>Invalid Twilio request!</Say></Response>'
         debug(self, 'Render Wait App: {}'.format(json.dumps(request, indent=2)))
         q = self.sudo().browse(q_id)
         # Call agents

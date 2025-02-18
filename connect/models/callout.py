@@ -208,9 +208,6 @@ class CallOut(models.Model):
 
     @api.model
     def on_callout_status(self, params):
-        # Check Twilio request
-        if not self.env['connect.settings'].check_twilio_request(params):
-            return False
         debug(self, 'On callout status: %s' % json.dumps(params, indent=2))
         contact = self.env['connect.callout_contact'].sudo().search([('call_sid', '=', params.get('CallSid'))])
         if not contact:
@@ -241,9 +238,6 @@ class CallOut(models.Model):
 
     @api.model
     def on_callout_action(self, params):
-        # Check Twilio request
-        if not self.env['connect.settings'].check_twilio_request(params):
-            return '<Response><Say>Invalid Twilio request!</Say></Response>'
         debug(self, 'On callout action: %s' % json.dumps(params, indent=2))
         contact = self.env['connect.callout_contact'].sudo().search([('call_sid', '=', params.get('CallSid'))])
         response = VoiceResponse()

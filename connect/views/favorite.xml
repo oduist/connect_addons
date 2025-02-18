@@ -46,7 +46,7 @@
         </record>
 
         <record id="connect_favorite_search" model="ir.ui.view">
-            <field name="name">asterisk.plus.call.search</field>
+            <field name="name">connect.call.search</field>
             <field name="model">connect.favorite</field>
             <field name="arch" type="xml">
                 <search>

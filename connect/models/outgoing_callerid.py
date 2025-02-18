@@ -80,9 +80,6 @@ class OutgoingCallerID(models.Model):
 
     @api.model
     def update_status(self, params):
-        # Check Twilio request
-        if not self.env['connect.settings'].check_twilio_request(params):
-            return False
         self = self.sudo()
         number = self.search([('number', '=', params['Called']),
                               ('callerid_type', '=', 'outgoing_callerid')])

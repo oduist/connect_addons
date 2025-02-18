@@ -209,9 +209,6 @@ class Recording(models.Model):
 
     @api.model
     def on_recording_status(self, params):
-        # Check Twilio request
-        if not self.env['connect.settings'].check_twilio_request(params):
-            return False
         self = self.sudo()
         debug(self, 'On recording status: %s' % json.dumps(params, indent=2))
         # Todo: RecordingChannels
