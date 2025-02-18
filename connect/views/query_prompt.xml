@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="query_prompt_action" model="ir.actions.act_window">
+        <field name="name">Query Prompt</field>
+        <field name="res_model">connect.query_prompt</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="connect.query_prompt_menu"
+              sequence="140"
+              parent="connect.connect_ai_menu"
+              name="Query Prompt"
+              action="connect.query_prompt_action"/>
+
+    <!-- List view for connect.query_prompt -->
+    <record id="connect_query_prompt_list" model="ir.ui.view">
+        <field name="name">connect.query_prompt.list</field>
+        <field name="model">connect.query_prompt</field>
+        <field name="arch" type="xml">
+            <tree string="Query Prompt List">
+                <field name="name"/>
+                <field name="content"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form view for connect.query_prompt -->
+    <record id="connect_query_prompt_form" model="ir.ui.view">
+        <field name="name">connect.query_prompt.form</field>
+        <field name="model">connect.query_prompt</field>
+        <field name="arch" type="xml">
+            <form string="Query Prompt Form">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="content"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

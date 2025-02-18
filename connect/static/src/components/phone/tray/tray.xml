@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <div t-name="connect.menu" class="o-dropdown dropdown o-dropdown--no-caret connect-tray" owl="1">
+        <button type="button" t-attf-class="dropdown-toggle toggle-phone {{state.inCall ? 'busy' : 'available'}}" tabindex="0" aria-expanded="false" title="Toggle Connect Phone" t-on-click="_onClick">
+            <i aria-label="Toggle Phone" class="fa-fw icon-call" role="img"/>
+        </button>
+
+        <button t-if="!state.isDisplay and state.inCall" class="hang-up-popup" title="HangUp" t-on-click="_onClickHangUp">
+            <i aria-label="HangUp" class="icon-call_end reject-call"/>
+        </button>
+    </div>
+
+</templates>

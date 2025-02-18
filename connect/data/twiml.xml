@@ -1,0 +1,29 @@
+<odoo><data noupdate="1">
+
+    <record id="domain_route_call" model="connect.twiml">
+        <field name="name">SIP Domain Calls</field>
+        <field name="code_type">model_method</field>
+        <field name="model">connect.domain</field>
+        <field name="method">route_call</field>
+        <field name="description">This is a special app that is responsible for incoming SIP/Client calls</field>
+    </record>
+
+    <record id="twiml_reject" model="connect.twiml">
+        <field name="name">Reject</field>
+        <field name="code_type">twiml</field>
+        <field name="twiml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;Response&gt;
+    &lt;Reject /&gt;
+&lt;/Response&gt;</field>
+    </record>
+
+    <record id="twiml_connection_failed" model="connect.twiml">
+        <field name="name">Connection Failed</field>
+        <field name="code_type">twiml</field>
+        <field name="twiml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;Response&gt;
+    &lt;Say&gt;Sorry, I could not connect your call. Goodbye!&lt;/Say&gt;
+&lt;/Response&gt;</field>
+    </record>
+
+</data></odoo>

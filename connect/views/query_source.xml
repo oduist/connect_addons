@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Action -->
+    <record id="action_connect_query_source" model="ir.actions.act_window">
+        <field name="name">Query Sources</field>
+        <field name="res_model">connect.query_source</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- Menuitem -->
+    <menuitem id="connect.query_source"
+              sequence="130"
+              name="Query Sources"
+              parent="connect.connect_ai_menu"
+              action="action_connect_query_source"/>
+
+    <!-- List View -->
+    <record id="view_connect_query_source_list" model="ir.ui.view">
+        <field name="name">connect.query_source.list</field>
+        <field name="model">connect.query_source</field>
+        <field name="arch" type="xml">
+            <tree string="Query Sources">
+                <field name="name"/>
+                <field name="model_id"/>
+                <field name="domain"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_connect_query_source_form" model="ir.ui.view">
+        <field name="name">connect.query_source.form</field>
+        <field name="model">connect.query_source</field>
+        <field name="arch" type="xml">
+            <form string="Query Source">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="model_id"/>
+                        <field name="field_ids" widget="many2many_tags"/>
+                        <field name="model_name" attrs="{'invisible': 1}"/>
+                        <field name="domain" widget="domain" options="{'model': 'model_name'}"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_connect_query_source_search" model="ir.ui.view">
+        <field name="name">connect.query_source.search</field>
+        <field name="model">connect.query_source</field>
+        <field name="arch" type="xml">
+            <search string="Query Sources">
+                <field name="name"/>
+                <field name="model_id"/>
+            </search>
+        </field>
+    </record>
+
+</odoo>

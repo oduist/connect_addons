@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="channel_action" model="ir.actions.act_window">
+        <field name="name">Channels</field>
+        <field name="res_model">connect.channel</field>
+        <field name="view_mode">tree,form</field>        
+    </record>
+
+    <menuitem id="connect.channels_menu"
+            sequence="30"
+            parent="connect.connect_debug_menu"
+            name="Channels"
+            action="connect.channel_action"/>
+
+    <record id="connect.channel_list" model="ir.ui.view">
+        <field name="name">connect.channel_list</field>
+        <field name="model">connect.channel</field>
+        <field name="arch" type="xml">
+            <tree edit="false" create="false">
+                <field name="create_date"/>
+                <field name="id"/>
+                <field name="parent_channel"/>
+                <field name="call"/>
+                <field name="status"/>
+                <field name="sid" optional="hide"/>                
+                <field name="partner"/>
+                <field name="caller_number"/>
+                <field name="called_number"/>
+                <field name="caller_user"/>
+                <field name="called_user"/>
+                <field name="technical_direction"/>
+                <field name="caller_pbx_user" optional="hide"/>
+                <field name="called_pbx_user" optional="hide"/>
+                <field name="duration" optional="hide"/>
+                <field name="duration_billing" optional="hide"/>
+                <field name="duration_minutes" optional="hide" sum="1"/>
+                <field name="duration_human" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="connect_channel_form" model="ir.ui.view" >
+        <field name="name">connect_channel_form</field>
+        <field name="model">connect.channel</field>
+        <field name="arch" type="xml">
+            <form create="false">
+                <header>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="create_date"/>
+                            <field name="duration_human"/>
+                            <field name="caller_number" widget="phone"/>
+                            <field name="called_number" widget="phone"/>
+                            <field name="caller_user"/>
+                            <field name="called_user"/>
+                            <field name="partner"/>
+                            <field name="status"/>
+                        </group>
+                        <group>
+                            <field name="call"/>
+                            <field name="sid"/>
+                            <field name="parent_sid"/>
+                            <field name="parent_channel"/>
+                            <field name="technical_direction"/>
+                            <field name="caller"/>
+                            <field name="called"/>                            
+                            <field name="duration"/>
+                            <field name="duration_minutes"/>                            
+                        </group>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers" />
+                    <field name="message_ids" widget="mail_thread" />
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="connect_channel_search" model="ir.ui.view" >
+        <field name="name">connect_channel_search</field>
+        <field name="model">connect.channel</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="partner"/>
+                <field name="caller"/>
+                <field name="called"/>
+                <field name="caller_user"/>
+                <field name="called_user"/>
+                <field name="caller_pbx_user"/>
+                <field name="called_pbx_user"/>
+                <filter name="by_partner" context="{'group_by': 'partner'}"/>
+                <filter name="by_caller_user" context="{'group_by': 'caller_user'}"/>
+                <filter name="by_called_user" context="{'group_by': 'called_user'}"/>
+                <filter name="by_direction" context="{'group_by': 'technical_direction'}"/>
+                <filter name="by_status" context="{'group_by': 'status'}"/>
+                <filter name="by_created" context="{'group_by': 'create_date'}"/>                
+            </search>
+        </field>
+    </record>
+
+</odoo>

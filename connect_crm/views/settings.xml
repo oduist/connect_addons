@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="connect_crm_settings_form" model="ir.ui.view">
+    <field name="name">connect_crm_settings_form</field>
+    <field name="model">connect.settings</field>
+    <field name="inherit_id" ref="connect.connect_settings_form"/>
+    <field name="arch" type="xml">
+      <page name="transcription" position="after">
+        <page name="crm" string="CRM"
+            attrs="{'invisible': ['|',('is_eula_accepted', '=', False),('is_subscribed', '=', False)]}">
+          <group>
+            <group string="Incoming Calls">
+              <field name="auto_create_leads_for_in_calls" string="Auto Create Leads"/>
+              <field name="auto_create_leads_for_in_answered_calls"
+                     string="For Answered Calls"
+                     attrs="{'invisible':[('auto_create_leads_for_in_calls','=',False)]}"/>
+              <field name="auto_create_leads_for_in_missed_calls"
+                     string="For Not Answered Calls"
+                     attrs="{'invisible':[('auto_create_leads_for_in_calls','=',False)]}"/>
+              <field name="auto_create_leads_for_in_unknown_callers"
+                     attrs="{'invisible':[('auto_create_leads_for_in_calls','=',False)]}"/>
+            </group>
+            <group string="Outgoing Calls">
+              <field name="auto_create_leads_for_out_calls" string="Auto Create Leads"/>
+              <field name="auto_create_leads_for_out_answered_calls"
+                     string="For Answered Calls"
+                     attrs="{'invisible':[('auto_create_leads_for_out_calls','=',False)]}"/>
+              <field name="auto_create_leads_for_out_missed_calls"
+                     string="For Not Answered Calls"
+                     attrs="{'invisible':[('auto_create_leads_for_out_calls','=',False)]}"/>
+            </group>
+          </group>
+          <group string="Auto create options"
+                attrs="{'invisible':[('auto_create_leads_for_in_calls','=',False), ('auto_create_leads_for_out_calls','=',False)]}">
+            <group>
+              <field help="Assign this user as a sales person for calls without PBX user defined."
+                     name="auto_create_leads_sales_person"/>
+              <field help="Create leads or opportunities?"
+                  name="auto_create_leads_type"/>
+            </group>
+          </group>
+        </page>
+      </page>
+    </field>
+  </record>
+</odoo>

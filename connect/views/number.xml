@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="number_action" model="ir.actions.act_window">
+        <field name="name">Numbers</field>
+        <field name="res_model">connect.number</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="connect.numbers_menu"
+            sequence="110"
+            parent="connect.connect_voice_menu"
+            name="Numbers"
+            action="connect.number_action"/>
+
+    <record id="connect.number_list" model="ir.ui.view">
+        <field name="name">connect.number_list</field>
+        <field name="model">connect.number</field>
+        <field name="arch" type="xml">
+            <tree create="false">
+                <field name="phone_number"/>
+                <field name="friendly_name"/>
+                <field name="destination"/>
+                <field name="twiml"/>
+                <field name="user"/>
+                <field name="callflow"/>
+                <field name="queue"/>
+                <field name="is_ignored"/>
+
+            </tree>
+        </field>
+    </record>
+
+    <record id="connect_number_form" model="ir.ui.view" >
+        <field name="name">connect_number_form</field>
+        <field name="model">connect.number</field>
+        <field name="arch" type="xml">
+            <form create="false">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <label class="oe_edit_only" for="phone_number"/>
+                            <field name="phone_number" placeholder="Number..."/>
+                        </h1>
+                    </div>
+                        <group>
+                            <group>
+                                <field name="friendly_name"/>
+                                <field name="destination"/>
+                                <field name="twiml" attrs="{'invisible': [('destination', '!=', 'twiml')], 'required': [('destination', '=', 'twiml')]}"/>
+                                <field name="user" attrs="{'invisible': [('destination', '!=', 'user')], 'required': [('destination', '=', 'user')]}"/>
+                                <field name="callflow" attrs="{'invisible': [('destination', '!=', 'callflow')], 'required': [('destination', '=', 'callflow')]}"/>
+                                <field name="queue" attrs="{'invisible': [('destination', '!=', 'queue')], 'required': [('destination', '=', 'queue')]}"/>
+                            </group>
+                            <group>
+                                <field name="is_ignored"/>
+                            </group>
+                        </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="connect_number_search" model="ir.ui.view" >
+        <field name="name">connect_number_search</field>
+        <field name="model">connect.number</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="phone_number"/>
+            </search>
+        </field>
+    </record>
+
+</odoo>

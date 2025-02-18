@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_connect_add_credits_wizard_form" model="ir.ui.view">
+        <field name="name">view_connect_add_credits_wizard_form</field>
+        <field name="model">connect.add_credits_wizard</field>
+        <field name="arch" type="xml">
+            <form string="Add Credirs">
+                <group>
+                    <field name="formula" attrs="{'invisible': 1}"/>
+                    <field name="pay_amount"/>
+                    <field name="monthly_average" string="Your monthly average"/>
+                    <field name="receive_amount"/>
+                    <div colspan="2" class="o_form_label text-danger">Please check to confirm</div>
+                    <field name="confirm_transaction"/>
+                    <div colspan="2">
+                        <h3>Add Credits to Balance: How It Works</h3>
+                        <p>Our system offers bonuses when you add credits to your balance in advance. Here's how it works:</p>
+                        <ol>
+                            <li>
+                                <strong>Monthly Fee Basis:</strong> Each credit top-up is calculated based on a standard monthly fee. When you pay in advance, the system automatically calculates the number of months covered by your payment.
+                            </li>
+                            <li>
+                                <strong>Bonus for Multiple Months:</strong> The more months you pay for in advance, the higher the bonus you’ll receive. This means that, on top of the months you've paid for, you'll get extra credits as a thank-you for committing to a longer period.
+                            </li>
+                            <li>
+                                <strong>Automatic Bonus Calculation:</strong> Our system applies a specific bonus multiplier to your payment based on the number of months covered. You don’t need to do any extra steps; the system will calculate and apply the bonus credits automatically.
+                            </li>
+                            <li>
+                                <strong>Balance Update:</strong> Once your payment is processed, your balance will be updated with the total credits, including any bonuses, so you’ll see a higher amount in your account than what you paid for.
+                            </li>
+                        </ol>
+                        <strong>This system allows you to maximize value by planning ahead. Enjoy added credits every time you commit to multiple months!</strong>
+                    </div>
+                </group>
+                <footer>
+                    <button string="Confirm" type="object" name="action_confirm" class="btn-primary"
+                        confirm="Your credit card will be charged now. Please confirm."
+                        attrs="{'invisible': [('confirm_transaction', '=', False)]}"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

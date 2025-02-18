@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <div t-name="connect.active_calls_tray" owl="1" class="o-dropdown dropdown o-dropdown--no-caret">
+        <button type="button" class="dropdown-toggle o-dropdown--narrow" tabindex="0" aria-expanded="false" title="Toggle Calls" t-on-click="_onClick">
+            <i aria-label="Toggle Calls" class="fa fa-server" role="img"/>
+        </button>
+    </div>
+
+</templates>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="connect_favorite" model="ir.actions.act_window">
+            <field name="name">Favorite</field>
+            <field name="res_model">connect.favorite</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+<!--        <menuitem id="connect_favorite_menu"-->
+<!--                  sequence="400"-->
+<!--                  groups="base.group_no_one"-->
+<!--                  parent="connect.connect_debug_menu"-->
+<!--                  name="Favorite"-->
+<!--                  action="connect_favorite"/>-->
+
+        <record id="connect_favorite_list" model="ir.ui.view">
+            <field name="name">connect_favorite_list</field>
+            <field name="model">connect.favorite</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="name"/>
+                    <field name="phone_number"/>
+                    <field name="user"/>
+                    <field name="partner"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="connect_favorite_form" model="ir.ui.view">
+            <field name="name">connect_favorite_form</field>
+            <field name="model">connect.favorite</field>
+            <field name="type">form</field>
+            <field name="arch" type="xml">
+                <form>
+                    <sheet>
+                        <group>
+                            <field name="name"/>
+                            <field name="phone_number"/>
+                            <field name="user"/>
+                            <field name="partner"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="connect_favorite_search" model="ir.ui.view">
+            <field name="name">asterisk.plus.call.search</field>
+            <field name="model">connect.favorite</field>
+            <field name="arch" type="xml">
+                <search>
+                    <!-- Filters -->
+                    <filter name="Have Partner" string="Have Partner" domain="[('partner', '!=', False)]"/>
+                    <filter name="No Partner" string="No Partner" domain="[('partner', '=', False)]"/>
+                    <filter name="Have User" string="Have User" domain="[('user', '!=', False)]"/>
+                    <filter name="No User" string="No User" domain="[('user', '=', False)]"/>
+                    <!-- Search Fields -->
+                    <field name="name"/>
+                    <field name="phone_number"/>
+                    <field name="user"/>
+                    <field name="partner"/>
+                </search>
+            </field>
+        </record>
+    </data>
+</odoo>

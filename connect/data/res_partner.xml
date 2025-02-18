@@ -1,0 +1,26 @@
+<odoo>
+        <data noupdate="1">
+
+        <record id="connect_odooist_contact" model="res.partner">
+            <field name="name">Odooist OÜ</field>
+            <field name="street">Harju maakond, Tallinn, Lasnamäe linnaosa, Sepapaja tn 6, 15551, Estonia</field>
+            <field name="city">Tallinn</field>
+            <field name="country_id" ref="base.ee"/>
+            <field name="email">mailbox@connect.com</field>
+            <field name="phone">+3726410562</field>
+            <field name="website">https://connect.com/</field>
+        </record>
+
+        <record id="connect_echo_contact" model="res.partner">
+            <field name="name">Echo Test</field>
+            <field name="phone">+19093900003</field>
+        </record>
+
+        <record id="connect_callerid_contact" model="res.partner">
+            <field name="name">CallerID Test</field>
+            <field name="phone">+18004443333</field>
+        </record>
+
+
+    </data>
+</odoo>

@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="connect_query_prompt_1" model="connect.query_prompt">
+            <field name="name">Sentiment analysis</field>
+            <field name="content">Analyze the sentiment of the conversation (positive, neutral, negative) based on the transcript.</field>
+        </record>
+        <record id="connect_query_prompt_2" model="connect.query_prompt">
+            <field name="name">Key words</field>
+            <field name="content">Identify the key words and phrases that are frequently repeated in this conversation.</field>
+        </record>
+        <record id="connect_query_prompt_3" model="connect.query_prompt">
+            <field name="name">Monologue duration</field>
+            <field name="content">Which participants spoke the longest, and what topics did they emphasize?</field>
+        </record>
+        <record id="connect_query_prompt_4" model="connect.query_prompt">
+            <field name="name">Problem areas identification</field>
+            <field name="content">Highlight moments in the conversation where the customer expressed dissatisfaction or asked critical questions.</field>
+        </record>
+        <record id="connect_query_prompt_5" model="connect.query_prompt">
+            <field name="name">Satisfaction level</field>
+            <field name="content">Assess the customer's level of satisfaction based on the transcript context.</field>
+        </record>
+        <record id="connect_query_prompt_6" model="connect.query_prompt">
+            <field name="name">Pause analysis</field>
+            <field name="content">Where were the long pauses in the conversation, and what preceded them?</field>
+        </record>
+        <record id="connect_query_prompt_7" model="connect.query_prompt">
+            <field name="name">Topic switching</field>
+            <field name="content">Identify how often the topics of discussion changed during the conversation.</field>
+        </record>
+        <record id="connect_query_prompt_8" model="connect.query_prompt">
+            <field name="name">Objection analysis</field>
+            <field name="content">Identify the customer's objections and how the agent responded to them.</field>
+        </record>
+        <record id="connect_query_prompt_9" model="connect.query_prompt">
+            <field name="name">Agent effectiveness</field>
+            <field name="content">How did the agent address the customer's issues, and how quickly did they offer a solution?</field>
+        </record>
+        <record id="connect_query_prompt_10" model="connect.query_prompt">
+            <field name="name">Request identification</field>
+            <field name="content">What were the main requests or tasks the customer asked the agent to handle?</field>
+        </record>
+        <record id="connect_query_prompt_11" model="connect.query_prompt">
+            <field name="name">Improvement recommendations</field>
+            <field name="content">Analyze the transcript and suggest recommendations for improving customer communication.</field>
+        </record>
+        <record id="connect_query_prompt_12" model="connect.query_prompt">
+            <field name="name">Conversation closure analysis</field>
+            <field name="content">How did the conversation end? Was the customer satisfied with the resolution?</field>
+        </record>
+        <record id="connect_query_prompt_13" model="connect.query_prompt">
+            <field name="name">Speech pattern analysis</field>
+            <field name="content">What speech patterns did the agent use to support the customer?</field>
+        </record>
+        <record id="connect_query_prompt_14" model="connect.query_prompt">
+            <field name="name">Mood change analysis</field>
+            <field name="content">How did the customer’s mood change throughout different stages of the conversation?</field>
+        </record>
+        <record id="connect_query_prompt_15" model="connect.query_prompt">
+            <field name="name">Emotional tension analysis</field>
+            <field name="content">Highlight moments when the conversation became tense.</field>
+        </record>
+        <record id="connect_query_prompt_16" model="connect.query_prompt">
+            <field name="name">Lexical analysis</field>
+            <field name="content">Did the agent use professional terminology or simplified language when speaking with the customer?</field>
+        </record>
+        <record id="connect_query_prompt_17" model="connect.query_prompt">
+            <field name="name">Customer requests</field>
+            <field name="content">What specific products or services did the customer mention during the conversation?</field>
+        </record>
+        <record id="connect_query_prompt_18" model="connect.query_prompt">
+            <field name="name">Response speed analysis</field>
+            <field name="content">Analyze the agent’s response time to the customer’s requests.</field>
+        </record>
+        <record id="connect_query_prompt_19" model="connect.query_prompt">
+            <field name="name">Script_adherence</field>
+            <field name="content">Did the agent follow a pre-prepared script or improvise?</field>
+        </record>
+        <record id="connect_query_prompt_20" model="connect.query_prompt">
+            <field name="name">Closing phrases analysis</field>
+            <field name="content">What closing phrases did the agent use to end the conversation?</field>
+        </record>
+        <record id="connect_query_prompt_21" model="connect.query_prompt">
+            <field name="name">Customer pain points</field>
+            <field name="content">What pain points or frustrations did the customer express during the conversation?</field>
+        </record>
+        <record id="connect_query_prompt_22" model="connect.query_prompt">
+            <field name="name">Active listening</field>
+            <field name="content">Did the agent demonstrate active listening techniques, such as paraphrasing or summarizing the customer's statements?</field>
+        </record>
+        <record id="connect_query_prompt_23" model="connect.query_prompt">
+            <field name="name">Customer trust</field>
+            <field name="content">Assess the level of trust the customer displayed towards the agent during the conversation.</field>
+        </record>
+        <record id="connect_query_prompt_24" model="connect.query_prompt">
+            <field name="name">Agent empathy</field>
+            <field name="content">Identify moments where the agent demonstrated empathy towards the customer’s situation.</field>
+        </record>
+        <record id="connect_query_prompt_25" model="connect.query_prompt">
+            <field name="name">Politeness and professionalism</field>
+            <field name="content">Analyze how polite and professional the agent was throughout the conversation.</field>
+        </record>
+        <record id="connect_query_prompt_26" model="connect.query_prompt">
+            <field name="name">Customer decision making cues</field>
+            <field name="content">Identify verbal cues that indicate whether the customer was close to making a decision.</field>
+        </record>
+        <record id="connect_query_prompt_27" model="connect.query_prompt">
+            <field name="name">Escalation detection</field>
+            <field name="content">Were there any moments where the conversation escalated into conflict or needed managerial intervention?</field>
+        </record>
+        <record id="connect_query_prompt_28" model="connect.query_prompt">
+            <field name="name">Tone consistency</field>
+            <field name="content">Was the agent's tone of voice consistent throughout the conversation, or did it shift at certain points?</field>
+        </record>
+        <record id="connect_query_prompt_29" model="connect.query_prompt">
+            <field name="name">Solution delivery</field>
+            <field name="content">How effectively did the agent deliver the proposed solution to the customer's issue?</field>
+        </record>
+        <record id="connect_query_prompt_30" model="connect.query_prompt">
+            <field name="name">customer engagement</field>
+            <field name="content">Assess how engaged the customer was during the conversation based on the length and depth of their responses.</field>
+        </record>
+        <record id="connect_query_prompt_31" model="connect.query_prompt">
+            <field name="name">Interruptions and overlaps</field>
+            <field name="content">Identify instances where the agent or customer interrupted each other and analyze their impact on the conversation.</field>
+        </record>
+        <record id="connect_query_prompt_32" model="connect.query_prompt">
+            <field name="name">Customer loyalty indicators</field>
+            <field name="content">Look for any indications in the transcript that suggest customer loyalty or intent to return.</field>
+        </record>
+        <record id="connect_query_prompt_33" model="connect.query_prompt">
+            <field name="name">Agent adaptability</field>
+            <field name="content">How well did the agent adapt to unexpected questions or issues raised by the customer?</field>
+        </record>
+        <record id="connect_query_prompt_34" model="connect.query_prompt">
+            <field name="name">First call resolution</field>
+            <field name="content">Did the agent resolve the customer's issue in this call, or were follow-up actions required?</field>
+        </record>
+        <record id="connect_query_prompt_35" model="connect.query_prompt">
+            <field name="name">Customer feedback requests</field>
+            <field name="content">Did the agent ask for feedback from the customer at the end of the conversation?</field>
+        </record>
+        <record id="connect_query_prompt_36" model="connect.query_prompt">
+            <field name="name">Follow up suggestions</field>
+            <field name="content">Based on the transcript, what follow-up actions should the agent take after this call?</field>
+        </record>
+        <record id="connect_query_prompt_37" model="connect.query_prompt">
+            <field name="name">upselling opportunities</field>
+            <field name="content">Were there opportunities for the agent to offer additional products or services, and were they utilized?</field>
+        </record>
+        <record id="connect_query_prompt_38" model="connect.query_prompt">
+            <field name="name">Clarity of communication</field>
+            <field name="content">Was the agent clear and concise in their explanations, or were there any misunderstandings?</field>
+        </record>
+        <record id="connect_query_prompt_39" model="connect.query_prompt">
+            <field name="name">Emotional intelligence</field>
+            <field name="content">Assess how well the agent managed the customer’s emotions throughout the conversation.</field>
+        </record>
+        <record id="connect_query_prompt_40" model="connect.query_prompt">
+            <field name="name">Persuasion techniques</field>
+            <field name="content">What persuasion techniques, if any, did the agent use to influence the customer’s decision?</field>
+        </record>
+        <record id="connect_query_prompt_41" model="connect.query_prompt">
+            <field name="name">Agent confidence</field>
+            <field name="content">How confident did the agent appear in offering solutions or providing information to the customer?</field>
+        </record>
+        <record id="connect_query_prompt_42" model="connect.query_prompt">
+            <field name="name">Customer frustration signals</field>
+            <field name="content">Identify any verbal or non-verbal signals of frustration from the customer, and how the agent addressed them.</field>
+        </record>
+        <record id="connect_query_prompt_43" model="connect.query_prompt">
+            <field name="name">Handling difficult questions</field>
+            <field name="content">How did the agent handle challenging or difficult questions from the customer?</field>
+        </record>
+        <record id="connect_query_prompt_44" model="connect.query_prompt">
+            <field name="name">Tone matching</field>
+            <field name="content">Did the agent match the customer’s tone, and how did this affect the outcome of the conversation?</field>
+        </record>
+        <record id="connect_query_prompt_45" model="connect.query_prompt">
+            <field name="name">Expectation management</field>
+            <field name="content">How well did the agent manage the customer’s expectations regarding service or product delivery?</field>
+        </record>
+        <record id="connect_query_prompt_46" model="connect.query_prompt">
+            <field name="name">Value proposition delivery</field>
+            <field name="content">Analyze how effectively the agent communicated the value proposition of the product or service.</field>
+        </record>
+        <record id="connect_query_prompt_47" model="connect.query_prompt">
+            <field name="name">Agent knowledge</field>
+            <field name="content">How knowledgeable did the agent appear regarding the product or service discussed in the conversation?</field>
+        </record>
+        <record id="connect_query_prompt_48" model="connect.query_prompt">
+            <field name="name">Customer intent identification</field>
+            <field name="content">Was the customer’s intent to purchase, inquire, or resolve an issue clear during the conversation?</field>
+        </record>
+        <record id="connect_query_prompt_49" model="connect.query_prompt">
+            <field name="name">Listening for opportunities</field>
+            <field name="content">Did the agent listen for and identify opportunities to build rapport or strengthen the customer relationship?</field>
+        </record>
+        <record id="connect_query_prompt_50" model="connect.query_prompt">
+            <field name="name">Cross selling opportunities</field>
+            <field name="content">Did the conversation reveal opportunities to suggest related products or services that were relevant to the customer’s needs?</field>
+        </record>
+    </data>
+</odoo>

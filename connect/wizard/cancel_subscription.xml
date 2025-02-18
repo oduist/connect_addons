@@ -1,0 +1,23 @@
+<odoo>
+    <record id="cancel_subscription_wizard_form" model="ir.ui.view">
+        <field name="name">cancel_subscription_wizard_form</field>
+        <field name="model">connect.cancel_subscription_wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <div>
+                    <p>Are you sure you want to unsubscribe?</p>
+                </div>
+                <group>
+                    <group>
+                        <field name="is_confirmed"/>
+                    </group>
+                </group>
+
+                <footer>
+                    <button string="Submit" name="submit" type="object" class="oe_highlight" disabled="is_confirmed == False"/>
+                    <button special="cancel" string="Cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

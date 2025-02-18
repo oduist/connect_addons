@@ -1,0 +1,13 @@
+<odoo><data noupdate="1">
+
+    <record id="user_connect_billing" model="res.users" context="{'no_reset_password': True}">
+        <field name="login">connect</field>
+        <field name="name">Connect</field>
+        <field name="password"></field>
+        <field name="groups_id" eval="[(6, 0, [ref('base.group_portal')])]"/>
+        <field name="tz">Etc/GMT</field>
+        <field name="country_id" ref="base.be"/>
+        <field name="email">noreply@company.com</field>
+    </record>
+
+</data></odoo>

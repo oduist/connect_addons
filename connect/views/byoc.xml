@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="byoc_action" model="ir.actions.act_window">
+        <field name="name">BYOC</field>
+        <field name="res_model">connect.byoc</field>
+        <field name="view_mode">tree</field>
+    </record>
+
+    <menuitem id="connect.byocs_menu"
+            sequence="2000"
+            parent="connect.connect_voice_menu"
+            name="BYOCs"
+            action="connect.byoc_action"/>
+
+    <record id="connect.byoc_list" model="ir.ui.view">
+        <field name="name">connect.byoc_list</field>
+        <field name="model">connect.byoc</field>
+        <field name="arch" type="xml">
+            <tree create="false" delete="false" editable="bottom">
+                <field name="friendly_name"/>
+                <field name="app" required="1"/>
+            </tree>
+        </field>
+    </record>
+
+
+    <record id="connect_byoc_search" model="ir.ui.view" >
+        <field name="name">connect_byoc_search</field>
+        <field name="model">connect.byoc</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="friendly_name"/>
+            </search>
+        </field>
+    </record>
+
+</odoo>

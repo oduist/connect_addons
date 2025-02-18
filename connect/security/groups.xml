@@ -1,0 +1,26 @@
+<odoo>
+
+    <record id="module_connect_category"  model="ir.module.category">
+        <field name="name">Connect</field>
+        <field name="sequence">20</field>
+        <field name="description">Connect Security</field>
+    </record>
+
+    <record model="res.groups" id="group_connect_admin">
+        <field name="name">Admin</field>
+        <field name="category_id" ref="connect.module_connect_category"/>
+        <field name="users" eval="[(4, ref('base.user_admin'))]"/>
+    </record>
+
+    <record model="res.groups" id="group_connect_billing">
+        <field name="name">Billing</field>
+        <field name="category_id" ref="connect.module_connect_category"/>
+        <field name="users" eval="[(4, ref('connect.user_connect_billing'))]"/>
+    </record>
+
+    <record model="res.groups" id="group_connect_user">
+        <field name="name">User</field>
+        <field name="category_id" ref="connect.module_connect_category"/>
+    </record>
+
+</odoo>
