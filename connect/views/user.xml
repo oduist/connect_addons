@@ -45,7 +45,8 @@
                     <div class="oe_title">
                         <h1>
                             <label class="oe_edit_only" for="user"/>
-                            <field name="user" required="client_enabled == True" placeholder="Odoo account..."/>
+                            <field name="user" placeholder="Odoo account..."
+                                   required="client_enabled == True"/>
                         </h1>
                     </div>
                     <field name="id" invisible="1"/>
@@ -54,9 +55,9 @@
                             <group>
                                 <group>
                                     <field name="username" placeholder="PBX username..."
-                                        readonly="id != False"/>
+                                           readonly="id != False"/>
                                     <field name="domain"
-                                        readonly="id != False"/>
+                                           readonly="id != False"/>
                                 </group>
                                 <group>
                                     <field name="exten_number" widget="phone"/>
@@ -66,16 +67,17 @@
                                 <group string="SIP Phone">
                                     <field name="sip_enabled" string="Enabled"/>
                                     <field name="password" password="1"
-                                        invisible="sip_enabled == False"/>
+                                           invisible="sip_enabled == False"/>
                                     <field name="sip_ring_timeout" string="Ring Timeout"
-                                        required="sip_enabled == True"
-                                        invisible="sip_enabled == False"/>
-                                    <field name='uri' invisible="sip_enabled == False"/>
+                                           required="sip_enabled == True"
+                                           invisible="sip_enabled == False"/>
+                                    <field name='uri'
+                                           invisible="sip_enabled == False"/>
                                 </group>
                                 <group string="WEB Phone">
                                     <field name="client_enabled" string="Enabled"/>
                                     <field name="client_ring_timeout" string="Ring Timeout"
-                                        invisible="client_enabled == False"/>
+                                           invisible="client_enabled == False"/>
                                 </group>
                             </group>
                         </page>
@@ -84,13 +86,14 @@
                                 <group>
                                     <field name="outgoing_callerid" placeholder="Outgoing CallerId number or empty for the default..."/>
                                     <field name="record_calls"/>
-                                    <field name="ring_first" readonly="sip_enabled == False or client_enabled == False"/>
+                                    <field name="ring_first"
+                                           readonly="sip_enabled == False or client_enabled == False"/>
                                 </group>
                                 <group>
                                     <field name="voicemail_enabled"/>
                                     <field name="voicemail_prompt"
-                                        invisible="not voicemail_enabled"
-                                        required="voicemail_enabled"/>
+                                           invisible="not voicemail_enabled"
+                                           required="voicemail_enabled"/>
                                     <field name="application"/>
                                 </group>
                             </group>

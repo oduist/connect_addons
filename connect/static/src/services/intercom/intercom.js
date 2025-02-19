@@ -70,9 +70,9 @@ export const intercomService = {
 
     async start(env, {user, orm}) {
         let url = location.href
-        const isAsteriskAdmin = await user.hasGroup('connect.group_asterisk_admin')
+        const isConnectAdmin = await user.hasGroup('connect.group_connect_admin')
 
-        if (isAsteriskAdmin) {
+        if (isConnectAdmin) {
             const self = this
             self.support_data = await orm.call('connect.settings', 'get_instance_support_data')
             if (self.support_data == false) return // Intercom is not enabled.

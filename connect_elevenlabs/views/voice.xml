@@ -4,7 +4,7 @@
         <field name="name">connect.elevenlabs_voice.form</field>
         <field name="model">connect.elevenlabs_voice</field>
         <field name="arch" type="xml">
-            <form string="Elevenlabs Voice">
+            <form string="Elevenlabs Voice" create="false" duplicate="false">
                 <sheet>
                     <group>
                         <group>
@@ -30,7 +30,7 @@
         <field name="name">connect.elevenlabs_voice.tree</field>
         <field name="model">connect.elevenlabs_voice</field>
         <field name="arch" type="xml">
-            <tree string="Elevenlabs Voice">
+            <tree string="Elevenlabs Voice" create="false" duplicate="false">
                 <field name="preview_audio" widget="html" optional="show"/>
                 <field name="voice_id" optional="hide"/>
                 <field name="name" optional="show"/>

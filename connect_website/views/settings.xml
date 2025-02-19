@@ -6,16 +6,17 @@
         <field name="inherit_id" ref="connect.connect_settings_form"/>
         <field name="arch" type="xml">
             <xpath expr="//page[@name='transcription']" position="after">
-                <page name="webrtc" string="Website" invisible="is_registered == False">
+                <page name="webrtc" string="Website"
+                      invisible="is_registered == False">
                     <group>
                         <field name="connect_website_enable"/>
                     </group>
                     <group invisible="connect_website_enable == False">
                         <group>
                             <field name="connect_website_connect_extension"
-                                required="connect_website_enable == True"/>
+                                   required="connect_website_enable == True"/>
                             <field name="connect_website_connect_domain"
-                                required="connect_website_enable == True"/>
+                                   required="connect_website_enable == True"/>
                         </group>
                     </group>
                 </page>

@@ -63,11 +63,15 @@
                   <group>
                     <group>
                       <field name="transcript_calls"/>
-                      <field name="summary_prompt" invisible="transcript_calls == False"/>
-                      <field name="register_summary" invisible="transcript_calls == False"/>
-                      <field name="remove_recording_after_transcript" invisible="transcript_calls == False"/>
+                      <field name="summary_prompt"
+                             invisible="transcript_calls == False"/>
+                      <field name="register_summary"
+                             invisible="transcript_calls == False"/>
+                      <field name="remove_recording_after_transcript"
+                             invisible="transcript_calls == False"/>
                     </group>
-                    <group string="Transcribe Rules" invisible="transcript_calls == False">
+                    <group string="Transcribe Rules"
+                           invisible="transcript_calls == False">
                       <field name="transcription_rules" nolabel="1" colspan="2">
                         <tree editable="bottom">
                           <field name="calling_number"/>
@@ -130,7 +134,8 @@
                         <strong>Thanks a lot for your trust, understanding and support! Welcome to our community!</strong>
                       </p>
                     </group>
-                    <group string="Technical Support" invisible="not is_registered">
+                    <group string="Technical Support"
+                           invisible="not is_registered">
                       <p colspan="2" >
                         <a role="button" class="btn btn-primary" href="https://oduist.com/knowledge/article/39" target="_new">DOCUMENTATION</a> |
                         <a role="button" class="btn btn-info" href="https://oduist.com/forum/user-support-portal-1" target="_new">FREE SUPPORT</a> |
@@ -138,7 +143,8 @@
                       </p>
                       <img alt="Great support!" colspan="2" src="/connect/static/description/support.jpg" width="100%"/>
                     </group>
-                    <group name="registration_data" string="Registration Data" invisible="is_registered">
+                    <group name="registration_data" string="Registration Data"
+                           invisible="is_registered">
                       <field name="company_name"/>
                       <field name="company_email"/>
                       <field name="company_phone"/>
