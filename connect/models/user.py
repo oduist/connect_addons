@@ -369,7 +369,7 @@ class User(models.Model):
 
     @api.onchange('ring_first')
     def on_change_ring_priority(self):
-        if not self.client_enabled or not self.sip_enabled:
+        if not self.client_enabled and not self.sip_enabled:
             return
         if self.ring_first == 'client':
             self.ring_second = 'sip'
