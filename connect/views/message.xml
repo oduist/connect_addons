@@ -12,8 +12,8 @@
               sequence="60"
               parent="connect.connect_voice_menu"/>
 
-    <record id="view_connect_sms_message_list" model="ir.ui.view">
-        <field name="name">connect.message.list</field>
+    <record id="view_connect_sms_message_tree" model="ir.ui.view">
+        <field name="name">connect.message.tree</field>
         <field name="model">connect.message</field>
         <field name="arch" type="xml">
             <list create="false" edit="false" delete="false" decoration-danger="has_error">
@@ -45,15 +45,18 @@
                             <div class="d-flex flex-row" colspan="2" cols="3">
                                 <div class="d-flex flex-column" calspan="1" style="flex: 1">
                                     <field name="partner"/>
-                                    <field name="partner_img" style="float: left" widget="image" class="oe_avatar" invisible="partner == False"/>
+                                    <field name="partner_img" style="float: left" widget="image" class="oe_avatar"
+                                           invisible="partner == False"/>
                                     <div invisible="partner == False">Partner</div>
                                 </div>
-                                <div class="d-flex flex-column" calspan="1" invisible="sender_user == False" style="flex: 1">
+                                <div class="d-flex flex-column" calspan="1" style="flex: 1"
+                                     invisible="sender_user == False">
                                     <field name="sender_user"/>
                                     <field name="sender_user_img" style="float: left" widget="image" class="oe_avatar"/>
                                     <div>Sender User</div>
                                 </div>
-                                <div class="d-flex flex-column" calspan="1" invisible="receiver_user == False" style="flex: 1">
+                                <div class="d-flex flex-column" calspan="1" style="flex: 1"
+                                     invisible="receiver_user == False">
                                     <field name="receiver_user"/>
                                     <field name="receiver_user_img" style="float: left" widget="image" class="oe_avatar"/>
                                     <div>Receiver User</div>

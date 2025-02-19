@@ -69,7 +69,8 @@
                     <page string="Transcription">
                         <group>
                             <group>
-                                <field name="transcription_error" invisible="transcription_error == False"/>
+                                <field name="transcription_error"
+                                       invisible="transcription_error == False"/>
                                 <field name="transcription_price"/>
                             </group>
                         </group>

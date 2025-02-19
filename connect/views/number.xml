@@ -47,10 +47,18 @@
                             <group>
                                 <field name="friendly_name"/>
                                 <field name="destination"/>
-                                <field name="twiml" invisible="destination != 'twiml'" required="destination == 'twiml'"/>
-                                <field name="user" invisible="destination != 'user'" required="destination == 'user'"/>
-                                <field name="callflow" invisible="destination != 'callflow'" required="destination == 'callflow'"/>
-                                <field name="queue" invisible="destination != 'queue'" required="destination == 'queue'"/>
+                                <field name="twiml"
+                                       invisible="destination != 'twiml'"
+                                       required="destination == 'twiml'"/>
+                                <field name="user"
+                                       invisible="destination != 'user'"
+                                       required="destination == 'user'"/>
+                                <field name="callflow"
+                                       invisible="destination != 'callflow'"
+                                       required="destination == 'callflow'"/>
+                                <field name="queue"
+                                       invisible="destination != 'queue'"
+                                       required="destination == 'queue'"/>
                             </group>
                             <group>
                                 <field name="is_ignored"/>

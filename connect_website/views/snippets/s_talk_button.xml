@@ -3,7 +3,7 @@
 
     <template id="connect_website.connect_talk_button" name="Connect Talk Button">
         <div class="s_card card bg-white w-100 " style="border: none;">
-            <div class="s_connect_talk  btn btn-primary">
+            <div class="s_connect_talk btn btn-primary">
                 <div class="d-flex align-items-center justify-content-center s_talk_button">Let's Talk</div>
                 <div class="s_incoming_call hide">
                     <button aria-label="Call" class="answer-call" title="Call">

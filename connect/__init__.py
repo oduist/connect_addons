@@ -4,10 +4,14 @@ from . import controllers
 from . import models
 from . import wizard
 
+from odoo import api, SUPERUSER_ID, tools, release
+
 logger = logging.getLogger(__name__)
 
 
 def pre_init_hook(env):
+    if release.version_info[0] < 17.0:
+        env = api.Environment(env, SUPERUSER_ID, {})
     logger.info('Migrate To Connect')
     query_twilidoo = '''ALTER TABLE twilidoo_call RENAME TO connect_call;
 ALTER TABLE twilidoo_twiml RENAME TO connect_twiml;

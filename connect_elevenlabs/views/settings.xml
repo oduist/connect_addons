@@ -30,15 +30,15 @@
               <group>
                 <field name="elevenlabs_enabled"/>
                 <field name="display_elevenlabs_api_key" password="1" string="API Key"
-                  invisible="not elevenlabs_enabled"
-                  required="elevenlabs_enabled"/>
+                       invisible="not elevenlabs_enabled"
+                       required="elevenlabs_enabled"/>
                 <field name="elevenlabs_voice"
-                  invisible="not elevenlabs_enabled"/>
+                       invisible="not elevenlabs_enabled"/>
                 <div class="d-flex flex-row" colspan="2">
                   <button name="elevenlabs_get_voices" type="object" string="SYNC VOICES" class="btn btn-secondary me-1"
-                    invisible="not elevenlabs_enabled"/>
+                          invisible="not elevenlabs_enabled"/>
                   <button name="elevenlabs_regenerate_prompts" type="object" string="REGENERATE PROMPTS"
-                    invisible="not elevenlabs_enabled"/>
+                          invisible="not elevenlabs_enabled"/>
                 </div>
                 <a colspan="2" target="_new" href="https://elevenlabs.io/app/voice-library?">Add shared voices</a>
               </group>

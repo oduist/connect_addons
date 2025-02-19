@@ -6,7 +6,7 @@ from odoo import models, fields, api
 
 class Debug(models.Model):
     _name = 'connect.debug'
-    _description = 'Asterisk Debug'
+    _description = 'Connect Debug'
     _order = 'id desc'
     _rec_name = 'id'
 

@@ -75,15 +75,18 @@
                                     <div class="d-flex flex-row" colspan="2" cols="3">
                                         <div class="d-flex flex-column" calspan="1" style="flex: 1">
                                             <field name="partner"/>
-                                            <field name="partner_img" style="float: left" widget="image"  class="oe_avatar" invisible="partner == False"/>
+                                            <field name="partner_img" style="float: left" widget="image"  class="oe_avatar"
+                                                   invisible="partner == False"/>
                                             <div invisible="partner == False">Partner</div>
                                         </div>
-                                        <div class="d-flex flex-column" calspan="1" invisible="caller_user == False" style="flex: 1">
+                                        <div class="d-flex flex-column" calspan="1" style="flex: 1"
+                                             invisible="caller_user == False">
                                             <field name="caller_user"/>
                                             <field name="caller_user_img" style="float: left" widget="image" class="oe_avatar"/>
                                             <div>Caller User</div>
                                         </div>
-                                        <div class="d-flex flex-column" calspan="1" invisible="answered_user == False" style="flex: 1">
+                                        <div class="d-flex flex-column" calspan="1" style="flex: 1"
+                                             invisible="answered_user == False">
                                             <field name="answered_user"/>
                                             <field name="answered_user_img" style="float: left" widget="image" class="oe_avatar"/>
                                             <div>Answered User</div>
@@ -96,7 +99,8 @@
                                 </group>
                             </group>
                         </page>
-                        <page name="recording" string="Recording" invisible="recording == False">
+                        <page name="recording" string="Recording"
+                              invisible="recording == False">
                             <group>
                                 <group>
                                     <field name="recording_widget" widget="html" nolabel="1"/>
@@ -127,7 +131,8 @@
                                 </group>
                             </group>
                         </page>
-                        <page name="voicemail" string="VoiceMail" invisible="voicemail_widget == ''">
+                        <page name="voicemail" string="VoiceMail"
+                              invisible="voicemail_widget == ''">
                             <group>
                                 <field name="voicemail_widget" widget="html"/>
                             </group>
@@ -148,7 +153,8 @@
                                 </field>
                             </group>
                         </page>
-                        <field name="has_error" invisible="1"/>
+                        <field name="has_error"
+                               invisible="1"/>
                         <page name="error" string="Error" invisible="has_error == False">
                             <group>
                                 <field name="error_code"/>

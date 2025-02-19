@@ -8,7 +8,7 @@
             <field name="voicemail_prompt" position="after">
                 <field name="elevenlabs_enabled" invisible="1"/>
                 <field name="voicemail_prompt_widget" nolabel="1" colspan="2"
-                    invisible="not elevenlabs_enabled or not voicemail_enabled"/>
+                       invisible="not elevenlabs_enabled or not voicemail_enabled"/>
             </field>
         </field>
     </record>
