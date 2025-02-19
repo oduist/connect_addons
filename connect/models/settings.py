@@ -22,8 +22,6 @@ TWILIO_LOG_LEVEL = logging.WARNING
 ############### SETTINGS #####################################
 MODULE_NAME = 'connect'
 API_URL = 'https://eu-central-1.api.oduist.com'
-# Starting from Odoo 12.0 there is admin user with ID 2.
-ADMIN_USER_ID = 1 if release.version_info[0] <= 11 else 2
 
 MAX_EXTEN_LEN = 4
 
@@ -154,9 +152,9 @@ class Settings(models.Model):
             rec.company_country_code = self.env.user.company_id.country_id.code
             rec.company_country_name = self.env.user.company_id.country_id.name
             rec.company_state_name = self.env.user.company_id.partner_id.state_id.name
-            rec.admin_name = self.env['res.users'].browse(ADMIN_USER_ID).partner_id.name
-            rec.admin_email = self.env['res.users'].browse(ADMIN_USER_ID).partner_id.email
-            rec.admin_phone = self.env['res.users'].browse(ADMIN_USER_ID).partner_id.phone
+            rec.admin_name = self.env.user.partner_id.name
+            rec.admin_email = self.env.user.partner_id.email
+            rec.admin_phone = self.env.user.partner_id.phone
             rec.web_base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
 
 ####################################################################################
