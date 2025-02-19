@@ -8,15 +8,15 @@
             <field name="prompt_message" position="after">
                 <field name="elevenlabs_enabled" invisible="1"/>
                 <field name="prompt_message_widget" nolabel="1" colspan="2"
-                    attrs="{'invisible': [('elevenlabs_enabled', '=', False)]}"  widget="html"/>
+                       attrs="{'invisible': [('elevenlabs_enabled', '=', False)]}"  widget="html"/>
             </field>
             <field name="invalid_input_message" position="after">
                 <field name="invalid_input_message_widget" nolabel="1" colspan="2"
-                    attrs="{'invisible': ['|', ('elevenlabs_enabled', '=', False), ('gather_input', '=', False)]}"  widget="html"/>
+                       attrs="{'invisible': ['|', ('elevenlabs_enabled', '=', False), ('gather_input', '=', False)]}"  widget="html"/>
             </field>
             <field name="voicemail_prompt" position="after">
                 <field name="voicemail_prompt_widget" nolabel="1" colspan="2"
-                    attrs="{'invisible': [('elevenlabs_enabled', '=', False)]}"  widget="html"/>
+                       attrs="{'invisible': [('elevenlabs_enabled', '=', False)]}"  widget="html"/>
             </field>
             <field name="language" position="attributes">
                 <attribute name="invisible">1</attribute>

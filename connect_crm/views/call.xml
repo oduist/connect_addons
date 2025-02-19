@@ -33,7 +33,7 @@
                         </group>
                         <group>
                             <button name="unlink_crm_lead" type="object" string="Unlink"
-                                attrs="{'invisible': [('lead', '=', False)]}"/>
+                                    attrs="{'invisible': [('lead', '=', False)]}"/>
                         </group>
                     </group>
                 </page>

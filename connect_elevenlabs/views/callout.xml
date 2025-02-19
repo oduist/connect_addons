@@ -8,15 +8,15 @@
             <field name="prompt_message" position="after">
                 <field name="elevenlabs_enabled" invisible="1"/>
                 <field name="prompt_message_widget" nolabel="1" colspan="2"
-                    attrs="{'invisible': [('elevenlabs_enabled', '=', False)]}"/>
+                       attrs="{'invisible': [('elevenlabs_enabled', '=', False)]}"/>
             </field>
             <field name="invalid_input_message" position="after">
                 <field name="invalid_input_message_widget" nolabel="1" colspan="2"
-                    attrs="{'invisible': [('elevenlabs_enabled', '=', False)]}"/>
+                       attrs="{'invisible': [('elevenlabs_enabled', '=', False)]}"/>
             </field>
             <field name="after_choice_message" position="after">
                 <field name="after_choice_message_widget" nolabel="1" colspan="2"
-                    attrs="{'invisible': [('elevenlabs_enabled', '=', False)]}"/>
+                       attrs="{'invisible': [('elevenlabs_enabled', '=', False)]}"/>
             </field>
         </field>
     </record>

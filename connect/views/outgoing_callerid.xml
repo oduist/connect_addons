@@ -35,7 +35,7 @@
             <form>
                 <header>
                     <button name="validate" string="Validate" type="object" class="btn-primary"
-                        attrs="{'invisible': ['|','|', ('callerid_type', '!=', 'outgoing_callerid'),  ('id', '=', False), ('status', '=', 'validated'),]}"/>
+                            attrs="{'invisible': ['|','|', ('callerid_type', '!=', 'outgoing_callerid'),  ('id', '=', False), ('status', '=', 'validated'),]}"/>
                 </header>
                 <sheet>
                     <group>
@@ -47,8 +47,10 @@
                         <group>
                             <field name="is_default"/>
                             <field name="callerid_type"/>
-                            <field name="status" attrs="{'invisible': ['|', ('callerid_type', '!=', 'outgoing_callerid'),  ('id', '=', False)]}"/>
-                            <field name="validation_code" attrs="{'invisible': ['|','|', ('callerid_type', '!=', 'outgoing_callerid'), ('id', '=', False), ('status', '=', 'validated'),]}"/>
+                            <field name="status"
+                                   attrs="{'invisible': ['|', ('callerid_type', '!=', 'outgoing_callerid'),  ('id', '=', False)]}"/>
+                            <field name="validation_code"
+                                   attrs="{'invisible': ['|','|', ('callerid_type', '!=', 'outgoing_callerid'), ('id', '=', False), ('status', '=', 'validated'),]}"/>
                             <small attrs="{'invisible': ['|','|', ('callerid_type', '!=', 'outgoing_callerid'),  ('id', '=', False), ('status', '=', 'validated')]}" colspan="2">Enter the code in DTMF mode and press #</small>
                         </group>
                     </group>

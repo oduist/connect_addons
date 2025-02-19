@@ -7,7 +7,7 @@
     <field name="arch" type="xml">
       <page name="transcription" position="after">
         <page name="crm" string="CRM"
-            attrs="{'invisible': [('is_registered', '=', False)]}">
+              attrs="{'invisible': [('is_registered', '=', False)]}">
           <group>
             <group string="Incoming Calls">
               <field name="auto_create_leads_for_in_calls" string="Auto Create Leads"/>
@@ -27,7 +27,7 @@
             </group>
           </group>
           <group string="Auto create options"
-                attrs="{'invisible':[('auto_create_leads_for_in_calls','=',False), ('auto_create_leads_for_out_calls','=',False)]}">
+                 attrs="{'invisible':[('auto_create_leads_for_in_calls','=',False), ('auto_create_leads_for_out_calls','=',False)]}">
             <group>
               <field name="auto_create_leads_sales_person" help="Assign this user as a sales person for calls without PBX user defined."/>
               <field name="auto_create_leads_type" help="Create leads or opportunities?"/>
