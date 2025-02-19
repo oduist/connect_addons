@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 def migrate(cr, version):
     env = api.Environment(cr, SUPERUSER_ID, {})
-    # Merge billing defaults.
+    # Merge defaults.
     for field in ['admin_name', 'admin_phone', 'admin_email', 'web_base_url']:
         default_value = env['connect.settings'].get_registration_defaults(field)
         if not default_value and field == 'admin_phone':

@@ -14,7 +14,7 @@
     'description': "",
     'depends': ['crm', 'utm', 'connect'],
     'data': [
-        'security/billing.xml',
+        'security/webhook.xml',
         'views/crm_lead.xml',
         'views/call.xml',
         'views/utm.xml',

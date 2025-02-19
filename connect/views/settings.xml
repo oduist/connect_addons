@@ -13,13 +13,6 @@
       groups="connect.group_connect_admin"
       action="connect_settings_action" name="General" sequence="70"/>
 
-  <record id="cancel_subscription_action" model="ir.actions.act_window">
-        <field name="name">Cancel Subscription</field>
-        <field name="res_model">connect.cancel_subscription_wizard</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-    </record>
-
   <record id='connect_settings_form' model='ir.ui.view'>
       <field name='name'>connect.settings.form</field>
       <field name='model'>connect.settings</field>

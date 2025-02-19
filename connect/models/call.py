@@ -145,7 +145,7 @@ class Call(models.Model):
         return super().write(vals)
 
     @api.model
-    def on_call_status(self, params, skip_twilio_check=False):
+    def on_call_status(self, params):
         self = self.sudo()
         # Create channel
         channel = self.env['connect.channel'].on_call_status(params)

@@ -22,16 +22,6 @@
     <field name="perm_unlink" eval="1"/>
   </record>
 
-  <record id="connect_cancel_subscription_user" model="ir.model.access">
-    <field name="name">connect_cancel_subscription_user</field>
-    <field name="model_id" ref="connect.model_connect_cancel_subscription_wizard"/>
-    <field name="group_id" ref="connect.group_connect_user"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="1"/>
-    <field name="perm_create" eval="1"/>
-    <field name="perm_unlink" eval="1"/>
-  </record>
-
   <record id="connect_manage_partner_callout_wizard_user" model="ir.model.access">
     <field name="name">connect_manage_partner_callout_wizard</field>
     <field name="model_id" ref="connect.model_connect_manage_partner_callout_wizard"/>

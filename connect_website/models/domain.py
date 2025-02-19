@@ -16,7 +16,7 @@ class Domain(models.Model):
     @api.model
     def route_call(self, request, params={}):
         # Check access only for Twilio Service agent.
-        if not self.env.user.has_group('connect.group_connect_billing'):
+        if not self.env.user.has_group('connect.group_connect_webhook'):
             logger.error('Access to Twilio webhook is denied!')
             return '<Response><Say>You must select a default number for caller ID!</Say></Response>'
         re_call_uri = re.compile(r'^(?:sip|client):([^\s@]+)@[^\s;]+(?:;[^&\s]+(?:&[^&\s]+)*)?')
