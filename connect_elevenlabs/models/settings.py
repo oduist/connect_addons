@@ -9,7 +9,7 @@ PROTECTED_FIELDS.append('display_elevenlabs_api_key')
 class Elevenlabsettings(models.Model):
     _inherit = 'connect.settings'
 
-    elevenlabs_api_key = fields.Char(groups="connect.group_connect_billing")
+    elevenlabs_api_key = fields.Char(groups="connect.group_connect_webhook")
     display_elevenlabs_api_key = fields.Char(groups="connect.group_connect_admin")
     elevenlabs_voice = fields.Many2one('connect.elevenlabs_voice', ondelete='set null', string='Selected Voice')
     elevenlabs_enabled = fields.Boolean()

@@ -28,7 +28,7 @@
         # Security
         'security/groups.xml',
         'security/admin.xml',
-        'security/billing.xml',
+        'security/webhook.xml',
         'security/user.xml',
         'security/user_record_rules.xml',
         # Views
@@ -56,8 +56,6 @@
         'views/res_partner.xml',
         'views/message.xml',
         # Wizard
-        'wizard/add_credits.xml',
-        'wizard/cancel_subscription.xml',
         'wizard/transfer.xml',
         'wizard/manage_partner_callout.xml',
         ],

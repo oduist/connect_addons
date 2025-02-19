@@ -88,7 +88,7 @@ class Settings(models.Model):
     name = fields.Char(compute='_get_name')
     debug_mode = fields.Boolean()
     account_sid = fields.Char(string='Account SID')
-    auth_token = fields.Char(groups="base.group_erp_manager,connect.group_connect_billing")
+    auth_token = fields.Char(groups="base.group_erp_manager,connect.group_connect_webhook")
     display_auth_token = fields.Char()
     twilio_api_key = fields.Char()
     twilio_api_secret = fields.Char(groups="base.group_erp_manager")
@@ -104,7 +104,7 @@ class Settings(models.Model):
     summary_prompt = fields.Text(required=True, default='Summarise this phone call')
     register_summary = fields.Boolean(help='Register summary at partner of reference chat.')
     remove_recording_after_transcript = fields.Boolean()
-    #############  BILLING FIELDS   ###############################################
+    ############################################################
     instance_uid = fields.Char('Instance UID', compute='_get_instance_data')
     api_key = fields.Char('API Key', compute='_get_instance_data')
     api_url = fields.Char('API URL', compute='_get_instance_data')
@@ -160,7 +160,7 @@ class Settings(models.Model):
             rec.web_base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
 
 ####################################################################################
-##### BILLING REGISTRATION ##### NO CHANGES ALLOWED HERE ###########################
+##### REGISTRATION ##### NO CHANGES ALLOWED HERE ###########################
 
     @api.model
     def connect_notify(self, message, title='Connect', notify_uid=None,
@@ -253,23 +253,6 @@ class Settings(models.Model):
             'view_mode': 'form',
             'view_type': 'form',
             'view_id': self.env.ref('connect.connect_settings_form').id,
-            'target': 'current',
-        }
-
-    def open_billing_form(self):
-        rec = self.search([])
-        if not rec:
-            rec = self.sudo().with_context(no_constrains=True).create({})
-        else:
-            rec = rec[0]
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'connect.settings',
-            'res_id': rec.id,
-            'name': 'Billing',
-            'view_mode': 'form',
-            'view_type': 'form',
-            'view_id': self.env.ref('connect.connect_billing_form').id,
             'target': 'current',
         }
 
@@ -487,28 +470,6 @@ class Settings(models.Model):
         self.env['connect.outgoing_callerid'].sync()
         self.env['connect.byoc'].sync()
         self.connect_notify('Sync complete.')
-
-    def change_billing_region(self):
-        client = self.env['connect.settings'].get_client()
-        # Update apps.
-        for app in self.env['connect.twiml'].search([]):
-            app.update_twilio_app(client)
-        # Update domains
-        for domain in self.env['connect.domain'].search([]):
-            domain.update_twilio_domain(client)
-        # Update numbers.
-        for number in self.env['connect.number'].search([]):
-            number.update_twilio_number(client)
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': "Connect",
-                'message': 'Billing region has been set!',
-                'sticky': False,
-                'type': 'info',
-            }
-        }
 
     # Called from the settings.
     def reformat_numbers_button(self):

@@ -12,29 +12,9 @@
   </record>
 
   <!--  Wizard -->
-  <record id="connect_add_credits_wizard_admin" model="ir.model.access">
-    <field name="name">connect_add_credits_wizard_admin</field>
-    <field name="model_id" ref="connect.model_connect_add_credits_wizard"/>
-    <field name="group_id" ref="connect.group_connect_admin"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="1"/>
-    <field name="perm_create" eval="1"/>
-    <field name="perm_unlink" eval="1"/>
-  </record>
-
   <record id="connect_transfer_wizard_admin" model="ir.model.access">
     <field name="name">connect_transfer_wizard_admin</field>
     <field name="model_id" ref="connect.model_connect_transfer_wizard"/>
-    <field name="group_id" ref="connect.group_connect_admin"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="1"/>
-    <field name="perm_create" eval="1"/>
-    <field name="perm_unlink" eval="1"/>
-  </record>
-
-  <record id="connect_cancel_subscription_admin" model="ir.model.access">
-    <field name="name">connect_cancel_subscription_admin</field>
-    <field name="model_id" ref="connect.model_connect_cancel_subscription_wizard"/>
     <field name="group_id" ref="connect.group_connect_admin"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="1"/>
