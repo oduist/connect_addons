@@ -1,10 +1,10 @@
 <odoo>
 
   <!-- Settings -->
-  <record id="connect_settings_billing" model="ir.model.access">
+  <record id="connect_settings_webhook" model="ir.model.access">
     <field name="name">connect_settings</field>
     <field name="model_id" ref="connect.model_connect_settings"/>
-    <field name="group_id" ref="connect.group_connect_billing"/>
+    <field name="group_id" ref="connect.group_connect_webhook"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="0"/>
     <field name="perm_create" eval="0"/>
@@ -12,10 +12,10 @@
   </record>
 
   <!-- Domain -->
-  <record id="connect_domain_billing" model="ir.model.access">
-    <field name="name">connect_domain_billing</field>
+  <record id="connect_domain_webhook" model="ir.model.access">
+    <field name="name">connect_domain_webhook</field>
     <field name="model_id" ref="connect.model_connect_domain"/>
-    <field name="group_id" ref="connect.group_connect_billing"/>
+    <field name="group_id" ref="connect.group_connect_webhook"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="0"/>
     <field name="perm_create" eval="0"/>
@@ -23,10 +23,10 @@
   </record>
 
   <!-- Call -->
-  <record id="connect_call_billing" model="ir.model.access">
-    <field name="name">connect_call_billing</field>
+  <record id="connect_call_webhook" model="ir.model.access">
+    <field name="name">connect_call_webhook</field>
     <field name="model_id" ref="connect.model_connect_call"/>
-    <field name="group_id" ref="connect.group_connect_billing"/>
+    <field name="group_id" ref="connect.group_connect_webhook"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="1"/>
     <field name="perm_create" eval="1"/>
@@ -34,10 +34,10 @@
   </record>
 
 <!-- Channel -->
-  <record id="connect_channel_billing" model="ir.model.access">
-    <field name="name">connect_channel_billing</field>
+  <record id="connect_channel_webhook" model="ir.model.access">
+    <field name="name">connect_channel_webhook</field>
     <field name="model_id" ref="connect.model_connect_channel"/>
-    <field name="group_id" ref="connect.group_connect_billing"/>
+    <field name="group_id" ref="connect.group_connect_webhook"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="1"/>
     <field name="perm_create" eval="1"/>
@@ -46,10 +46,10 @@
 
 
 <!-- Debug -->
-  <record id="connect_debug_billing" model="ir.model.access">
-    <field name="name">connect_debug_billing</field>
+  <record id="connect_debug_webhook" model="ir.model.access">
+    <field name="name">connect_debug_webhook</field>
     <field name="model_id" ref="connect.model_connect_debug"/>
-    <field name="group_id" ref="connect.group_connect_billing"/>
+    <field name="group_id" ref="connect.group_connect_webhook"/>
     <field name="perm_read" eval="0"/>
     <field name="perm_write" eval="0"/>
     <field name="perm_create" eval="1"/>
@@ -57,10 +57,10 @@
   </record>
 
   <!-- Number -->
-  <record id="connect_number_billing" model="ir.model.access">
-    <field name="name">connect_number_billing</field>
+  <record id="connect_number_webhook" model="ir.model.access">
+    <field name="name">connect_number_webhook</field>
     <field name="model_id" ref="connect.model_connect_number"/>
-    <field name="group_id" ref="connect.group_connect_billing"/>
+    <field name="group_id" ref="connect.group_connect_webhook"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="0"/>
     <field name="perm_create" eval="0"/>
@@ -68,10 +68,10 @@
   </record>
 
 <!-- Outgoing callerid -->
-  <record id="connect_outgoing_callerid_billing" model="ir.model.access">
-    <field name="name">connect_outgoing_callerid_billing</field>
+  <record id="connect_outgoing_callerid_webhook" model="ir.model.access">
+    <field name="name">connect_outgoing_callerid_webhook</field>
     <field name="model_id" ref="connect.model_connect_outgoing_callerid"/>
-    <field name="group_id" ref="connect.group_connect_billing"/>
+    <field name="group_id" ref="connect.group_connect_webhook"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="0"/>
     <field name="perm_create" eval="0"/>
@@ -79,10 +79,10 @@
   </record>
 
 <!-- Callflow -->
-  <record id="connect_callflow_billing" model="ir.model.access">
-    <field name="name">connect_callflow_billing</field>
+  <record id="connect_callflow_webhook" model="ir.model.access">
+    <field name="name">connect_callflow_webhook</field>
     <field name="model_id" ref="connect.model_connect_callflow"/>
-    <field name="group_id" ref="connect.group_connect_billing"/>
+    <field name="group_id" ref="connect.group_connect_webhook"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="0"/>
     <field name="perm_create" eval="0"/>
@@ -90,10 +90,10 @@
   </record>
 
 <!-- Queue -->
-  <record id="connect_queue_billing" model="ir.model.access">
-    <field name="name">connect_queue_billing</field>
+  <record id="connect_queue_webhook" model="ir.model.access">
+    <field name="name">connect_queue_webhook</field>
     <field name="model_id" ref="connect.model_connect_queue"/>
-    <field name="group_id" ref="connect.group_connect_billing"/>
+    <field name="group_id" ref="connect.group_connect_webhook"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="0"/>
     <field name="perm_create" eval="0"/>
@@ -101,10 +101,10 @@
   </record>
 
 <!-- Gather Choice -->
-  <record id="connect_callflow_choice_billing" model="ir.model.access">
-    <field name="name">connect_callflow_choice_billing</field>
+  <record id="connect_callflow_choice_webhook" model="ir.model.access">
+    <field name="name">connect_callflow_choice_webhook</field>
     <field name="model_id" ref="connect.model_connect_callflow_choice"/>
-    <field name="group_id" ref="connect.group_connect_billing"/>
+    <field name="group_id" ref="connect.group_connect_webhook"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="0"/>
     <field name="perm_create" eval="0"/>
@@ -112,10 +112,10 @@
   </record>
 
   <!-- Exten -->
-  <record id="connect_exten_billing" model="ir.model.access">
-    <field name="name">connect_exten_billing</field>
+  <record id="connect_exten_webhook" model="ir.model.access">
+    <field name="name">connect_exten_webhook</field>
     <field name="model_id" ref="connect.model_connect_exten"/>
-    <field name="group_id" ref="connect.group_connect_billing"/>
+    <field name="group_id" ref="connect.group_connect_webhook"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="0"/>
     <field name="perm_create" eval="0"/>
@@ -123,10 +123,10 @@
   </record>
 
   <!-- TwiML -->
-  <record id="connect_twiml_billing" model="ir.model.access">
-    <field name="name">connect_twiml_billing</field>
+  <record id="connect_twiml_webhook" model="ir.model.access">
+    <field name="name">connect_twiml_webhook</field>
     <field name="model_id" ref="connect.model_connect_twiml"/>
-    <field name="group_id" ref="connect.group_connect_billing"/>
+    <field name="group_id" ref="connect.group_connect_webhook"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="0"/>
     <field name="perm_create" eval="0"/>
@@ -134,10 +134,10 @@
   </record>
 
 <!-- SIP Cred to account users, for extreme security reasons access to password field is limited!  -->
-  <record id="connect_sip_cred_billing" model="ir.model.access">
-    <field name="name">connect_sip_cred_billing</field>
+  <record id="connect_sip_cred_webhook" model="ir.model.access">
+    <field name="name">connect_sip_cred_webhook</field>
     <field name="model_id" ref="connect.model_connect_user"/>
-    <field name="group_id" ref="connect.group_connect_billing"/>
+    <field name="group_id" ref="connect.group_connect_webhook"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="0"/>
     <field name="perm_create" eval="0"/>
@@ -145,10 +145,10 @@
   </record>
 
   <!-- Message -->
-  <record id="connect_message_billing" model="ir.model.access">
-    <field name="name">connect_message_billing</field>
+  <record id="connect_message_webhook" model="ir.model.access">
+    <field name="name">connect_message_webhook</field>
     <field name="model_id" ref="connect.model_connect_message"/>
-    <field name="group_id" ref="connect.group_connect_billing"/>
+    <field name="group_id" ref="connect.group_connect_webhook"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="1"/>
     <field name="perm_create" eval="1"/>

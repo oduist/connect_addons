@@ -126,7 +126,7 @@ class Number(models.Model):
     def route_call(self, request):
         debug(self, 'Route number call: %s' % json.dumps(request, indent=2))
         # Create call
-        self.env['connect.call'].sudo().on_call_status(request, skip_twilio_check=True)
+        self.env['connect.call'].sudo().on_call_status(request)
         # Find the number
         number = self.search([('phone_number', '=', request['Called'])])
         if not number:

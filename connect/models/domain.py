@@ -246,7 +246,7 @@ class Domain(models.Model):
     def route_call(self, request, params={}):
         debug(self, 'Domain call to %s' % request.get('To'))
         # Create call
-        self.env['connect.call'].on_call_status(request, skip_twilio_check=True)
+        self.env['connect.call'].on_call_status(request)
         # Check if it is a SIP call and extract To from it.
         found = re.search(r'^sip:(.+)@(.+)\.sip\.((.+)\.)?twilio\.com', request.get('To'))
         if found:

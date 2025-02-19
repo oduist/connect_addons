@@ -6,7 +6,7 @@
         <field name="perm_write" eval="1"/>
         <field name="perm_unlink" eval="0"/>
         <field name="model_id" ref="crm.model_crm_lead"/>
-        <field name="group_id" ref="connect.group_connect_billing"/>
+        <field name="group_id" ref="connect.group_connect_webhook"/>
     </record>
     
     <record id="connect_server_mail_alias_domain" model="ir.model.access">
@@ -16,7 +16,7 @@
         <field name="perm_write" eval="0"/>
         <field name="perm_unlink" eval="0"/>                
         <field name="model_id" ref="mail.model_mail_alias_domain"/>
-        <field name="group_id" ref="connect.group_connect_billing"/>
+        <field name="group_id" ref="connect.group_connect_webhook"/>
     </record>
 
     <record id="connect_server_crm_stage_access" model="ir.model.access">
@@ -26,7 +26,7 @@
         <field name="perm_write" eval="0"/>
         <field name="perm_unlink" eval="0"/>                
         <field name="model_id" ref="crm.model_crm_stage"/>
-        <field name="group_id" ref="connect.group_connect_billing"/>
+        <field name="group_id" ref="connect.group_connect_webhook"/>
     </record>
 
     <record id="connect_agent_crm_team_access" model="ir.model.access">
@@ -36,7 +36,7 @@
         <field name="perm_write" eval="0"/>
         <field name="perm_unlink" eval="0"/>
         <field name="model_id" ref="crm.model_crm_team"/>
-        <field name="group_id" ref="connect.group_connect_billing"/>
+        <field name="group_id" ref="connect.group_connect_webhook"/>
     </record>
 
     <!-- RECORD RULES -->
@@ -47,7 +47,7 @@
         <field name="perm_write" eval="1"/>
         <field name="perm_unlink" eval="0"/>
         <field name="model_id" ref="crm.model_crm_lead"/>
-        <field name="groups" eval="[(4, ref('connect.group_connect_billing'))]"/>
+        <field name="groups" eval="[(4, ref('connect.group_connect_webhook'))]"/>
         <field name="domain_force">[(1,'=', 1)]</field>
     </record>
 </odoo>
