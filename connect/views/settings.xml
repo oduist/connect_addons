@@ -80,7 +80,8 @@
                     </group>
                   </group>
                 </page>
-                <page string="Development" groups="base.group_no_one">
+                <page string="Development" groups="base.group_no_one"
+                      attrs="{'invisible': [('is_registered', '=', False)]}">
                   <group>
                     <group>
                       <field name="twilio_verify_requests"/>
