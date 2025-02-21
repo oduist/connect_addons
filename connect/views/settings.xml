@@ -112,7 +112,7 @@
                     <group name="registration" string="Registration">
                       <field name="show_partner_code" invisible="1"/>
                       <field colspan="2" name="partner_code"
-                             attrs="{'invisible': [('show_partner_code', '=', False)],
+                             attrs="{'invisible': ['|', ('show_partner_code', '=', False), ('is_registered', '=', True)],
                                      'readonly': [('is_registered', '=', True)]}"/>
                       <button colspan="2" name="register_instance" class="btn btn-info btn-lg me-1" type="object" string="SUBMIT REGISTRATION"
                               attrs="{'invisible': ['|', '|', '|', ('is_registered', '=', True), ('i_agree_to_register', '=', False), ('i_agree_to_receive', '=', False), ('i_agree_to_contact', '=', False)]}"/>
