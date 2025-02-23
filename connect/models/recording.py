@@ -8,7 +8,7 @@ import requests
 from tempfile import NamedTemporaryFile
 from urllib.parse import urljoin
 import uuid
-from odoo import fields, models, api, release
+from odoo import fields, models, api, release, SUPERUSER_ID
 from odoo.exceptions import ValidationError
 import httpx
 import openai
@@ -284,4 +284,4 @@ class Recording(models.Model):
     def _sync_summary(self):
         # When recording transcription summary is set we update related object summary.
         if self.call:
-            self.sudo().call.summary = self.summary
+            self.with_user(SUPERUSER_ID).call.summary = self.summary
