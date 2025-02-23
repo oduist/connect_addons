@@ -1,24 +1,67 @@
 <odoo>
-        <data noupdate="1">
+        <data>
 
-        <record id="connect_odooist_contact" model="res.partner">
-            <field name="name">Odooist OÜ</field>
-            <field name="street">Harju maakond, Tallinn, Lasnamäe linnaosa, Sepapaja tn 6, 15551, Estonia</field>
+        <record id="connect_oduist_contact" model="res.partner">
+            <field name="name">Oduist OÜ</field>
+            <field name="street">Harju maakond, Lasnamäe linnaosa, Sepapaja tn 6</field>
             <field name="city">Tallinn</field>
+            <field name="zip">15551</field>
+            <field name="vat">EE102600845</field>
             <field name="country_id" ref="base.ee"/>
-            <field name="email">mailbox@connect.com</field>
+            <field name="email">team@oduist.com</field>
             <field name="phone">+3726410562</field>
-            <field name="website">https://connect.com/</field>
+            <field name="website">https://oduist.com/</field>
+            <field name="image_1920">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
+eoSBOmJgAAAAASUVORK5CYII=</field>
         </record>
 
         <record id="connect_echo_contact" model="res.partner">
             <field name="name">Echo Test</field>
             <field name="phone">+19093900003</field>
+            <field name="country_id" ref="base.us"/>
         </record>
 
         <record id="connect_callerid_contact" model="res.partner">
             <field name="name">CallerID Test</field>
             <field name="phone">+18004443333</field>
+            <field name="country_id" ref="base.us"/>
         </record>
 
 
