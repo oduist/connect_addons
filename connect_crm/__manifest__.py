@@ -1,14 +1,13 @@
-# ©️ OdooPBX by Odooist, Odoo Proprietary License v1.0, 2024
 # -*- encoding: utf-8 -*-
 {
     'name': 'Twilio Odoo CRM integration',
     'version': '0.1',
-    'author': 'Odooist',
+    'author': 'Oduist',
     'price': 0,
     'currency': 'EUR',
-    'maintainer': 'Odooist',
-    'support': 'odooist@gmail.com',
-    'license': 'OPL-1',
+    'maintainer': 'Oduist',
+    'support': 'support@oduist.com',
+    'license': 'Other proprietary',
     'category': 'Phone',
     'summary': 'Twilio Odoo CRM integration',
     'description': "",

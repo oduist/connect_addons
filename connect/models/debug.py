@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# ©️ Connect by Odooist, Odoo Proprietary License v1.0, 2024
+
 from datetime import datetime, timedelta
 from odoo import models, fields, api
 

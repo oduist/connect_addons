@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# ©️ Connect by Odooist, Odoo Proprietary License v1.0, 2024
+
 import logging
 from odoo import fields, models, api, release
 from twilio.twiml.voice_response import Gather, VoiceResponse, Say, Hangup
