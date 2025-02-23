@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*
-# ©️ OdooPBX by Odooist, Odoo Proprietary License v1.0, 2024
 import logging
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
