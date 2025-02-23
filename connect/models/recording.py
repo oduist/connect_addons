@@ -284,4 +284,4 @@ class Recording(models.Model):
     def _sync_summary(self):
         # When recording transcription summary is set we update related object summary.
         if self.call:
-            self.call.summary = self.summary
+            self.sudo().call.summary = self.summary
