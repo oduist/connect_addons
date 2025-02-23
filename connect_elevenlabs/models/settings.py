@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# ©️ Connect by Odooist, Odoo Proprietary License v1.0, 2024
+
 from odoo import fields, models, api
 from odoo.addons.connect.models.settings import PROTECTED_FIELDS
 

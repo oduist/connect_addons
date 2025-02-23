@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# ©️ Connect by Odooist, Odoo Proprietary License v1.0, 2024
+
 import logging
 import re
 from urllib.parse import urljoin

@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*
-# ©️ Connect by Odooist, Odoo Proprietary License v1.0, 2024
+
 {
     'name': 'Connect ElevenLabs',
     'version': '0.1',
-    'author': 'Odooist',
+    'author': 'Oduist',
     'price': 0,
     'currency': 'EUR',
-    'maintainer': 'Odooist',
+    'maintainer': 'Oduist',
     'support': 'mailbox@connect.com',
-    'license': 'OPL-1',
+    'license': 'Other proprietary',
     'category': 'Phone',
     'summary': 'Connect ElevenLabs integration module',
     'description': "",
