@@ -1,3 +1,4 @@
+httpx
 twilio
 openai
 elevenlabs
