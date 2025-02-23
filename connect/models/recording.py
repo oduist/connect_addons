@@ -160,19 +160,6 @@ class Recording(models.Model):
         if not self.media_url:
             raise ValidationError('Recording is not available yet!')
         self.transcribe_recording(openai_key, summary_prompt)
-        self.register_summary()
-
-    def register_summary(self):
-        # Register summary if partner is linked.
-        if self.partner and self.summary and self.env[
-                'connect.settings'].sudo().get_param('register_summary'):
-            obj = self.partner
-            try:
-                obj.sudo().message_post(body=self.summary)
-                # Reload the view of res.partner
-                self.env['connect.settings'].connect_reload_view('res.partner')
-            except Exception as e:
-                logger.error('Cannot register summary: %s', e)
 
     def update_transcript(self, data):
         # Update transcription and also erase access token.
