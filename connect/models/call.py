@@ -327,10 +327,6 @@ class Call(models.Model):
         if reload_partner_view:
             self.env['connect.settings'].connect_reload_view('res.partner')
 
-    def register_summary(self, summary):
-        # TODO: Register at res.partner
-        pass
-
     def create_partner_button(self):
         self.ensure_one()
         name_number = self.caller if self.direction == 'incoming' else self.called
