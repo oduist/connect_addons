@@ -2,12 +2,16 @@
 # ©️ Connect by Odooist, Odoo Proprietary License v1.0, 2024
 import json
 import logging
+import os
 import re
 import requests
+from tempfile import NamedTemporaryFile
 from urllib.parse import urljoin
 import uuid
 from odoo import fields, models, api, release
 from odoo.exceptions import ValidationError
+import httpx
+import openai
 from .settings import format_connect_response, debug
 
 logger = logging.getLogger(__name__)
@@ -26,12 +30,14 @@ class TranscriptionRules(models.Model):
     def check_rules(self, calling_number, called_number):
         for rec in self.search([]):
             try:
-                if (calling_number and re.search(rec.calling_number, calling_number)) and (
-                        called_number and re.search(rec.called_number, called_number)):
-                    debug(self, 'Transcription rule {} matched!'.format(rec.id))
-                    return True
-                else:
-                    debug(self, 'Transcription rule {} does not match.'.format(rec.id))
+                if calling_number and not re.search(rec.calling_number, calling_number):
+                    debug(self, 'Transcription rule {} calling number pattern does not match'.format(rec.id))
+                    continue
+                if called_number and not re.search(rec.called_number, called_number):
+                    debug(self, 'Transcription rule {} called number pattern does not match'.format(rec.id))
+                    continue
+                debug(self, 'Transcription rule {} matched!'.format(rec.id))
+                return True
             except Exception as e:
                 logger.error('Error checking transcription rule %s: %s', rec.id, e)
 
@@ -74,6 +80,68 @@ class Recording(models.Model):
 
     ############## TRANSCRIPTION METHODS #####################################
 
+    def transcribe_recording(self, openai_api_key, summary_prompt):
+        result = {}
+        try:
+            if os.environ.get('OPENAI_PROXY'):
+                client = openai.OpenAI(
+                    api_key=openai_api_key, http_client=httpx.Client(proxy=os.environ.get('HTTPS_PROXY')))
+            else:
+                client = openai.OpenAI(api_key=openai_api_key)
+            response = requests.get(self.media_url, stream=True)
+            response.raise_for_status()
+            with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
+                # Write the content from the URL to the temporary file
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        temp_file.write(chunk)
+                temp_file_path = temp_file.name
+            with open(temp_file_path, 'rb') as audio_file:
+                transcript = client.audio.transcriptions.create(
+                    model="whisper-1", file=audio_file,
+                    response_format='verbose_json', timestamp_granularities=["segment"])
+                # result['minutes'] = round(transcript.duration / 60.0, 2)
+            # Create segments
+            segments = ''
+            for s in transcript.segments:
+                seconds = int(s.start)
+                ts = f"{int(seconds // 3600):02d}:{int((seconds % 3600) // 60):02d}:{int(seconds % 60):02d}"
+                segments += '{} {}\n'.format(ts, s.text)
+            result['transcript'] = segments
+            # Make a summary
+            response = client.chat.completions.create(
+                model=os.environ.get('OPENAI_COMPLETION_MODEL', 'gpt-4o'),
+                messages=[
+                    {
+                        'role': 'user',
+                        'content': summary_prompt
+                    },
+                    {
+                        'role': 'user',
+                        'content': segments,
+                    },
+                ],
+                temperature=float(os.environ.get('OPENAI_COMPLETION_TEMPERATURE', 0.5)),
+                max_tokens=int(os.environ.get('OPENAI_COMPLETION_MAX_TOKENS', 4096)),
+                top_p=float(os.environ.get('OPENAI_COMPLETION_TOP_P', 1.0)),
+                frequency_penalty=float(os.environ.get('OPENAI_COMPLETION_FREQUENCY_PENALTY', 0.0)),
+                presence_penalty=float(os.environ.get('OPENAI_COMPLETION_PRESENSE_PENALTY', 0.0)),
+            )
+            logger.info('%s', response.usage)
+            #result['finish_reason'] = response.choices[0].finish_reason
+            #result['completion_tokens'] = response.usage.completion_tokens
+            #result['prompt_tokens'] = response.usage.prompt_tokens
+            result['summary'] = response.choices[0].message.content.strip('\n\n')
+            #result['completion_model'] = completion_model
+            #result['prompt'] = summary_prompt
+            result['transcription_error'] = False
+        except Exception as e:
+            logger.exception('Transcribe error:')
+            result['transcription_error'] = str(e)
+        finally:
+            self.write(result)
+
+
     def get_transcript(self, fail_silently=False):
         self.ensure_one()
         openai_key = self.env['connect.settings'].sudo().get_param('openai_api_key')
@@ -83,11 +151,7 @@ class Recording(models.Model):
                 return False
             else:
                 raise ValidationError('OpenAI key is not set!')
-        self.env['connect.settings'].connect_notify(
-            notify_uid=self.env.user.id,
-            title="Recording Transcript",
-            message='Request sent, please wait for the update!',
-        )
+        summary_prompt = self.env['connect.settings'].get_param('summary_prompt')
         # First check if the call matches the transcription rules.
         if fail_silently and not self.env['connect.transcription_rule'].sudo().check_rules(
                 self.call.caller, self.call.called):
@@ -95,42 +159,20 @@ class Recording(models.Model):
             return False
         if not self.media_url:
             raise ValidationError('Recording is not available yet!')
-        url = urljoin(self.env['connect.settings'].sudo().get_param('api_url'),
-            'transcription')
-        # Create a token and commit it.
-        self.sudo().transcription_token = str(uuid.uuid4())
-        self.env.cr.commit()
-        try:
-            account_sid = self.env['connect.settings'].sudo().get_param('account_sid')
-            auth_token = self.env['connect.settings'].sudo().get_param('auth_token')
-            res = requests.post(url,
-                json={
-                    'file_name': '{}.wav'.format(self.media_url.split('/')[-1]),
-                    'content_url': self.media_url,
-                    'auth': [account_sid, auth_token],
-                    'summary_prompt': self.env['connect.settings'].get_param('summary_prompt'),
-                    'callback_url': urljoin(
-                        self.env['connect.settings'].sudo().get_param('web_base_url'),
-                        '/connect/transcript/{}'.format(self.id),
-                    ),
-                    'transcription_token': self.transcription_token,
-                    'customer_key': openai_key,
-                    'notify_uid': self.env.user.id,
-                },
-                headers={
-                    'x-instance-uid': self.env['connect.settings'].get_param('instance_uid'),
-                    'x-api-key': self.env['ir.config_parameter'].sudo().get_param('connect.api_key')
-                })
-            if not res.ok:
-                self.transcription_error = res.text
-                if not fail_silently:
-                    raise ValidationError(res.text)
-                else:
-                    logger.error('Error getting result from transcription service: %s', res.text)
-        except Exception as e:
-            logger.error('Transcription error: %s', e)
-            if not fail_silently:
-                raise ValidationError('Transcription error: %s' % e)
+        self.transcribe_recording(openai_key, summary_prompt)
+        self.register_summary()
+
+    def register_summary(self):
+        # Register summary if partner is linked.
+        if self.partner and self.summary and self.env[
+                'connect.settings'].sudo().get_param('register_summary'):
+            obj = self.partner
+            try:
+                obj.sudo().message_post(body=self.summary)
+                # Reload the view of res.partner
+                self.env['connect.settings'].connect_reload_view('res.partner')
+            except Exception as e:
+                logger.error('Cannot register summary: %s', e)
 
     def update_transcript(self, data):
         # Update transcription and also erase access token.
@@ -198,7 +240,8 @@ class Recording(models.Model):
         transcript_calls = self.env['connect.settings'].sudo().get_param('transcript_calls')
         recs = super(Recording, self.with_context(
             mail_create_nosubscribe=True, mail_create_nolog=True)).create(vals_list)
-        # Commit to the database as recordings are created by the Agent.
+        # Commit to the database so that transcription error will not break the recording.
+        self.env.cr.commit()
         if transcript_calls:
             for rec in recs:
                 try:
@@ -249,3 +292,9 @@ class Recording(models.Model):
                 record.duration_human = '{:02}:{:02}'.format(minutes, seconds)
             else:
                 record.duration_human = "00:00"
+
+    @api.constrains('summary')
+    def _sync_summary(self):
+        # When recording transcription summary is set we update related object summary.
+        if self.call:
+            self.call.summary = self.summary

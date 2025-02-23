@@ -137,11 +137,6 @@ class Call(models.Model):
                 record.duration_human = "00:00"
 
     def write(self, vals):
-        # Set summary on call recording also if any.
-        if 'summary' in vals:
-            for rec in self:
-                if rec.recording:
-                    rec.recording.summary = vals['summary']
         return super().write(vals)
 
     @api.model
