@@ -7,6 +7,7 @@
     'price': 0,
     'currency': 'EUR',
     'maintainer': 'Oduist',
+    'live_test_url': 'https://connect-demo-18.oduist.com/',
     'support': 'mailbox@connect.com',
     'license': 'Other proprietary',
     'category': 'Phone',
