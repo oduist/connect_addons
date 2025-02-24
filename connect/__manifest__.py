@@ -5,6 +5,7 @@
     'version': '0.11',
     'author': 'Oduist',
     'maintainer': 'Oduist',
+    'live_test_url': 'https://connect-demo-18.oduist.com/',
     'price': 0,
     'currency': 'EUR',
     'support': 'support@oduist.com',
