@@ -3,7 +3,7 @@
     'description': """Let's talk. One click call using Twilio""",
     'currency': 'EUR',
     'price': '0',
-    'version': '1.0',
+    'version': '1.0.1',
     'category': 'Website/Website',
     'live_test_url': 'https://connect-demo-18.oduist.com/',
     'author': 'Oduist',
