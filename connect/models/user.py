@@ -54,7 +54,7 @@ class User(models.Model):
         ('username_uniq', 'UNIQUE(username)', 'This PBX username is already defined!'),
     ]
 
-    @api.depends('username', 'domain', 'domain.domain_name')
+    @api.depends('username', 'domain', 'domain.domain_name', 'domain.subdomain')
     def _get_sip_uri(self):
         for rec in self:
             rec.uri = '{}@{}'.format(rec.username, rec.domain.domain_name)
