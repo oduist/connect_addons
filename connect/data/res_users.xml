@@ -7,7 +7,6 @@
         <field name="groups_id" eval="[(6, 0, [ref('base.group_portal')])]"/>
         <field name="tz">Etc/GMT</field>
         <field name="country_id" ref="base.be"/>
-        <field name="email"></field>
     </record>
 
 </data></odoo>
