@@ -2,7 +2,7 @@
 
   <menuitem id="connect_top_menu" name="Connect"
       groups="connect.group_connect_user,connect.group_connect_admin"
-      sequence="8" web_icon='connect,static/description/icon.png'/>
+      sequence="21" web_icon='connect,static/description/icon.png'/>
 
   <menuitem id="connect_voice_menu" name="Voice"
         parent="connect_top_menu" sequence="100"/>
