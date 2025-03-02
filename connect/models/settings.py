@@ -27,6 +27,10 @@ MAX_EXTEN_LEN = 4
 
 PROTECTED_FIELDS = ['display_auth_token', 'display_twilio_api_secret', 'display_openai_api_key']
 
+required_fields = [
+    'admin_email', 'admin_name', 'admin_phone', 'company_name', 'company_city', 'company_email', 'company_phone',
+    'company_country_code','company_country', 'company_state_name', 'company_country_name', 'installation_date',
+    'module_name', 'module_version', 'odoo_url', 'odoo_version']
 
 def debug(rec, message, level='info'):
     caller_module = inspect.stack()[1][3]
@@ -291,11 +295,6 @@ class Settings(models.Model):
         admin_email = self.get_param('admin_email')
         admin_phone = self.get_param('admin_phone')
         company_email = self.get_param('company_email')
-        if not company_email or not admin_email or not admin_phone:
-            raise ValidationError('Please enter all required fields: company email, '
-                                  'your email, and your phone!')
-        if admin_email == 'admin@example.com' or company_email == 'admin@example.com':
-            raise ValidationError('Please set your real email address, not admin@example.com.')
         data = {
             'company_name': self.get_param('company_name'),
             'company_country': self.get_param('company_country'),
@@ -315,6 +314,14 @@ class Settings(models.Model):
             'installation_date': self.get_param('installation_date').strftime("%Y-%m-%d"),
             'partner_code': self.get_param('partner_code'),
         }
+        missing_fields = [field for field in required_fields if field not in data or not data[field]]
+        if missing_fields:
+            raise ValidationError(f"Missing required fields: {', '.join(missing_fields)}")
+        if not company_email or not admin_email or not admin_phone:
+            raise ValidationError('Please enter all required fields: company email, '
+                                  'your email, and your phone!')
+        if admin_email == 'admin@example.com' or company_email == 'admin@example.com':
+            raise ValidationError('Please set your real email address, not admin@example.com.')
         res = self.make_api_request(API_URL, requests.post, data=data)
         if not res and self.get_param('api_fallback_url'):
             # Make a request and give error if fallback API endpoint is not available.
