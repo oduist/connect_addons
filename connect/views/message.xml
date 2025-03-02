@@ -10,7 +10,7 @@
               name="Messages"
               action="action_connect_message"
               sequence="60"
-              parent="connect.connect_voice_menu"/>
+              parent="connect.connect_messaging_menu"/>
 
     <record id="view_connect_sms_message_tree" model="ir.ui.view">
         <field name="name">connect.message.tree</field>
