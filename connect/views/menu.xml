@@ -7,6 +7,9 @@
   <menuitem id="connect_voice_menu" name="Voice"
         parent="connect_top_menu" sequence="100"/>
 
+  <menuitem id="connect_messaging_menu" name="Messaging"
+        parent="connect_top_menu" sequence="150"/>
+
   <menuitem id="connect_ai_menu" name="AI"
         parent="connect_top_menu" sequence="200"/>
 
