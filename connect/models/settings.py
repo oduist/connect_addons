@@ -140,9 +140,7 @@ class Settings(models.Model):
         module = self.env['ir.module.module'].sudo().search([('name', '=', MODULE_NAME)])
         for rec in self:
             rec.module_version = module.installed_version[-3:]
-            version = self.env['ir.module.module'].search([('name', '=', 'base')], limit=1).latest_version
-            major_version = version.split('.')[0] + '.' + version.split('.')[1]
-            rec.odoo_version = major_version
+            rec.odoo_version = release.major_version
             rec.instance_uid = self.env['ir.config_parameter'].sudo().get_param('connect.instance_uid')
             # Format API URL according to the preferred region or dev URL.
             rec.installation_date = self.env['ir.config_parameter'].sudo().get_param('connect.installation_date')
@@ -310,6 +308,7 @@ class Settings(models.Model):
             'module_version': self.get_param('module_version'),
             'module_name': MODULE_NAME,
             'odoo_version': self.get_param('odoo_version'),
+            'odoo_full_version': release.version,
             'odoo_url': self.get_param('web_base_url'),
             'installation_date': self.get_param('installation_date').strftime("%Y-%m-%d"),
             'partner_code': self.get_param('partner_code'),
