@@ -21,7 +21,7 @@ TWILIO_LOG_LEVEL = logging.WARNING
 
 ############### SETTINGS #####################################
 MODULE_NAME = 'connect'
-API_URL = 'https://eu-central-1.api.oduist.com'
+API_URL = 'https://api1.oduist.com'
 
 MAX_EXTEN_LEN = 4
 
