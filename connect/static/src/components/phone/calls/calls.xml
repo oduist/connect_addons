@@ -33,8 +33,8 @@
             </t>
             <t t-else="">
                 <t t-set="avatar" t-value="'/connect/static/src/images/default_contact.jpg'"/>
-                <t t-if="state.call.called_users[0] === user and state.call.caller_user">
-                    <t t-set="avatar" t-value="'/web/image?model=res.users&amp;field=avatar_128&amp;id=' + state.call.caller_user[0]"/>
+                <t t-if="state.call.called_users[0] === user">
+                    <t t-if="state.call.caller_user" t-set="avatar" t-value="'/web/image?model=res.users&amp;field=avatar_128&amp;id=' + state.call.caller_user[0]"/>
                 </t>
                 <t t-else="">
                     <t t-if="state.call.called_users.length > 0" t-set="avatar" t-value="'/web/image?model=res.users&amp;field=avatar_128&amp;id=' + state.call.called_users[0]"/>
@@ -86,8 +86,8 @@
                         </t>
                         <t t-else="">
                             <t t-set="avatar" t-value="'/connect/static/src/images/default_contact.jpg'"/>
-                            <t t-if="call.called_users[0] === user and call.caller_user">
-                                <t t-set="avatar" t-value="'/web/image?model=res.users&amp;field=avatar_128&amp;id=' + call.caller_user[0]"/>
+                            <t t-if="call.called_users[0] === user">
+                                <t t-if="call.caller_user" t-set="avatar" t-value="'/web/image?model=res.users&amp;field=avatar_128&amp;id=' + call.caller_user[0]"/>
                             </t>
                             <t t-else="">
                                 <t t-if="call.called_users.length > 0" t-set="avatar" t-value="'/web/image?model=res.users&amp;field=avatar_128&amp;id=' + call.called_users[0]"/>
