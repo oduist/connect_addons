@@ -28,7 +28,7 @@ class User(models.Model):
     sip_enabled = fields.Boolean('SIP Phone Enabled')
     client_enabled = fields.Boolean('Web Phone Enabled', default=True)
     name = fields.Char(compute='_get_name')
-    user = fields.Many2one('res.users', string='Odoo User')
+    user = fields.Many2one('res.users', string='Odoo User', domain=[('share', '=', False)])
     domain = fields.Many2one('connect.domain', required=True, ondelete='cascade',
                             default=lambda x: x.env['connect.domain'].search([], limit=1))
     username = fields.Char(required=True)
