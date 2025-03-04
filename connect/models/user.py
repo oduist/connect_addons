@@ -154,6 +154,13 @@ class User(models.Model):
         if 'username' in vals:
             raise ValidationError('Username cannot be changed!')
         for rec in self:
+            sip_enabled = vals.get('sip_enabled', rec.sip_enabled)
+            client_enabled = vals.get('client_enabled', rec.client_enabled)
+            if not sip_enabled or not client_enabled:
+                vals.update({
+                    'ring_first': 'sip' if sip_enabled else 'client',
+                    'ring_second': False,
+                })
             if vals.get('sip_enabled') is False and rec.sid:
                 rec.delete_sip_account()
                 vals['sid'] = False
@@ -365,11 +372,10 @@ class User(models.Model):
             self.ring_second = 'sip'
         else:
             self.ring_first = 'client'
-            self.ring_second = False
 
     @api.onchange('ring_first')
     def on_change_ring_priority(self):
-        if not self.client_enabled and not self.sip_enabled:
+        if not self.client_enabled or not self.sip_enabled:
             return
         if self.ring_first == 'client':
             self.ring_second = 'sip'
