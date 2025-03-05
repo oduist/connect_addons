@@ -24,8 +24,8 @@ class CrmCall(models.Model):
                 super()._get_ref()
 
     @api.model
-    def on_call_status(self, params, skip_twilio_check=False):
-        call_id = super().on_call_status(params,skip_twilio_check=skip_twilio_check)
+    def on_call_status(self, params):
+        call_id = super().on_call_status(params)
         if not call_id:
             debug(self, 'CRM on_call_status error, no call.')
             return call_id
