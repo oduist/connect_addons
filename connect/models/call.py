@@ -269,13 +269,14 @@ class Call(models.Model):
                 for user in channel.call.called_users:
                     if user.connect_user[0].missed_calls_notify:
                         notify_users.append(user)
-            # Register call at partner or reference object
+            # Register call at partner.
             if channel.call.partner:
                 message.insert(3, 'partner: {}, '.format(channel.call.partner.name))
                 final_message = ' '.join(message)
                 if final_message.endswith(', '):
                     final_message = final_message[:-2] + '.'
-                channel.call.register_call_post_message(channel.call.partner, body=final_message)
+                channel.call.register_call_post_message(
+                    channel.call.partner, body=final_message, subtype_xmlid='mail.mt_note')
             # Register call to users
             statuses = ['completed']
             if channel.call.direction == 'incoming' and channel.call.status not in statuses and notify_users:
@@ -285,6 +286,7 @@ class Call(models.Model):
                     final_message = final_message[:-2] + '.'
                 channel.call.register_call_post_message(
                     channel.call,
+                    subtype_xmlid='mail.mt_comment',
                     subject=channel.call.name,
                     body=final_message,
                     partner_ids=[k.partner_id.id for k in notify_users]
@@ -294,15 +296,6 @@ class Call(models.Model):
 
     def register_call_post_message(self, obj, **kwargs):
         try:
-            is_missed_call = self.direction == 'in' and self.status != 'answered'
-            mt_note = self.env.ref('mail.mt_note').id
-            mt_comment = self.env.ref('mail.mt_comment').id
-            if is_missed_call:
-                kwargs['subtype_id'] = mt_comment
-                # kwargs['message_type'] = 'comment'
-            else:
-                kwargs['subtype_id'] = mt_note
-                # kwargs['message_type'] = 'notification'
             obj.with_user(SUPERUSER_ID).with_context(mail_create_nosubscribe=False).message_post(**kwargs)
         except Exception:
             logger.exception('Register call error: ')

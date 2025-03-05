@@ -22,6 +22,7 @@ TWILIO_LOG_LEVEL = logging.WARNING
 ############### SETTINGS #####################################
 MODULE_NAME = 'connect'
 API_URL = 'https://api1.oduist.com'
+#API_URL = 'https://devmax18.odoopbx.com'
 
 MAX_EXTEN_LEN = 4
 
@@ -29,7 +30,7 @@ PROTECTED_FIELDS = ['display_auth_token', 'display_twilio_api_secret', 'display_
 
 required_fields = [
     'admin_email', 'admin_name', 'admin_phone', 'company_name', 'company_city', 'company_email', 'company_phone',
-    'company_country_code','company_country', 'company_state_name', 'company_country_name', 'installation_date',
+    'company_country_code','company_country', 'company_country_name', 'installation_date',
     'module_name', 'module_version', 'odoo_url', 'odoo_version']
 
 def debug(rec, message, level='info'):
@@ -321,14 +322,7 @@ class Settings(models.Model):
                                   'your email, and your phone!')
         if admin_email == 'admin@example.com' or company_email == 'admin@example.com':
             raise ValidationError('Please set your real email address, not admin@example.com.')
-        res = self.make_api_request(API_URL, requests.post, data=data)
-        if not res and self.get_param('api_fallback_url'):
-            # Make a request and give error if fallback API endpoint is not available.
-            logger.warning('Making a request to API fallback.')
-            res = self.make_api_request(
-                self.get_param('api_fallback_url'), requests.post, data=data, raise_on_error=True)
-        # The register function must return json data with api_key.
-        res = res.json()
+        res = self.make_api_request(API_URL, requests.post, data=data, raise_on_error=True)
         self.env['ir.config_parameter'].sudo().set_param('connect.api_key', res['api_key'])
         self.set_param('is_registered', True)
 
@@ -379,15 +373,18 @@ class Settings(models.Model):
             res = method(
                 urljoin(url, 'registration'), json=data, headers=headers)
             if res.status_code == 200:
+                res = res.json()
+                if res.get('error'):
+                    raise ValidationError(res['error'])
                 return res
-            if res.status_code == 412:
-                raise ValidationError(res.text)
             elif raise_on_error:
                 # API gateway error
                 raise ValidationError(res.text)
         except Exception as e:
             if raise_on_error:
                 raise ValidationError(str(e))
+            else:
+                return {}
 
     @api.model_create_multi
     def create(self, vals_list):

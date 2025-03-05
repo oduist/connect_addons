@@ -33,7 +33,7 @@ class Domain(models.Model):
             request.update({'From': request.get('From').replace('client:', '')})
             request.update({'Caller': request.get('Caller').replace('client:', '')})
             # Create call
-            call_id = self.env['connect.call'].on_call_status(request, skip_twilio_check=True)
+            call_id = self.env['connect.call'].on_call_status(request)
             caller_name = None
             partner = self.env['res.partner'].sudo().get_partner_by_number(request['Caller'])
             if partner:
