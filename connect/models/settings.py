@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 import inspect
 import json
 import logging
@@ -21,11 +20,7 @@ TWILIO_LOG_LEVEL = logging.WARNING
 
 ############### SETTINGS #####################################
 MODULE_NAME = 'connect'
-API_URL = 'https://api1.oduist.com'
-#API_URL = 'https://devmax18.odoopbx.com'
-
 MAX_EXTEN_LEN = 4
-
 PROTECTED_FIELDS = ['display_auth_token', 'display_twilio_api_secret', 'display_openai_api_key']
 
 required_fields = [
@@ -322,7 +317,7 @@ class Settings(models.Model):
                                   'your email, and your phone!')
         if admin_email == 'admin@example.com' or company_email == 'admin@example.com':
             raise ValidationError('Please set your real email address, not admin@example.com.')
-        res = self.make_api_request(API_URL, requests.post, data=data, raise_on_error=True)
+        res = self.make_registration_request(requests.post, data=data, raise_on_error=True)
         self.env['ir.config_parameter'].sudo().set_param('connect.api_key', res['api_key'])
         self.set_param('is_registered', True)
 
@@ -333,13 +328,10 @@ class Settings(models.Model):
             raise ValidationError('This instance is not registered!')
         instance_uid = self.get_param('instance_uid') or ''
         api_key = self.get_param('api_key') or ''
-        res = self.make_api_request(
-            urljoin(API_URL, 'registration'),  requests.delete, headers={'x-api-key': api_key})
-        if not res and self.get_param('api_fallback_url'):
-            logger.warning('Making a request to API fallback.')
-            res = self.make_api_request(
-                urljoin(self.get_param('api_fallback_url'), 'registration'), requests.delete,
-                headers={'x-api-key': api_key}, raise_on_error=True)
+        res = self.make_registration_request(
+            requests.delete,
+            headers={'x-api-key': api_key},
+            raise_on_error=True)
         self.env['ir.config_parameter'].set_param('connect.api_key', '')
         self.set_param('is_registered', False)
 
@@ -366,7 +358,9 @@ class Settings(models.Model):
             'target': 'new',
         }
 
-    def make_api_request(self, url, method, data={}, headers={}, raise_on_error=False):
+    def make_registration_request(self, method, data={}, headers={}, raise_on_error=False):
+        url = self.env['ir.config_parameter'].get_param(
+            'connect.registration_url', 'https://api1.oduist.com/registration')
         headers.update({'x-instance-uid': self.get_param('instance_uid')})
         res = None
         try:
