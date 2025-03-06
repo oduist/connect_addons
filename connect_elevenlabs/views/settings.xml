@@ -28,6 +28,7 @@
           <page name="elevenlabs_api" string="API">
             <group>
               <group>
+                <a colspan="2" href="https://try.elevenlabs.io/connect">Open Your Elevenlabs account -&gt;</a>
                 <field name="elevenlabs_enabled"/>
                 <field name="display_elevenlabs_api_key" password="1" string="API Key"
                        invisible="not elevenlabs_enabled"
