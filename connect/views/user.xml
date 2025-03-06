@@ -88,6 +88,7 @@
                                     <field name="record_calls"/>
                                     <field name="ring_first"
                                            readonly="sip_enabled == False or client_enabled == False"/>
+                                    <field name="ring_second" invisible="1"/>
                                 </group>
                                 <group>
                                     <field name="voicemail_enabled"/>
