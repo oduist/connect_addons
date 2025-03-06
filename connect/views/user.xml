@@ -85,7 +85,9 @@
                                 <group>
                                     <field name="outgoing_callerid" placeholder="Outgoing CallerId number or empty for the default..."/>
                                     <field name="record_calls"/>
-                                    <field name="ring_first" attrs="{'readonly': ['|', ('sip_enabled', '=', False), ('client_enabled', '=', False)]}"/>
+                                    <field name="ring_first"
+                                           attrs="{'readonly': ['|', ('sip_enabled', '=', False), ('client_enabled', '=', False)]}"/>
+                                    <field name="ring_second" invisible="1"/>
                                 </group>
                                 <group>
                                     <field name="voicemail_enabled"/>
