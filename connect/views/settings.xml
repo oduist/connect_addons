@@ -111,15 +111,13 @@
                   </group>
                   <group>
                     <group name="registration" string="Registration">
-                      <field name="show_partner_code" invisible="1"/>
-                      <field colspan="2" name="partner_code"
-                             invisible="show_partner_code == False or is_registered == True"
-                             readonly="is_registered == True"/>
+                      <field colspan="2" name="registration_number"
+                             invisible="is_registered == False"/>
+                      <field colspan="2" name="customer_code"
+                             invisible="is_registered == True"/>
                       <button colspan="2" name="register_instance" class="btn btn-info btn-lg me-1" type="object" string="SUBMIT REGISTRATION"
                               invisible="is_registered or not i_agree_to_register or not i_agree_to_receive or not i_agree_to_contact"/>
                       <field name="is_registered" invisible="1"/>
-                      <button colspan="2" name="unregister_instance" class="btn btn-lg btn-danger me-1" type="object" string="DELETE REGISTRATION"
-                              invisible="is_registered != True"/>
                       <p colspan="2"
                          invisible="is_registered or (i_agree_to_register and i_agree_to_receive and i_agree_to_contact)">
                         Our product is <b>open source and free to use</b>, but it's <b>also a commercial solution used in business-critical environments</b>.<br/>
@@ -139,8 +137,8 @@
                            invisible="not is_registered">
                       <p colspan="2" >
                         <a role="button" class="btn btn-primary" href="https://oduist.com/knowledge/article/39" target="_new">DOCUMENTATION</a> |
-                        <a role="button" class="btn btn-info" href="https://oduist.com/forum/user-support-portal-1" target="_new">FREE SUPPORT</a> |
-                        <a role="button" class="btn btn-success" href="https://oduist.com/new-ticket" target="_new">ENTERPRISE SUPPORT</a>
+                        <a role="button" class="btn btn-info" href="https://oduist.com/forum/user-support-portal-1" target="_new">COMMUNITY SUPPORT</a> |
+                        <a role="button" class="btn btn-success" href="https://oduist.com/support" target="_new">ENTERPRISE SUPPORT</a>
                       </p>
                       <img alt="Great support!" colspan="2" src="/connect/static/description/support.jpg" width="100%"/>
                     </group>

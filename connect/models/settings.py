@@ -23,10 +23,6 @@ MODULE_NAME = 'connect'
 MAX_EXTEN_LEN = 4
 PROTECTED_FIELDS = ['display_auth_token', 'display_twilio_api_secret', 'display_openai_api_key']
 
-required_fields = [
-    'admin_email', 'admin_name', 'admin_phone', 'company_name', 'company_city', 'company_email', 'company_phone',
-    'company_country_code','company_country', 'company_country_name', 'installation_date',
-    'module_name', 'module_version', 'odoo_url', 'odoo_version']
 
 def debug(rec, message, level='info'):
     caller_module = inspect.stack()[1][3]
@@ -104,14 +100,14 @@ class Settings(models.Model):
     remove_recording_after_transcript = fields.Boolean()
     ############################################################
     instance_uid = fields.Char('Instance UID', compute='_get_instance_data')
-    api_key = fields.Char('API Key', compute='_get_instance_data')
     api_url = fields.Char('API URL', compute='_get_instance_data')
     api_fallback_url = fields.Char('API Fallback URL')
     twilio_verify_requests = fields.Boolean(default=True, string='Verify Twilio Requests')
     media_url = fields.Char()
     # Registration fields
-    partner_code = fields.Char()
-    show_partner_code = fields.Boolean(default=True)
+    customer_code = fields.Char()
+    registration_number = fields.Char(compute='_get_instance_data')
+    registration_key = fields.Char('API Key', compute='_get_instance_data')
     is_registered = fields.Boolean()
     i_agree_to_register = fields.Boolean()
     i_agree_to_contact = fields.Boolean()
@@ -141,7 +137,7 @@ class Settings(models.Model):
             # Format API URL according to the preferred region or dev URL.
             rec.installation_date = self.env['ir.config_parameter'].sudo().get_param('connect.installation_date')
             rec.api_url = self.env['ir.config_parameter'].sudo().get_param('connect.api_url')
-            rec.api_key = self.env['ir.config_parameter'].sudo().get_param('connect.api_key')
+            rec.registration_key = self.env['ir.config_parameter'].sudo().get_param('connect.registration_key')
             rec.company_email = self.env.user.company_id.email
             rec.company_name = self.env.user.company_id.name
             rec.company_phone = self.env.user.company_id.phone
@@ -154,6 +150,7 @@ class Settings(models.Model):
             rec.admin_email = self.env.user.partner_id.email
             rec.admin_phone = self.env.user.partner_id.phone
             rec.web_base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+            rec.registration_number = self.env['ir.config_parameter'].sudo().get_param('connect.registration_number')
 
 ####################################################################################
 ##### REGISTRATION ##### NO CHANGES ALLOWED HERE ###########################
@@ -289,7 +286,12 @@ class Settings(models.Model):
         admin_email = self.get_param('admin_email')
         admin_phone = self.get_param('admin_phone')
         company_email = self.get_param('company_email')
+        required_fields = [
+            'admin_email', 'admin_name', 'admin_phone', 'company_name', 'company_city', 'company_email', 'company_phone',
+            'company_country_code','company_country', 'company_country_name', 'installation_date',
+            'module_name', 'module_version', 'url', 'odoo_version']
         data = {
+            'instance_uid': self.get_param('instance_uid'),
             'company_name': self.get_param('company_name'),
             'company_country': self.get_param('company_country'),
             'company_state_name': self.get_param('company_state_name'),
@@ -305,11 +307,13 @@ class Settings(models.Model):
             'module_name': MODULE_NAME,
             'odoo_version': self.get_param('odoo_version'),
             'odoo_full_version': release.version,
-            'odoo_url': self.get_param('web_base_url'),
+            'url': self.get_param('web_base_url'),
             'installation_date': self.get_param('installation_date').strftime("%Y-%m-%d"),
-            'partner_code': self.get_param('partner_code'),
+            'customer_code': self.get_param('customer_code'),
         }
-        missing_fields = [field for field in required_fields if field not in data or not data[field]]
+        if not self.get_param('customer_code'):
+            raise ValidationError('Enter your customer code!')
+        missing_fields = [field for field in required_fields if field not in data]
         if missing_fields:
             raise ValidationError(f"Missing required fields: {', '.join(missing_fields)}")
         if not company_email or not admin_email or not admin_phone:
@@ -318,22 +322,9 @@ class Settings(models.Model):
         if admin_email == 'admin@example.com' or company_email == 'admin@example.com':
             raise ValidationError('Please set your real email address, not admin@example.com.')
         res = self.make_registration_request(requests.post, data=data, raise_on_error=True)
-        self.env['ir.config_parameter'].sudo().set_param('connect.api_key', res['api_key'])
+        self.env['ir.config_parameter'].sudo().set_param('connect.registration_key', res['registration_key'])
+        self.env['ir.config_parameter'].sudo().set_param('connect.registration_number', res['registration_number'])
         self.set_param('is_registered', True)
-
-    def unregister_instance(self):
-        if not self.env.user.has_group('base.group_system'):
-            raise ValidationError('Only Odoo admin can do it!')
-        if not self.get_param('api_key'):
-            raise ValidationError('This instance is not registered!')
-        instance_uid = self.get_param('instance_uid') or ''
-        api_key = self.get_param('api_key') or ''
-        res = self.make_registration_request(
-            requests.delete,
-            headers={'x-api-key': api_key},
-            raise_on_error=True)
-        self.env['ir.config_parameter'].set_param('connect.api_key', '')
-        self.set_param('is_registered', False)
 
     def update_company_data_button(self):
         main_company = self.env.company
@@ -360,12 +351,11 @@ class Settings(models.Model):
 
     def make_registration_request(self, method, data={}, headers={}, raise_on_error=False):
         url = self.env['ir.config_parameter'].get_param(
-            'connect.registration_url', 'https://api1.oduist.com/registration')
-        headers.update({'x-instance-uid': self.get_param('instance_uid')})
+            'connect.registration_url', 'https://api1.oduist.com/instance/register')
         res = None
         try:
             res = method(
-                urljoin(url, 'registration'), json=data, headers=headers)
+                urljoin(url, 'registration'), json=data)
             if res.status_code == 200:
                 res = res.json()
                 if res.get('error'):
