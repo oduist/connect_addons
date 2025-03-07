@@ -22,16 +22,6 @@
     <field name="perm_unlink" eval="1"/>
   </record>
 
-  <record id="connect_manage_partner_callout_wizard_admin" model="ir.model.access">
-    <field name="name">connect_manage_partner_callout_wizard</field>
-    <field name="model_id" ref="connect.model_connect_manage_partner_callout_wizard"/>
-    <field name="group_id" ref="connect.group_connect_admin"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="1"/>
-    <field name="perm_create" eval="1"/>
-    <field name="perm_unlink" eval="1"/>
-  </record>
-
   <!-- Domains -->
   <record id="connect_domain_admin" model="ir.model.access">
     <field name="name">connect_domain_admin</field>
@@ -139,50 +129,6 @@
     <field name="perm_write" eval="1"/>
     <field name="perm_create" eval="1"/>
     <field name="perm_unlink" eval="1"/>
-  </record>
-
-<!-- Callout -->
-  <record id="connect_callout_admin" model="ir.model.access">
-    <field name="name">connect_callout_admin</field>
-    <field name="model_id" ref="connect.model_connect_callout"/>
-    <field name="group_id" ref="connect.group_connect_admin"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="1"/>
-    <field name="perm_create" eval="1"/>
-    <field name="perm_unlink" eval="1"/>
-  </record>
-
-<!-- Callout Choice -->
-  <record id="connect_callout_choice_admin" model="ir.model.access">
-    <field name="name">connect_callout_choice_admin</field>
-    <field name="model_id" ref="connect.model_connect_callout_choice"/>
-    <field name="group_id" ref="connect.group_connect_admin"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="1"/>
-    <field name="perm_create" eval="1"/>
-    <field name="perm_unlink" eval="1"/>
-  </record>
-
-<!-- Callout Contact -->
-  <record id="connect_callout_contact_admin" model="ir.model.access">
-    <field name="name">connect_callout_contact_admin</field>
-    <field name="model_id" ref="connect.model_connect_callout_contact"/>
-    <field name="group_id" ref="connect.group_connect_admin"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="1"/>
-    <field name="perm_create" eval="1"/>
-    <field name="perm_unlink" eval="1"/>
-  </record>
-
-<!-- Callout Contact -->
-  <record id="connect_callout_log_admin" model="ir.model.access">
-    <field name="name">connect_callout_log_admin</field>
-    <field name="model_id" ref="connect.model_connect_callout_log"/>
-    <field name="group_id" ref="connect.group_connect_admin"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="0"/>
-    <field name="perm_create" eval="0"/>
-    <field name="perm_unlink" eval="0"/>
   </record>
 
 <!-- Call -->

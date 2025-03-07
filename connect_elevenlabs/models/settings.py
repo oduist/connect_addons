@@ -36,5 +36,4 @@ class Elevenlabsettings(models.Model):
 
     def elevenlabs_regenerate_prompts(self):
         self.env['connect.callflow'].elevenlabs_regenerate_prompts()
-        self.env['connect.callout'].elevenlabs_regenerate_prompts()
 
