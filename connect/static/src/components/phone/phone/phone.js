@@ -1,15 +1,14 @@
 /** @odoo-module **/
 "use strict"
-import { loadJS } from "@web/core/assets"
-import { useService } from "@web/core/utils/hooks"
-import { Calls } from "@connect/components/phone/calls/calls"
-import { Favorites } from "@connect/components/phone/favorites/favorites"
-import { Contacts } from "@connect/components/phone/contacts/contacts"
-import { Callouts } from "@connect/components/phone/callouts/callouts"
-import { dialTone, setFocus } from "@connect/js/utils"
-import { Component, useState, useRef, onWillStart, onMounted } from "@odoo/owl"
-import { useDebounced } from "@web/core/utils/timing"
-import { session } from "@web/session"
+import {loadJS} from "@web/core/assets"
+import {useService} from "@web/core/utils/hooks"
+import {Calls} from "@connect/components/phone/calls/calls"
+import {Favorites} from "@connect/components/phone/favorites/favorites"
+import {Contacts} from "@connect/components/phone/contacts/contacts"
+import {dialTone, setFocus } from "@connect/js/utils"
+import {Component, useState, useRef, onWillStart, onMounted } from "@odoo/owl"
+import {useDebounced} from "@web/core/utils/timing"
+import {session} from "@web/session"
 
 const uid = session.uid
 
@@ -20,7 +19,7 @@ export class Phone extends Component {
         token: String
     }
 
-    static components = { Calls, Contacts, Favorites, Callouts }
+    static components = {Calls, Contacts, Favorites}
 
     constructor() {
         super(...arguments)
@@ -40,7 +39,6 @@ export class Phone extends Component {
             contacts: 'contacts',
             calls: 'calls',
             favorites: 'favorites',
-            callouts: 'callouts'
         }
         this.status = {
             incoming: 'incoming',
@@ -59,7 +57,6 @@ export class Phone extends Component {
             isKeypad: true,
             isContacts: false,
             isFavorites: false,
-            isCallouts: false,
             isCalls: false,
             isPartner: false,
             isTransfer: false,
@@ -123,12 +120,12 @@ export class Phone extends Component {
         this.action = useService('action')
         this.notification = useService("notification")
 
-        this.notify = (message, { title = 'Connect', sticky = null, type = 'info' }) => {
+        this.notify = (message, {title = 'Connect', sticky = null, type = 'info'}) => {
             if (sticky === null) {
                 sticky = this.call_popup_is_sticky
             }
             if (this.call_popup_is_enabled) {
-                this.notification.add(message, { title, sticky, type })
+                this.notification.add(message, {title, sticky, type})
             }
         }
 
@@ -140,13 +137,13 @@ export class Phone extends Component {
             await loadJS('/connect/static/src/lib/twilio.min.js')
 
             // EVENTS
-            this.bus.addEventListener('busPhoneMakeCall', ({ detail }) => this.prepareCall(detail))
+            this.bus.addEventListener('busPhoneMakeCall', ({detail}) => this.prepareCall(detail))
 
-            this.bus.addEventListener('busPhoneMakeForward', ({ detail }) => this._busPhoneMakeForward(detail))
+            this.bus.addEventListener('busPhoneMakeForward', ({detail}) => this._busPhoneMakeForward(detail))
 
-            this.bus.addEventListener('busPhoneToggleDisplay', ({ detail }) => this._busPhoneToggleDisplay(detail))
+            this.bus.addEventListener('busPhoneToggleDisplay', ({detail}) => this._busPhoneToggleDisplay(detail))
 
-            this.bus.addEventListener('busPhoneHangUp', ({ detail }) => this._busPhoneHangUp(detail))
+            this.bus.addEventListener('busPhoneHangUp', ({detail}) => this._busPhoneHangUp(detail))
 
             window.addEventListener("beforeunload", (event) => {
                 if (this.session) {
@@ -161,9 +158,9 @@ export class Phone extends Component {
 
             window.addEventListener("unload", (event) => {
                 if (this.session) {
-                    const params = { id: this.id, action: 'pop' }
-                    this.bc.postMessage({ event: 'tbcSipSession', params })
-                    this.bc.postMessage({ event: "tbcCloseTab", params: { id: this.id } })
+                    const params = {id: this.id, action: 'pop'}
+                    this.bc.postMessage({event: 'tbcSipSession', params})
+                    this.bc.postMessage({event: "tbcCloseTab", params: {id: this.id}})
                     this.session.disconnect()
                 }
             })
@@ -208,13 +205,13 @@ export class Phone extends Component {
             }, true)
             // BroadcastChannel Events
             const self = this
-            this.bc.onmessage = ({ data: { event, params } }) => {
+            this.bc.onmessage = ({data: {event, params}}) => {
                 return
                 // console.log('tbc.onMessage', {event, params})
                 const localStartCall = () => {
                     if (self.session) return
                     // console.log('tbcStartCall -> ... INIT')
-                    const { callerId, isPartner } = params
+                    const {callerId, isPartner} = params
                     self.state.isPartner = isPartner
                     self.state.callerId = callerId
 
@@ -229,8 +226,8 @@ export class Phone extends Component {
                     }
                     localStartCall()
                     if (self.id === self.windows.at(-1) && !self.session) {
-                        const ringParams = { id: self.sipSessions[0] }
-                        self.bc.postMessage({ event: "tbcRing", params: ringParams })
+                        const ringParams = {id: self.sipSessions[0]}
+                        self.bc.postMessage({event: "tbcRing", params: ringParams})
                     }
                 } else if (event === 'tbcAnswerCall') {
                     // console.log('tbcAnswerCall', params)
@@ -261,7 +258,7 @@ export class Phone extends Component {
                     self.windows.push(params.id)
                     if (self.session) {
                         const syncParams = self.getJsonCallData()
-                        self.bc.postMessage({ event: "tbcSync", params: syncParams })
+                        self.bc.postMessage({event: "tbcSync", params: syncParams})
                     }
                 } else if (event === 'tbcCloseTab') {
                     // console.log('tbcCloseTab', params)
@@ -316,7 +313,7 @@ export class Phone extends Component {
                     }
                 } else if (event === 'tbcSipSession') {
                     // console.log('tbcSipSession', params)
-                    const { action } = params
+                    const {action} = params
                     if (action === 'push') {
                         self.sipSessions.push(params.id)
                     } else if (action === 'clear') {
@@ -335,7 +332,7 @@ export class Phone extends Component {
                     // if (params.id === self.id) self.incomingPlayer.play().catch()
                 }
             }
-            this.bc.postMessage({ event: "tbcNewTab", params: { id: this.id } })
+            this.bc.postMessage({event: "tbcNewTab", params: {id: this.id}})
         })
     }
 
@@ -353,7 +350,7 @@ export class Phone extends Component {
             // TODO: fix forward
             // this.session.sendDTMF(`${this.attended_transfer_sequence}${phoneNumber}#`)
         }
-        this.bc.postMessage({ event: "tbcForward", params: { phoneNumber } })
+        this.bc.postMessage({event: "tbcForward", params: {phoneNumber}})
         this.state.isDialingPanel = true
         // this.state.isCallForwarded = true
         this.state.isForward = false
@@ -371,7 +368,7 @@ export class Phone extends Component {
 
     async setCallStatus(status) {
         const currentCallStatus = this.callStatus[status] ? this.callStatus[status] : this.callStatus.Failed
-        this.notify(currentCallStatus.toUpperCase(), { sticky: false })
+        this.notify(currentCallStatus.toUpperCase(), {sticky: false})
     }
 
     async updateToken() {
@@ -402,7 +399,7 @@ export class Phone extends Component {
                 self.updateToken().then()
             } else if (error.name === 'AccessTokenInvalid') {
                 console.log('AccessTokenInvalid')
-                self.bus.trigger('busTraySetException', { exception: error.name })
+                self.bus.trigger('busTraySetException', {exception: error.name})
             } else {
                 console.log(error)
             }
@@ -420,11 +417,11 @@ export class Phone extends Component {
             if (self.session === null) {
                 self.session = session
                 self.sipSessions.push(self.id)
-                const params = { id: self.id, action: 'push' }
-                self.bc.postMessage({ event: 'tbcSipSession', params })
+                const params = {id: self.id, action: 'push'}
+                self.bc.postMessage({event: 'tbcSipSession', params})
             } else {
                 let isPartner = false
-                let callerId = { phoneNumber }
+                let callerId = {phoneNumber}
                 session.reject()
                 return
             }
@@ -441,7 +438,7 @@ export class Phone extends Component {
                     phoneNumber,
                 }
             } else {
-                self.state.callerId = { phoneNumber }
+                self.state.callerId = {phoneNumber}
             }
 
             const partner = await self.searchPartner(phoneNumber)
@@ -451,7 +448,7 @@ export class Phone extends Component {
                 self.toggleDisplay()
             }
             const params = self.getJsonCallData()
-            self.bc.postMessage({ event: "tbcStartCall", params })
+            self.bc.postMessage({event: "tbcStartCall", params})
 
             self.state.inIncoming = true
             self.state.isDialingPanel = true
@@ -472,7 +469,7 @@ export class Phone extends Component {
                 if (self.suppressBroadcastChannel) {
                     self.suppressBroadcastChannel = false
                 } else {
-                    self.bc.postMessage({ event: "tbcEndCall" })
+                    self.bc.postMessage({event: "tbcEndCall"})
                 }
             })
             session.on("cancel", async function (data) {
@@ -481,8 +478,8 @@ export class Phone extends Component {
                 await self.setCallStatus("Canceled")
                 const index = self.sipSessions.indexOf(self.id)
                 self.sipSessions.splice(index, 1)
-                const params = { id: self.id, action: 'pop' }
-                self.bc.postMessage({ event: 'tbcSipSession', params })
+                const params = {id: self.id, action: 'pop'}
+                self.bc.postMessage({event: 'tbcSipSession', params})
                 self.session = null
                 await self.endCall()
             })
@@ -492,8 +489,8 @@ export class Phone extends Component {
                 await self.setCallStatus("Rejected")
                 const index = self.sipSessions.indexOf(self.id)
                 self.sipSessions.splice(index, 1)
-                const params = { id: self.id, action: 'pop' }
-                self.bc.postMessage({ event: 'tbcSipSession', params })
+                const params = {id: self.id, action: 'pop'}
+                self.bc.postMessage({event: 'tbcSipSession', params})
                 self.session = null
                 await self.endCall()
             })
@@ -534,14 +531,14 @@ export class Phone extends Component {
         self.startCall()
 
         const syncParams = self.getJsonCallData()
-        self.bc.postMessage({ event: "tbcSync", params: syncParams })
+        self.bc.postMessage({event: "tbcSync", params: syncParams})
 
         const params = {
             To: phoneNumber,
             Called: phoneNumber,
         }
 
-        self.session = await self.userAgent.connect({ params })
+        self.session = await self.userAgent.connect({params})
 
         self.session.on("accept", async function () {
             // console.log('outgoing -> accepted: ', data)
@@ -549,7 +546,7 @@ export class Phone extends Component {
             self.state.phone_status = self.status.accepted
             await self.setCallStatus("Answered")
             const params = self.getJsonCallData()
-            self.bc.postMessage({ event: "tbcAnswerCall", params })
+            self.bc.postMessage({event: "tbcAnswerCall", params})
         })
         self.session.on("disconnect", async function () {
             // console.log('outgoing -> ended: ', data)
@@ -560,7 +557,7 @@ export class Phone extends Component {
             if (self.suppressBroadcastChannel) {
                 self.suppressBroadcastChannel = false
             } else {
-                self.bc.postMessage({ event: "tbcEndCall" })
+                self.bc.postMessage({event: "tbcEndCall"})
             }
         })
         self.session.on("cancel", async function () {
@@ -572,7 +569,7 @@ export class Phone extends Component {
             if (self.suppressBroadcastChannel) {
                 self.suppressBroadcastChannel = false
             } else {
-                self.bc.postMessage({ event: "tbcEndCall" })
+                self.bc.postMessage({event: "tbcEndCall"})
             }
         })
     }
@@ -582,11 +579,10 @@ export class Phone extends Component {
         this.state.isDialingPanel = true
         this.state.isContacts = false
         this.state.isFavorites = false
-        this.state.isCallouts = false
         this.state.isCalls = false
         this.state.isDisplay = true
         this.state.isKeypad = false
-        this.bus.trigger('busTrayState', { isDisplay: this.state.isDisplay, inCall: this.state.inCall })
+        this.bus.trigger('busTrayState', {isDisplay: this.state.isDisplay, inCall: this.state.inCall})
     }
 
     async endCall() {
@@ -597,7 +593,6 @@ export class Phone extends Component {
         this.state.isKeypad = this.lastActiveTab === this.tabs.phone
         this.state.isContacts = this.lastActiveTab === this.tabs.contacts
         this.state.isFavorites = this.lastActiveTab === this.tabs.favorites
-        this.state.isCallouts = this.lastActiveTab === this.tabs.callouts
         this.state.isCalls = this.lastActiveTab === this.tabs.calls
         this.state.isTransfer = false
         this.state.isForward = false
@@ -608,7 +603,7 @@ export class Phone extends Component {
         this.state.phoneNumber = ''
         this.state.xPhoneInfoDisplay = ''
         this.phoneInput.el.value = this.state.phoneNumber
-        this.bus.trigger('busTrayState', { isDisplay: this.state.isDisplay, inCall: this.state.inCall })
+        this.bus.trigger('busTrayState', {isDisplay: this.state.isDisplay, inCall: this.state.inCall})
         this.state.activeTab = this.lastActiveTab
         if (this.lastActiveTab === this.tabs.calls) {
             this.getCalls()
@@ -644,7 +639,7 @@ export class Phone extends Component {
             if (pbxUser) {
                 this.state.callerId = this.computeUserData(pbxUser, phoneNumber)
             } else {
-                this.state.callerId = { phoneNumber }
+                this.state.callerId = {phoneNumber}
             }
         }
         return partner
@@ -721,12 +716,12 @@ export class Phone extends Component {
                 this.state.isContacts = false
                 this.state.isCalls = false
                 this.state.activeTab = this.tabs.phone
-                this.bus.trigger('busTraySetState', { isDisplay: this.state.isDisplay, inCall: this.state.inCall })
+                this.bus.trigger('busTraySetState', {isDisplay: this.state.isDisplay, inCall: this.state.inCall})
             } else {
                 setFocus(this.phoneInput.el)
             }
         } else {
-            this.notify('Missing configs! Check "User / Preferences"!', { sticky: false })
+            this.notify('Missing configs! Check "User / Preferences"!', {sticky: false})
         }
     }
 
@@ -739,14 +734,14 @@ export class Phone extends Component {
             this.state.callPhoneNumber = this.state.phoneNumber.replace(/\(|\)|-| /gm, '')
             this.state.phoneNumber = ''
             this.phoneInput.el.value = this.state.phoneNumber
-            this.prepareCall({ phone: this.state.callPhoneNumber })
+            this.prepareCall({phone: this.state.callPhoneNumber})
         } else {
-            this.notify("The phone call has no number!", { sticky: false })
+            this.notify("The phone call has no number!", {sticky: false})
         }
     }
 
     _onClickContactCall(phoneNumber) {
-        this.prepareCall({ phone: phoneNumber })
+        this.prepareCall({phone: phoneNumber})
     }
 
     _onClickPhone(ev) {
@@ -762,19 +757,17 @@ export class Phone extends Component {
         this.state.isContacts = false
         this.state.isCalls = false
         this.state.isFavorites = false
-        this.state.isCallouts = false
         setFocus(this.phoneInput.el)
     }
 
     _onClickContacts(ev) {
         this.state.activeTab = this.tabs.contacts
         this.setLastActiveTab()
-        this.bus.trigger('busContactSetState', { isContact: true, isContactMode: true })
+        this.bus.trigger('busContactSetState', {isContact: true, isContactMode: true})
         this.state.isKeypad = false
         this.state.isContacts = true
         this.state.isContactList = false
         this.state.isFavorites = false
-        this.state.isCallouts = false
         this.state.isCalls = false
         this.state.isDialingPanel = false
     }
@@ -786,7 +779,6 @@ export class Phone extends Component {
         this.state.isContacts = false
         this.state.isContactList = false
         this.state.isFavorites = true
-        this.state.isCallouts = false
         this.state.isCalls = false
         this.state.isDialingPanel = false
     }
@@ -798,23 +790,9 @@ export class Phone extends Component {
         this.state.isContacts = false
         this.state.isContactList = false
         this.state.isFavorites = false
-        this.state.isCallouts = false
         this.state.isCalls = true
         this.state.isDialingPanel = false
         this.getCalls()
-    }
-
-    _onClickCallouts(ev) {
-        this.state.activeTab = this.tabs.callouts
-        this.setLastActiveTab()
-        this.state.isKeypad = false
-        this.state.isContacts = false
-        this.state.isContactList = false
-        this.state.isFavorites = false
-        this.state.isCallouts = true
-        this.state.isCalls = false
-        this.state.isDialingPanel = false
-        this.bus.trigger('busCalloutsGet')
     }
 
     _onClickDialingPanel(ev) {
@@ -845,7 +823,7 @@ export class Phone extends Component {
         this.state.isDialingPanel = false
         this.state.isContacts = true
         this.state.isTransfer = true
-        this.bus.trigger('busContactSetState', { isTransfer: true, isContactMode: true })
+        this.bus.trigger('busContactSetState', {isTransfer: true, isContactMode: true})
     }
 
     _onClickForward(ev) {
@@ -855,7 +833,7 @@ export class Phone extends Component {
         this.state.isDialingPanel = false
         this.state.isForward = true
         this.state.isContacts = true
-        this.bus.trigger('busContactSetState', { isForward: true, isContactMode: true })
+        this.bus.trigger('busContactSetState', {isForward: true, isContactMode: true})
     }
 
     _onClickMicrophoneMute(ev) {
@@ -867,13 +845,13 @@ export class Phone extends Component {
             }
         }
         this.state.isMicrophoneMute = !this.state.isMicrophoneMute
-        this.bc.postMessage({ event: "tbcMicrophoneMute", params: { mute: this.state.isMicrophoneMute } })
+        this.bc.postMessage({event: "tbcMicrophoneMute", params: {mute: this.state.isMicrophoneMute}})
     }
 
     _onClickSoundMute(ev) {
         this.state.isSoundMute = !this.state.isSoundMute
         localStorage.setItem('connect_is_sound_mute', `${this.state.isSoundMute}`)
-        this.bc.postMessage({ event: "tbcSoundMute", params: { mute: this.state.isSoundMute } })
+        this.bc.postMessage({event: "tbcSoundMute", params: {mute: this.state.isSoundMute}})
         this.setIncomingVolume()
     }
 
@@ -883,7 +861,7 @@ export class Phone extends Component {
             this.suppressBroadcastChannel = true
             this.session.disconnect()
         }
-        this.bc.postMessage({ event: "tbcEndCall" })
+        this.bc.postMessage({event: "tbcEndCall"})
         this.state.phone_status = this.status.ended
         await this.endCall()
         if (this.lastActiveTab === this.tabs.phone) {
@@ -896,7 +874,7 @@ export class Phone extends Component {
             this.session.accept()
         }
         const params = this.getJsonCallData()
-        this.bc.postMessage({ event: "tbcAnswerCall", params })
+        this.bc.postMessage({event: "tbcAnswerCall", params})
         this.state.phone_status = this.status.accepted
         this.state.inIncoming = false
         this.startCall()
@@ -907,7 +885,7 @@ export class Phone extends Component {
             this.suppressBroadcastChannel = true
             this.session.reject()
         }
-        this.bc.postMessage({ event: "tbcEndCall" })
+        this.bc.postMessage({event: "tbcEndCall"})
         this.state.inIncoming = false
         await this.endCall()
         if (this.lastActiveTab === this.tabs.phone) {
@@ -925,7 +903,7 @@ export class Phone extends Component {
             if (this.session) {
                 this.sendDTMF(ev.target.textContent)
             } else {
-                this.bc.postMessage({ event: "tbcDtmf", params: { key: ev.target.textContent } })
+                this.bc.postMessage({event: "tbcDtmf", params: {key: ev.target.textContent}})
             }
         } else {
             this.state.phoneNumber += ev.target.textContent
@@ -939,7 +917,7 @@ export class Phone extends Component {
         this.state.phoneNumber = this.state.phoneNumber.slice(0, -1)
         this.phoneInput.el.value = this.state.phoneNumber
         if (this.state.isContactList) {
-            this.bus.trigger('busContactSearchQuery', { searchQuery: this.phoneInput.el.value })
+            this.bus.trigger('busContactSearchQuery', {searchQuery: this.phoneInput.el.value})
         }
         if (this.state.phoneNumber === '') this.state.isContactList = false
     }
@@ -962,8 +940,8 @@ export class Phone extends Component {
             } else {
                 this.state.phoneNumber = this.phoneInput.el.value
                 this.state.isContactList = this.state.phoneNumber !== ''
-                this.bus.trigger('busContactSetState', { isContact: true })
-                this.bus.trigger('busContactSearchQuery', { searchQuery: this.phoneInput.el.value })
+                this.bus.trigger('busContactSetState', {isContact: true})
+                this.bus.trigger('busContactSearchQuery', {searchQuery: this.phoneInput.el.value})
             }
         }
     }
@@ -988,7 +966,7 @@ export class Phone extends Component {
         if (this.session) {
             this.session.sendDTMF(this.disconnect_call_sequence)
         } else {
-            this.bc.postMessage({ event: "tbcCancelForward" })
+            this.bc.postMessage({event: "tbcCancelForward"})
         }
     }
 }

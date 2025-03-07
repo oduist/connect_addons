@@ -26,9 +26,6 @@
                 <button aria-label="History" t-attf-class="flex-item{{state.activeTab === tabs.calls ? ' active' : ''}}" title="History" t-on-click="_onClickHistory">
                     <i class="fa fa-history"/>
                 </button>
-                <button aria-label="Callouts" t-attf-class="flex-item{{state.activeTab === tabs.callouts ? ' active' : ''}}" title="Callouts" t-on-click="_onClickCallouts">
-                    <i class="fa fa-reply-all"/>
-                </button>
             </div>
             <!--Keypad-->
             <div t-attf-class="{{state.isKeypad ? '' : 'o_hide'}} o_body_phone">
@@ -107,10 +104,7 @@
             <div t-attf-class="{{ state.isCalls ? '' : 'o_hide' }} o_body_phone">
                 <Calls bus="bus"/>
             </div>
-            <!--Callouts-->
-            <div t-attf-class="{{ state.isCallouts ? '' : 'o_hide' }} o_body_phone">
-                <Callouts bus="bus"/>
-            </div>
+
 
             <div class="mt-auto">
                 <!--Optional call buttons-->

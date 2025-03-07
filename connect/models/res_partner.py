@@ -225,37 +225,3 @@ class Partner(models.Model):
         else:
             return {'id': False, 'name': 'Unknown'}
 
-    def add_to_callout_action(self):
-        callout = self.env['connect.callout'].search([])
-        if len(callout) == 1:
-            wizard = self.env['connect.manage_partner_callout_wizard'].add_to_callout(callout)
-        else:
-            return {
-                'name': 'Add to Callout',
-                'type': 'ir.actions.act_window',
-                'view_type': 'form',
-                'view_mode': 'form',
-                'res_model': 'connect.manage_partner_callout_wizard',
-                'context': {'default_action': 'add'},
-                'target': 'new'
-            }
-
-    def remove_from_callout_action(self):
-        callouts = self.env['connect.callout'].search([
-            ('contacts.partner', 'in', self.env.context["active_ids"]),
-        ])
-        if len(callouts) == 1:
-            callout_contacts = self.env['connect.callout_contact'].search([
-                ('partner', 'in', self.env.context["active_ids"]),
-            ])
-            callout_contacts.unlink()
-        else:
-            return {
-                'name': 'Add to Callout',
-                'type': 'ir.actions.act_window',
-                'view_type': 'form',
-                'view_mode': 'form',
-                'res_model': 'connect.manage_partner_callout_wizard',
-                'context': {'default_action': 'remove'},
-                'target': 'new'
-            }
