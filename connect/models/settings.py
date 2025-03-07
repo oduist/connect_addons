@@ -500,7 +500,8 @@ class Settings(models.Model):
         if not to:
             # Get available option.
             to = list(ring_options.items())[0][1]
-        to += '&From={}'.format(number)
+        if 'client:' in to:
+            to += '&From={}'.format(number)
         exten = self.env['connect.exten'].search([('number', '=', number)], limit=1)
         default_number = self.env['connect.outgoing_callerid'].search([('is_default', '=', True)], limit=1)
         if exten:
@@ -530,9 +531,11 @@ class Settings(models.Model):
                 'byoc="{}"'.format(rule.byoc.sid) if rule.byoc else '',
                 status_url, number)
         record = self.env.user.connect_user.record_calls
+        record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus')
         channel = client.calls.create(twiml=twiml, to=to, from_=callerId,
             status_callback=status_url,
             record=record, recording_channels='dual',
+            recording_status_callback=record_status_url, recording_status_callback_event=["completed"],
             status_callback_event=['initiated','answered', 'completed'],
         )
         self.env['connect.channel'].sudo().create({
