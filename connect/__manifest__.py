@@ -43,7 +43,6 @@
         'views/byoc.xml',
         'views/call.xml',
         'views/callflow.xml',
-        'views/callout.xml',
         'views/channel.xml',
         'views/outgoing_callerid.xml',
         'views/outgoing_rule.xml',
@@ -58,7 +57,6 @@
         'views/message.xml',
         # Wizard
         'wizard/transfer.xml',
-        'wizard/manage_partner_callout.xml',
         ],
     'demo': [
     ],
