@@ -155,7 +155,8 @@ class TwiML(models.Model):
         template = environment.from_string(self.twiml)
         # Join request and params value and render the final TwiML.
         request.update(params)
-        return template.render(**request)
+        res = template.render(**request)
+        return res
 
     def render_python(self, request={}, params={}):
         import twilio

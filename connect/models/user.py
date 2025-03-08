@@ -10,7 +10,7 @@ from odoo.exceptions import ValidationError
 from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 from twilio.twiml.voice_response import Client, Dial, VoiceResponse
-from .settings import format_connect_response, debug
+from .settings import format_connect_response, debug, strip_number
 from .twiml import pretty_xml
 
 logger = logging.getLogger(__name__)
@@ -48,6 +48,13 @@ class User(models.Model):
     outgoing_callerid = fields.Many2one('connect.outgoing_callerid', ondelete='set null',
         domain=['|',('status', '=', 'validated'),('callerid_type', '=', 'number')])
     missed_calls_notify = fields.Boolean(default=False, help='Notify user on missed calls.')
+    fallback_destination = fields.Selection([
+        ('mobile', 'Mobile'),
+        # ('exten', 'Extension') # TODO: Not implemented yet.
+    ])
+    fallback_destination_mobile = fields.Char('Mobile Phone')
+    fallback_destination_exten = fields.Many2one('connect.exten', string='Exten')
+    greeting_message = fields.Char()
 
     _sql_constraints = [
         ('user_uniq', 'UNIQUE("user")', 'This Odoo user account is already defined!'),
@@ -208,11 +215,14 @@ class User(models.Model):
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
         record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus')
         status_url = urljoin(api_url, 'twilio/webhook/callstatus')
-        action_url = urljoin(
-            api_url, 'twilio/webhook/connect.user/call_action/{}'.format(self.id)
-        )
+        #action_url = urljoin(
+        #    api_url, 'twilio/webhook/connect.user/call_action/{}'.format(self.id)
+        #)
         response = VoiceResponse()
-        dial_sip_kwargs = {'timeout': self.sip_ring_timeout, 'callerId': callerId, 'action': action_url}
+        # Greet the caller
+        if self.greeting_message:
+            self.get_greeting_message(response)
+        dial_sip_kwargs = {'timeout': self.sip_ring_timeout, 'callerId': callerId}
         if self.record_calls:
             dial_sip_kwargs.update({
                 'recordingStatusCallback': record_status_url,
@@ -224,7 +234,7 @@ class User(models.Model):
             statusCallbackEvent='initiated answered completed',
             statusCallback=status_url)
 
-        dial_client_kwargs = {'timeout': self.client_ring_timeout, 'callerId': callerId, 'action': action_url}
+        dial_client_kwargs = {'timeout': self.client_ring_timeout, 'callerId': callerId}
         if self.record_calls:
             dial_client_kwargs.update({
                 'record': 'record-from-answer',
@@ -252,8 +262,37 @@ class User(models.Model):
             response.append(dial_sip)
         elif self.ring_second == 'client':
             response.append(dial_client)
-        debug(self, pretty_xml(str(response)))
-        return response
+        if self.fallback_destination:
+            if self.fallback_destination == 'mobile':
+                dial_mobile_kwargs = {
+                    'timeout': 60,
+                    # Dial out using user's personal callerid number.
+                    'callerId': self.outgoing_callerid.number,
+                }
+                if self.record_calls:
+                    dial_mobile_kwargs.update({
+                        'recordingStatusCallback': record_status_url,
+                        'record': 'record-from-answer-dual'
+                    })
+                # Clean the number.
+                dial = Dial('+{}'.format(strip_number(
+                    self.fallback_destination_mobile)), **dial_mobile_kwargs)
+                response.append(dial)
+            elif self.fallback_destination == 'exten':
+                # TODO: Not implemented yet.
+                raise Exception('Not implemented')
+        # Voicemail
+        if user.voicemail_enabled:
+            # The call voicemail
+            voicemail_record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus')
+            self.get_voicemail_prompt(response)
+            response.record(
+                maxLength=120,
+                finishOnKey='#',
+                playBeep=True,
+                recordingStatusCallback=voicemail_record_status_url)
+        debug(self, pretty_xml(response.to_xml()))
+        return response.to_xml()
 
     @api.model
     def get_client_token(self):
@@ -312,33 +351,20 @@ class User(models.Model):
 
     @api.model
     def on_call_action(self, record_id, request):
+        # Was used for VoiceMail. Left for future features.
         debug(self, 'Call action: {}'.format(json.dumps(request, indent=2)))
         response = VoiceResponse()
         user = self.browse(record_id)
-        if request.get('RecordingSid'):
-            response.hangup()
-            return response
-        if request.get('DialCallStatus') != 'completed':
-            if user.voicemail_enabled:
-                # The call voicemail
-                api_url = self.env['connect.settings'].sudo().get_param('api_url')
-                record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus')
-                user.get_voicemail_prompt(response)
-                response.record(
-                    maxLength=120,
-                    finishOnKey='#',
-                    playBeep=True,
-                    recordingStatusCallback=record_status_url)
-            else:
-                response.hangup()
-        else:
-            response.hangup()
         debug(self, pretty_xml(str(response)))
         return response
 
+    def get_greeting_message(self, response):
+        # Override in Elevenlabs module.
+        self.ensure_one()
+        response.say(self.greeting_message)
+
     def get_voicemail_prompt(self, response):
         self.ensure_one()
-        debug(self, 'Saying voicemail prompt {}'.format(self.name))
         voicemail_prompt = self.render_voicemail_prompt()
         response.say(voicemail_prompt)
 
@@ -381,3 +407,9 @@ class User(models.Model):
             self.ring_second = 'sip'
         else:
             self.ring_second = 'client'
+
+    @api.onchange
+    def _set_fallback_destination_mobile(self):
+        # Set user's mobile by default.
+        if self.fallback_destination == 'mobile' and not self.fallback_destination_mobile:
+            self.fallback_destination_mobile = self.user.partner_id.mobile
