@@ -83,6 +83,7 @@
                         <page name="callflow" string="CallFlow">
                             <group>
                                 <group>
+                                    <field name="greeting_message"/>
                                     <field name="outgoing_callerid" placeholder="Outgoing CallerId number or empty for the default..."/>
                                     <field name="record_calls"/>
                                     <field name="ring_first"
@@ -90,6 +91,15 @@
                                     <field name="ring_second" invisible="1"/>
                                 </group>
                                 <group>
+                                    <field name="fallback_destination"/>
+                                    <field name="fallback_destination_mobile"
+                                        invisible="fallback_destination != 'mobile'"
+                                        required="fallback_destination == 'mobile'"
+                                    />
+                                    <field name="fallback_destination_exten"
+                                        invisible="fallback_destination != 'exten'"
+                                        required="fallback_destination == 'exten'"
+                                    />
                                     <field name="voicemail_enabled"/>
                                     <field name="voicemail_prompt"
                                            attrs="{'invisible': [('voicemail_enabled', '=', False)],
