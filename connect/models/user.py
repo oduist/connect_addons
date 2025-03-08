@@ -53,7 +53,7 @@ class User(models.Model):
         # ('exten', 'Extension') # TODO: Not implemented yet.
     ])
     fallback_destination_mobile = fields.Char('Mobile Phone')
-    fallback_destination_exten = fields.Many2one('connect.exten', string='Exten')
+    fallback_destination_exten = fields.Many2one('connect.exten')
     greeting_message = fields.Char()
 
     _sql_constraints = [
