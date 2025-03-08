@@ -214,9 +214,9 @@ class User(models.Model):
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
         record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus')
         status_url = urljoin(api_url, 'twilio/webhook/callstatus')
-        action_url = urljoin(
-            api_url, 'twilio/webhook/connect.user/call_action/{}'.format(self.id)
-        )
+        #action_url = urljoin(
+        #    api_url, 'twilio/webhook/connect.user/call_action/{}'.format(self.id)
+        #)
         response = VoiceResponse()
         dial_sip_kwargs = {'timeout': self.sip_ring_timeout, 'callerId': callerId}
         if self.record_calls:
@@ -277,6 +277,16 @@ class User(models.Model):
             elif self.fallback_destination == 'exten':
                 # TODO: Not implemented yet.
                 raise Exception('Not implemented')
+        # Voicemail
+        if user.voicemail_enabled:
+            # The call voicemail
+            voicemail_record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus')
+            self.get_voicemail_prompt(response)
+            response.record(
+                maxLength=120,
+                finishOnKey='#',
+                playBeep=True,
+                recordingStatusCallback=voicemail_record_status_url)
         debug(self, pretty_xml(response.to_xml()))
         return response.to_xml()
 
@@ -337,27 +347,10 @@ class User(models.Model):
 
     @api.model
     def on_call_action(self, record_id, request):
+        # Was used for VoiceMail. Left for future features.
         debug(self, 'Call action: {}'.format(json.dumps(request, indent=2)))
         response = VoiceResponse()
         user = self.browse(record_id)
-        if request.get('RecordingSid'):
-            response.hangup()
-            return response
-        if request.get('DialCallStatus') != 'completed':
-            if user.voicemail_enabled:
-                # The call voicemail
-                api_url = self.env['connect.settings'].sudo().get_param('api_url')
-                record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus')
-                user.get_voicemail_prompt(response)
-                response.record(
-                    maxLength=120,
-                    finishOnKey='#',
-                    playBeep=True,
-                    recordingStatusCallback=record_status_url)
-            else:
-                response.hangup()
-        else:
-            response.hangup()
         debug(self, pretty_xml(str(response)))
         return response
 
