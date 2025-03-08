@@ -93,12 +93,10 @@
                                 <group>
                                     <field name="fallback_destination"/>
                                     <field name="fallback_destination_mobile"
-                                        invisible="fallback_destination != 'mobile'"
-                                        required="fallback_destination == 'mobile'"
+                                        attrs="{'invisible': [('fallback_destination', '!=', 'mobile')], 'required': [('fallback_destination', '=', 'mobile')]}"
                                     />
                                     <field name="fallback_destination_exten"
-                                        invisible="fallback_destination != 'exten'"
-                                        required="fallback_destination == 'exten'"
+                                        attrs="{'invisible': [('fallback_destination', '!=', 'exten')], 'required': [('fallback_destination', '=', 'exten')]}"
                                     />
                                     <field name="voicemail_enabled"/>
                                     <field name="voicemail_prompt"
