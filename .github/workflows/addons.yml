@@ -4,6 +4,7 @@ on:
     branches:
       - 16.0
       - 17.0
+      - 18.0
 
 jobs:
   Install:
@@ -21,7 +22,7 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@master
       - name: Install module requirements
-        run: pip3 install twilio openai elevenlabs
+        run: pip3 install twilio openai elevenlabs --break-system-packages
       - name: Install odoo modules
         run: >
           odoo --addons-path=$GITHUB_WORKSPACE --database=ephemeral
