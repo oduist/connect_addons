@@ -84,6 +84,7 @@
                         <page name="callflow" string="CallFlow">
                             <group>
                                 <group>
+                                    <field name="greeting_message"/>
                                     <field name="outgoing_callerid" placeholder="Outgoing CallerId number or empty for the default..."/>
                                     <field name="record_calls"/>
                                     <field name="ring_first"

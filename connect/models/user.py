@@ -54,6 +54,7 @@ class User(models.Model):
     ])
     fallback_destination_mobile = fields.Char('Mobile Phone')
     fallback_destination_exten = fields.Many2one('connect.exten', string='Exten')
+    greeting_message = fields.Char()
 
     _sql_constraints = [
         ('user_uniq', 'UNIQUE("user")', 'This Odoo user account is already defined!'),
@@ -218,6 +219,9 @@ class User(models.Model):
         #    api_url, 'twilio/webhook/connect.user/call_action/{}'.format(self.id)
         #)
         response = VoiceResponse()
+        # Greet the caller
+        if self.greeting_message:
+            self.get_greeting_message(response)
         dial_sip_kwargs = {'timeout': self.sip_ring_timeout, 'callerId': callerId}
         if self.record_calls:
             dial_sip_kwargs.update({
@@ -354,9 +358,13 @@ class User(models.Model):
         debug(self, pretty_xml(str(response)))
         return response
 
+    def get_greeting_message(self, response):
+        # Override in Elevenlabs module.
+        self.ensure_one()
+        response.say(self.greeting_message)
+
     def get_voicemail_prompt(self, response):
         self.ensure_one()
-        debug(self, 'Saying voicemail prompt {}'.format(self.name))
         voicemail_prompt = self.render_voicemail_prompt()
         response.say(voicemail_prompt)
 
