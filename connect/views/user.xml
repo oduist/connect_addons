@@ -95,7 +95,7 @@
                                     <field name="fallback_destination_mobile"
                                         attrs="{'invisible': [('fallback_destination', '!=', 'mobile')], 'required': [('fallback_destination', '=', 'mobile')]}"
                                     />
-                                    <field name="fallback_destination_exten"
+                                    <field name="fallback_destination_exten" string="Exten"
                                         attrs="{'invisible': [('fallback_destination', '!=', 'exten')], 'required': [('fallback_destination', '=', 'exten')]}"
                                     />
                                     <field name="voicemail_enabled"/>
