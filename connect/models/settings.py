@@ -457,9 +457,22 @@ class Settings(models.Model):
             logger.error('Twilio request is not valid: %s', json.dumps(request, indent=2))
         return request_valid
 
+    def check_api_url(self):
+        message = None
+        if re.match(r"^http://", self.get_param('api_url')):
+            message = 'Invalid api url! Please use HTTPS instead of HTTP to ensure a secure connection!'
+        if re.match(r"(http|https)://(localhost|127\.0\.0\.\d)(:\d+)?", self.get_param('api_url')):
+            message = 'Invalid api url! Localhost is not allowed! Please use a valid and secure domain!'
+        if message:
+            logger.warning(message)
+        return message
+
     def sync(self):
         if not (self.sudo().get_param('account_sid') and self.sudo().get_param('auth_token')):
             raise ValidationError('You must set account SID and Auth token!')
+        api_url_check = self.check_api_url()
+        if api_url_check:
+            raise ValidationError(api_url_check)
         self.env['connect.twiml'].sync()
         self.env['connect.domain'].sync()
         self.env['connect.number'].sync()
