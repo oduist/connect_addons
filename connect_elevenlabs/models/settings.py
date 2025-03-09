@@ -29,7 +29,6 @@ class Elevenlabsettings(models.Model):
             'res_id': rec.id,
             'name': 'ElevenLabs',
             'view_mode': 'form',
-            'views': [[False, 'form']],
             'view_id': self.env.ref('connect_elevenlabs.connect_elevenlabs_settings_form').id,
             'target': 'current',
         }
