@@ -30,4 +30,4 @@ jobs:
           odoo --addons-path=$GITHUB_WORKSPACE --database=ephemeral
           --db_host=db --db_user=odoo --db_password=odoo
           --stop-after-init --no-http
-          -i connect,connect_crm,connect_helpdesk,connect_elevenlabs
+          -i connect,connect_crm,connect_helpdesk
