@@ -29,13 +29,11 @@ class Number(models.Model):
     twiml = fields.Many2one('connect.twiml', string='TwiML', ondelete='set null')
     destination = fields.Selection(selection=[
         ('user', 'User'),
-        ('queue', 'Queue'),
         ('callflow', 'CallFlow'),
         ('twiml', 'TwiML'),
     ])
     callflow = fields.Many2one('connect.callflow', ondelete='set null')
     user = fields.Many2one('connect.user', ondelete='set null')
-    queue = fields.Many2one('connect.queue', ondelete='set null')
 
     _sql_constrains = [
         ('sid_unique', 'UNIQUE(sid)', 'This SID is already used!'),
@@ -77,7 +75,7 @@ class Number(models.Model):
 
     def write(self, vals):
         if 'destination' in vals:
-            for field in ['user', 'queue', 'callflow', 'twiml']:
+            for field in ['user', 'callflow', 'twiml']:
                 if field != vals['destination']:
                     vals.update({field: None})
         res = super().write(vals)
@@ -137,7 +135,5 @@ class Number(models.Model):
             return number.user.render(request)
         elif number.destination == 'callflow' and number.callflow:
             return number.callflow.render(request)
-        elif number.destination == 'queue' and number.queue:
-            return number.queue.render(request)
         else:
             return '<Response><Say>Number not configured. Goodbye!</Say></Response>'

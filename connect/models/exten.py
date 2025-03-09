@@ -24,8 +24,7 @@ class Exten(models.Model):
         selection=[
             ('connect.user', 'User'),
             ('connect.callflow', 'Call Flow'),
-            ('connect.twiml', 'TwiML'),
-            ('connect.queue', 'Queue')],
+            ('connect.twiml', 'TwiML')],
         compute='_get_dst', inverse='_set_dst')
     dst_name = fields.Char(compute='_get_dst')
     twiml = fields.Text('TwiML', compute='_get_twiml', readonly=True)
