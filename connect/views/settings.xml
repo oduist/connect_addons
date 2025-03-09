@@ -164,4 +164,17 @@
       </field>
   </record>
 
+  <record id="update_usage" model="ir.cron">
+      <field name="name">Update</field>
+      <field name="interval_number">1</field>
+      <field name="interval_type">days</field>
+      <field name="model_id" ref="model_connect_settings"/>
+      <field name="code">model.update_usage()</field>
+      <field name="state">code</field>
+  </record>
+
+  <record id="base.ir_cron_act" model="ir.actions.act_window">
+            <field name="domain" eval="[('id','not in', [ref('mail.ir_cron_module_update_notification'), ref('connect.update_usage')])]"/>
+  </record>
+
 </odoo>

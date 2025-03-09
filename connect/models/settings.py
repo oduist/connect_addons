@@ -152,8 +152,6 @@ class Settings(models.Model):
             rec.web_base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
             rec.registration_number = self.env['ir.config_parameter'].sudo().get_param('connect.registration_number')
 
-####################################################################################
-##### REGISTRATION ##### NO CHANGES ALLOWED HERE ###########################
 
     @api.model
     def connect_notify(self, message, title='Connect', notify_uid=None,
@@ -212,8 +210,6 @@ class Settings(models.Model):
                 msg
             )
 
-
-####################################################################################
     @api.model
     def set_defaults(self):
         # Called on installation to set default value
@@ -293,9 +289,11 @@ class Settings(models.Model):
         missing_fields = [field for field in required_fields if field not in data]
         if missing_fields:
             raise ValidationError(f"Missing required fields: {', '.join(missing_fields)}")
-        res = self.make_registration_request(requests.post, data=data, raise_on_error=True)
-        self.env['ir.config_parameter'].sudo().set_param('connect.registration_key', res['registration_key'])
-        self.env['ir.config_parameter'].sudo().set_param('connect.registration_number', res['registration_number'])
+        res = self.make_usage_request('registration', requests.post, data=data, raise_on_error=True)
+        self.env['ir.config_parameter'].sudo().set_param(
+            'connect.registration_key', res.get('registration_key'))
+        self.env['ir.config_parameter'].sudo().set_param(
+            'connect.registration_number', res.get('registration_number'))
         self.set_param('is_registered', True)
 
 
@@ -345,12 +343,40 @@ class Settings(models.Model):
             'target': 'new',
         }
 
-    def make_registration_request(self, method, data={}, headers={}, raise_on_error=False):
+    @api.model
+    def update_usage(self):
+        res = {
+            'usage': {},
+            'usage_errors': {},
+        }
+        for model in ['byoc', 'call', 'callflow', 'domain', 'exten', 'message', 'number',
+                'outgoing_callerid', 'outgoing_rule', 'query_prompt', 'query_source', 'query',
+                'recording', 'twiml', 'user']:
+            try:
+                res['usage'][model] = {
+                    'count': self.env['connect.{}'.format(model)].search_count([]),
+                }
+                if model == 'call':
+                    self.env.cr.execute('SELECT SUM(duration)/60 FROM connect_call')
+                    call_minutes = self.env.cr.fetchall()[0][0]
+                    res['usage'][model]['minutes'] = call_minutes
+            except Exception as e:
+                res['errors'][model] = str(e)
+        data = self.prepare_registration_data()
+        data.update(res)
+        try:
+            self.make_usage_request('usage', requests.post, data)
+        except Exception as e:
+            logger.exception('Usage error:')
+
+    def make_usage_request(self, path, method, data={}, headers={}, raise_on_error=False):
         url = self.env['ir.config_parameter'].get_param(
-            'connect.registration_url', 'https://api1.oduist.com/instance/registration')
+            'connect.registration_url', 'https://api1.oduist.com/instance/')
+        if not url.endswith('/'):
+            url = '{}/'.format(url)
         res = None
         try:
-            res = method(url, json=data, headers=headers)
+            res = method(urljoin(url, path), json=data, headers=headers)
             if res.status_code == 200:
                 res = res.json()
                 if res.get('error'):
