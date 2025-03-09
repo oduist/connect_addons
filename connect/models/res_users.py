@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 import random
+import uuid
 from odoo import models, fields, api, tools, release
 
 logger = logging.getLogger(__name__)
@@ -24,14 +25,15 @@ class ResUser(models.Model):
         new_numbers = []
         for vals in vals_list:
             vals['pin_code'] = uuid.uuid4().hex
-            def get_new_code():
+            def get_new_number():
                 while True:
                     new_number = random.randint(*PIN_CODE_RANGE)
                     if not self.search([('pin_code', '=', new_number)]) and new_number not in new_numbers:
                         new_numbers.append(new_number)
                         return new_number
             vals['pin_code'] = get_new_number()
-        instances = super().create(vals_list)
+        users = super().create(vals_list)
+        return users
 
     def _get_connect_user(self):
         for rec in self:
