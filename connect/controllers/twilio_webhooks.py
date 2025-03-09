@@ -89,22 +89,6 @@ class ConnectController(Controller):
         res = call.on_call_action(kw)
         return f'{res}'
 
-    @route('/twilio/webhook/calloutstatus', methods=['POST'], type='http', auth='public', csrf=False)
-    def callout_status_webhook(self, **kw):
-        if not self.check_signature(kw):
-            return False
-        callout = request.env['connect.callout'].with_user(request.env.ref("connect.user_connect_webhook"))
-        res = callout.on_callout_status(kw)
-        return f'{res}'
-
-    @route('/twilio/webhook/calloutaction', methods=['POST'], type='http', auth='public', csrf=False)
-    def callout_action_webhook(self, **kw):
-        if not self.check_signature(kw):
-            return '<Response><Say>Invalid Twilio request!</Say></Response>'
-        callout = request.env['connect.callout'].with_user(request.env.ref("connect.user_connect_webhook"))
-        res = callout.on_callout_action(kw)
-        return f'{res}'
-
     @route('/twilio/webhook/twiml/<int:twiml_id>', methods=['POST'], type='http', auth='public', csrf=False)
     def twiml_webhook(self, twiml_id, **kw):
         if not self.check_signature(kw):

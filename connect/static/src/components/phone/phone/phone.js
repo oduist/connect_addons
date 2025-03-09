@@ -5,7 +5,6 @@ import {useService} from "@web/core/utils/hooks"
 import {Calls} from "@connect/components/phone/calls/calls"
 import {Favorites} from "@connect/components/phone/favorites/favorites"
 import {Contacts} from "@connect/components/phone/contacts/contacts"
-import {Callouts} from "@connect/components/phone/callouts/callouts"
 import {dialTone, setFocus} from "@connect/js/utils"
 import {Component, useState, useRef, onWillStart, onMounted} from "@odoo/owl"
 import {useDebounced} from "@web/core/utils/timing"
@@ -20,7 +19,7 @@ export class Phone extends Component {
         token: String
     }
 
-    static components = {Calls, Contacts, Favorites, Callouts}
+    static components = {Calls, Contacts, Favorites}
 
     constructor() {
         super(...arguments)
@@ -40,7 +39,6 @@ export class Phone extends Component {
             contacts: 'contacts',
             calls: 'calls',
             favorites: 'favorites',
-            callouts: 'callouts'
         }
         this.status = {
             incoming: 'incoming',
@@ -59,7 +57,6 @@ export class Phone extends Component {
             isKeypad: true,
             isContacts: false,
             isFavorites: false,
-            isCallouts: false,
             isCalls: false,
             isPartner: false,
             isTransfer: false,
@@ -582,7 +579,6 @@ export class Phone extends Component {
         this.state.isDialingPanel = true
         this.state.isContacts = false
         this.state.isFavorites = false
-        this.state.isCallouts = false
         this.state.isCalls = false
         this.state.isDisplay = true
         this.state.isKeypad = false
@@ -597,7 +593,6 @@ export class Phone extends Component {
         this.state.isKeypad = this.lastActiveTab === this.tabs.phone
         this.state.isContacts = this.lastActiveTab === this.tabs.contacts
         this.state.isFavorites = this.lastActiveTab === this.tabs.favorites
-        this.state.isCallouts = this.lastActiveTab === this.tabs.callouts
         this.state.isCalls = this.lastActiveTab === this.tabs.calls
         this.state.isTransfer = false
         this.state.isForward = false
@@ -762,7 +757,6 @@ export class Phone extends Component {
         this.state.isContacts = false
         this.state.isCalls = false
         this.state.isFavorites = false
-        this.state.isCallouts = false
         setFocus(this.phoneInput.el)
     }
 
@@ -774,7 +768,6 @@ export class Phone extends Component {
         this.state.isContacts = true
         this.state.isContactList = false
         this.state.isFavorites = false
-        this.state.isCallouts = false
         this.state.isCalls = false
         this.state.isDialingPanel = false
     }
@@ -786,7 +779,6 @@ export class Phone extends Component {
         this.state.isContacts = false
         this.state.isContactList = false
         this.state.isFavorites = true
-        this.state.isCallouts = false
         this.state.isCalls = false
         this.state.isDialingPanel = false
     }
@@ -798,23 +790,9 @@ export class Phone extends Component {
         this.state.isContacts = false
         this.state.isContactList = false
         this.state.isFavorites = false
-        this.state.isCallouts = false
         this.state.isCalls = true
         this.state.isDialingPanel = false
         this.getCalls()
-    }
-
-    _onClickCallouts(ev) {
-        this.state.activeTab = this.tabs.callouts
-        this.setLastActiveTab()
-        this.state.isKeypad = false
-        this.state.isContacts = false
-        this.state.isContactList = false
-        this.state.isFavorites = false
-        this.state.isCallouts = true
-        this.state.isCalls = false
-        this.state.isDialingPanel = false
-        this.bus.trigger('busCalloutsGet')
     }
 
     _onClickDialingPanel(ev) {

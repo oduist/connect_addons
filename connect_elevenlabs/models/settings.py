@@ -29,12 +29,11 @@ class Elevenlabsettings(models.Model):
             'res_id': rec.id,
             'name': 'ElevenLabs',
             'view_mode': 'form',
-            'view_type': 'form',
+            'views': [[False, 'form']],
             'view_id': self.env.ref('connect_elevenlabs.connect_elevenlabs_settings_form').id,
             'target': 'current',
         }
 
     def elevenlabs_regenerate_prompts(self):
         self.env['connect.callflow'].elevenlabs_regenerate_prompts()
-        self.env['connect.callout'].elevenlabs_regenerate_prompts()
 

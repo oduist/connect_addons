@@ -244,7 +244,7 @@ class Settings(models.Model):
             'res_id': rec.id,
             'name': 'General Settings',
             'view_mode': 'form',
-            'view_type': 'form',
+            'views': [[False, 'form']],
             'view_id': self.env.ref('connect.connect_settings_form').id,
             'target': 'current',
         }
@@ -283,26 +283,36 @@ class Settings(models.Model):
             raise ValidationError('Only Odoo admin can do it!')
         if self.get_param('is_registered'):
             raise ValidationError('This instance is already registered!')
-        admin_email = self.get_param('admin_email')
-        admin_phone = self.get_param('admin_phone')
-        company_email = self.get_param('company_email')
+        data = self.prepare_registration_data()
+        if not data.get('customer_code'):
+            raise ValidationError('Enter your customer code!')
         required_fields = [
             'admin_email', 'admin_name', 'admin_phone', 'company_name', 'company_city', 'company_email', 'company_phone',
             'company_country_code','company_country', 'company_country_name', 'installation_date',
             'module_name', 'module_version', 'url', 'odoo_version']
-        data = {
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            raise ValidationError(f"Missing required fields: {', '.join(missing_fields)}")
+        res = self.make_registration_request(requests.post, data=data, raise_on_error=True)
+        self.env['ir.config_parameter'].sudo().set_param('connect.registration_key', res['registration_key'])
+        self.env['ir.config_parameter'].sudo().set_param('connect.registration_number', res['registration_number'])
+        self.set_param('is_registered', True)
+
+
+    def prepare_registration_data(self):
+        return {
             'instance_uid': self.get_param('instance_uid'),
             'company_name': self.get_param('company_name'),
             'company_country': self.get_param('company_country'),
             'company_state_name': self.get_param('company_state_name'),
             'company_country_code': self.get_param('company_country_code'),
             'company_country_name': self.get_param('company_country_name'),
-            'company_email': company_email,
+            'company_email': self.get_param('company_email'),
             'company_city': self.get_param('company_city'),
             'company_phone': self.get_param('company_phone'),
             'admin_name': self.get_param('admin_name'),
-            'admin_email': admin_email,
-            'admin_phone': admin_phone,
+            'admin_email': self.get_param('admin_email'),
+            'admin_phone': self.get_param('admin_phone'),
             'module_version': self.get_param('module_version'),
             'module_name': MODULE_NAME,
             'odoo_version': self.get_param('odoo_version'),
@@ -311,20 +321,6 @@ class Settings(models.Model):
             'installation_date': self.get_param('installation_date').strftime("%Y-%m-%d"),
             'customer_code': self.get_param('customer_code'),
         }
-        if not self.get_param('customer_code'):
-            raise ValidationError('Enter your customer code!')
-        missing_fields = [field for field in required_fields if field not in data]
-        if missing_fields:
-            raise ValidationError(f"Missing required fields: {', '.join(missing_fields)}")
-        if not company_email or not admin_email or not admin_phone:
-            raise ValidationError('Please enter all required fields: company email, '
-                                  'your email, and your phone!')
-        if admin_email == 'admin@example.com' or company_email == 'admin@example.com':
-            raise ValidationError('Please set your real email address, not admin@example.com.')
-        res = self.make_registration_request(requests.post, data=data, raise_on_error=True)
-        self.env['ir.config_parameter'].sudo().set_param('connect.registration_key', res['registration_key'])
-        self.env['ir.config_parameter'].sudo().set_param('connect.registration_number', res['registration_number'])
-        self.set_param('is_registered', True)
 
     def update_company_data_button(self):
         main_company = self.env.company
@@ -351,18 +347,16 @@ class Settings(models.Model):
 
     def make_registration_request(self, method, data={}, headers={}, raise_on_error=False):
         url = self.env['ir.config_parameter'].get_param(
-            'connect.registration_url', 'https://api1.oduist.com/instance/register')
+            'connect.registration_url', 'https://api1.oduist.com/instance/registration')
         res = None
         try:
-            res = method(
-                urljoin(url, 'registration'), json=data)
+            res = method(url, json=data, headers=headers)
             if res.status_code == 200:
                 res = res.json()
                 if res.get('error'):
                     raise ValidationError(res['error'])
                 return res
-            elif raise_on_error:
-                # API gateway error
+            else:
                 raise ValidationError(res.text)
         except Exception as e:
             if raise_on_error:

@@ -23,7 +23,6 @@
         'views/settings.xml',
         'views/voice.xml',
         'views/callflow.xml',
-        'views/callout.xml',
         'views/user.xml',
     ],
     'demo': [],

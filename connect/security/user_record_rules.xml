@@ -24,54 +24,6 @@
         <field name="perm_unlink" eval="0"/>
     </record>
 
-    <!-- Callout -->
-    <record id="connect_callout_user_rule" model="ir.rule">
-        <field name="name">connect_callout_user</field>
-        <field name="model_id" ref="connect.model_connect_callout"/>
-        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
-        <field name="domain_force">[('create_uid', '=', user.id)]</field>
-        <field name="perm_read" eval="1"/>
-        <field name="perm_write" eval="1"/>
-        <field name="perm_create" eval="1"/>
-        <field name="perm_unlink" eval="1"/>
-    </record>
-
-    <!-- Callout Choice -->
-    <record id="connect_callout_choice_user_rule" model="ir.rule">
-        <field name="name">connect_callout_choice_user</field>
-        <field name="model_id" ref="connect.model_connect_callout_choice"/>
-        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
-        <field name="domain_force">[('create_uid', '=', user.id)]</field>
-        <field name="perm_read" eval="1"/>
-        <field name="perm_write" eval="1"/>
-        <field name="perm_create" eval="1"/>
-        <field name="perm_unlink" eval="1"/>
-    </record>
-
-    <!-- Callout Contact -->
-    <record id="connect_callout_contact_user_rule" model="ir.rule">
-        <field name="name">connect_callout_contact_user</field>
-        <field name="model_id" ref="connect.model_connect_callout_contact"/>
-        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
-        <field name="domain_force">[('create_uid', '=', user.id)]</field>
-        <field name="perm_read" eval="1"/>
-        <field name="perm_write" eval="1"/>
-        <field name="perm_create" eval="1"/>
-        <field name="perm_unlink" eval="1"/>
-    </record>
-
-    <!-- Callout Log -->
-    <record id="connect_callout_log_user_rule" model="ir.rule">
-        <field name="name">connect_callout_log_user</field>
-        <field name="model_id" ref="connect.model_connect_callout_log"/>
-        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
-        <field name="domain_force">[('create_uid', '=', user.id)]</field>
-        <field name="perm_read" eval="1"/>
-        <field name="perm_write" eval="0"/>
-        <field name="perm_create" eval="0"/>
-        <field name="perm_unlink" eval="0"/>
-    </record>
-
     <!-- Call -->
     <record id="connect_call_user_rule" model="ir.rule">
         <field name="name">connect_call_user</field>
