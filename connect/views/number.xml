@@ -24,7 +24,6 @@
                 <field name="twiml"/>
                 <field name="user"/>
                 <field name="callflow"/>
-                <field name="queue"/>
                 <field name="is_ignored"/>
 
             </tree>
@@ -56,9 +55,6 @@
                                 <field name="callflow"
                                        attrs="{'invisible': [('destination', '!=', 'callflow')],
                                                'required': [('destination', '=', 'callflow')]}"/>
-                                <field name="queue"
-                                       attrs="{'invisible': [('destination', '!=', 'queue')],
-                                               'required': [('destination', '=', 'queue')]}"/>
                             </group>
                             <group>
                                 <field name="is_ignored"/>
