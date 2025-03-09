@@ -97,14 +97,6 @@ class ConnectController(Controller):
         res = twiml.browse(twiml_id).render(kw)
         return f'{res}'
 
-    @route('/twilio/webhook/queue/<int:q_id>/<string:method>', methods=['POST'], type='http', auth='public', csrf=False)
-    def queue_webhook(self, q_id, method, **kw):
-        if not self.check_signature(kw):
-            return '<Response><Say>Invalid Twilio request!</Say></Response>'
-        queue = request.env['connect.queue'].with_user(request.env.ref("connect.user_connect_webhook"))
-        res = getattr(queue, method)(q_id, kw)
-        return f'{res}'
-
     @route('/twilio/webhook/message', methods=['POST'], type='http', auth='public', csrf=False)
     def message_webhook(self, **kw):
         if not self.check_signature(kw):

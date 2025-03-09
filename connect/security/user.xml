@@ -187,17 +187,6 @@
     <field name="perm_unlink" eval="0"/>
   </record>
 
-<!-- Queues -->
-  <record id="connect_queue_user" model="ir.model.access">
-    <field name="name">connect_queue_user</field>
-    <field name="model_id" ref="connect.model_connect_queue"/>
-    <field name="group_id" ref="connect.group_connect_user"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="0"/>
-    <field name="perm_create" eval="0"/>
-    <field name="perm_unlink" eval="0"/>
-  </record>
-
   <!-- Query -->
   <record id="connect_query_user" model="ir.model.access">
     <field name="name">connect_query_user</field>
