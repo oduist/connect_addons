@@ -90,6 +90,15 @@
                     </group>
                   </group>
                 </page>
+                <page name="versions" string="Versions">
+                  <group>
+                    <field name="connect_version" string="Connect"/>
+                  </group>
+                  <group>
+                    <button colspan="2" name="check_latest_versions" class="btn btn-info btn-sm me-1" type="object" string="CHECK VERSIONS"/>
+                    <field name="latest_versions"/>
+                  </group>
+                </page>
                 <!-- REGISTRATION PAGE -->
                 <page name="registration" string="Registration">
                   <group invisible="is_registered">
