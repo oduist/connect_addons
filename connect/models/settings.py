@@ -127,6 +127,27 @@ class Settings(models.Model):
     company_country_name = fields.Char(compute='_get_instance_data')
     company_city = fields.Char(compute='_get_instance_data')
     web_base_url = fields.Char(compute='_get_instance_data', string='Odoo URL')
+    connect_version = fields.Char(default=lambda x: x._get_module_version())
+    latest_versions = fields.Html(readonly=True)
+
+    def _get_version_from_manifest(self, module_name):
+        # TODO: __script__
+        return '1.0.1'
+
+    def _get_module_version(self):
+        return '1.0.1'
+
+    def check_latest_versions(self):
+        data = {
+            'instance_uid': self.get_param('instance_uid'),
+            'odoo_version': '18.0',
+        }
+        res = self.make_usage_request('check_versions', requests.post, data=data, raise_on_error=True)
+        html = ['<ul>']
+        for k, v in res['module_versions'].items():
+            html.append('<li>{}</li>'.format('{}: {}'.format(k, v)))
+        html.append('</ul>')
+        self.set_param('latest_versions', ''.join(html))
 
     def _get_instance_data(self):
         module = self.env['ir.module.module'].sudo().search([('name', '=', MODULE_NAME)])
