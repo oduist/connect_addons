@@ -89,7 +89,8 @@
                     </group>
                   </group>
                 </page>
-                <page name="versions" string="Versions">
+                <page name="versions" string="Versions"
+                      invisible="is_registered == False">
                   <group>
                     <field name="connect_version" string="Connect"/>
                   </group>
