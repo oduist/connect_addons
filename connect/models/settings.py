@@ -152,7 +152,7 @@ class Settings(models.Model):
     def _get_instance_data(self):
         module = self.env['ir.module.module'].sudo().search([('name', '=', MODULE_NAME)])
         for rec in self:
-            rec.module_version = module.installed_version[-3:]
+            rec.module_version = re.sub(r'^(\d+\.\d+\.)', '', module.installed_version)
             rec.odoo_version = release.major_version
             rec.instance_uid = self.env['ir.config_parameter'].sudo().get_param('connect.instance_uid')
             # Format API URL according to the preferred region or dev URL.
@@ -304,9 +304,9 @@ class Settings(models.Model):
         if not data.get('customer_code'):
             raise ValidationError('Enter your customer code!')
         required_fields = [
-            'admin_email', 'admin_name', 'admin_phone', 'company_name', 'company_city', 'company_email', 'company_phone',
-            'company_country_code','company_country', 'company_country_name', 'installation_date',
-            'module_name', 'module_version', 'url', 'odoo_version']
+            'admin_email', 'admin_name', 'admin_phone', 'company_name', 'company_city', 'company_email',
+            'company_phone', 'company_country_code', 'company_country_name', 'installation_date', 'module_name',
+            'module_version', 'url', 'odoo_version']
         missing_fields = [field for field in required_fields if field not in data]
         if missing_fields:
             raise ValidationError(f"Missing required fields: {', '.join(missing_fields)}")
