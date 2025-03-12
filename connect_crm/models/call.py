@@ -191,7 +191,6 @@ class CrmCall(models.Model):
             'res_id': self.lead.id,
             'name': self.lead.name if self.lead else 'New Lead',
             'view_mode': 'form',
-            'views': [[False, 'form']],
             'target': 'current',
             'context': context,
         }

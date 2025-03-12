@@ -132,6 +132,9 @@ class TwiML(models.Model):
     def render(self, request={}, params={}):
         # Render under admin privs. Also do not check Twilio Signature here!
         self = self.sudo()
+        api_url_check = self.env['connect.settings'].check_api_url()
+        if api_url_check:
+            return '<Response><Say>{}</Say></Response>'.format(api_url_check)
         self.ensure_one()
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
         recording_voice_status_url = urljoin(api_url, 'app/connect/webhook/recordingstatus')
