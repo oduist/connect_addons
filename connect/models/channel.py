@@ -106,14 +106,6 @@ class Channel(models.Model):
                     data['parent_channel'] = parent_channel.id
                     data['parent_sid'] = parent_channel.parent_channel.sid
             channel.write(data)
-            # Check if this is a queue call.
-            if params.get('DequeingCallSid'):
-                agent_channel = self.search([('sid', '=', params['DequeingCallSid'])])
-                agent_channel.write({
-                    'parent_channel': channel.id,
-                    'parent_sid': params['DequeingCallSid'],
-                })
-                debug(self, 'Agent channel %s updated.' % agent_channel.id)
             debug(self, 'Channel %s updated.' % channel.id)
         # Channel not found by sid, create it.
         else:
