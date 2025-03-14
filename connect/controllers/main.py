@@ -59,21 +59,6 @@ class ConnectPlusController(http.Controller):
         else:
             raise UserError("Failed to download the media. Status code: %s" % response.status_code)
 
-    @http.route('/connect/query_result/', methods=['POST'], type='json', auth='public', csrf=False)
-    def query_result(self, **kw):
-        rec = http.request.env['connect.query'].sudo().search([
-            ('id', '=', kw.get('rec_id')),
-            ('token', '=', kw.get('token'))
-        ])
-        if not rec:
-            raise NotFound()
-        rec.update({
-            'result': kw.get('result'),
-            'error': kw.get('error'),
-            'price': kw.get('price'),
-            'token': ''
-        })
-
     @http.route('/connect/<string:uid>/', methods=['GET', 'POST'], type='http', auth='public', csrf=False)
     def health_check(self, uid):
         instance_uid = http.request.env['connect.settings'].sudo().get_param('instance_uid')
