@@ -363,15 +363,17 @@ class Settings(models.Model):
             'target': 'new',
         }
 
+    def get_usage_model_list(self):
+        return ['byoc', 'call', 'callflow', 'domain', 'exten', 'message', 'number', 'outgoing_callerid',
+                'outgoing_rule', 'recording', 'twiml', 'user']
+
     @api.model
     def update_usage(self):
         res = {
             'usage': {},
             'usage_errors': {},
         }
-        for model in ['byoc', 'call', 'callflow', 'domain', 'exten', 'message', 'number',
-                'outgoing_callerid', 'outgoing_rule', 'query_prompt', 'query_source', 'query',
-                'recording', 'twiml', 'user']:
+        for model in self.get_usage_model_list():
             try:
                 res['usage'][model] = {
                     'count': self.env['connect.{}'.format(model)].search_count([]),
