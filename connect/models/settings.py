@@ -140,20 +140,24 @@ class Settings(models.Model):
 
     def check_latest_versions(self):
         module_list = self.get_module_list()
-        data = {
+        request_data = {
             'instance_uid': self.get_param('instance_uid'),
             'odoo_version': release.major_version,
             'module_list': module_list
         }
-        response = self.make_usage_request('check_versions', requests.post, data=data, raise_on_error=True)
-        html = ['<div class="col-6"><table class="table"><thead><tr><th scope="col">Module Name</th><th scope="col">'
-                'Current Version</th><th scope="col">Latest</th></tr></thead><tbody>']
+        response = self.make_usage_request('check_versions', requests.post, data=request_data, raise_on_error=True)
+        data = []
         for module in module_list:
             current_version = self.get_module_version(module)
             latest_version = response.get(module, '')
-            html.append(f'<tr><td>{module}</td><td>{current_version}</td><td>{latest_version}</td></tr>')
-        html.append('</tbody></table></div>')
-        self.set_param('latest_versions', ''.join(html))
+            data.append({
+                'name': module,
+                'current_version': current_version,
+                'latest_version': latest_version
+            })
+
+        html = self.env["ir.ui.view"]._render_template("connect.module_version_template", {'data': data})
+        self.set_param('latest_versions', html)
 
     def _get_instance_data(self):
         module = self.env['ir.module.module'].sudo().search([('name', '=', MODULE_NAME)])
@@ -179,10 +183,9 @@ class Settings(models.Model):
             rec.web_base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
             rec.registration_number = self.env['ir.config_parameter'].sudo().get_param('connect.registration_number')
 
-
     @api.model
     def connect_notify(self, message, title='Connect', notify_uid=None,
-                             sticky=False, warning=False):
+                       sticky=False, warning=False):
         """Send a notification to logged in Odoo user.
 
         Args:
