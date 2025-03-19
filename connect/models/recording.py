@@ -55,7 +55,7 @@ class Recording(models.Model):
     sid = fields.Char('SID', readonly=True, required=True)
     # It's a channel sid actually.
     call_sid = fields.Char(required=True, string='Channel SID', readonly=True)
-    caller_user = fields.Many2one('res.users', ondelete='set null')
+    caller_user = fields.Many2one(related='call.caller_user', store=True, readonly=False)
     called_user = fields.Many2one('res.users', ondelete='set null')
     caller_number = fields.Char()
     called_number = fields.Char()
@@ -249,13 +249,16 @@ class Recording(models.Model):
             'status': params['RecordingStatus']
         }
         channel = self.env['connect.channel'].search([('sid', '=', params['CallSid'])])
+        called_user = channel.search([
+            '|', ('sid', '=', params['CallSid']),
+            ('parent_channel', '=', channel.id),
+            ('called_user', '!=', False)], limit=1).called_user
         if channel:
             call = channel.call
             data['channel'] = channel.id
             data['call'] = call.id
             data['partner'] = call.partner.id
-            data['caller_user'] = channel.caller_user.id
-            data['called_user'] = channel.called_user.id
+            data['called_user'] = called_user.id
             data['caller_number'] = call.caller
             data['called_number'] = call.called
         # Fetch recording
