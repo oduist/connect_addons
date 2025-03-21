@@ -54,7 +54,7 @@ class ConnectController(Controller):
         if not self.check_signature(kw):
             return '<Response><Say>Invalid Twilio request!</Say></Response>'
         callflow = request.env['connect.callflow'].with_user(request.env.ref("connect.user_connect_webhook"))
-        res = callflow.browse(flow_id).gather_action(kw)
+        res = callflow.gather_action(flow_id, kw)
         return f'{res}'
 
     @route('/twilio/webhook/vm_recordingstatus', methods=['POST'], type='http', auth='public', csrf=False)
