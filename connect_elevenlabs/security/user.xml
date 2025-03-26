@@ -31,4 +31,14 @@
     <field name="perm_unlink" eval="0"/>
   </record>
 
+    <record id="connect_elevenlabs_ai_agent_user" model="ir.model.access">
+    <field name="name">connect_elevenlabs_ai_agent_user</field>
+    <field name="model_id" ref="connect_elevenlabs.model_connect_elevenlabs_ai_agent"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
 </odoo>

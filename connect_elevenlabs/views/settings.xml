@@ -45,6 +45,18 @@
               </group>
             </group>
           </page>
+          <page name="agent" string="Agent">
+            <group>
+              <group>
+                <field name="agent_url"/>
+              </group>
+            </group>
+            <group>
+              <group>
+                <button type="object" string="Agent Ping" icon="fa-check" name="ping_agent"/>
+              </group>
+            </group>
+          </page>
         </notebook>
       </sheet>
       </form>

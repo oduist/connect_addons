@@ -24,6 +24,8 @@
         'views/voice.xml',
         'views/callflow.xml',
         'views/user.xml',
+        'views/number.xml',
+        'views/ai_agent.xml',
     ],
     'demo': [],
     'installable': True,

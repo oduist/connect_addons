@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="elevenlabs_number_form" model="ir.ui.view" >
+        <field name="name">elevenlabs_number_form</field>
+        <field name="model">connect.number</field>
+        <field name="inherit_id" ref="connect.connect_number_form"/>
+        <field name="arch" type="xml">
+            <field name="is_ignored" position="after">
+                <field name="enable_ai_agent"/>
+                <field name="agent" options="{'no_create': True}"
+                       invisible="not enable_ai_agent"/>
+            </field>
+        </field>
+    </record>
+</odoo>
