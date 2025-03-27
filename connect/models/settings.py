@@ -450,6 +450,16 @@ class Settings(models.Model):
             logger.warning(message)
         return message
 
+    def check_api_url(self):
+        message = None
+        if re.match(r"^http://", self.get_param('api_url')):
+            message = 'Invalid api url! Please use HTTPS instead of HTTP to ensure a secure connection!'
+        if re.match(r"(http|https)://(localhost|127\.0\.0\.\d)(:\d+)?", self.get_param('api_url')):
+            message = 'Invalid api url! Localhost is not allowed! Please use a valid and secure domain!'
+        if message:
+            logger.warning(message)
+        return message
+
     def sync(self):
         if not (self.sudo().get_param('account_sid') and self.sudo().get_param('auth_token')):
             raise ValidationError('You must set account SID and Auth token!')

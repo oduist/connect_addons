@@ -338,7 +338,6 @@ class Call(models.Model):
             'res_id': self.partner.id,
             'name': self.partner.name if self.partner else 'New Partner',
             'view_mode': 'form',
-            'views': [[False, 'form']],
             'target': 'current',
             'context': context,
         }

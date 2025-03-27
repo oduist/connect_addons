@@ -50,7 +50,6 @@
         'views/query.xml',
         'views/query_prompt.xml',
         'views/query_source.xml',
-        'views/queue.xml',
         'views/number.xml',
         'views/favorite.xml',
         'views/res_partner.xml',
