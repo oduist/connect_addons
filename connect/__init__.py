@@ -49,8 +49,6 @@ ALTER TABLE twilidoo_manage_partner_callout_wizard RENAME TO connect_manage_part
 ALTER TABLE twilidoo_callout_twilidoo_manage_partner_callout_wizard_rel RENAME TO connect_callout_connect_manage_partner_callout_wizard_rel;
 ALTER TABLE twilidoo_add_credits_wizard RENAME TO connect_add_credits_wizard;
 ALTER TABLE twilidoo_settings RENAME TO connect_settings;
-ALTER TABLE twilidoo_elevenlabs_file RENAME TO connect_elevenlabs_file;
-ALTER TABLE twilidoo_elevenlabs_voice RENAME TO connect_elevenlabs_voice;
 
 ALTER TABLE connect_call_connect_user_rel
 RENAME COLUMN twilidoo_call_id to connect_call_id;
@@ -82,11 +80,11 @@ SET key = REPLACE(key, 'twilidoo', 'connect')
 WHERE key LIKE '%twilidoo%';
 '''
 
-    query_twilidoo_website = '''ALTER TABLE connect_settings 
+    query_twilidoo_website = '''ALTER TABLE connect_settings
 RENAME COLUMN twilidoo_website_connect_extension to connect_website_connect_extension;
-ALTER TABLE connect_settings 
+ALTER TABLE connect_settings
 RENAME COLUMN twilidoo_website_connect_domain to connect_website_connect_domain;
-ALTER TABLE connect_settings 
+ALTER TABLE connect_settings
 RENAME COLUMN twilidoo_website_enable to connect_website_enable;
 '''
     try:
