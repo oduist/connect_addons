@@ -49,37 +49,37 @@
                             <td class="o_contact_info" t-on-click="() => this._openPartner(partner.id)">
                                 <div>
                                     <span><t t-out="partner.name"/></span>
-                                    <div t-if="partner.twlidoo_phone_normalized">
-                                        <span class="icon-phone o_contact_phone"><t t-out="partner.twlidoo_phone_normalized"/></span>
+                                    <div t-if="partner.connect_phone_normalized">
+                                        <span class="icon-phone o_contact_phone"><t t-out="partner.connect_phone_normalized"/></span>
                                     </div>
-                                    <div t-if="partner.twlidoo_mobile_normalized">
-                                        <span class="fa fa-mobile o_contact_phone"><t t-out="partner.twlidoo_mobile_normalized"/></span>
+                                    <div t-if="partner.connect_mobile_normalized">
+                                        <span class="fa fa-mobile o_contact_phone"><t t-out="partner.connect_mobile_normalized"/></span>
                                     </div>
                                 </div>
                             </td>
                             <td class="o_contact_call_button">
                                 <div class="d-flex">
                                     <div style="width: 40px; height: 30px;">
-                                        <t t-if="partner.twlidoo_phone_normalized">
-                                            <button t-if="isTransfer" t-attf-title="Transfer to {{partner.twlidoo_phone_normalized}}" t-on-click="() => this._onClickMakeTransfer(partner.twlidoo_phone_normalized)">
+                                        <t t-if="partner.connect_phone_normalized">
+                                            <button t-if="isTransfer" t-attf-title="Transfer to {{partner.connect_phone_normalized}}" t-on-click="() => this._onClickMakeTransfer(partner.connect_phone_normalized)">
                                                 <i class="fa icon-phone"/>
                                             </button>
-                                            <button t-if="isContact" t-attf-title="Call to {{partner.twlidoo_phone_normalized}}" t-on-click="() => this._onClickMakeCall(partner.twlidoo_phone_normalized)">
+                                            <button t-if="isContact" t-attf-title="Call to {{partner.connect_phone_normalized}}" t-on-click="() => this._onClickMakeCall(partner.connect_phone_normalized)">
                                                 <i class="fa icon-phone"/>
                                             </button>
-                                            <button t-if="isForward" t-attf-title="Forward to {{partner.twlidoo_phone_normalized}}" t-on-click="() => this._onClickMakeForward(partner.twlidoo_phone_normalized)">
+                                            <button t-if="isForward" t-attf-title="Forward to {{partner.connect_phone_normalized}}" t-on-click="() => this._onClickMakeForward(partner.connect_phone_normalized)">
                                                 <i class="fa icon-phone"/>
                                             </button>
                                         </t>
                                     </div>
-                                    <t t-if="partner.twlidoo_mobile_normalized">
-                                        <button t-if="isTransfer" t-attf-title="Transfer to {{partner.twlidoo_mobile_normalized}}" t-on-click="() => this._onClickMakeTransfer(partner.twlidoo_mobile_normalized)">
+                                    <t t-if="partner.connect_mobile_normalized">
+                                        <button t-if="isTransfer" t-attf-title="Transfer to {{partner.connect_mobile_normalized}}" t-on-click="() => this._onClickMakeTransfer(partner.connect_mobile_normalized)">
                                             <i class="fa fa-mobile"/>
                                         </button>
-                                        <button t-if="isContact" t-attf-title="Call to {{partner.twlidoo_mobile_normalized}}" t-on-click="() => this._onClickMakeCall(partner.twlidoo_mobile_normalized)">
+                                        <button t-if="isContact" t-attf-title="Call to {{partner.connect_mobile_normalized}}" t-on-click="() => this._onClickMakeCall(partner.connect_mobile_normalized)">
                                             <i class="fa fa-mobile"/>
                                         </button>
-                                        <button t-if="isForward" t-attf-title="Forward to {{partner.twlidoo_mobile_normalized}}" t-on-click="() => this._onClickMakeForward(partner.twlidoo_mobile_normalized)">
+                                        <button t-if="isForward" t-attf-title="Forward to {{partner.connect_mobile_normalized}}" t-on-click="() => this._onClickMakeForward(partner.connect_mobile_normalized)">
                                             <i class="fa fa-mobile"/>
                                         </button>
                                     </t>
