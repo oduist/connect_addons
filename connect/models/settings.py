@@ -246,7 +246,6 @@ class Settings(models.Model):
             'res_id': rec.id,
             'name': 'General Settings',
             'view_mode': 'form',
-            'views': [[False, 'form']],
             'view_id': self.env.ref('connect.connect_settings_form').id,
             'target': 'current',
         }
@@ -454,6 +453,9 @@ class Settings(models.Model):
     def sync(self):
         if not (self.sudo().get_param('account_sid') and self.sudo().get_param('auth_token')):
             raise ValidationError('You must set account SID and Auth token!')
+        api_url_check = self.check_api_url()
+        if api_url_check:
+            raise ValidationError(api_url_check)
         self.env['connect.twiml'].sync()
         self.env['connect.domain'].sync()
         self.env['connect.number'].sync()
