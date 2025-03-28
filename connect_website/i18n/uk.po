@@ -1,0 +1,61 @@
+# Translation of Odoo Server.
+# This file contains the translation of the connect_website module for Ukrainian language.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 17.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-03-28 10:15+0000\n"
+"PO-Revision-Date: 2025-03-28 10:15+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"Language: uk\n"
+
+#. module: connect_website
+#: model:ir.model,name:connect_website.model_connect_domain
+msgid "Domain"
+msgstr "Домен"
+
+#. module: connect_website
+#: model:ir.model,name:connect_website.model_connect_settings
+msgid "Connect Settings"
+msgstr "Налаштування з'єднання"
+
+#. module: connect_website
+#: model:ir.model.fields,field_description:connect_website.field_connect_settings__website_enabled
+msgid "Enable Website Integration"
+msgstr "Увімкнути інтеграцію з веб-сайтом"
+
+#. module: connect_website
+#: model_terms:ir.ui.view,arch_db:connect_website.s_talk_button
+msgid "Talk to Us"
+msgstr "Поговоріть з нами"
+
+#. module: connect_website
+#: model_terms:ir.ui.view,arch_db:connect_website.s_talk_button
+msgid "Call Now"
+msgstr "Зателефонувати зараз"
+
+#. module: connect_website
+#: model_terms:ir.ui.view,arch_db:connect_website.s_talk_button
+msgid "Contact Us"
+msgstr "Зв'язатися з нами"
+
+#. module: connect_website
+#: model:ir.model.fields,field_description:connect_website.field_connect_settings__website_button_text
+msgid "Button Text"
+msgstr "Текст кнопки"
+
+#. module: connect_website
+#: model:ir.model.fields,field_description:connect_website.field_connect_settings__website_button_color
+msgid "Button Color"
+msgstr "Колір кнопки"
+
+#. module: connect_website
+#: model:ir.model.fields,field_description:connect_website.field_connect_settings__website_button_position
+msgid "Button Position"
+msgstr "Позиція кнопки"
