@@ -1,0 +1,68 @@
+# Translation of Odoo Server.
+# This file contains the translation of the connect_elevenlabs module for Polish language.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 17.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-03-28 10:15+0000\n"
+"PO-Revision-Date: 2025-03-28 10:15+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"Language: pl\n"
+
+#. module: connect_elevenlabs
+#: model:ir.model,name:connect_elevenlabs.model_connect_callflow
+msgid "Call Flow"
+msgstr "Przepływ połączeń"
+
+#. module: connect_elevenlabs
+#: model:ir.model,name:connect_elevenlabs.model_connect_settings
+msgid "Connect Settings"
+msgstr "Ustawienia połączenia"
+
+#. module: connect_elevenlabs
+#: model:ir.model.fields,field_description:connect_elevenlabs.field_connect_settings__elevenlabs_api_key
+msgid "ElevenLabs API Key"
+msgstr "Klucz API ElevenLabs"
+
+#. module: connect_elevenlabs
+#: model:ir.model.fields,field_description:connect_elevenlabs.field_connect_settings__elevenlabs_enabled
+msgid "Enable ElevenLabs"
+msgstr "Włącz ElevenLabs"
+
+#. module: connect_elevenlabs
+#: model:ir.model,name:connect_elevenlabs.model_connect_elevenlabs_voice
+msgid "ElevenLabs Voice"
+msgstr "Głos ElevenLabs"
+
+#. module: connect_elevenlabs
+#: model:ir.model.fields,field_description:connect_elevenlabs.field_connect_elevenlabs_voice__name
+msgid "Name"
+msgstr "Nazwa"
+
+#. module: connect_elevenlabs
+#: model:ir.model.fields,field_description:connect_elevenlabs.field_connect_elevenlabs_voice__voice_id
+msgid "Voice ID"
+msgstr "ID głosu"
+
+#. module: connect_elevenlabs
+#: model:ir.model.fields,field_description:connect_elevenlabs.field_connect_callflow__elevenlabs_voice_id
+#: model:ir.model.fields,field_description:connect_elevenlabs.field_connect_user__elevenlabs_voice_id
+msgid "Voice"
+msgstr "Głos"
+
+#. module: connect_elevenlabs
+#: model:ir.model,name:connect_elevenlabs.model_connect_user
+msgid "Connect User"
+msgstr "Użytkownik połączenia"
+
+#. module: connect_elevenlabs
+#: model:ir.actions.act_window,name:connect_elevenlabs.connect_elevenlabs_voice_action
+#: model:ir.ui.menu,name:connect_elevenlabs.menu_connect_elevenlabs_voice
+msgid "Voices"
+msgstr "Głosy"
