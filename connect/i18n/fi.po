@@ -1,0 +1,3061 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* connect
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 17.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-03-31 01:40+0000\n"
+"PO-Revision-Date: 2025-03-31 05:13+0300\n"
+"Last-Translator: Ossi Mäntylahti <ossiman@gmail.com>\n"
+"Language-Team: \n"
+"Language: fi\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.5\n"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_outgoing_callerid_form
+msgid ""
+"<small invisible=\"callerid_type != 'outgoing_callerid' or id == False or status == 'validated'\" colspan=\"2\">Enter the "
+"code in DTMF mode and press #</small>"
+msgstr ""
+"<small invisible=\"callerid_type != 'outgoing_callerid' or id == False or status == 'validated'\" colspan=\"2\">Syötä "
+"koodi DTMF-tilassa ja paina #</small>"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid ""
+"<strong>Community and Support</strong>: Registering in our portal gives you access to knowledge bases, user forums, and "
+"troubleshooting help from other users and our team."
+msgstr ""
+"<strong>Yhteisö ja tuki</strong>: Rekisteröitymällä portaaliin pääset käyttämään tietämystietokantoja ja "
+"käyttäjäfoorumeita. Saat vianmääritysapua muilta käyttäjiltä ja tiimiltämme."
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid ""
+"<strong>Ongoing Development:</strong> Even though the core product is free, we still need resources to maintain, improve, "
+"and support it. By staying connected, you help us continue innovating."
+msgstr ""
+"<strong>Käynnissä oleva kehitys:</strong> Vaikka ydintuote on ilmainen, tarvitsemme silti resursseja sen ylläpitoon, "
+"parantamiseen ja tukemiseen. Kun olet yhteydessä, autat meitä jatkamaan tämän kehittämistä."
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid ""
+"<strong>Security First:</strong> We take security very seriously. If a critical bug or vulnerability is discovered, we "
+"need to ensure we can reach <strong>every user</strong> to provide an immediate fix."
+msgstr ""
+"<strong>Turvallisuus ensin:</strong> Suhtaudumme turvallisuuteen erittäin vakavasti. Jos kriittinen vika tai "
+"haavoittuvuus havaitaan, meidän on varmistettava, että voimme tavoittaa <strong>jokaisen käyttäjän</strong> ja tarjota "
+"välittömän korjauksen."
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid ""
+"<strong>Value-Added Services:</strong> We offer optional premium services that provide additional benefits, including SLA "
+"support, consulting, and advanced features. Having your contact details allows us to inform you about solutions that "
+"might help your business grow."
+msgstr ""
+"<strong>Lisäarvopalvelut:</strong> SLA-tuki, konsultointi ja lisäominaisuudet. Yhteystietojesi ansiosta voimme kertoa "
+"sinulle ratkaisuista, jotka voivat auttaa yritystäsi kasvamaan."
+
+#. module: connect
+#: model:ir.ui.menu,name:connect.connect_ai_menu
+msgid "AI"
+msgstr "Tekoäly"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__api_fallback_url
+msgid "API Fallback URL"
+msgstr "API Fallback URL-osoite"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__api_key
+msgid "API Key"
+msgstr "API-avain"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "API Key SID"
+msgstr "API-avain SID"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "API Key Secret"
+msgstr "API-avaimen salaisuus"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "API Keys"
+msgstr "API-avaimet"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__api_url
+msgid "API URL"
+msgstr "API-osoite"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "Accept"
+msgstr "Hyväksy"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_message__account_sid
+#: model:ir.model.fields,field_description:connect.field_connect_settings__account_sid
+msgid "Account SID"
+msgstr "Account SID"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_manage_partner_callout_wizard__action
+msgid "Action"
+msgstr "Toiminto"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__message_needaction
+#: model:ir.model.fields,field_description:connect.field_connect_channel__message_needaction
+#: model:ir.model.fields,field_description:connect.field_connect_recording__message_needaction
+msgid "Action Needed"
+msgstr "Edellyttää toimenpiteitä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_queue__action_url
+msgid "Action Url"
+msgstr "Toiminta URL"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout__active
+msgid "Active"
+msgstr "Aktiivinen"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__activity_ids
+#: model:ir.model.fields,field_description:connect.field_connect_recording__activity_ids
+msgid "Activities"
+msgstr "Aktiviteetit"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__activity_exception_decoration
+#: model:ir.model.fields,field_description:connect.field_connect_recording__activity_exception_decoration
+msgid "Activity Exception Decoration"
+msgstr "Toimenpiteen poikkeuksen ohjeteksti"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__activity_state
+#: model:ir.model.fields,field_description:connect.field_connect_recording__activity_state
+msgid "Activity State"
+msgstr "Toimenpiteen tila"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__activity_type_icon
+#: model:ir.model.fields,field_description:connect.field_connect_recording__activity_type_icon
+msgid "Activity Type Icon"
+msgstr "Toimenpiteen kuvake"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_manage_partner_callout_wizard__action__add
+msgid "Add"
+msgstr "Lisää"
+
+#. module: connect
+#: model:ir.actions.server,name:connect.add_to_callout_action
+msgid "Add to Callout"
+msgstr "Lisää ulos lähtevään puheluun"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/calls/calls.xml:0
+#, python-format
+msgid "Add {{caller_id}} to Favorites"
+msgstr "Lisää {{caller_id}} suosikkeihin"
+
+#. module: connect
+#: model:res.groups,name:connect.group_connect_admin
+msgid "Admin"
+msgstr "Ylläpitäjä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__admin_email
+msgid "Admin Email"
+msgstr "Ylläpitäjän sähköposti"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__admin_name
+msgid "Admin Name"
+msgstr "Ylläpitäjän nimi"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__admin_phone
+msgid "Admin Phone"
+msgstr "Ylläpitäjän puhelin"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout__after_choice_message
+msgid "After Choice Message"
+msgstr "Valinnan jälkeinen viesti"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_queue__connect_app
+msgid "Agent Connect App"
+msgstr "Agentti Connect -sovellus"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_queue__agents
+msgid "Agents"
+msgstr "Agentit"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__answered_pbx_user
+msgid "Answered PBX User"
+msgstr "Vastannut puhelinkeskuksen käyttäjä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__answered_user
+#: model_terms:ir.ui.view,arch_db:connect.connect_call_form
+msgid "Answered User"
+msgstr "Vastannut käyttäjä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__answered_user_img
+#: model:ir.model.fields,field_description:connect.field_connect_message__receiver_user_img
+msgid "Answered User Avatar"
+msgstr "Vastanneen käyttäjän avatar"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_byoc__app
+msgid "App"
+msgstr "Sovellus"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_exten__model
+msgid "AppModel"
+msgstr "AppModel"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_domain__application
+#: model:ir.model.fields,field_description:connect.field_connect_user__application
+msgid "Application"
+msgstr "Sovellus"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_callout_form model_terms:ir.ui.view,arch_db:connect.connect_callout_search
+msgid "Archived"
+msgstr "Arkistoidut"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__message_attachment_count
+#: model:ir.model.fields,field_description:connect.field_connect_channel__message_attachment_count
+#: model:ir.model.fields,field_description:connect.field_connect_recording__message_attachment_count
+msgid "Attachment Count"
+msgstr "Liitteiden määrä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__auth_token
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "Auth Token"
+msgstr "Todennustunnus"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_manage_partner_callout_wizard__available_callouts
+msgid "Available Callouts"
+msgstr "Käytettävissä olevat ulos lähtevät puhelut"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/calls/calls.xml:0
+#: code:addons/connect/static/src/components/phone/contacts/contacts.xml:0
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "Avatar"
+msgstr "Avatar-kuva"
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.byoc_action model:ir.model,name:connect.model_connect_byoc
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__byoc
+#: model_terms:ir.ui.view,arch_db:connect.connect_outgoing_rule_search
+msgid "BYOC"
+msgstr "BYOC"
+
+#. module: connect
+#: model:ir.ui.menu,name:connect.byocs_menu
+msgid "BYOCs"
+msgstr "BYOC:t"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/callouts/callouts.xml:0
+#, python-format
+msgid "Back"
+msgstr "Takaisin"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "Backspace"
+msgstr "Askelpalautin"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_channel__duration_billing
+msgid "Bill Minutes"
+msgstr "Minuuttilaskutus"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#: code:addons/connect/static/src/widgets/phone_field/phone_field.xml:0 model:ir.model,name:connect.model_connect_call
+#: model:ir.model.fields,field_description:connect.field_connect_channel__call
+#: model:ir.model.fields,field_description:connect.field_connect_recording__call
+#: model_terms:ir.ui.view,arch_db:connect.connect_call_form
+#, python-format
+msgid "Call"
+msgstr "Soitto"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__call_duration
+msgid "Call Duration"
+msgstr "Puhelun kesto"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_callflow
+#: model:ir.model.fields.selection,name:connect.selection__connect_exten__dst__connect_callflow
+msgid "Call Flow"
+msgstr "Soiton kulku"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_callflow_form
+msgid "Call Flow name..."
+msgstr "Soiton kulun nimi..."
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.callflow_action model:ir.ui.menu,name:connect.callflows_menu
+msgid "Call Flows"
+msgstr "Soittojen kulut"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__call_sid
+msgid "Call Sid"
+msgstr "Soittajan SID-tunnus"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/calls/calls.xml:0
+#, python-format
+msgid "Call to {{caller}}"
+msgstr "Soita vastaanottajalle {{caller}}"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/favorites/favorites.xml:0
+#, python-format
+msgid "Call to {{favorite.phone_number}}"
+msgstr "Soita numeroon {{favorite.phone_number}}"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/contacts/contacts.xml:0
+#, python-format
+msgid "Call to {{partner.twlidoo_mobile_normalized}}"
+msgstr "Soita kumppanille {{partner.twlidoo_mobile_normalized}}"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/contacts/contacts.xml:0
+#, python-format
+msgid "Call to {{partner.twlidoo_phone_normalized}}"
+msgstr "Soita puhelimeen {{partner.twlidoo_phone_normalized}}"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/contacts/contacts.xml:0
+#, python-format
+msgid "Call to {{user.exten_number}}"
+msgstr "Soita numeroon {{user.exten_number}}"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_number__destination__callflow
+#: model_terms:ir.ui.view,arch_db:connect.connect_user_form
+msgid "CallFlow"
+msgstr "Soiton kulku"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_callout_form
+msgid "CallOut name..."
+msgstr "Ulos lähtevän puhelun nimi..."
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/services/active_calls/active_calls_popup.xml:0
+#: model:ir.model.fields,field_description:connect.field_connect_call__called
+#: model:ir.model.fields,field_description:connect.field_connect_channel__called
+#, python-format
+msgid "Called"
+msgstr "Soitettu"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_channel__called_number
+#: model:ir.model.fields,field_description:connect.field_connect_recording__called_number
+#: model:ir.model.fields,field_description:connect.field_connect_transcription_rule__called_number
+msgid "Called Number"
+msgstr "Soitettu numero"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_channel__called_pbx_user
+msgid "Called PBX User"
+msgstr "Soittanut puhelinkeskuksen käyttäjä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__called_pbx_users
+msgid "Called Pbx Users"
+msgstr "Soittaneet puhelinkeskuksen käyttäjät"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/services/active_calls/active_calls_popup.xml:0
+#: model:ir.model.fields,field_description:connect.field_connect_channel__called_user
+#: model:ir.model.fields,field_description:connect.field_connect_recording__called_user
+#: model_terms:ir.ui.view,arch_db:connect.connect_recording_search
+#, python-format
+msgid "Called User"
+msgstr "Soitettu käyttäjälle"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__called_users
+msgid "Called Users"
+msgstr "Soitettu käyttäjille"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/services/active_calls/active_calls_popup.xml:0
+#: model:ir.model.fields,field_description:connect.field_connect_call__caller
+#: model:ir.model.fields,field_description:connect.field_connect_channel__caller
+#, python-format
+msgid "Caller"
+msgstr "Soittaja"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_channel__caller_number
+#: model:ir.model.fields,field_description:connect.field_connect_recording__caller_number
+msgid "Caller Number"
+msgstr "Soittajan numero"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__caller_pbx_user
+#: model:ir.model.fields,field_description:connect.field_connect_channel__caller_pbx_user
+msgid "Caller PBX User"
+msgstr "Soittajan puhelinkeskuksen käyttäjä"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/services/active_calls/active_calls_popup.xml:0
+#: model:ir.model.fields,field_description:connect.field_connect_call__caller_user
+#: model:ir.model.fields,field_description:connect.field_connect_channel__caller_user
+#: model:ir.model.fields,field_description:connect.field_connect_recording__caller_user
+#: model_terms:ir.ui.view,arch_db:connect.connect_call_form model_terms:ir.ui.view,arch_db:connect.connect_recording_search
+#, python-format
+msgid "Caller User"
+msgstr "Soittava käyttäjä"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_outgoing_callerid__callerid_type__outgoing_callerid
+msgid "CallerID"
+msgstr "Soittajan tunniste"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.outgoing_callerid_list
+msgid "CallerID Users"
+msgstr "Soittajan tunnisteen käyttäjät"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_outgoing_callerid_search
+msgid "CallerId Type"
+msgstr "Soittajan tunnisteen tyyppi"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout__callerid_number
+#: model:ir.model.fields,field_description:connect.field_connect_user__callerid_number
+msgid "Callerid Number"
+msgstr "Soittajan tunnisteen numero"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__callerid_type
+msgid "Callerid Type"
+msgstr "Soittajan tunnisteen tyyppi"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow_choice__callflow
+#: model:ir.model.fields,field_description:connect.field_connect_number__callflow
+msgid "Callflow"
+msgstr "Soiton kulku"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_callflow_choice
+msgid "Callflow Choice"
+msgstr "Soiton kulun valinta"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_transcription_rule__calling_number
+msgid "Calling Number"
+msgstr "Soittava numero"
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.callout_action model:ir.model,name:connect.model_connect_callout
+#: model:ir.model.fields,field_description:connect.field_connect_callout_choice__callout
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__callout
+#: model:ir.model.fields,field_description:connect.field_connect_callout_log__callout
+#: model:ir.model.fields,field_description:connect.field_connect_manage_partner_callout_wizard__callout
+msgid "Callout"
+msgstr "Ulos lähtevä puhelu"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_callout_choice
+msgid "Callout Choice"
+msgstr "Ulos lähtevän puhelun valinta"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_callout_contact
+msgid "Callout Contact"
+msgstr "Ulos lähtevän puhelun kontakti"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_callout_log
+msgid "Callout Log"
+msgstr "Soittoloki"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0 model:ir.ui.menu,name:connect.callouts_menu
+#, python-format
+msgid "Callouts"
+msgstr "Ulos lähtevät puhelut"
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.call_action model:ir.actions.act_window,name:connect.connect_calls_action
+#: model:ir.ui.menu,name:connect.calls_menu model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+#: model_terms:ir.ui.view,arch_db:connect.view_partner_form
+msgid "Calls"
+msgstr "Soitot"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.add_to_callout_wizard_form
+#: model_terms:ir.ui.view,arch_db:connect.view_connect_transfer_wizard_form
+msgid "Cancel"
+msgstr "Peruuta"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "Cancel Forward"
+msgstr "Peruuta soitonsiirto"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_callout__status__cancelled
+msgid "Cancelled"
+msgstr "Peruutettu"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_channel
+#: model:ir.model.fields,field_description:connect.field_connect_recording__channel
+msgid "Channel"
+msgstr "Kanava"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_recording__call_sid
+msgid "Channel SID"
+msgstr "Kanavan SID"
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.call_channels_action model:ir.actions.act_window,name:connect.channel_action
+#: model:ir.model.fields,field_description:connect.field_connect_call__channels model:ir.ui.menu,name:connect.channels_menu
+#: model_terms:ir.ui.view,arch_db:connect.connect_call_form
+msgid "Channels"
+msgstr "Kanavat"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow_choice__choice_digits
+#: model:ir.model.fields,field_description:connect.field_connect_callout_choice__choice_digits
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__choice_digits
+msgid "Choice Digits"
+msgstr "Valintanumerot"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__choices
+#: model:ir.model.fields,field_description:connect.field_connect_callout__choices
+msgid "Choices"
+msgstr "Valinnat"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.view_connect_sms_message_form
+msgid "City"
+msgstr "Kaupunki"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/contacts/contacts.xml:0
+#, python-format
+msgid "Clear"
+msgstr "Tyhjennä"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/calls/calls.xml:0
+#, python-format
+msgid "Click to view detail"
+msgstr "Klikkaa nähdäksesi yksityiskohdat"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_user__ring_first__client
+#: model:ir.model.fields.selection,name:connect.selection__connect_user__ring_second__client
+msgid "Client"
+msgstr "Asiakas"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_queue__disconnect_app
+msgid "Client Disconnect App"
+msgstr "Asiakkaan yhteyden katkaisun sovellus"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_queue__wait_app
+msgid "Client Wait App"
+msgstr "Asiakkaan odottamisen sovellus"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__code_type
+msgid "Code Type"
+msgstr "Koodityyppi"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__company_city
+msgid "Company City"
+msgstr "Yrityksen kaupunki"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__company_country
+msgid "Company Country"
+msgstr "Yrityksen maa"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__company_country_code
+msgid "Company Country Code"
+msgstr "Yrityksen maakoodi"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__company_country_name
+msgid "Company Country Name"
+msgstr "Yritys Maan nimi"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__company_email
+msgid "Company Email"
+msgstr "Yrityksen sähköpostiosoite"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__company_name
+msgid "Company Name"
+msgstr "Yrityksen nimi"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__company_phone
+msgid "Company Phone"
+msgstr "Yrityksen puhelinnumero"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__company_state_name
+msgid "Company State Name"
+msgstr "Yrityksen osavaltion nimi"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.view_connect_transfer_wizard_form
+msgid "Confirm"
+msgstr "Vahvista"
+
+#. module: connect
+#: model:ir.module.category,name:connect.module_connect_category model:ir.ui.menu,name:connect.connect_top_menu
+msgid "Connect"
+msgstr "Yhdistä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_res_partner__connect_calls_count
+#: model:ir.model.fields,field_description:connect.field_res_users__connect_calls_count
+msgid "Connect Calls Count"
+msgstr "Tehtyjen soittojen määrä"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_debug
+msgid "Connect Debug"
+msgstr "Soittosovelluksen vianmääritys"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_query_prompt
+msgid "Connect Query Prompt"
+msgstr "Connect Query -kyselykehote"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_res_partner__connect_recorded_calls
+#: model:ir.model.fields,field_description:connect.field_res_users__connect_recorded_calls
+msgid "Connect Recorded Calls"
+msgstr "Soittosovelluksella nauhoitetut puhelut"
+
+#. module: connect
+#: model:ir.module.category,description:connect.module_connect_category
+msgid "Connect Security"
+msgstr "Soittosovelluksen turvallisuus"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_res_users__connect_user
+msgid "Connect User"
+msgstr "Soittosovelluksen käyttäjä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_byoc__connection_policy_sid
+msgid "Connection Policy Sid"
+msgstr "Yhteyspolitiikka SID"
+
+#. module: connect
+#: model:ir.model,name:connect.model_res_partner
+msgid "Contact"
+msgstr "Kontakti"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout__contacts
+#: model_terms:ir.ui.view,arch_db:connect.connect_callout_form
+msgid "Contacts"
+msgstr "Yhteystiedot"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_query_prompt__content
+msgid "Content"
+msgstr "Sisältö"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.view_connect_sms_message_form
+msgid "Country"
+msgstr "Maa"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_byoc__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_call__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_callflow_choice__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_callout__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_callout_choice__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_callout_log__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_channel__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_debug__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_domain__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_exten__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_favorite__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_manage_partner_callout_wizard__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_message__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_number__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_query__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_query_prompt__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_query_source__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_queue__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_recording__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_settings__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_transcription_rule__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_transfer_wizard__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__create_uid
+#: model:ir.model.fields,field_description:connect.field_connect_user__create_uid
+msgid "Created by"
+msgstr "Luonut"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_byoc__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_call__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_callflow_choice__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_callout__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_callout_choice__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_callout_log__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_channel__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_debug__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_domain__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_exten__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_favorite__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_manage_partner_callout_wizard__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_message__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_number__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_query__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_query_prompt__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_query_source__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_queue__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_recording__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_settings__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_transcription_rule__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_transfer_wizard__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__create_date
+#: model:ir.model.fields,field_description:connect.field_connect_user__create_date
+msgid "Created on"
+msgstr "Luotu"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_domain__cred_list_sid
+msgid "Cred List SID"
+msgstr "Tunnusten listan SID"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__current_attempt
+msgid "Current Attempt"
+msgstr "Nykyinen yritys"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/calls/calls.xml:0
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "Customer"
+msgstr "Asiakas"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "DELETE REGISTRATION"
+msgstr "POISTA REKISTERÖINTI"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_outgoing_callerid__callerid_type__number
+msgid "DID Number"
+msgstr "DID-numero"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "DOCUMENTATION"
+msgstr "Dokumentointi"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#: model:ir.model.fields.selection,name:connect.selection__connect_callflow__gather_input_type__dtmf
+#: model:ir.model.fields.selection,name:connect.selection__connect_callout__gather_input_type__dtmf
+#, python-format
+msgid "DTMF"
+msgstr "DTMF"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_callflow__gather_input_type__dtmf_speech
+#: model:ir.model.fields.selection,name:connect.selection__connect_callout__gather_input_type__dtmf_speech
+msgid "DTMF + speech"
+msgstr "DTMF + puhe"
+
+#. module: connect
+#: model:ir.ui.menu,name:connect.connect_debug_menu
+msgid "Debug"
+msgstr "Virheenkorjaus"
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.connect_debug_action
+msgid "Debug Messages"
+msgstr "Vianmääritysviestit"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__debug_mode
+msgid "Debug Mode"
+msgstr "Virheenkorjaustila"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_number__is_default
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__is_default
+msgid "Default"
+msgstr "Oletus"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_domain__delete_protection
+msgid "Delete Protection"
+msgstr "Poista suojaus"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__description
+msgid "Description"
+msgstr "Kuvaus"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_exten__dst
+#: model:ir.model.fields,field_description:connect.field_connect_number__destination
+msgid "Destination"
+msgstr "Kohde"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_call_form
+msgid "Details"
+msgstr "Lisätiedot"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "Development"
+msgstr "Kehitys"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__dial_attempts
+msgid "Dial Attempts"
+msgstr "Soittoyritykset"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout__dial_timeout
+msgid "Dial Timeout"
+msgstr "Soiton aikakatkaisu"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_callflow_form model_terms:ir.ui.view,arch_db:connect.connect_callout_form
+msgid "Digits"
+msgstr "Numerot"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/services/active_calls/active_calls_popup.xml:0
+#: model:ir.model.fields,field_description:connect.field_connect_call__direction
+#: model:ir.model.fields,field_description:connect.field_connect_channel__technical_direction
+#, python-format
+msgid "Direction"
+msgstr "Suunta"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_outgoing_rule_search
+msgid "Disabled"
+msgstr "Pois käytöstä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__display_auth_token
+msgid "Display Auth Token"
+msgstr "Näytä Auth-tunniste"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_byoc__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_call__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_callflow_choice__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_callout__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_callout_choice__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_callout_log__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_channel__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_debug__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_domain__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_exten__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_favorite__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_manage_partner_callout_wizard__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_message__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_number__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_query__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_query_prompt__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_query_source__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_queue__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_recording__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_settings__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_transcription_rule__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_transfer_wizard__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__display_name
+#: model:ir.model.fields,field_description:connect.field_connect_user__display_name
+msgid "Display Name"
+msgstr "Näyttönimi"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__display_openai_api_key
+msgid "Display Openai Api Key"
+msgstr "Näytä Openai Api -avain"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__display_twilio_api_secret
+msgid "Display Twilio Api Secret"
+msgstr "Näytä Twilio Api Secret"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_query_source__domain
+#: model:ir.model.fields,field_description:connect.field_connect_user__domain
+msgid "Domain"
+msgstr "Toimialue"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_domain__domain_name
+msgid "Domain Name"
+msgstr "Domainin nimi"
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.domain_action model:ir.ui.menu,name:connect.domains_menu
+msgid "Domains"
+msgstr "Verkkotunnukset"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_callout__status__done
+msgid "Done"
+msgstr "Valmis"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__done_status
+msgid "Done Status"
+msgstr "Valmis-tila"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_callout__status__draft
+msgid "Draft"
+msgstr "Luonnos"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_exten__dst_name
+msgid "Dst Name"
+msgstr "DST Nimi"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__duration_human
+#: model:ir.model.fields,field_description:connect.field_connect_channel__duration_human
+#: model:ir.model.fields,field_description:connect.field_connect_recording__duration
+#: model_terms:ir.ui.view,arch_db:connect.recording_list model_terms:ir.ui.view,arch_db:connect.view_partner_form
+msgid "Duration"
+msgstr "Kesto"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_recording__duration_human
+msgid "Duration Human"
+msgstr "Kesto ihminen"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.recording_list
+msgid "Duration, sec"
+msgstr "Kesto, sekuntia"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_res_partner__twlidoo_mobile_normalized
+#: model:ir.model.fields,field_description:connect.field_res_users__twlidoo_mobile_normalized
+msgid "E.164 mobile"
+msgstr "E.164 matkapuhelin"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_res_partner__twlidoo_phone_normalized
+#: model:ir.model.fields,field_description:connect.field_res_users__twlidoo_phone_normalized
+msgid "E.164 phone"
+msgstr "E.164-puhelin"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "ENTERPRISE SUPPORT"
+msgstr "YRITYSTUKI"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/callouts/callouts.xml:0
+#, python-format
+msgid "Empty"
+msgstr "Tyhjä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__is_enabled
+#: model_terms:ir.ui.view,arch_db:connect.connect_outgoing_rule_search
+#: model_terms:ir.ui.view,arch_db:connect.connect_user_form
+msgid "Enabled"
+msgstr "Käytössä"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "End Call"
+msgstr "Lopeta puhelu"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/contacts/contacts.xml:0
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "Enter name or number"
+msgstr "Anna nimi tai numero"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_settings__number_search_operation__=
+msgid "Equal"
+msgstr "On sama kuin"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__error_message
+#: model:ir.model.fields,field_description:connect.field_connect_query__error
+#: model_terms:ir.ui.view,arch_db:connect.connect_call_form
+msgid "Error"
+msgstr "Virhe"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__error_code
+#: model:ir.model.fields,field_description:connect.field_connect_message__error_code
+msgid "Error Code"
+msgstr ""
+"Yhteys API:n kanssa epäonnistui.\n"
+"Virhekoodi: %(error_code)s; kuvaus: %(error_message)s"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__error_message
+#: model:ir.model.fields,field_description:connect.field_connect_message__error_message
+msgid "Error Message"
+msgstr "Virheilmoitus"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_exten
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__exten
+#: model:ir.model.fields,field_description:connect.field_connect_callflow_choice__exten
+#: model:ir.model.fields,field_description:connect.field_connect_queue__exten
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__exten
+#: model:ir.model.fields,field_description:connect.field_connect_user__exten
+#: model_terms:ir.ui.view,arch_db:connect.callflow_list model_terms:ir.ui.view,arch_db:connect.connect_queue_form
+#: model_terms:ir.ui.view,arch_db:connect.queue_list model_terms:ir.ui.view,arch_db:connect.user_list
+msgid "Exten"
+msgstr "Alanro"
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.exten_action model_terms:ir.ui.view,arch_db:connect.connect_callflow_form
+#: model_terms:ir.ui.view,arch_db:connect.connect_queue_form model_terms:ir.ui.view,arch_db:connect.connect_twiml_form
+#: model_terms:ir.ui.view,arch_db:connect.connect_user_form
+msgid "Extension"
+msgstr "Alanumero"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__exten_number
+#: model:ir.model.fields,field_description:connect.field_connect_exten__number
+#: model:ir.model.fields,field_description:connect.field_connect_queue__exten_number
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__exten_number
+#: model:ir.model.fields,field_description:connect.field_connect_user__exten_number
+msgid "Extension Number"
+msgstr "Alanumero"
+
+#. module: connect
+#: model:ir.ui.menu,name:connect.extens_menu
+msgid "Extensions"
+msgstr "Laajennukset"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "FORMAT NUMBERS"
+msgstr "MUODON NUMEROT"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "FREE SUPPORT"
+msgstr "ILMAINEN TUKI"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_call_search
+msgid "Failed Calls"
+msgstr "Epäonnistuneet puhelut"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/calls/calls.xml:0
+#: model:ir.actions.act_window,name:connect.connect_favorite model:ir.model,name:connect.model_connect_favorite
+#, python-format
+msgid "Favorite"
+msgstr "Suosikki"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "Favorites"
+msgstr "Suosikit"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_query_source__field_ids
+msgid "Fields"
+msgstr "Kentät"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__message_follower_ids
+#: model:ir.model.fields,field_description:connect.field_connect_channel__message_follower_ids
+#: model:ir.model.fields,field_description:connect.field_connect_recording__message_follower_ids
+msgid "Followers"
+msgstr "Seuraajat"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__message_partner_ids
+#: model:ir.model.fields,field_description:connect.field_connect_channel__message_partner_ids
+#: model:ir.model.fields,field_description:connect.field_connect_recording__message_partner_ids
+msgid "Followers (Partners)"
+msgstr "Seuraajat (partnerit)"
+
+#. module: connect
+#: model:ir.model.fields,help:connect.field_connect_call__activity_type_icon
+#: model:ir.model.fields,help:connect.field_connect_recording__activity_type_icon
+msgid "Font awesome icon e.g. fa-tasks"
+msgstr "Font awesome -kuvake esim.. fa-tasks"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "Forward"
+msgstr "Siirrä soitto"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/contacts/contacts.xml:0
+#, python-format
+msgid "Forward to {{partner.twlidoo_mobile_normalized}}"
+msgstr "Siirrä soitto {{partner.twlidoo_mobile_normalized}}"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/contacts/contacts.xml:0
+#, python-format
+msgid "Forward to {{partner.twlidoo_phone_normalized}}"
+msgstr "Siirrä soitto {{partner.twlidoo_phone_normalized}}"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/contacts/contacts.xml:0
+#, python-format
+msgid "Forward to {{user.exten_number}}"
+msgstr "Siirrä soitto {{user.exten_number}}"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_domain__friendly_name
+#: model:ir.model.fields,field_description:connect.field_connect_number__friendly_name
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__friendly_name
+msgid "Friendly Name"
+msgstr "Ystävällinen nimi"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_domain_form
+msgid "Friendly name..."
+msgstr "Ystävällinen nimi..."
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_message__from_number
+msgid "From"
+msgstr "Lähettäjä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_message__from_city
+msgid "From City"
+msgstr "Kaupungista"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_message__from_country
+msgid "From Country"
+msgstr "Maasta"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_byoc__from_domain_sid
+msgid "From Domain Sid"
+msgstr "Lähdetoimialueen SID"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_message__from_state
+msgid "From State"
+msgstr "Osavaltiosta"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_message__from_zip
+msgid "From ZIP"
+msgstr "Postinumerosta"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__gather_action_url
+msgid "Gather Action Url"
+msgstr "Kerää toiminta URL"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__gather_digits
+#: model:ir.model.fields,field_description:connect.field_connect_callout__gather_digits
+msgid "Gather Digits"
+msgstr "Kerää numerot"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__gather_input
+#: model:ir.model.fields,field_description:connect.field_connect_callout__gather_input
+msgid "Gather Input"
+msgstr "Kerää syötettä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout__gather_timeout
+msgid "Gather Timeout"
+msgstr "Kerää aikakatkaisu"
+
+#. module: connect
+#: model:ir.ui.menu,name:connect.settings_menu model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "General"
+msgstr "Yleiset"
+
+#. module: connect
+#: model:ir.actions.server,name:connect.connect_settings_action
+msgid "General Settings"
+msgstr "Yleiset asetukset"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "Great support!"
+msgstr "Loistava tuki!"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/tray/tray.xml:0
+#, python-format
+msgid "HangUp"
+msgstr "Katkaise puhelu"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__has_error
+#: model:ir.model.fields,field_description:connect.field_connect_message__has_error
+msgid "Has Error"
+msgstr "Sisältää virheen"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__has_message
+#: model:ir.model.fields,field_description:connect.field_connect_channel__has_message
+#: model:ir.model.fields,field_description:connect.field_connect_recording__has_message
+msgid "Has Message"
+msgstr "Sisältää viestin"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_favorite_search
+msgid "Have Partner"
+msgstr "On kumppani"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_favorite_search
+msgid "Have User"
+msgstr "On käyttäjä"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "Hide"
+msgstr "Piilota"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__gather_hints
+#: model:ir.model.fields,field_description:connect.field_connect_callout__gather_hints
+msgid "Hints"
+msgstr "Vihjeitä"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "History"
+msgstr "Historia"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__i_agree_to_contact
+msgid "I Agree To Contact"
+msgstr "Hyväksyn yhteydenoton"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__i_agree_to_receive
+msgid "I Agree To Receive"
+msgstr "Suostun vastaanottamaan"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__i_agree_to_register
+msgid "I Agree To Register"
+msgstr "Hyväksyn rekisteröinnin"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid ""
+"I agree to be contacted by sales representatives who can help me understand additional services and support options "
+"available for my installation."
+msgstr ""
+"Suostun siihen, että myyntiedustajat ottavat minuun yhteyttä ja auttavat minua ymmärtämään asennukseeni saatavilla olevia "
+"lisäpalveluja ja tukivaihtoehtoja."
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "I agree to create an account in the Oduist users portal to receive free technical support from Oduist team."
+msgstr "Suostun luomaan tilin Oduistin käyttäjäportaaliin saadakseni ilmaista teknistä tukea Oduistin tiimiltä."
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid ""
+"I agree to receive important product notifications, including security advisories, major updates, and critical patches "
+"that may affect my installation."
+msgstr ""
+"Suostun vastaanottamaan tärkeitä tuoteilmoituksia, mukaan lukien tietoturvaohjeet, suuret päivitykset ja kriittiset "
+"korjaukset, jotka voivat vaikuttaa asennukseeni."
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_byoc__id
+#: model:ir.model.fields,field_description:connect.field_connect_call__id
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__id
+#: model:ir.model.fields,field_description:connect.field_connect_callflow_choice__id
+#: model:ir.model.fields,field_description:connect.field_connect_callout__id
+#: model:ir.model.fields,field_description:connect.field_connect_callout_choice__id
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__id
+#: model:ir.model.fields,field_description:connect.field_connect_callout_log__id
+#: model:ir.model.fields,field_description:connect.field_connect_channel__id
+#: model:ir.model.fields,field_description:connect.field_connect_debug__id
+#: model:ir.model.fields,field_description:connect.field_connect_domain__id
+#: model:ir.model.fields,field_description:connect.field_connect_exten__id
+#: model:ir.model.fields,field_description:connect.field_connect_favorite__id
+#: model:ir.model.fields,field_description:connect.field_connect_manage_partner_callout_wizard__id
+#: model:ir.model.fields,field_description:connect.field_connect_message__id
+#: model:ir.model.fields,field_description:connect.field_connect_number__id
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__id
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__id
+#: model:ir.model.fields,field_description:connect.field_connect_query__id
+#: model:ir.model.fields,field_description:connect.field_connect_query_prompt__id
+#: model:ir.model.fields,field_description:connect.field_connect_query_source__id
+#: model:ir.model.fields,field_description:connect.field_connect_queue__id
+#: model:ir.model.fields,field_description:connect.field_connect_recording__id
+#: model:ir.model.fields,field_description:connect.field_connect_settings__id
+#: model:ir.model.fields,field_description:connect.field_connect_transcription_rule__id
+#: model:ir.model.fields,field_description:connect.field_connect_transfer_wizard__id
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__id
+#: model:ir.model.fields,field_description:connect.field_connect_user__id
+msgid "ID"
+msgstr "ID"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__activity_exception_icon
+#: model:ir.model.fields,field_description:connect.field_connect_recording__activity_exception_icon
+msgid "Icon"
+msgstr "Kuvake"
+
+#. module: connect
+#: model:ir.model.fields,help:connect.field_connect_call__activity_exception_icon
+#: model:ir.model.fields,help:connect.field_connect_recording__activity_exception_icon
+msgid "Icon to indicate an exception activity."
+msgstr "Kuvake joka kertoo poikkeustoiminnosta."
+
+#. module: connect
+#: model:ir.model.fields,help:connect.field_connect_call__message_needaction
+#: model:ir.model.fields,help:connect.field_connect_channel__message_needaction
+#: model:ir.model.fields,help:connect.field_connect_recording__message_needaction
+msgid "If checked, new messages require your attention."
+msgstr "Jos valittu, uudet viestit vaativat huomiota."
+
+#. module: connect
+#: model:ir.model.fields,help:connect.field_connect_call__message_has_error
+#: model:ir.model.fields,help:connect.field_connect_call__message_has_sms_error
+#: model:ir.model.fields,help:connect.field_connect_channel__message_has_error
+#: model:ir.model.fields,help:connect.field_connect_channel__message_has_sms_error
+#: model:ir.model.fields,help:connect.field_connect_recording__message_has_error
+#: model:ir.model.fields,help:connect.field_connect_recording__message_has_sms_error
+msgid "If checked, some messages have a delivery error."
+msgstr "Jos valittuna, joissakin viesteissä on toimitusvirhe."
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "If you disable it remove the HTTP AUTH in Twilio. Read"
+msgstr "Jos poistat sen käytöstä, poista HTTP AUTH Twiliossa. Lue"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_number__is_ignored
+msgid "Ignored"
+msgstr "Ohitettu"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__caller_user_img
+#: model:ir.model.fields,field_description:connect.field_connect_message__sender_user_img
+msgid "Image"
+msgstr "Kuva"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_recording_form
+msgid "Info"
+msgstr "Tiedot"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__gather_input_type
+#: model:ir.model.fields,field_description:connect.field_connect_callout__gather_input_type
+msgid "Input Type"
+msgstr "Syötetyyppi"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__installation_date
+msgid "Installation Date"
+msgstr "Asennuspäivä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__instance_uid
+msgid "Instance UID"
+msgstr "Instanssin UID"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__invalid_input_message
+#: model:ir.model.fields,field_description:connect.field_connect_callout__invalid_input_message
+msgid "Invalid Input Message"
+msgstr "Virheellinen syöttöviesti"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__message_is_follower
+#: model:ir.model.fields,field_description:connect.field_connect_channel__message_is_follower
+#: model:ir.model.fields,field_description:connect.field_connect_recording__message_is_follower
+msgid "Is Follower"
+msgstr "On seuraaja"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__is_registered
+msgid "Is Registered"
+msgstr "On rekisteröity"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "Keypad"
+msgstr "Näppäimistö"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__language
+msgid "Language"
+msgstr "Kieli"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_byoc__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_call__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_callflow_choice__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_callout__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_callout_choice__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_callout_log__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_channel__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_debug__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_domain__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_exten__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_favorite__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_manage_partner_callout_wizard__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_message__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_number__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_query__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_query_prompt__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_query_source__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_queue__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_recording__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_settings__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_transcription_rule__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_transfer_wizard__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__write_uid
+#: model:ir.model.fields,field_description:connect.field_connect_user__write_uid
+msgid "Last Updated by"
+msgstr "Viimeisin muokkaaja"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_byoc__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_call__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_callflow_choice__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_callout__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_callout_choice__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_callout_log__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_channel__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_debug__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_domain__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_exten__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_favorite__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_manage_partner_callout_wizard__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_message__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_number__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_query__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_query_prompt__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_query_source__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_queue__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_recording__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_settings__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_transcription_rule__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_transfer_wizard__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__write_date
+#: model:ir.model.fields,field_description:connect.field_connect_user__write_date
+msgid "Last Updated on"
+msgstr "Viimeksi päivitetty"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_settings__number_search_operation__like
+msgid "Like"
+msgstr "Tykkää"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.view_partner_form
+msgid "Listen"
+msgstr "Kuuntele"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_callout_form
+msgid "Log"
+msgstr "Loki"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout__log_model
+msgid "Log Model"
+msgstr "Lokimalli"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout__log_res_id
+msgid "Log Res"
+msgstr "Log Res"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout__logs
+msgid "Logs"
+msgstr "Lokit"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_callflow_form
+msgid "Man"
+msgstr "Mies"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_manage_partner_callout_wizard
+msgid "Manage Partner Callout"
+msgstr "Hallitse kumppanin soittoa"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_recording__media_url
+#: model:ir.model.fields,field_description:connect.field_connect_settings__media_url
+msgid "Media Url"
+msgstr "Media URL"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout_log__message
+#: model:ir.model.fields,field_description:connect.field_connect_debug__message
+msgid "Message"
+msgstr "Viesti"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_message__body
+msgid "Message Body"
+msgstr "Viestin sisältö"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__message_has_error
+#: model:ir.model.fields,field_description:connect.field_connect_channel__message_has_error
+#: model:ir.model.fields,field_description:connect.field_connect_recording__message_has_error
+msgid "Message Delivery error"
+msgstr "Viestin toimitusvirhe"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_number__message_fallback_url
+msgid "Message Fallback Url"
+msgstr "Viestin Fallback URL"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_message__message_sid
+msgid "Message SID"
+msgstr "Viesti SID"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_message__message_type
+msgid "Message Type"
+msgstr "Viestin tyyppi"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_number__message_url
+msgid "Message Url"
+msgstr "Viestin URL"
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.action_connect_message
+#: model:ir.model.fields,field_description:connect.field_connect_call__message_ids
+#: model:ir.model.fields,field_description:connect.field_connect_channel__message_ids
+#: model:ir.model.fields,field_description:connect.field_connect_recording__message_ids
+#: model:ir.ui.menu,name:connect.connect_debug_messages_menu model:ir.ui.menu,name:connect.connect_sms_menu
+msgid "Messages"
+msgstr "Viestit"
+
+#. module: connect
+#: model:ir.ui.menu,name:connect.connect_messaging_menu
+msgid "Messaging"
+msgstr "Viestit"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_message__messaging_service_sid
+msgid "Messaging Service SID"
+msgstr "Viestipalvelu SID"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__method
+msgid "Method"
+msgstr "Menettelytapa"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__duration_minutes
+#: model:ir.model.fields,field_description:connect.field_connect_channel__duration_minutes
+msgid "Minutes"
+msgstr "Minuuttia"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_user__missed_calls_notify
+msgid "Missed Calls Notify"
+msgstr "Vastaamatta jääneiden puhelujen ilmoitus"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_debug__model
+#: model:ir.model.fields,field_description:connect.field_connect_exten__model_friendly
+#: model:ir.model.fields,field_description:connect.field_connect_query_source__model_id
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__model
+#: model_terms:ir.ui.view,arch_db:connect.exten_list
+msgid "Model"
+msgstr "Malli"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_query_source__model_name
+msgid "Model Name"
+msgstr "Mallin nimi"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__module_version
+msgid "Module Version"
+msgstr "Moduulin versio"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "Mute Microphone"
+msgstr "Mykistä mikrofoni"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "Mute Sound"
+msgstr "Äänen mykistäminen"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__my_activity_date_deadline
+#: model:ir.model.fields,field_description:connect.field_connect_recording__my_activity_date_deadline
+msgid "My Activity Deadline"
+msgstr "Oman toimenpiteen määräaika"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_byoc__friendly_name
+#: model:ir.model.fields,field_description:connect.field_connect_call__name
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__name
+#: model:ir.model.fields,field_description:connect.field_connect_callout__name
+#: model:ir.model.fields,field_description:connect.field_connect_exten__name
+#: model:ir.model.fields,field_description:connect.field_connect_favorite__name
+#: model:ir.model.fields,field_description:connect.field_connect_message__name
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__name
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__name
+#: model:ir.model.fields,field_description:connect.field_connect_query_prompt__name
+#: model:ir.model.fields,field_description:connect.field_connect_query_source__name
+#: model:ir.model.fields,field_description:connect.field_connect_queue__name
+#: model:ir.model.fields,field_description:connect.field_connect_settings__name
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__name
+#: model:ir.model.fields,field_description:connect.field_connect_user__name
+msgid "Name"
+msgstr "Nimi"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_queue_form
+msgid "Name..."
+msgstr "Nimi..."
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__activity_calendar_event_id
+#: model:ir.model.fields,field_description:connect.field_connect_recording__activity_calendar_event_id
+msgid "Next Activity Calendar Event"
+msgstr "Seuraavan toimenpiteen kalenteritapahtuma"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__activity_date_deadline
+#: model:ir.model.fields,field_description:connect.field_connect_recording__activity_date_deadline
+msgid "Next Activity Deadline"
+msgstr "Seuraavan aktiviteetin määräaika"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__activity_summary
+#: model:ir.model.fields,field_description:connect.field_connect_recording__activity_summary
+msgid "Next Activity Summary"
+msgstr "Seuraavan aktiviteetin yhteenveto"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__activity_type_id
+#: model:ir.model.fields,field_description:connect.field_connect_recording__activity_type_id
+msgid "Next Activity Type"
+msgstr "Seuraava aktiviteettityyppi"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_favorite_search
+msgid "No Partner"
+msgstr "Ei kumppania"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_favorite_search
+msgid "No User"
+msgstr "Ei käyttäjää"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/services/active_calls/active_calls_popup.xml:0
+#, python-format
+msgid "No active calls."
+msgstr "Ei aktiivisia puheluita."
+
+#. module: connect
+#: model:ir.model.fields,help:connect.field_connect_user__missed_calls_notify
+msgid "Notify user on missed calls."
+msgstr "Ilmoittaa käyttäjälle vastaamattomista puheluista."
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/callouts/callouts.xml:0
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__number
+#, python-format
+msgid "Number"
+msgstr "Numero"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__number_search_operation
+msgid "Number Search Operation"
+msgstr "Numerohakutoiminto"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__message_needaction_counter
+#: model:ir.model.fields,field_description:connect.field_connect_channel__message_needaction_counter
+#: model:ir.model.fields,field_description:connect.field_connect_recording__message_needaction_counter
+msgid "Number of Actions"
+msgstr "Toimenpiteiden määrä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_message__num_media
+msgid "Number of Media Items"
+msgstr "Media-kohteiden määrä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__message_has_error_counter
+#: model:ir.model.fields,field_description:connect.field_connect_channel__message_has_error_counter
+#: model:ir.model.fields,field_description:connect.field_connect_recording__message_has_error_counter
+msgid "Number of errors"
+msgstr "Virheiden määrä"
+
+#. module: connect
+#: model:ir.model.fields,help:connect.field_connect_call__message_needaction_counter
+#: model:ir.model.fields,help:connect.field_connect_channel__message_needaction_counter
+#: model:ir.model.fields,help:connect.field_connect_recording__message_needaction_counter
+msgid "Number of messages requiring action"
+msgstr "Toimintaa vaativien viestien määrä"
+
+#. module: connect
+#: model:ir.model.fields,help:connect.field_connect_call__message_has_error_counter
+#: model:ir.model.fields,help:connect.field_connect_channel__message_has_error_counter
+#: model:ir.model.fields,help:connect.field_connect_recording__message_has_error_counter
+msgid "Number of messages with delivery error"
+msgstr "Toimitusvirheitä sisältävien viestien määrä"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_exten_form model_terms:ir.ui.view,arch_db:connect.connect_number_form
+msgid "Number..."
+msgstr "Numero..."
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.number_action model:ir.ui.menu,name:connect.numbers_menu
+msgid "Numbers"
+msgstr "Numerot"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__web_base_url
+msgid "Odoo URL"
+msgstr "Odoo URL-osoite"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_user__user
+msgid "Odoo User"
+msgstr "Odoo-käyttäjä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__odoo_version
+msgid "Odoo Version"
+msgstr "Odoon versio"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_user_form
+msgid "Odoo account..."
+msgstr "Odoo-tili..."
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/calls/calls.xml:0
+#, python-format
+msgid "Open in History"
+msgstr "Avaa historiassa"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "OpenAI"
+msgstr "OpenAI"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "OpenAI API Key"
+msgstr "OpenAI API-avain"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__openai_api_key
+msgid "Openai Api Key"
+msgstr "Openai Api avain"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_query_form
+msgid "Or enter the prompt here..."
+msgstr "Tai kirjoita kehote tähän..."
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid ""
+"Our product is <b>open source and free to use</b>, but it's <b>also a commercial solution used in business-critical "
+"environments</b>.<br/>\n"
+"                        While we're committed to keeping the product open source, <b>we need sustainable ways to support "
+"its development and maintenance</b>.<br/>\n"
+"                        We want to share why we ask for these permissions:"
+msgstr ""
+"Tuotteemme on <b>avoimen lähdekoodin tuote, jonka käyttö on ilmaista</b>, mutta se on <b>myös kaupallinen ratkaisu, jota "
+"käytetään liiketoimintakriittisissä ympäristöissä</b>.<br/>\n"
+"                        Vaikka olemme sitoutuneet pitämään tuotteen avoimen lähdekoodin, <b>tarvitsemme kestäviä tapoja "
+"tukea sen kehittämistä ja ylläpitoa</b>.<br/>\n"
+"                        Haluamme kertoa, miksi pyydämme näitä lupia:"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_outgoing_callerid
+msgid "Outgoing CallerId"
+msgstr "Lähtevän soittajan tunnus"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_user_form
+msgid "Outgoing CallerId number or empty for the default..."
+msgstr "Lähtevän soittajan numero tai tyhjä oletusarvoisesti..."
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.outgoing_callerid_action model:ir.ui.menu,name:connect.outgoing_callerids_menu
+msgid "Outgoing CallerIds"
+msgstr "Lähtevät soittajan tunnisteet"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout__outgoing_callerid
+#: model:ir.model.fields,field_description:connect.field_connect_user__outgoing_callerid
+msgid "Outgoing Callerid"
+msgstr "Lähtevä soittajan tunniste"
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.outgoing_rule_action model:ir.model,name:connect.model_connect_outgoing_rule
+msgid "Outgoing Rule"
+msgstr "Lähtevä sääntö"
+
+#. module: connect
+#: model:ir.ui.menu,name:connect.outgoing_rules_menu
+msgid "Outgoing Rules"
+msgstr "Lähtevät säännöt"
+
+#. module: connect
+#: model:ir.model,name:connect.model_sms_sms
+msgid "Outgoing SMS"
+msgstr "Lähtevät tekstiviestit"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_user_form
+msgid "PBX username..."
+msgstr "Puhelinkeskuksen käyttäjätunnus..."
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__parent_call
+msgid "Parent Call"
+msgstr "Ylemmän tason puhelu"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_channel__parent_channel
+msgid "Parent Channel"
+msgstr "Ylemmän tason kanava"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_channel__parent_sid
+msgid "Parent SID"
+msgstr "Ylemmän tason SID"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/callouts/callouts.xml:0
+#: code:addons/connect/static/src/services/active_calls/active_calls_popup.xml:0
+#: model:ir.model.fields,field_description:connect.field_connect_call__partner
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__partner
+#: model:ir.model.fields,field_description:connect.field_connect_channel__partner
+#: model:ir.model.fields,field_description:connect.field_connect_favorite__partner
+#: model:ir.model.fields,field_description:connect.field_connect_message__partner
+#: model:ir.model.fields,field_description:connect.field_connect_recording__partner
+#: model:ir.model.fields.selection,name:connect.selection__connect_call__ref__res_partner
+#: model_terms:ir.ui.view,arch_db:connect.connect_call_form model_terms:ir.ui.view,arch_db:connect.connect_recording_search
+#: model_terms:ir.ui.view,arch_db:connect.view_connect_sms_message_form
+#, python-format
+msgid "Partner"
+msgstr "Kumppani"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__partner_code
+msgid "Partner Code"
+msgstr "Kumppanin koodi"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__partner_img
+#: model:ir.model.fields,field_description:connect.field_connect_message__partner_img
+msgid "Partner Image"
+msgstr "Kumppanin kuva"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_recording_search
+msgid "Partners"
+msgstr "Yhteistyökumppanit"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_user__password
+msgid "Password"
+msgstr "Salasana"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__pattern
+msgid "Pattern"
+msgstr "Kuvio"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_callout_form
+msgid "Pause"
+msgstr "Tauko"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_callout__status__paused
+msgid "Paused"
+msgstr "Keskeytetty"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_user_form
+msgid "Phone"
+msgstr "Puhelin"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_number
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__phone_number
+#: model:ir.model.fields,field_description:connect.field_connect_favorite__phone_number
+#: model:ir.model.fields,field_description:connect.field_connect_number__phone_number
+#: model:ir.model.fields,field_description:connect.field_connect_transfer_wizard__phone_number
+msgid "Phone Number"
+msgstr "Puhelinnumero"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.view_connect_transfer_wizard_form
+msgid "Phone Wizard"
+msgstr "Puhelimen ohjattu toiminto"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_query__price
+#: model:ir.model.fields,field_description:connect.field_connect_recording__price
+msgid "Price"
+msgstr "Hinta"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_recording__price_unit
+msgid "Price Unit"
+msgstr "Hinta yksikkö"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_query__prompt
+msgid "Prompt"
+msgstr "Kehote"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__prompt_message
+#: model:ir.model.fields,field_description:connect.field_connect_callout__prompt_message
+msgid "Prompt Message"
+msgstr "Kehotusviesti"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__proxy_recordings
+msgid "Proxy Recordings"
+msgstr "Proxy-tallenteet"
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.query_action model:ir.ui.menu,name:connect.queries_menu
+msgid "Queries"
+msgstr "Kyselyt"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_query
+msgid "Query"
+msgstr "Kysely"
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.query_prompt_action
+#: model:ir.model.fields,field_description:connect.field_connect_query__query_prompt
+#: model:ir.ui.menu,name:connect.query_prompt_menu
+msgid "Query Prompt"
+msgstr "Kyselyn kehote"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_query_prompt_form
+msgid "Query Prompt Form"
+msgstr "Kyselyn kehotuslomake"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_query_prompt_list
+msgid "Query Prompt List"
+msgstr "Kyselyn kehotusluettelo"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_query_source
+#: model_terms:ir.ui.view,arch_db:connect.view_connect_query_source_form
+msgid "Query Source"
+msgstr "Kyselyn lähde"
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.action_connect_query_source model:ir.ui.menu,name:connect.query_source
+#: model_terms:ir.ui.view,arch_db:connect.view_connect_query_source_list
+#: model_terms:ir.ui.view,arch_db:connect.view_connect_query_source_search
+msgid "Query Sources"
+msgstr "Kyselylähteet"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_queue
+#: model:ir.model.fields,field_description:connect.field_connect_number__queue
+#: model:ir.model.fields.selection,name:connect.selection__connect_exten__dst__connect_queue
+#: model:ir.model.fields.selection,name:connect.selection__connect_number__destination__queue
+msgid "Queue"
+msgstr "Jono"
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.queue_action model:ir.ui.menu,name:connect.queues_menu
+msgid "Queues"
+msgstr "Jonot"
+
+#. module: connect
+#: model:ir.model.fields,help:connect.field_connect_settings__proxy_recordings
+msgid "Re-stream recordings using Odoo user auth."
+msgstr "Tallenteiden uudelleentoisto Odoo-käyttäjän tunnistautumisen avulla."
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_message__receiver_user
+#: model_terms:ir.ui.view,arch_db:connect.view_connect_sms_message_form
+msgid "Receiver User"
+msgstr "Vastaanottanut käyttäjä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__record_calls
+#: model:ir.model.fields,field_description:connect.field_connect_queue__record_calls
+#: model:ir.model.fields,field_description:connect.field_connect_user__record_calls
+msgid "Record Calls"
+msgstr "Tallenna puhelut"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.view_partner_form
+msgid "Recorded Calls"
+msgstr "Nauhoitetut puhelut"
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.recording_action model:ir.model,name:connect.model_connect_recording
+#: model:ir.model.fields,field_description:connect.field_connect_call__recording
+#: model:ir.model.fields,field_description:connect.field_connect_recording__recording_widget
+#: model_terms:ir.ui.view,arch_db:connect.connect_call_form
+msgid "Recording"
+msgstr "Tallenne"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__recording_widget
+msgid "Recording Widget"
+msgstr "Tallennus Widget"
+
+#. module: connect
+#: model:ir.ui.menu,name:connect.recordings_menu
+msgid "Recordings"
+msgstr "Tallenteet"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__ref
+msgid "Ref"
+msgstr "Viite"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__ref_model
+msgid "Ref Model"
+msgstr "Ref Malli"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__ref_res_id
+msgid "Ref Res"
+msgstr "Ref Res"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__register_summary
+msgid "Register Summary"
+msgstr "Rekisterin yhteenveto"
+
+#. module: connect
+#: model:ir.model.fields,help:connect.field_connect_settings__register_summary
+msgid "Register summary at partner of reference chat."
+msgstr "Rekisteröi yhteenveto partnerin viitechattiin."
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "Registration"
+msgstr "Rekisteröinti"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "Registration Data"
+msgstr "Rekisteröintitiedot"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid ""
+"Registration is required to activate and use this product. We use it only for internal sales and support processes. "
+"Please read our"
+msgstr ""
+"Tämän tuotteen aktivointi ja käyttö edellyttää rekisteröitymistä. Käytämme sitä vain sisäisiin myynti- ja "
+"tukiprosesseihin. Lue meidän"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "Reject"
+msgstr "Hylkää"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "Reject call"
+msgstr "Hylkää puhelu"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_manage_partner_callout_wizard__action__remove
+msgid "Remove"
+msgstr "Poista"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__remove_recording_after_transcript
+msgid "Remove Recording After Transcript"
+msgstr "Poista tallennus puheentunnistuksen ja tekstityksen jälkeen"
+
+#. module: connect
+#: model:ir.actions.server,name:connect.remove_from_callout_action
+msgid "Remove from Callout"
+msgstr "Poista ulos lähtevästä puhelusta"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/favorites/favorites.xml:0
+#, python-format
+msgid "Remove from Favorite"
+msgstr "Poista suosikeista"
+
+#. module: connect
+#: model:ir.ui.menu,name:connect.connect_reports_menu
+msgid "Reports"
+msgstr "Raportit"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_exten__res_id
+#: model:ir.model.fields,field_description:connect.field_connect_message__res_id
+msgid "Res"
+msgstr "Res"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_message__res_model
+msgid "Res Model"
+msgstr "Res-malli"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_callout_form
+msgid "Reset"
+msgstr "Tyhjennä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__activity_user_id
+#: model:ir.model.fields,field_description:connect.field_connect_recording__activity_user_id
+msgid "Responsible User"
+msgstr "Vastuukäyttäjä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_query__result
+msgid "Result"
+msgstr "Tulos"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_user__ring_first
+msgid "Ring First"
+msgstr "Soita ensin"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_user__ring_second
+msgid "Ring Second"
+msgstr "Soita toiseksi"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_user_form
+msgid "Ring Timeout"
+msgstr "Soiton aikakatkaisu"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__ring_users
+msgid "Ring Users"
+msgstr "Soiiton käyttäjät"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_callout_form
+msgid "Run"
+msgstr "Suorita"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_callout__status__running
+msgid "Running"
+msgstr "Käynnissä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_channel__sid
+#: model:ir.model.fields,field_description:connect.field_connect_domain__sid
+#: model:ir.model.fields,field_description:connect.field_connect_queue__sid
+#: model:ir.model.fields,field_description:connect.field_connect_recording__sid
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__sid
+#: model:ir.model.fields,field_description:connect.field_connect_user__sid
+msgid "SID"
+msgstr "SID"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_user__ring_first__sip
+#: model:ir.model.fields.selection,name:connect.selection__connect_user__ring_second__sip
+#: model_terms:ir.ui.view,arch_db:connect.user_list
+msgid "SIP"
+msgstr "SIP"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_user_form
+msgid "SIP Phone"
+msgstr "SIP-puhelin"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_user__sip_enabled
+msgid "SIP Phone Enabled"
+msgstr "SIP-puhelin käytössä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_domain__sip_registration
+msgid "SIP Registration"
+msgstr "SIP-rekisteröinti"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_user__uri
+msgid "SIP URI"
+msgstr "SIP URI"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_user__sip_ring_timeout
+msgid "SIP ring timeout"
+msgstr "SIP-soiton aikakatkaisu"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__message_has_sms_error
+#: model:ir.model.fields,field_description:connect.field_connect_channel__message_has_sms_error
+#: model:ir.model.fields,field_description:connect.field_connect_recording__message_has_sms_error
+msgid "SMS Delivery error"
+msgstr "Tekstiviestin toimitusvirhe"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "SUBMIT REGISTRATION"
+msgstr "LÄHETÄ REKISTERÖINTI"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "SYNC TWILIO ACCOUNT"
+msgstr "SYNKRONOI TWILIO-TILI"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__scheduled_datetime
+msgid "Scheduled Datetime"
+msgstr "Aikataulutettu ajankohta"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__duration
+#: model:ir.model.fields,field_description:connect.field_connect_channel__duration
+msgid "Seconds"
+msgstr "Sekuntia"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_callflow_form
+msgid "See available voices"
+msgstr "Katso käytettävissä olevat äänet"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_query_form
+msgid "Select a prompt from a list..."
+msgstr "Valitse kehote luettelosta..."
+
+#. module: connect
+#: model:ir.model,name:connect.model_sms_composer
+msgid "Send SMS Wizard"
+msgstr "Lähetä tekstiviesti ohjatulla toiminnolla"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_message__sender_user
+#: model_terms:ir.ui.view,arch_db:connect.view_connect_sms_message_form
+msgid "Sender User"
+msgstr "Lähettävä käyttäjä"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_settings
+#: model:ir.model.fields,field_description:connect.field_connect_transcription_rule__settings
+#: model:ir.ui.menu,name:connect.connect_settings_menu model_terms:ir.ui.view,arch_db:connect.connect_callout_form
+#: model_terms:ir.ui.view,arch_db:connect.connect_user_form
+msgid "Settings"
+msgstr "Asetukset"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__show_partner_code
+msgid "Show Partner Code"
+msgstr "Näytä kumppanikoodi"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_byoc__sid
+#: model:ir.model.fields,field_description:connect.field_connect_number__sid
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__sid
+msgid "Sid"
+msgstr "SID"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout_choice__skip
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__skip
+msgid "Skip"
+msgstr "Ohita"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_recording__source
+msgid "Source"
+msgstr "Lähde"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_query__sources
+msgid "Sources"
+msgstr "Lähteet"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow_choice__speech
+#: model:ir.model.fields,field_description:connect.field_connect_callout_choice__speech
+#: model:ir.model.fields.selection,name:connect.selection__connect_callflow__gather_input_type__speech
+#: model:ir.model.fields.selection,name:connect.selection__connect_callout__gather_input_type__speech
+msgid "Speech"
+msgstr "Puhe"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_recording__start_time
+msgid "Start Time"
+msgstr "Aloitusaika"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.view_connect_sms_message_form
+msgid "State"
+msgstr "Osavaltio"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/callouts/callouts.xml:0
+#: model:ir.model.fields,field_description:connect.field_connect_call__status
+#: model:ir.model.fields,field_description:connect.field_connect_callout__status
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__status
+#: model:ir.model.fields,field_description:connect.field_connect_channel__status
+#: model:ir.model.fields,field_description:connect.field_connect_message__status
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__status
+#: model:ir.model.fields,field_description:connect.field_connect_query__status
+#: model:ir.model.fields,field_description:connect.field_connect_recording__status
+#, python-format
+msgid "Status"
+msgstr "Tila"
+
+#. module: connect
+#: model:ir.model.fields,help:connect.field_connect_call__activity_state
+#: model:ir.model.fields,help:connect.field_connect_recording__activity_state
+msgid ""
+"Status based on activities\n"
+"Overdue: Due date is already passed\n"
+"Today: Activity date is today\n"
+"Planned: Future activities."
+msgstr ""
+"Tila aktiviteetin perusteella\n"
+"Myöhässä: Eräpäivä on menneisyydessä\n"
+"Tänään: Eräpäivä on tänään\n"
+"Suunniteltu: Tulevaisuudessa."
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout_choice__stop
+msgid "Stop"
+msgstr "Pysäytä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_domain__subdomain
+msgid "Subdomain"
+msgstr "Aliverkkotunnus"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.add_to_callout_wizard_form
+#: model_terms:ir.ui.view,arch_db:connect.connect_query_form
+msgid "Submit"
+msgstr "Lähetä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__summary
+#: model:ir.model.fields,field_description:connect.field_connect_recording__summary
+msgid "Summary"
+msgstr "Yhteenveto"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__summary_prompt
+msgid "Summary Prompt"
+msgstr "Yhteenvetokehotus"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_recording_form
+msgid "Sync"
+msgstr "Synkronointi"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "Take call"
+msgstr "Ota puhelu vastaan"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.view_connect_sms_message_form
+msgid "Technical Information"
+msgstr "Tekniset tiedot"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "Technical Support"
+msgstr "Tekninen tuki"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_callout_form
+msgid "Test"
+msgstr "Testaa"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout__test_to
+msgid "Test number"
+msgstr "Testaa numeroa"
+
+#. module: connect
+#: model:ir.model.constraint,message:connect.constraint_connect_user_user_uniq
+msgid "This Odoo user account is already defined!"
+msgstr "Tämä Odoo-käyttäjätili on jo määritelty!"
+
+#. module: connect
+#: model:ir.model.constraint,message:connect.constraint_connect_user_username_uniq
+msgid "This PBX username is already defined!"
+msgstr "Tämä puhelinkeskuksen käyttäjätunnus on jo määritelty!"
+
+#. module: connect
+#: model:ir.model.constraint,message:connect.constraint_connect_exten_number_uniq
+msgid "This extension number is already defined in the domain!"
+msgstr "Tämä lisänumero on jo määritelty verkkotunnuksessa!"
+
+#. module: connect
+#: model:ir.model.constraint,message:connect.constraint_connect_outgoing_callerid_number_uniq
+msgid "This number is already used!"
+msgstr "Tämä numero on jo käytössä!"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__gather_timeout
+msgid "Timeout"
+msgstr "Aikakatkaisu"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_channel__to
+#: model:ir.model.fields,field_description:connect.field_connect_message__to_number
+msgid "To"
+msgstr "Vastaanottaja"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/services/active_calls/active_calls_tray.xml:0
+#, python-format
+msgid "Toggle Calls"
+msgstr "Vaihda puhelut"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/tray/tray.xml:0
+#, python-format
+msgid "Toggle Connect Phone"
+msgstr "Vaihda Connectin puhelin"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/tray/tray.xml:0
+#, python-format
+msgid "Toggle Phone"
+msgstr "Vaihda puhelin"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_query__token
+msgid "Token"
+msgstr "Token"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_recording_form
+msgid "Transcribe"
+msgstr "Muunna tekstiksi"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "Transcribe Rules"
+msgstr "Tekstinmuunnoksen säännöt"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__transcript
+#: model:ir.model.fields,field_description:connect.field_connect_recording__transcript
+msgid "Transcript"
+msgstr "Tekstimuunnos"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__transcript_calls
+msgid "Transcript Calls"
+msgstr "Muunna puhelut tekstiksi"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_recording_form
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "Transcription"
+msgstr "Puhelun muuntaminen"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_recording__transcription_error
+msgid "Transcription Error"
+msgstr "Tekstimuunnoksen virhe"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_recording__transcription_price
+msgid "Transcription Price"
+msgstr "Tekstimuunnoksen hinta"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__transcription_rules
+msgid "Transcription Rules"
+msgstr "Tekstimuunnoksen säännöt"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_recording__transcription_token
+msgid "Transcription Token"
+msgstr "Tekstimuunnoksen pääsytunniste"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_transcription_rule
+msgid "Transcription rule"
+msgstr "Tekstimuunnoksen sääntö"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_transfer_wizard
+msgid "Transfer Wizard"
+msgstr "Soiton siirron ohjattu toiminto"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/contacts/contacts.xml:0
+#, python-format
+msgid "Transfer to {{partner.twlidoo_mobile_normalized}}"
+msgstr "Siirrä {{partner.twlidoo_mobile_normalized}}"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/contacts/contacts.xml:0
+#, python-format
+msgid "Transfer to {{partner.twlidoo_phone_normalized}}"
+msgstr "Siirrä {{partner.twlidoo_phone_normalized}}"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/contacts/contacts.xml:0
+#, python-format
+msgid "Transfer to {{user.exten_number}}"
+msgstr "Siirrä {{user.exten_number}}"
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.twiml_action
+#: model:ir.model.fields,field_description:connect.field_connect_exten__twiml
+#: model:ir.model.fields,field_description:connect.field_connect_number__twiml
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__twiml
+#: model:ir.model.fields.selection,name:connect.selection__connect_exten__dst__connect_twiml
+#: model:ir.model.fields.selection,name:connect.selection__connect_number__destination__twiml
+#: model:ir.model.fields.selection,name:connect.selection__connect_twiml__code_type__twiml
+#: model:ir.ui.menu,name:connect.twimls_menu
+msgid "TwiML"
+msgstr "TwiML"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_twiml
+msgid "TwiML app"
+msgstr "TwiML-sovellus"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_twiml_form
+msgid "TwiML name..."
+msgstr "TwiML-nimi..."
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__twipy
+#: model:ir.model.fields.selection,name:connect.selection__connect_twiml__code_type__twipy
+msgid "TwiPy"
+msgstr "TwiPy"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "Twilio"
+msgstr "Twilio"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__twilio_api_key
+msgid "Twilio Api Key"
+msgstr "Twilio Api Key"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__twilio_api_secret
+msgid "Twilio Api Secret"
+msgstr "Twilio Api Secret"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__twilio_balance
+msgid "Twilio Balance"
+msgstr "Twilio Balance"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_domain
+msgid "Twilio Domain"
+msgstr "Twilio toimialue"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_message
+msgid "Twilio Message"
+msgstr "Twilio-viesti"
+
+#. module: connect
+#: model:ir.model,name:connect.model_connect_user
+msgid "Twilio User"
+msgstr "Twilio-käyttäjä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout_choice__twiml
+msgid "Twiml"
+msgstr "Twiml"
+
+#. module: connect
+#: model:ir.model.fields,help:connect.field_connect_call__activity_exception_decoration
+#: model:ir.model.fields,help:connect.field_connect_recording__activity_exception_decoration
+msgid "Type of the exception activity on record."
+msgstr "Poikkeusaktiviteetin tyyppi tietueella."
+
+#. module: connect
+#: model:ir.model.fields,help:connect.field_connect_twiml__code_type
+msgid "Type of the language. To call mymodel.render() set mymodel.render as model.method"
+msgstr "Kielen tyyppi. Voit kutsua mymodel.render():tä asettamalla mymodel.render as model.method"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "UPDATE ADMIN DATA"
+msgstr "PÄIVITTÄ YLLÄPITÄJÄN TIETOJA"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "UPDATE COMPANY DATA"
+msgstr "PÄIVITTÄ YRITYKSEN TIETOJA"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_byoc__url
+msgid "Url"
+msgstr "URL"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/calls/calls.xml:0
+#: code:addons/connect/static/src/components/phone/favorites/favorites.xml:0 model:ir.model,name:connect.model_res_users
+#: model:ir.model.fields,field_description:connect.field_connect_favorite__user
+#: model:ir.model.fields,field_description:connect.field_connect_number__user
+#: model:ir.model.fields.selection,name:connect.selection__connect_exten__dst__connect_user
+#: model:ir.model.fields.selection,name:connect.selection__connect_number__destination__user
+#: model:res.groups,name:connect.group_connect_user
+#, python-format
+msgid "User"
+msgstr "Käyttäjä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_user__username
+msgid "Username"
+msgstr "Käyttäjätunnus"
+
+#. module: connect
+#: model:ir.actions.act_window,name:connect.user_action model:ir.ui.menu,name:connect.users_menu
+msgid "Users"
+msgstr "Käyttäjät"
+
+#. module: connect
+#: model:ir.actions.server,name:connect.vacuum_debug_ir_actions_server
+msgid "Vacuum Connect debug"
+msgstr "Vacuum Connect debug"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_outgoing_callerid_form
+msgid "Validate"
+msgstr "Vahvista"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callout_contact__validate_answer
+msgid "Validate Answer"
+msgstr "Vahvista vastaus"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__validation_code
+msgid "Validation Code"
+msgstr "Vahvistuskoodi"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_settings__twilio_verify_requests
+msgid "Verify Twilio Requests"
+msgstr "Twilio-pyyntöjen tarkistaminen"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__voice
+#: model:ir.ui.menu,name:connect.connect_voice_menu
+msgid "Voice"
+msgstr "Ääni"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_byoc__voice_fallback_url
+#: model:ir.model.fields,field_description:connect.field_connect_number__voice_fallback_url
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__voice_fallback_url
+msgid "Voice Fallback Url"
+msgstr "Voice Fallback Url"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_byoc__voice_status_url
+#: model:ir.model.fields,field_description:connect.field_connect_number__voice_status_url
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__voice_status_url
+msgid "Voice Status Url"
+msgstr "Äänen tila Url"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_byoc__voice_url
+#: model:ir.model.fields,field_description:connect.field_connect_number__voice_url
+#: model:ir.model.fields,field_description:connect.field_connect_twiml__voice_url
+msgid "Voice Url"
+msgstr "Voice Url"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__voicemail_widget
+#: model_terms:ir.ui.view,arch_db:connect.connect_call_form
+msgid "VoiceMail"
+msgstr "VoiceMail"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__voicemail_duration
+msgid "Voicemail Duration"
+msgstr "Vastaajapalvelun kesto"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__voicemail_enabled
+#: model:ir.model.fields,field_description:connect.field_connect_user__voicemail_enabled
+msgid "Voicemail Enabled"
+msgstr "Vastaajapalvelu käytössä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_callflow__voicemail_prompt
+#: model:ir.model.fields,field_description:connect.field_connect_user__voicemail_prompt
+msgid "Voicemail Prompt"
+msgstr "Vastaajapalvelun kehote"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__voicemail_url
+msgid "Voicemail Url"
+msgstr "Vastaajan URL"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_user_form
+msgid "WEB Phone"
+msgstr "WEB-puhelin"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_queue__wait_url
+msgid "Wait Url"
+msgstr "Odota Url"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.user_list
+msgid "Web"
+msgstr "Www"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_user__client_enabled
+msgid "Web Phone Enabled"
+msgstr "Verkkopuhelin käytössä"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_user__client_ring_timeout
+msgid "Web client ring timeout"
+msgstr "Web-asiakkaan soiton aikakatkaisu"
+
+#. module: connect
+#: model:res.groups,name:connect.group_connect_webhook
+msgid "Webhook"
+msgstr "Webhook"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_call__website_message_ids
+#: model:ir.model.fields,field_description:connect.field_connect_channel__website_message_ids
+#: model:ir.model.fields,field_description:connect.field_connect_recording__website_message_ids
+msgid "Website Messages"
+msgstr "Verkkosivun viesti"
+
+#. module: connect
+#: model:ir.model.fields,help:connect.field_connect_call__website_message_ids
+#: model:ir.model.fields,help:connect.field_connect_channel__website_message_ids
+#: model:ir.model.fields,help:connect.field_connect_recording__website_message_ids
+msgid "Website communication history"
+msgstr "Verkkosivun viestihistoria"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid ""
+"Your privacy is our priority - your registration data remains strictly confidential. We do not sell or misuse your "
+"information.<br/>\n"
+"                        <strong>Thanks a lot for your trust, understanding and support! Welcome to our community!</strong>"
+msgstr ""
+"Yksityisyytesi on etusijalla - rekisteröintitietosi pysyvät ehdottoman luottamuksellisina. Emme myy tai käytä tietojasi "
+"väärin.<br/>\n"
+"                       <strong>Kiitos paljon luottamuksesta, ymmärryksestä ja tuesta! Tervetuloa yhteisöömme!</strong>"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.view_connect_sms_message_form
+msgid "Zip"
+msgstr "Postinumero"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/callouts/callouts.xml:0
+#, python-format
+msgid "all"
+msgstr "kaikki"
+
+#. module: connect
+#: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__callerid_users
+msgid "callerId Users"
+msgstr "soittajan tunnisteen käyttäjät"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "data privacy policy."
+msgstr "tietosuojakäytäntö."
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/callouts/callouts.xml:0
+#: model:ir.model.fields.selection,name:connect.selection__connect_query__status__done
+#, python-format
+msgid "done"
+msgstr "tehty"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_query__status__draft
+msgid "draft"
+msgstr "luonnos"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_callflow_form
+msgid "en-US"
+msgstr "en-US"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_query__status__error
+msgid "error"
+msgstr "virhe"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_callflow_form
+msgid "here"
+msgstr "tässä"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_twiml__code_type__model_method
+msgid "model.method"
+msgstr "model.method"
+
+#. module: connect
+#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
+msgid "more"
+msgstr "lisää"
+
+#. module: connect
+#: model:ir.model.fields.selection,name:connect.selection__connect_query__status__process
+msgid "process"
+msgstr "prosessi"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/callouts/callouts.xml:0
+#, python-format
+msgid "queued"
+msgstr "jonossa"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "{{ state.isMicrophoneMute ? 'Unmute Microphone' : 'Mute Microphone' }}"
+msgstr "{{ state.isMicrophoneMute ? 'Poista mikrofonin mykistys' : 'Mykistä mikrofoni' }}"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/components/phone/phone/phone.xml:0
+#, python-format
+msgid "{{ state.isSoundMute ? 'Unmute Sound' : 'Mute Sound' }}"
+msgstr "{{ state.isSoundMute ? 'Poista äänen mykistys' : 'Mykistä ääni' }}"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/services/active_calls/active_calls_popup.xml:0
+#, python-format
+msgid "{{call.called ? call.called : ''}}"
+msgstr "{{call.called ? call.called : ''}}}"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/services/active_calls/active_calls_popup.xml:0
+#, python-format
+msgid "{{call.called_users ? call.called_users[1] : ''}}"
+msgstr "{{call.called_users ? call.called_users[1] : ''}}}"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/services/active_calls/active_calls_popup.xml:0
+#, python-format
+msgid "{{call.caller ? call.caller : ''}}"
+msgstr "{{call.caller ? call.caller : ''}}}"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/services/active_calls/active_calls_popup.xml:0
+#, python-format
+msgid "{{call.caller_user ? call.caller_user[1] : ''}}"
+msgstr "{{call.caller_user ? call.caller_user[1] : ''}}}"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/services/active_calls/active_calls_popup.xml:0
+#, python-format
+msgid "{{call.direction ? call.direction : ''}}"
+msgstr "{{call.direction ? call.direction : ''}}}"
+
+#. module: connect
+#. odoo-javascript
+#: code:addons/connect/static/src/services/active_calls/active_calls_popup.xml:0
+#, python-format
+msgid "{{call.partner ? call.partner[1] : ''}}"
+msgstr "{{call.partner ? call.partner[1] : ''}}}"
