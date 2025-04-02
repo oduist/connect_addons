@@ -1,12 +1,7 @@
 import ast
 import logging
-import os
-from tempfile import NamedTemporaryFile
 
-import httpx
-import openai
 import phonenumbers
-import requests
 from phonenumbers import parse, format_number, PhoneNumberFormat
 from twilio.twiml.messaging_response import MessagingResponse
 
@@ -54,7 +49,6 @@ class ConnectMessage(models.Model):
         media_widget = fields.Html(compute='_get_media_widget', string='Media', sanitize=False)
     else:
         media_widget = fields.Char(compute='_get_media_widget', string='Media')
-    transcription_error = fields.Char()
 
     def _get_media_widget(self):
         for rec in self:
@@ -88,36 +82,21 @@ class ConnectMessage(models.Model):
             else:
                 record.name = f"New {record.message_type}"
 
-    def transcribe_voice_message(self, openai_api_key, media_url):
-        result = {}
-        try:
-            if os.environ.get('OPENAI_PROXY'):
-                client = openai.OpenAI(
-                    api_key=openai_api_key, http_client=httpx.Client(proxy=os.environ.get('HTTPS_PROXY')))
-            else:
-                client = openai.OpenAI(api_key=openai_api_key)
-            response = requests.get(media_url, stream=True)
-            response.raise_for_status()
-            with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
-                # Write the content from the URL to the temporary file
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        temp_file.write(chunk)
-                temp_file_path = temp_file.name
-            with open(temp_file_path, 'rb') as audio_file:
-                transcript = client.audio.transcriptions.create(
-                    model="whisper-1", file=audio_file,
-                    response_format='verbose_json', timestamp_granularities=["segment"])
-            # Create segments
-            segments = ''
-            for s in transcript.segments:
-                segments += '{}\n'.format(s.text)
-            result['body'] = segments.strip()
-        except Exception as e:
-            logger.exception('Transcribe error:')
-            result['transcription_error'] = str(e)
-        finally:
-            return result
+    def get_receive_message_values(self, params):
+        return {
+            'message_sid': params.get('MessageSid'),
+            'from_number': params.get('From'),
+            'to_number': params.get('To'),
+            'body': params.get('Body'),
+            'num_media': int(params.get('NumMedia', 0)),
+            'from_city': params.get('FromCity'),
+            'from_state': params.get('FromState'),
+            'from_zip': params.get('FromZip'),
+            'from_country': params.get('FromCountry'),
+            'account_sid': params.get('AccountSid'),
+            'messaging_service_sid': params.get('MessagingServiceSid'),
+            'status': params.get('SmsStatus'),
+        }
 
     @api.model
     def receive(self, params):
@@ -130,30 +109,9 @@ class ConnectMessage(models.Model):
                 # Create SMS message record
                 from_number = params.get('From')
                 to_number = params.get('To')
-                values = {
-                    'message_sid': params.get('MessageSid'),
-                    'from_number': from_number,
-                    'to_number': to_number,
-                    'body': params.get('Body'),
-                    'num_media': int(params.get('NumMedia', 0)),
-                    'from_city': params.get('FromCity'),
-                    'from_state': params.get('FromState'),
-                    'from_zip': params.get('FromZip'),
-                    'from_country': params.get('FromCountry'),
-                    'account_sid': params.get('AccountSid'),
-                    'messaging_service_sid': params.get('MessagingServiceSid'),
-                    'status': params.get('SmsStatus'),
-                }
+                values = self.get_receive_message_values(params)
                 if params.get('MessageType') == 'audio':
                     values.update({'media_url': params.get('MediaUrl0')})
-                    # Transcribe Voice Message
-                    transcript_voice_message = self.env['connect.settings'].sudo().get_param('transcript_voice_message')
-                    openai_key = self.env['connect.settings'].sudo().get_param('openai_api_key')
-                    if transcript_voice_message and openai_key:
-                        transcription = self.transcribe_voice_message(openai_key, params.get('MediaUrl0'))
-                        values.update(transcription)
-                    elif transcript_voice_message and not openai_key:
-                        logger.warning('OpenAI key is not set! Transcription will not be available.')
                 if 'whatsapp:' in from_number:
                     from_number = from_number.replace('whatsapp:', '')
                     to_number = to_number.replace('whatsapp:', '')

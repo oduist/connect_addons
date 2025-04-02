@@ -80,11 +80,6 @@
                       </field>
                     </group>
                   </group>
-                  <group>
-                    <group>
-                      <field name="transcript_voice_message"/>
-                    </group>
-                  </group>
                 </page>
                 <page string="Development" groups="base.group_no_one"
                       invisible="is_registered == False">
