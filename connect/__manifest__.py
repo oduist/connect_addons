@@ -54,6 +54,7 @@
         'views/favorite.xml',
         'views/res_partner.xml',
         'views/message.xml',
+        'views/message_configuration.xml',
         # Wizard
         'wizard/transfer.xml',
         ],

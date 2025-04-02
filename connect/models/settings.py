@@ -97,6 +97,7 @@ class Settings(models.Model):
     ############# RECORDING & TRANSCRIPT FIELDS ##############################################
     proxy_recordings = fields.Boolean(help='Re-stream recordings using Odoo user auth.', default=True)
     transcript_calls = fields.Boolean()
+    transcript_voice_message = fields.Boolean()
     transcription_rules = fields.One2many('connect.transcription_rule', 'settings')
     summary_prompt = fields.Text(required=True, default='Summarise this phone call')
     register_summary = fields.Boolean(help='Register summary at partner of reference chat.')
