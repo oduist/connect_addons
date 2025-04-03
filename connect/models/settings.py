@@ -470,6 +470,9 @@ class Settings(models.Model):
             rec.phone = rec._normalize_phone(rec.phone)
             rec.mobile = rec._normalize_phone(rec.mobile)
 
+    def compute_sip_uri(self, user):
+        return 'sip:{}'.format(self.env.user.connect_user.uri)
+
     @api.model
     def originate_call(self, number, res_model=None, res_id=None, user=None):
         number = strip_number(number)
@@ -491,7 +494,7 @@ class Settings(models.Model):
             raise ValidationError('User does not have a SIP username defined!')
         ring_options = {}
         if user.connect_user.sip_enabled:
-            ring_options['sip'] = 'sip:{}'.format(self.env.user.connect_user.uri)
+            ring_options['sip'] = self.compute_sip_uri(user)
         if user.connect_user.client_enabled:
             ring_options['client'] = 'client:{}?autoAnswer=yes&Partner={}'.format(self.env.user.connect_user.uri, partner_id)
         to = ring_options.get(self.env.user.connect_user.ring_first)
