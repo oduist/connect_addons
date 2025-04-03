@@ -18,7 +18,7 @@
         <field name="name">connect.exten_list</field>
         <field name="model">connect.exten</field>
         <field name="arch" type="xml">
-            <list>
+            <list duplicate="false">
                 <field name="number"/>
                 <field name="dst"/>
                 <field name="dst_name" string="Model"/>
@@ -30,7 +30,7 @@
         <field name="name">connect_exten_form</field>
         <field name="model">connect.exten</field>
         <field name="arch" type="xml">
-            <form>
+            <form duplicate="false">
                 <sheet>
                     <div class="oe_title">
                         <h1>
