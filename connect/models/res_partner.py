@@ -51,10 +51,10 @@ class Partner(models.Model):
 
     connect_calls_count = fields.Integer(compute='_get_connect_calls_count')
     connect_recorded_calls = fields.One2many('connect.recording', 'partner')
-    twlidoo_phone_normalized = fields.Char(compute='_get_twlidoo_phone_normalized',
+    connect_phone_normalized = fields.Char(compute='_get_connect_phone_normalized',
                                    index=True, store=True,
                                    string='E.164 phone')
-    twlidoo_mobile_normalized = fields.Char(compute='_get_twlidoo_phone_normalized',
+    connect_mobile_normalized = fields.Char(compute='_get_connect_phone_normalized',
                                     index=True, store=True,
                                     string='E.164 mobile')
 
@@ -96,11 +96,11 @@ class Partner(models.Model):
 
 
     @api.depends('phone', 'mobile', 'country_id')
-    def _get_twlidoo_phone_normalized(self):
+    def _get_connect_phone_normalized(self):
         for rec in self:
             rec.update({
-                'twlidoo_phone_normalized': rec._normalize_phone(rec.phone) if rec.phone else False,
-                'twlidoo_mobile_normalized': rec._normalize_phone(rec.mobile) if rec.mobile else False
+                'connect_phone_normalized': rec._normalize_phone(rec.phone) if rec.phone else False,
+                'connect_mobile_normalized': rec._normalize_phone(rec.mobile) if rec.mobile else False
             })
 
     def _normalize_phone(self, number):
@@ -139,8 +139,8 @@ class Partner(models.Model):
             number = found.group(1)
         found = self.sudo().search([
             '|',
-            ('twlidoo_phone_normalized', '=', number),
-            ('twlidoo_mobile_normalized', '=', number)])
+            ('connect_phone_normalized', '=', number),
+            ('connect_mobile_normalized', '=', number)])
         debug(self, '{} belongs to partners: {}'.format(
             number, found.mapped('id')
         ))
