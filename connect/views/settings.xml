@@ -25,7 +25,8 @@
                       attrs="{'invisible': [('is_registered', '=', False)]}">
                   <group>
                     <group>
-                      <field name="is_registered" attrs="{'invisible': 1}"/>
+                      <field name="api_url"/>
+                      <field name="api_fallback_url"/>
                       <field name="debug_mode"/>
                     </group>
                   </group>
@@ -117,15 +118,13 @@
                   </group>
                   <group>
                     <group name="registration" string="Registration">
-                      <field name="show_partner_code" invisible="1"/>
-                      <field colspan="2" name="partner_code"
-                             attrs="{'invisible': ['|', ('show_partner_code', '=', False), ('is_registered', '=', True)],
-                                     'readonly': [('is_registered', '=', True)]}"/>
+                      <field colspan="2" name="registration_number"
+                             attrs="{'invisible': [('is_registered', '=', False)]}"/>
+                      <field colspan="2" name="customer_code"
+                             attrs="{'invisible': [('is_registered', '=', True)]}"/>
                       <button colspan="2" name="register_instance" class="btn btn-info btn-lg me-1" type="object" string="SUBMIT REGISTRATION"
                               attrs="{'invisible': ['|', '|', '|', ('is_registered', '=', True), ('i_agree_to_register', '=', False), ('i_agree_to_receive', '=', False), ('i_agree_to_contact', '=', False)]}"/>
                       <field name="is_registered" invisible="1"/>
-                      <button colspan="2" name="unregister_instance" class="btn btn-lg btn-danger me-1" type="object" string="DELETE REGISTRATION"
-                              attrs="{'invisible': [('is_registered', '=', False)]}"/>
                       <p colspan="2"
                          attrs="{'invisible': [('i_agree_to_register', '=', True), ('i_agree_to_receive', '=', True), '|', ('i_agree_to_contact', '=', True), ('is_registered', '=', True)]}">
                         Our product is <b>open source and free to use</b>, but it's <b>also a commercial solution used in business-critical environments</b>.<br/>
@@ -145,8 +144,8 @@
                            attrs="{'invisible': [('is_registered', '=', False)]}">
                       <p colspan="2" >
                         <a role="button" class="btn btn-primary" href="https://oduist.com/knowledge/article/39" target="_new">DOCUMENTATION</a> |
-                        <a role="button" class="btn btn-info" href="https://oduist.com/forum/user-support-portal-1" target="_new">FREE SUPPORT</a> |
-                        <a role="button" class="btn btn-success" href="https://oduist.com/new-ticket" target="_new">ENTERPRISE SUPPORT</a>
+                        <a role="button" class="btn btn-info" href="https://oduist.com/forum/user-support-portal-1" target="_new">COMMUNITY SUPPORT</a> |
+                        <a role="button" class="btn btn-success" href="https://oduist.com/support" target="_new">ENTERPRISE SUPPORT</a>
                       </p>
                       <img alt="Great support!" colspan="2" src="/connect/static/description/support.jpg" width="100%"/>
                     </group>
