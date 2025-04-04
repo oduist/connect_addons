@@ -144,12 +144,12 @@ class ConnectMessage(models.Model):
             return str(MessagingResponse())  # Return empty TwiML response, i.e. no reply.
 
     def send(self, recipient, body, res_id=None, res_model=None):
-        sender_user_id = self.env.user.id
-        number = self.env['connect.number'].search([('user.user', '=', sender_user_id)], limit=1)
+        sender_user = self.env.user
+        number = sender_user.connect_user.outgoing_callerid
         # Check if user have a number
         if not number:
-            raise ValidationError('You dont have a number!')
-        sender = number.phone_number
+            raise ValidationError('You dont have an outgoing callerid number!')
+        sender = number.number
         message = self.client_send(recipient, sender, body, whatsapp=True)
         if not message:
             message = self.client_send(recipient, sender, body)
@@ -163,7 +163,7 @@ class ConnectMessage(models.Model):
             'to_number': recipient,
             'body': body,
             'partner': partner.id,
-            'sender_user': sender_user_id,
+            'sender_user': sender_user.id,
             'messaging_service_sid': message.messaging_service_sid,
             'num_media': message.num_media,
             'error_code': message.error_code,
@@ -183,12 +183,13 @@ class ConnectMessage(models.Model):
                 from_='whatsapp:{}'.format(sender) if whatsapp else sender,
                 body=body,
             )
-            if message.error_code == '63003':
+            if message.error_code:
                 return False
+            logger.info('Message to %s is sent.', recipient)
             return message
         except Exception as e:
             if not whatsapp:
                 logger.exception(e)
             else:
-                logger.info('Unable to send WhatsUp message to "{}"!'.format(recipient))
+                logger.warning('Unable to send WhatsUp message to "{}"!'.format(recipient))
             return False

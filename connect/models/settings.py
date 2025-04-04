@@ -11,7 +11,6 @@ import uuid
 from odoo import fields, models, api, release
 from odoo.exceptions import ValidationError, UserError
 from twilio.rest import Client
-from twilio.request_validator import RequestValidator
 
 
 logger = logging.getLogger(__name__)
@@ -481,21 +480,6 @@ class Settings(models.Model):
                 raise ValidationError('Set Twilio API keys first!')
             else:
                 raise
-
-    @api.model
-    def check_twilio_request(self, request):
-        if not self.sudo().get_param('twilio_verify_requests'):
-            return True
-        if not request.get('X-TWILIO-SIGNATURE'):
-            logger.error('Request does not contain X-TWILIO-SIGNATURE! Ignoring.')
-            return False
-        validator = RequestValidator(self.sudo().get_param('auth_token'))
-        url = request.pop('X-TWILIO-WEBHOOK-URL', '')
-        signature = request.pop('X-TWILIO-SIGNATURE', '')
-        request_valid = validator.validate(url, request, signature)
-        if not request_valid:
-            logger.error('Twilio request is not valid: %s', json.dumps(request, indent=2))
-        return request_valid
 
     def check_api_url(self):
         message = None
