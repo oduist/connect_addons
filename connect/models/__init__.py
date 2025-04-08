@@ -9,9 +9,6 @@ from . import favorite
 from . import message
 from . import number
 from . import outgoing_callerid
-from . import query
-from . import query_prompt
-from . import query_source
 from . import outgoing_callerid
 from . import outgoing_rule
 from . import recording

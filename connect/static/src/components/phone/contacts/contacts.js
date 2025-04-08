@@ -118,13 +118,13 @@ export class Contacts extends Component {
             self.orm.searchRead(
                 "res.partner",
                 [
-                    '|', ['twlidoo_phone_normalized', '=ilike', `%${self.searchQuery}%`],
-                    '|', ['twlidoo_mobile_normalized', '=ilike', `%${self.searchQuery}%`],
+                    '|', ['connect_phone_normalized', '=ilike', `%${self.searchQuery}%`],
+                    '|', ['connect_mobile_normalized', '=ilike', `%${self.searchQuery}%`],
                     ['name', '=ilike', `%${self.searchQuery}%`],
                     '|', ['phone', '!=', null],
                     ['mobile', '!=', null]
                 ],
-                ['id', 'name', 'email', 'twlidoo_phone_normalized', 'twlidoo_mobile_normalized'],
+                ['id', 'name', 'email', 'connect_phone_normalized', 'connect_mobile_normalized'],
                 {order: 'name asc', limit: 10}
             ).then((records) => {
                 self.state.partners = records
