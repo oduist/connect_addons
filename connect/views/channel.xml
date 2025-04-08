@@ -4,7 +4,7 @@
     <record id="channel_action" model="ir.actions.act_window">
         <field name="name">Channels</field>
         <field name="res_model">connect.channel</field>
-        <field name="view_mode">tree,form</field>        
+        <field name="view_mode">tree,form</field>
     </record>
 
     <menuitem id="connect.channels_menu"
