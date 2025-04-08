@@ -21,10 +21,8 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@master
-      - name: Update
-        run: apt update -y && apt install -y python3-openai
       - name: Install module requirements
-        run: pip3 install twilio elevenlabs --break-system-packages
+        run: pip3 install twilio elevenlabs openai
       - name: Install odoo modules
         run: >
           odoo --addons-path=$GITHUB_WORKSPACE --database=ephemeral
