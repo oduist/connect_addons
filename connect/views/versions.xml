@@ -1,0 +1,24 @@
+<odoo>
+    <template id="module_version_template" name="Module Version Template">
+        <div class="col-6">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">Module Name</th>
+                        <th scope="col">Current Version</th>
+                        <th scope="col">Latest</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <t t-foreach="data" t-as="module">
+                        <tr>
+                            <td><t t-out="module.get('name')"/></td>
+                            <td><t t-out="module.get('current_version')"/></td>
+                            <td><t t-out="module.get('latest_version')"/></td>
+                        </tr>
+                    </t>
+                </tbody>
+            </table>
+        </div>
+    </template>
+</odoo>
