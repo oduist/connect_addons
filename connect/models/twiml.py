@@ -15,10 +15,14 @@ logger = logging.getLogger(__name__)
 
 # Make XML pretty.
 def pretty_xml(content):
-    dom = parseString(content)
-    pretty_content = dom.toprettyxml()
-    # Filter out empty lines
-    return "\n".join([line for line in pretty_content.splitlines() if line.strip()])
+    try:
+        dom = parseString(content)
+        pretty_content = dom.toprettyxml()
+        # Filter out empty lines
+        return "\n".join([line for line in pretty_content.splitlines() if line.strip()])
+    except Exception as e:
+        logger.error('Pretty XML parse error: %s', e)
+        return 'Pretty XML parse error: {}\n{}'.format(e, content)
 
 
 class TwiML(models.Model):
