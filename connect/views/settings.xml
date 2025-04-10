@@ -118,12 +118,14 @@
                   </group>
                   <group>
                     <group name="registration" string="Registration">
-                      <small colspan="2"><strong>Your customer code is available on <a href="http://oduist.com/my">your Customer Portal</a>.</strong></small>
+                      <div colspan="2" invisible="is_registered == True">
+                        <small><strong>Your customer code is available on <a href="https://oduist.com/my">your Customer Portal</a>.</strong></small>
+                      </div>
                       <field colspan="2" name="registration_number"
                              invisible="is_registered == False"/>
                       <field colspan="2" name="customer_code" string="CUSTOMER CODE"
                              invisible="is_registered == True"/>
-                      <button colspan="2" name="register_instance" class="btn btn-info btn-lg me-1" type="object" string="SUBMIT REGISTRATION"
+                      <button colspan="2" name="register_instance" class="btn btn-primary btn-lg me-1" type="object" string="SUBMIT REGISTRATION"
                               invisible="is_registered or not i_agree_to_register or not i_agree_to_receive or not i_agree_to_contact"/>
                       <field name="is_registered" invisible="1"/>
                       <p colspan="2"
@@ -157,11 +159,11 @@
                       <field name="company_phone"/>
                       <field name="company_country"/>
                       <field name="company_city"/>
-                      <button colspan="2" name="update_company_data_button" string="UPDATE COMPANY DATA" type="object"/>
+                      <button colspan="2" class="btn-info btn-sm" name="update_company_data_button" string="UPDATE COMPANY DATA" type="object"/>
                       <field name="admin_name"/>
                       <field name="admin_email"/>
                       <field name="admin_phone"/>
-                      <button colspan="2" name="update_admin_data_button" string="UPDATE ADMIN DATA" type="object"/>
+                      <button colspan="2" class="btn-info btn-sm" name="update_admin_data_button" string="UPDATE ADMIN DATA" type="object"/>
                       <field name="web_base_url"/>
                     </group>
                   </group>
