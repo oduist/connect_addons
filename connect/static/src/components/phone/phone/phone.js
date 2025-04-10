@@ -510,7 +510,7 @@ export class Phone extends Component {
     }
 
     setIncomingVolume() {
-        this.userAgent.audio.incoming(this.state.isSoundMute)
+        this.userAgent.audio.incoming(!this.state.isSoundMute)
     }
 
     getJsonCallData() {

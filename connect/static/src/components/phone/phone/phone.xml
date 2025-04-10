@@ -122,7 +122,7 @@
                         <i class="fa icon-redo2"/>
                     </button>
                     <button t-if="state.phone_status !== status.accepted" aria-label="Mute Sound" class="flex-item" t-attf-title="{{ state.isSoundMute ? 'Unmute Sound' : 'Mute Sound' }}" t-on-click="_onClickSoundMute">
-                        <i t-attf-class="fa {{ state.isSoundMute ? 'icon-volume_up' : 'icon-volume_off'}}"/>
+                        <i t-attf-class="fa {{ state.isSoundMute ? 'icon-volume_off' : 'icon-volume_up'}}"/>
                     </button>
                     <button t-if="state.phone_status === status.accepted" aria-label="Mute Microphone" t-attf-class="flex-item" t-attf-title="{{ state.isMicrophoneMute ? 'Unmute Microphone' : 'Mute Microphone' }}" t-on-click="_onClickMicrophoneMute">
                         <i t-attf-class="fa {{ state.isMicrophoneMute ? 'icon-mic_off' : 'icon-mic' }}"/>
