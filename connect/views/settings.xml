@@ -119,7 +119,7 @@
                   <group>
                     <group name="registration" string="Registration">
                       <div colspan="2" attrs="{'invisible': [('is_registered', '=', True)]}">
-                        <small><strong>Your customer code is available on <a href="http://oduist.com/my">your Customer Portal</a>.</strong></small>
+                        <small><strong>Your customer code is available on <a href="https://oduist.com/my">your Customer Portal</a>.</strong></small>
                       </div>
                       <field colspan="2" name="registration_number"
                              attrs="{'invisible': [('is_registered', '=', False)]}"/>
