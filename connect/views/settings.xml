@@ -105,7 +105,7 @@
                     </div>
                     <div colspan="2" style="font-size: small;">
                       <field name="i_agree_to_register" nolabel="1"/>
-                      <label for="i_agree_to_register" string="I agree to create an account in the Oduist users portal to receive free technical support from Oduist team."/>
+                      <label for="i_agree_to_register" string="I agree to register my instance on the Oduist Users Portal."/>
                     </div>
                     <div colspan="2" style="font-size: small;">
                     <field name="i_agree_to_receive"/>
@@ -118,9 +118,10 @@
                   </group>
                   <group>
                     <group name="registration" string="Registration">
+                      <small colspan="2"><strong>Your customer code is available on <a href="http://oduist.com/my">your Customer Portal</a>.</strong></small>
                       <field colspan="2" name="registration_number"
                              invisible="is_registered == False"/>
-                      <field colspan="2" name="customer_code"
+                      <field colspan="2" name="customer_code" string="CUSTOMER CODE"
                              invisible="is_registered == True"/>
                       <button colspan="2" name="register_instance" class="btn btn-info btn-lg me-1" type="object" string="SUBMIT REGISTRATION"
                               invisible="is_registered or not i_agree_to_register or not i_agree_to_receive or not i_agree_to_contact"/>
