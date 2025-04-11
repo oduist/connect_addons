@@ -590,3 +590,16 @@ class Settings(models.Model):
     def _require_openai_key(self):
         if not self.sudo().get_param('openai_api_key'):
             raise ValidationError('You must set OpenAI key first!')
+
+    def action_open_system_parameters(self):
+        if release.version_info[0] >= 18:
+            view_mode = 'list,form'
+        else:
+            view_mode = 'tree,form'
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'System Parameters',
+            'res_model': 'ir.config_parameter',
+            'view_mode': view_mode,
+            'target': 'current',
+        }
