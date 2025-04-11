@@ -93,7 +93,6 @@ class Settings(models.Model):
     ############# RECORDING & TRANSCRIPT FIELDS ##############################################
     proxy_recordings = fields.Boolean(help='Re-stream recordings using Odoo user auth.', default=True)
     transcript_calls = fields.Boolean()
-    transcription_rules = fields.One2many('connect.transcription_rule', 'settings')
     summary_prompt = fields.Text(required=True, default='Summarise this phone call')
     register_summary = fields.Boolean(help='Register summary at partner of reference chat.')
     remove_recording_after_transcript = fields.Boolean()
@@ -431,6 +430,8 @@ class Settings(models.Model):
     def write(self, vals):
         if self.env.context.get('skip_protected_fields'):
             return super(Settings, self).write(vals)
+        if not self.openai_api_key and vals.get('openai_api_key'):
+            vals.update({'transcript_calls': True})
         res = super(Settings, self).write(vals)
         changed_fields = {}
         for field_name in PROTECTED_FIELDS:
