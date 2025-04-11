@@ -35,6 +35,9 @@
                       invisible="is_registered == False">
                   <group>
                     <group string="Twilio" name="twilio_api">
+                      <div colspan="2">
+                        <small><strong>You can find your Twilio API data in <a href="https://console.twilio.com/" target="_blank">your Twilio Console</a></strong></small>
+                      </div>
                       <field name="account_sid"/>
                       <field name="display_auth_token" string="Auth Token" password="1"/>
                       <field name="twilio_api_key" string="API Key SID"/>
@@ -42,6 +45,9 @@
                       <button colspan="2" name="sync" type="object" string="SYNC TWILIO ACCOUNT" class="btn btn-primary"/>
                     </group>
                     <group name="openai_api" string="OpenAI">
+                      <div colspan="2">
+                        <small><strong>You can find your OpenAI API key in <a href="https://platform.openai.com/settings/organization/api-keys" target="_blank">your OpenAI Setings</a></strong></small>
+                      </div>
                       <field name="display_openai_api_key" string="OpenAI API Key" password="1"/>
                     </group>
                   </group>
@@ -119,7 +125,7 @@
                   <group>
                     <group name="registration" string="Registration">
                       <div colspan="2" invisible="is_registered == True">
-                        <small><strong>Your customer code is available on <a href="https://oduist.com/my">your Customer Portal</a>.</strong></small>
+                        <small><strong>Your customer code is available on <a target="_blank" href="https://oduist.com/my">your Customer Portal</a>.</strong></small>
                       </div>
                       <field colspan="2" name="registration_number"
                              invisible="is_registered == False"/>
