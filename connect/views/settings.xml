@@ -25,8 +25,9 @@
                       invisible="is_registered == False">
                   <group>
                     <group>
-                      <field name="api_url"/>
-                      <field name="api_fallback_url"/>
+                      <field name="api_url" string="Web Base URL"/>
+                      <button name="action_open_system_parameters" type="object" string="Change WEB Base URL"/>
+                      <field name="api_fallback_url" string="Fallback URL"/>
                       <field name="debug_mode"/>
                     </group>
                   </group>
