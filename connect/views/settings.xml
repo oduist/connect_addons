@@ -77,15 +77,6 @@
                       <field name="remove_recording_after_transcript"
                              invisible="transcript_calls == False"/>
                     </group>
-                    <group string="Transcribe Rules"
-                           invisible="transcript_calls == False">
-                      <field name="transcription_rules" nolabel="1" colspan="2">
-                        <tree editable="bottom">
-                          <field name="calling_number"/>
-                          <field name="called_number"/>
-                        </tree>
-                      </field>
-                    </group>
                   </group>
                 </page>
                 <page string="Development" groups="base.group_no_one"
@@ -166,11 +157,11 @@
                       <field name="company_phone"/>
                       <field name="company_country"/>
                       <field name="company_city"/>
-                      <button colspan="2" class="btn btn-info" name="update_company_data_button" string="UPDATE COMPANY DATA" type="object"/>
+                      <button colspan="2" class="btn-info btn-sm" name="update_company_data_button" string="UPDATE COMPANY DATA" type="object"/>
                       <field name="admin_name"/>
                       <field name="admin_email"/>
                       <field name="admin_phone"/>
-                      <button colspan="2" class="btn btn-info" name="update_admin_data_button" string="UPDATE ADMIN DATA" type="object"/>
+                      <button colspan="2" class="btn-info btn-sm" name="update_admin_data_button" string="UPDATE ADMIN DATA" type="object"/>
                       <field name="web_base_url"/>
                     </group>
                   </group>
