@@ -12,9 +12,6 @@ from . import number
 from . import outgoing_callerid
 from . import outgoing_callerid
 from . import outgoing_rule
-from . import query
-from . import query_prompt
-from . import query_source
 from . import recording
 from . import res_partner
 from . import res_users

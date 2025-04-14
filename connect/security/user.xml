@@ -176,50 +176,6 @@
     <field name="perm_unlink" eval="0"/>
   </record>
 
-<!-- Transcription rules -->
-  <record id="connect_transcription_rule_user" model="ir.model.access">
-    <field name="name">connect_transcription_rule_user</field>
-    <field name="model_id" ref="connect.model_connect_transcription_rule"/>
-    <field name="group_id" ref="connect.group_connect_user"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="0"/>
-    <field name="perm_create" eval="0"/>
-    <field name="perm_unlink" eval="0"/>
-  </record>
-
-  <!-- Query -->
-  <record id="connect_query_user" model="ir.model.access">
-    <field name="name">connect_query_user</field>
-    <field name="model_id" ref="connect.model_connect_query"/>
-    <field name="group_id" ref="connect.group_connect_user"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="0"/>
-    <field name="perm_create" eval="0"/>
-    <field name="perm_unlink" eval="0"/>
-  </record>
-
-  <!-- Query Prompt -->
-  <record id="connect_query_prompt_user" model="ir.model.access">
-    <field name="name">connect_query_prompt_user</field>
-    <field name="model_id" ref="connect.model_connect_query_prompt"/>
-    <field name="group_id" ref="connect.group_connect_user"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="0"/>
-    <field name="perm_create" eval="0"/>
-    <field name="perm_unlink" eval="0"/>
-  </record>
-
-  <!-- Query Source -->
-  <record id="connect_query_source_user" model="ir.model.access">
-    <field name="name">connect_query_source_user</field>
-    <field name="model_id" ref="connect.model_connect_query_source"/>
-    <field name="group_id" ref="connect.group_connect_user"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="0"/>
-    <field name="perm_create" eval="0"/>
-    <field name="perm_unlink" eval="0"/>
-  </record>
-
   <!-- Favorites -->
   <record id="connect_favorite_user" model="ir.model.access">
     <field name="name">connect_favorite_user</field>

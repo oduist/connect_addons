@@ -1,5 +1,6 @@
 phonenumbers
 httpx
 twilio
-openai
+openai==1.39.0
 elevenlabs
+typing_extensions==4.10.0

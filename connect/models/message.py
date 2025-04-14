@@ -216,12 +216,13 @@ class ConnectMessage(models.Model):
                 from_='whatsapp:{}'.format(sender) if whatsapp else sender,
                 body=body,
             )
-            if message.error_code == '63003':
+            if message.error_code:
                 return False
+            logger.info('Message to %s is sent.', recipient)
             return message
         except Exception as e:
             if not whatsapp:
                 logger.exception(e)
             else:
-                logger.info('Unable to send WhatsUp message to "{}"!'.format(recipient))
+                logger.warning('Unable to send WhatsUp message to "{}"!'.format(recipient))
             return False
