@@ -606,4 +606,5 @@ class Settings(models.Model):
             'res_model': 'ir.config_parameter',
             'view_mode': view_mode,
             'target': 'current',
+            'context': {'search_default_key': 'connect.api_url'}
         }

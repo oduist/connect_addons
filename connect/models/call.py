@@ -203,7 +203,9 @@ class Call(models.Model):
         # Check if we need to set a partner from child channel
         if not channel.call.partner and channel.partner:
             channel.call.partner = channel.partner
-        if channel.call.direction == 'incoming' and params.get('CallStatus') == 'initiated':
+        if (channel.call.direction == 'incoming' and params.get('CallStatus') == 'initiated' and
+                params.get('To').startswith('sip:')):
+            # Desktop notification only for SIP calls.
             channel.connect_notify()
         # Register call when the last channel closes.
         latest_channel = channel.call.channels.sorted(key='id', reverse=True)[0]
