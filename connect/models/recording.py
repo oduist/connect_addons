@@ -149,6 +149,8 @@ class Recording(models.Model):
         # Update call summary.
         if self.call:
             self.call.summary = data.get('summary')
+            # Reload calls view when transcription has come.
+            self.env['connect.settings'].pbx_reload_view('connect.call')
         # Reload views when transcription has come.
         self.env['connect.settings'].pbx_reload_view('connect.recording')
         # Notify user
