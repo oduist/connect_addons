@@ -34,7 +34,7 @@ class User(models.Model):
     username = fields.Char(required=True)
     password = fields.Char(groups="connect.group_connect_admin,connect.group_connect_user")
     uri = fields.Char('SIP URI', compute='_get_sip_uri', store=True)
-    record_calls = fields.Boolean()
+    record_calls = fields.Boolean(default=True)
     voicemail_enabled = fields.Boolean()
     voicemail_prompt = fields.Text(default="Hello, this is {{user.name}}. I'm unable to take your call right now. Please leave a message after the tone.")
     application = fields.Many2one('connect.twiml')
