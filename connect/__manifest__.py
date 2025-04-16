@@ -59,7 +59,7 @@
     'installable': True,
     'application': True,
     'auto_install': False,
-    'images': ['static/description/icon.png'],
+    'images': ['static/description/logo.png'],
     'assets': {
         'web.assets_backend': [
             '/connect/static/src/icomoon/style.css',
