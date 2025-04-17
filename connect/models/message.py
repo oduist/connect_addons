@@ -70,7 +70,7 @@ class ConnectMessage(models.Model):
         res = super().create(vals_list)
         for record in res:
             if not record.message_type:
-                record.message_type = 'MMS' if record.num_media > 0 else 'SMS'
+                record.message_type = 'mms' if record.num_media > 0 else 'sms'
         return res
 
     @api.depends('from_number', 'create_date', 'message_type')
@@ -127,23 +127,25 @@ class ConnectMessage(models.Model):
                 number = self.env['connect.number'].search([('phone_number', '=', to_number)], limit=1)
                 if number and number.user:
                     values.update({'receiver_user': number.user.user.id})
-                message_id = self.env['connect.message'].sudo().create(values)
+                message = self.env['connect.message'].sudo().create(values)
                 # Add message to chatter
                 last_message = self.env['connect.message'].search([
                     ('from_number', '=', to_number), ('to_number', '=', from_number)], limit=1)
                 if last_message and last_message.res_model and last_message.res_id:
                     mt_note = self.env.ref('mail.mt_note').id
-                    obj = self.env[last_message.res_model].browse(last_message.res_id)
+                    obj = self.env[last_message.res_model].with_user(SUPERUSER_ID).browse(last_message.res_id)
                     if hasattr(obj, 'message_post'):
                         kwargs = {
                             'body': values.get('body'),
                             'subtype_id': mt_note,
+                            'message_type': 'sms',  # TODO: message.message_type
                         }
                         if partner:
                             kwargs.update({'author_id': partner.id})
                         else:
                             kwargs.update({'body': 'From: {}. Message: {}'.format(from_number, params.get('Body'))})
-                        obj.with_user(SUPERUSER_ID).with_context(mail_create_nosubscribe=False).message_post(**kwargs)
+                        chatter = obj.with_context(mail_create_nosubscribe=False).message_post(**kwargs)
+                        chatter.connect_message = message
                 # Message Configuration
                 config = self.env['connect.message_configuration'].search([('number.phone_number', '=', to_number)])
                 lead = self.env['crm.lead'].get_lead_by_number(from_number)
@@ -176,13 +178,16 @@ class ConnectMessage(models.Model):
         finally:
             return str(MessagingResponse())  # Return empty TwiML response, i.e. no reply.
 
-    def send(self, recipient, body, res_id=None, res_model=None):
+    def send(self, recipient, body, res_id=None, res_model=None, outgoing_callerid=None):
         sender_user = self.env.user
-        number = sender_user.connect_user.outgoing_callerid
-        # Check if user have a number
-        if not number:
-            raise ValidationError('You dont have an outgoing callerid number!')
-        sender = number.number
+        if outgoing_callerid:
+            sender = outgoing_callerid
+        else:
+            number = sender_user.connect_user.outgoing_callerid
+            # Check if user have a number
+            if not number:
+                raise ValidationError('You dont have an outgoing callerid number!')
+            sender = number.number
         message = self.client_send(recipient, sender, body, whatsapp=True)
         if not message:
             message = self.client_send(recipient, sender, body)
