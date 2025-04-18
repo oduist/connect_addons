@@ -6,7 +6,7 @@ from . import debug
 from . import domain
 from . import exten
 from . import favorite
-from . import mail_message
+from . import mail
 from . import message
 from . import message_configuration
 from . import number

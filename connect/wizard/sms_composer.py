@@ -18,4 +18,3 @@ class SendSMS(models.TransientModel):
         number = self.recipient_single_number or self.recipient_single_number_itf
         number = self._phone_format(number=number)
         self.env['connect.message'].send(number, self.body, self.res_id, self.res_model, self.outgoing_callerid)
-        return super()._action_send_sms()

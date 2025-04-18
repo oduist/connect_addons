@@ -138,7 +138,7 @@ class ConnectMessage(models.Model):
                         kwargs = {
                             'body': values.get('body'),
                             'subtype_id': mt_note,
-                            'message_type': 'sms',  # TODO: message.message_type
+                            'message_type': message.message_type
                         }
                         if partner:
                             kwargs.update({'author_id': partner.id})
@@ -146,6 +146,17 @@ class ConnectMessage(models.Model):
                             kwargs.update({'body': 'From: {}. Message: {}'.format(from_number, params.get('Body'))})
                         chatter = obj.with_context(mail_create_nosubscribe=False).message_post(**kwargs)
                         chatter.connect_message = message
+
+                        mail_notification_values = [{
+                            'author_id': chatter.author_id.id,
+                            'mail_message_id': chatter.id,
+                            'res_partner_id': chatter.author_id.id,
+                            'sms_number': from_number,
+                            'notification_type': message.message_type,
+                            'is_read': True,
+                            'notification_status': 'ready',
+                        }]
+                        self.env['mail.notification'].sudo().create(mail_notification_values)
                 # Message Configuration
                 config = self.env['connect.message_configuration'].search([('number.phone_number', '=', to_number)])
                 lead = self.env['crm.lead'].get_lead_by_number(from_number)
@@ -180,6 +191,15 @@ class ConnectMessage(models.Model):
 
     def send(self, recipient, body, res_id=None, res_model=None, outgoing_callerid=None):
         sender_user = self.env.user
+        message_data = {
+            'message_type': 'WhatsApp',
+            'to_number': recipient,
+            'body': body,
+            'sender_user': sender_user.id,
+            'res_id': res_id,
+            'res_model': res_model,
+            'status': 'sent'
+        }
         if outgoing_callerid:
             sender = outgoing_callerid
         else:
@@ -191,26 +211,47 @@ class ConnectMessage(models.Model):
         message = self.client_send(recipient, sender, body, whatsapp=True)
         if not message:
             message = self.client_send(recipient, sender, body)
+            message_data.update({'message_type': 'sms'})
         if not message:
             raise ValidationError('Unexpected error! Contact admin or maintainer!')
         # Create message record
         partner = self.env['res.partner'].get_partner_by_number(recipient)
-        self.env['connect.message'].sudo().create({
+        message_data.update({
             'account_sid': message.account_sid,
             'from_number': sender,
-            'to_number': recipient,
-            'body': body,
             'partner': partner.id,
-            'sender_user': sender_user.id,
             'messaging_service_sid': message.messaging_service_sid,
             'num_media': message.num_media,
             'error_code': message.error_code,
             'error_message': message.error_message,
             'message_sid': message.sid,
-            'res_id': res_id,
-            'res_model': res_model,
-            'status': 'sent'
         })
+        message = self.env['connect.message'].sudo().create(message_data)
+
+        # Add message to chatter
+        if res_model and res_id:
+            mt_note = self.env.ref('mail.mt_note').id
+            obj = self.env[res_model].with_user(SUPERUSER_ID).browse(res_id)
+            if hasattr(obj, 'message_post'):
+                kwargs = {
+                    'body': body,
+                    'subtype_id': mt_note,
+                    'message_type': message.message_type
+                }
+
+                kwargs.update({'author_id': sender_user.partner_id.id})
+                chatter = obj.with_context(mail_create_nosubscribe=False).message_post(**kwargs)
+
+                mail_notification_values = [{
+                    'author_id': chatter.author_id.id,
+                    'mail_message_id': chatter.id,
+                    'res_partner_id': chatter.author_id.id,
+                    'sms_number': sender,
+                    'notification_type': message.message_type,
+                    'is_read': True,
+                    'notification_status': 'ready',
+                }]
+                self.env['mail.notification'].sudo().create(mail_notification_values)
 
     def client_send(self, recipient, sender, body, whatsapp=False):
         try:

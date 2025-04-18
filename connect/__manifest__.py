@@ -71,7 +71,7 @@
             '/connect/static/src/widgets/phone_field/*',
             '/connect/static/src/services/actions/*',
             '/connect/static/src/services/active_calls/*',
-            '/connect/static/src/services/message_actions/*',
+            '/connect/static/src/services/mail/*',
         ],
     }
 }

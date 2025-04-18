@@ -7,8 +7,7 @@ export const messageActionsRegistry = registry.category("mail.message/actions")
 messageActionsRegistry
     .add("sms-reply", {
         condition: (component) =>
-            component.message.message_type &&
-            component.message.message_type === "notification",
+            component.message.message_type !== null,
         icon: "fa fa-mail-reply",
         title: _t("Connect Reply"),
         onClick: async (component) => {
