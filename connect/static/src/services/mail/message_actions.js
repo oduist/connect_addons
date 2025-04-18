@@ -25,7 +25,7 @@ messageActionsRegistry
                 {
                     type: "ir.actions.act_window",
                     target: "new",
-                    name: this.title,
+                    name: _t("Send Message"),
                     res_model: "sms.composer",
                     views: [[false, "form"]],
                     context: {
@@ -39,7 +39,7 @@ messageActionsRegistry
                         default_composition_mode: "comment",
                     },
                 },
-            );
+            )
         },
         sequence: 120,
     })
