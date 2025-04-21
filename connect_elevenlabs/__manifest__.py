@@ -8,7 +8,7 @@
     'currency': 'EUR',
     'maintainer': 'Oduist',
     'live_test_url': 'https://connect-demo-18.oduist.com/',
-    'support': 'mailbox@connect.com',
+    'support': 'support@oduist.com',
     'license': 'Other proprietary',
     'category': 'Phone',
     'summary': 'Connect ElevenLabs integration module',

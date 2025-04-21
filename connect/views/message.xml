@@ -25,6 +25,7 @@
                 <field name="from_city"/>
                 <field name="from_country"/>
                 <field name="message_type" optional="hide"/>
+                <field name="num_media" optional="hide"/>
                 <field name="status" optional="hide"/>
             </tree>
         </field>
@@ -69,6 +70,9 @@
                             <field name="from_country" string="Country"/>
                             <field name="from_zip" string="Zip"/>
                             <field name="status"/>
+                            <field name="media_url" invisible="1"/>
+                            <field name="media_widget" widget="html"
+                                   attrs="{'invisible': [('media_url', '=', False)]}"/>
                             <field name="error_code" attrs="{'invisible': [('error_code', '=', False)]}"/>
                             <field name="error_message" attrs="{'invisible': [('error_message', '=', False)]}"/>
                         </group>

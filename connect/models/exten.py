@@ -47,6 +47,11 @@ class Exten(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            exten = self.search([('number', '=', vals['number'])])
+            if exten and not exten.dst:
+                exten.write(vals)
+                return exten
         res = super().create(vals_list)
         for record in res:
             if hasattr(record.dst, 'exten'):
