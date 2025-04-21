@@ -6,7 +6,9 @@ from . import debug
 from . import domain
 from . import exten
 from . import favorite
+from . import mail
 from . import message
+from . import message_configuration
 from . import number
 from . import outgoing_callerid
 from . import outgoing_callerid

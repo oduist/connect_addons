@@ -52,6 +52,9 @@ class OutgoingCallerID(models.Model):
                     'number': number.phone_number,
                     'friendly_name': number.friendly_name,
                 }
+                callerid_count = self.search_count([])
+                if callerid_count == 0:
+                    data['is_default'] = True
                 if callerid_type == 'outgoing_callerid':
                     data['status'] = 'validated'
                 self.with_context(skip_validation=True).create(data)
