@@ -17,10 +17,10 @@
         <field name="name">connect.message.configuration.tree</field>
         <field name="model">connect.message_configuration</field>
         <field name="arch" type="xml">
-            <list>
+            <tree>
                 <field name="number"/>
                 <field name="model"/>
-            </list>
+            </tree>
         </field>
     </record>
 
