@@ -449,24 +449,6 @@ class Settings(models.Model):
         else:
             self.clear_caches()
 
-
-
-    @api.model
-    def pbx_reload_view(self, model):
-        if release.version_info[0] < 15:
-            msg = {
-                'action': 'reload_view',
-                'model': model,
-            }
-            self.env['bus.bus'].sendone('connect_actions', json.dumps(msg))
-        else:
-            msg = {'model': model}
-            self.env['bus.bus']._sendone(
-                'connect_actions',
-                'reload_view',
-                json.dumps(msg)
-            )
-
     @api.model
     def get_client(self):
         try:
