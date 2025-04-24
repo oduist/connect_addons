@@ -157,6 +157,7 @@ class ConnectMessage(models.Model):
                             'notification_status': 'ready',
                         }]
                         self.env['mail.notification'].sudo().create(mail_notification_values)
+                        self.env['connect.settings'].connect_reload_view(last_message.res_model)
                 # Message Configuration
                 config = self.env['connect.message_configuration'].search([('number.phone_number', '=', to_number)])
                 lead = self.env['crm.lead'].get_lead_by_number(from_number)

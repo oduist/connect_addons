@@ -1,6 +1,7 @@
+/** @odoo-module */
+
 import {_t} from "@web/core/l10n/translation"
 import {registry} from "@web/core/registry"
-import { user } from "@web/core/user"
 
 export const messageActionsRegistry = registry.category("mail.message/actions")
 
@@ -11,13 +12,12 @@ messageActionsRegistry
         icon: "fa fa-mail-reply",
         title: _t("Connect Reply"),
         onClick: async (component) => {
-            console.log(component.message.Model.env.services)
             const orm = component.message.Model.env.services.orm
             const numbers = await orm.call("mail.message", 'get_message_numbers', [component.message.id])
 
             if (!numbers) {
                 const notification = component.message.Model.env.services.notification
-                notification.add(_t("You can't replay to this message!"))
+                notification.add(_t("You can't replay to this message!"), {type: 'danger'})
                 return
             }
 
@@ -29,7 +29,6 @@ messageActionsRegistry
                     res_model: "sms.composer",
                     views: [[false, "form"]],
                     context: {
-                        ...user.context,
                         default_res_model: component.message.model,
                         default_res_id: component.message.res_id,
                         default_number_field_name: component.message.record_name,
