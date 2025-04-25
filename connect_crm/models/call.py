@@ -49,7 +49,7 @@ class CrmCall(models.Model):
                 call.lead = lead
             else:
                 try:
-                    call._auto_create_lead()
+                    call.sudo()._auto_create_lead()
                 except Exception as e:
                     logger.exception('Auto create lead error: (handled):')
         except Exception:
