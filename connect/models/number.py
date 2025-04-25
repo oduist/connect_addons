@@ -74,14 +74,20 @@ class Number(models.Model):
             raise ValidationError(format_connect_response(str(e)))
 
     def write(self, vals):
+        skip = False
+        if 'skip_twilio_update' in vals.keys():
+            skip = vals.pop('skip_twilio_update')
         if 'destination' in vals:
             for field in ['user', 'callflow', 'twiml']:
                 if field != vals['destination']:
                     vals.update({field: None})
         res = super().write(vals)
+        callerid = self.env['connect.outgoing_callerid'].search([('number', '=', self.phone_number)])
+        callerid.write({'friendly_name': vals['friendly_name'], 'skip_twilio_update': True})
         client = self.env['connect.settings'].get_client()
-        for rec in self:
-            rec.update_twilio_number(client)
+        if not skip:
+            for rec in self:
+                rec.update_twilio_number(client)
         return res
 
     @api.model
