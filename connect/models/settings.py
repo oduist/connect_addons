@@ -543,7 +543,8 @@ class Settings(models.Model):
             # Get available option.
             to = list(ring_options.items())[0][1]
         if 'client:' in to:
-            to += '&From={}'.format(number)
+            # Strip + before sending as param.
+            to += '&From={}'.format(number.replace('+',''))
         exten = self.env['connect.exten'].search([('number', '=', number)], limit=1)
         default_number = self.env['connect.outgoing_callerid'].search([('is_default', '=', True)], limit=1)
         if exten:
