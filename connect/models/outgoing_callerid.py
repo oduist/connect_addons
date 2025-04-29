@@ -133,9 +133,6 @@ class OutgoingCallerID(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
-        skip = False
-        if 'skip_twilio_update' in vals.keys():
-            skip = vals.pop('skip_twilio_update')
         if vals.get('number'):
             raise ValidationError('Number cannot be modified!')
         if 'friendly_name' in vals:
@@ -143,12 +140,14 @@ class OutgoingCallerID(models.Model):
             for rec in self:
                 if rec.callerid_type == 'outgoing_callerid':
                     client.outgoing_caller_ids(rec.sid).update(friendly_name=vals['friendly_name'])
-                else:
-                    if not skip:
-                        client.incoming_phone_numbers(rec.sid).update(friendly_name=vals['friendly_name'])
-                        number = self.env['connect.number'].search([('phone_number', '=', rec.number)])
-                        number.write({'friendly_name': vals['friendly_name'], 'skip_twilio_update': True})
         return super().write(vals)
+
+    @api.constrains('friendly_name')
+    def _change_number_friendly_name(self):
+        for rec in self:
+            if rec.callerid_type == 'number':
+                number = self.env['connect.number'].search([('phone_number', '=', rec.number)])
+                number.friendly_name = rec.friendly_name
 
     def unlink(self):
         sids = {}
