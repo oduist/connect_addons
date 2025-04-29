@@ -253,6 +253,7 @@ class ConnectMessage(models.Model):
                     'notification_status': 'ready',
                 }]
                 self.env['mail.notification'].sudo().create(mail_notification_values)
+                self.env['connect.settings'].connect_reload_view(res_model)
 
     def client_send(self, recipient, sender, body, whatsapp=False):
         try:
