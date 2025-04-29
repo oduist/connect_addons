@@ -100,6 +100,8 @@ class User(models.Model):
                         raise ValidationError(msg)
                     else:
                         raise ValidationError(format_connect_response(e))
+        for connect_user in recs:
+            connect_user.manage_group()
         if recs and not self.env.context.get('no_clear_cache'):
             if release.version_info[0] >= 17:
                 self.env.registry.clear_cache()
@@ -128,6 +130,7 @@ class User(models.Model):
     def unlink(self):
         for rec in self:
             rec.delete_sip_account()
+        self.manage_group('remove')
         res = super().unlink()
         if res and not self.env.context.get('no_clear_cache'):
             if release.version_info[0] >= 17:
@@ -155,9 +158,27 @@ class User(models.Model):
             else:
                 raise ValidationError(format_connect_response(e))
 
+    def manage_group(self, action='add'):
+        if self.user and self.user.has_group('base.group_system') and self.user.has_group('base.group_erp_manager'):
+            group_connect_admin = self.env.ref('connect.group_connect_admin')
+            if action == 'add':
+                group_connect_admin.write({'users': [(4, self.user.id)]})
+            else:
+                group_connect_admin.with_context(install_mode=True).write({'users': [(3, self.user.id)]})
+        else:
+            group_connect_user = self.env.ref('connect.group_connect_user')
+            if action == 'add':
+                group_connect_user.write({'users': [(4, self.user.id)]})
+            else:
+                group_connect_user.with_context(install_mode=True).write({'users': [(3, self.user.id)]})
+
     def write(self, vals):
+        if 'user' in vals.keys():
+            self.manage_group('remove')
         if self.env.context.get('skip_sync'):
-            return super().write(vals)
+            res = super().write(vals)
+            self.manage_group()
+            return res
         if 'username' in vals:
             raise ValidationError('Username cannot be changed!')
         for rec in self:
@@ -181,6 +202,7 @@ class User(models.Model):
                 # Don't keep SIP password in Odoo.
                 vals['password'] = '*' * len(vals['password'])
         res = super().write(vals)
+        self.manage_group()
         if res and not self.env.context.get('no_clear_cache'):
             if release.version_info[0] >= 17:
                 self.env.registry.clear_cache()
