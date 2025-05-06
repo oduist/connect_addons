@@ -159,7 +159,7 @@ class User(models.Model):
                 group_connect_admin.write({'users': [(4, self.user.id)]})
             else:
                 group_connect_admin.with_context(install_mode=True).write({'users': [(3, self.user.id)]})
-        else:
+        elif self.user:
             group_connect_user = self.env.ref('connect.group_connect_user')
             if action == 'add':
                 group_connect_user.write({'users': [(4, self.user.id)]})
