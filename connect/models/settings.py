@@ -430,7 +430,7 @@ class Settings(models.Model):
     def write(self, vals):
         if self.env.context.get('skip_protected_fields'):
             return super(Settings, self).write(vals)
-        if not self.openai_api_key and vals.get('openai_api_key'):
+        if not self.openai_api_key and vals.get('display_openai_api_key'):
             vals.update({'transcript_calls': True})
         res = super(Settings, self).write(vals)
         changed_fields = {}
