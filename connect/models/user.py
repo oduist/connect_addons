@@ -48,12 +48,6 @@ class User(models.Model):
     outgoing_callerid = fields.Many2one('connect.outgoing_callerid', ondelete='set null',
         domain=['|',('status', '=', 'validated'),('callerid_type', '=', 'number')])
     missed_calls_notify = fields.Boolean(default=False, help='Notify user on missed calls.')
-    fallback_destination = fields.Selection([
-        ('mobile', 'Mobile'),
-        # ('exten', 'Extension') # TODO: Not implemented yet.
-    ])
-    fallback_destination_mobile = fields.Char('Mobile Phone')
-    fallback_destination_exten = fields.Many2one('connect.exten')
     greeting_message = fields.Char()
 
     _sql_constraints = [
@@ -284,25 +278,6 @@ class User(models.Model):
             response.append(dial_sip)
         elif self.ring_second == 'client':
             response.append(dial_client)
-        if self.fallback_destination:
-            if self.fallback_destination == 'mobile':
-                dial_mobile_kwargs = {
-                    'timeout': 60,
-                    # Dial out using user's personal callerid number.
-                    'callerId': self.outgoing_callerid.number,
-                }
-                if self.record_calls:
-                    dial_mobile_kwargs.update({
-                        'recordingStatusCallback': record_status_url,
-                        'record': 'record-from-answer-dual'
-                    })
-                # Clean the number.
-                dial = Dial('+{}'.format(strip_number(
-                    self.fallback_destination_mobile)), **dial_mobile_kwargs)
-                response.append(dial)
-            elif self.fallback_destination == 'exten':
-                # TODO: Not implemented yet.
-                raise Exception('Not implemented')
         # Voicemail
         if user.voicemail_enabled:
             # The call voicemail
@@ -430,8 +405,3 @@ class User(models.Model):
         else:
             self.ring_second = 'client'
 
-    @api.onchange
-    def _set_fallback_destination_mobile(self):
-        # Set user's mobile by default.
-        if self.fallback_destination == 'mobile' and not self.fallback_destination_mobile:
-            self.fallback_destination_mobile = self.user.partner_id.mobile
