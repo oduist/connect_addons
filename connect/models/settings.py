@@ -11,7 +11,6 @@ import uuid
 from odoo import fields, models, api, release
 from odoo.exceptions import ValidationError, UserError
 from twilio.rest import Client
-from twilio.request_validator import RequestValidator
 
 
 logger = logging.getLogger(__name__)
@@ -94,9 +93,8 @@ class Settings(models.Model):
     ############# RECORDING & TRANSCRIPT FIELDS ##############################################
     proxy_recordings = fields.Boolean(help='Re-stream recordings using Odoo user auth.', default=True)
     transcript_calls = fields.Boolean()
-    transcription_rules = fields.One2many('connect.transcription_rule', 'settings')
     summary_prompt = fields.Text(required=True, default='Summarise this phone call')
-    register_summary = fields.Boolean(help='Register summary at partner of reference chat.')
+    register_summary = fields.Boolean(default=True, help='Register summary at partner of reference chat.')
     remove_recording_after_transcript = fields.Boolean()
     ############################################################
     instance_uid = fields.Char('Instance UID', compute='_get_instance_data')
@@ -432,6 +430,8 @@ class Settings(models.Model):
     def write(self, vals):
         if self.env.context.get('skip_protected_fields'):
             return super(Settings, self).write(vals)
+        if not self.openai_api_key and vals.get('display_openai_api_key'):
+            vals.update({'transcript_calls': True})
         res = super(Settings, self).write(vals)
         changed_fields = {}
         for field_name in PROTECTED_FIELDS:
@@ -449,24 +449,6 @@ class Settings(models.Model):
         else:
             self.clear_caches()
 
-
-
-    @api.model
-    def pbx_reload_view(self, model):
-        if release.version_info[0] < 15:
-            msg = {
-                'action': 'reload_view',
-                'model': model,
-            }
-            self.env['bus.bus'].sendone('connect_actions', json.dumps(msg))
-        else:
-            msg = {'model': model}
-            self.env['bus.bus']._sendone(
-                'connect_actions',
-                'reload_view',
-                json.dumps(msg)
-            )
-
     @api.model
     def get_client(self):
         try:
@@ -481,21 +463,6 @@ class Settings(models.Model):
                 raise ValidationError('Set Twilio API keys first!')
             else:
                 raise
-
-    @api.model
-    def check_twilio_request(self, request):
-        if not self.sudo().get_param('twilio_verify_requests'):
-            return True
-        if not request.get('X-TWILIO-SIGNATURE'):
-            logger.error('Request does not contain X-TWILIO-SIGNATURE! Ignoring.')
-            return False
-        validator = RequestValidator(self.sudo().get_param('auth_token'))
-        url = request.pop('X-TWILIO-WEBHOOK-URL', '')
-        signature = request.pop('X-TWILIO-SIGNATURE', '')
-        request_valid = validator.validate(url, request, signature)
-        if not request_valid:
-            logger.error('Twilio request is not valid: %s', json.dumps(request, indent=2))
-        return request_valid
 
     def check_api_url(self):
         message = None
@@ -526,6 +493,9 @@ class Settings(models.Model):
             rec.phone = rec._normalize_phone(rec.phone)
             rec.mobile = rec._normalize_phone(rec.mobile)
 
+    def compute_sip_uri(self, user):
+        return 'sip:{}'.format(self.env.user.connect_user.uri)
+
     @api.model
     def originate_call(self, number, res_model=None, res_id=None, user=None):
         number = strip_number(number)
@@ -534,12 +504,16 @@ class Settings(models.Model):
         client = self.get_client()
         partner_id = False
         obj = self.env[res_model].browse(res_id)
+        caller_name = ''
         if res_model == 'res.partner':
             partner_id = res_id
+            caller_name = obj.display_name
         elif hasattr(obj, 'partner_id'):
             partner_id = obj.partner_id.id
+            caller_name = obj.partner_id.display_name
         elif hasattr(obj, 'partner'):
             partner_id = obj.partner.id
+            caller_name = obj.partner.display_name
         # If user is not set use current user.
         if not user:
             user = self.env.user
@@ -547,15 +521,17 @@ class Settings(models.Model):
             raise ValidationError('User does not have a SIP username defined!')
         ring_options = {}
         if user.connect_user.sip_enabled:
-            ring_options['sip'] = 'sip:{}'.format(self.env.user.connect_user.uri)
+            ring_options['sip'] = self.compute_sip_uri(user)
         if user.connect_user.client_enabled:
-            ring_options['client'] = 'client:{}?autoAnswer=yes&Partner={}'.format(self.env.user.connect_user.uri, partner_id)
+            ring_options['client'] = 'client:{}?autoAnswer=yes&Partner={}&CallerName={}'.format(
+                self.env.user.connect_user.uri, partner_id, caller_name)
         to = ring_options.get(self.env.user.connect_user.ring_first)
         if not to:
             # Get available option.
             to = list(ring_options.items())[0][1]
         if 'client:' in to:
-            to += '&From={}'.format(number)
+            # Strip + before sending as param.
+            to += '&From={}'.format(number.replace('+',''))
         exten = self.env['connect.exten'].search([('number', '=', number)], limit=1)
         default_number = self.env['connect.outgoing_callerid'].search([('is_default', '=', True)], limit=1)
         if exten:
@@ -606,3 +582,17 @@ class Settings(models.Model):
     def _require_openai_key(self):
         if not self.sudo().get_param('openai_api_key'):
             raise ValidationError('You must set OpenAI key first!')
+
+    def action_open_system_parameters(self):
+        if release.version_info[0] >= 18:
+            view_mode = 'list,form'
+        else:
+            view_mode = 'tree,form'
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'System Parameters',
+            'res_model': 'ir.config_parameter',
+            'view_mode': view_mode,
+            'target': 'current',
+            'context': {'search_default_key': 'connect.api_url'}
+        }

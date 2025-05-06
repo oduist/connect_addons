@@ -48,8 +48,10 @@ class CrmCall(models.Model):
                 debug(self, 'Call {} assign <{}> "{}"'.format(call.id, lead.id, lead.name))
                 call.lead = lead
             else:
-                pass
-                # TODO: Autocreate leads
+                try:
+                    call.sudo()._auto_create_lead()
+                except Exception as e:
+                    logger.exception('Auto create lead error: (handled):')
         except Exception:
             logger.exception('Update call lead error:')
         return call_id
@@ -94,83 +96,77 @@ class CrmCall(models.Model):
         lead_type = self.env[
             'connect.settings'].get_param(
             'auto_create_leads_type')
-        # Get call source
-        source = self.env['utm.source'].sudo().search(
-            [('phone', '=', self.called_number)], limit=1)
-        if self.direction == 'in':
+        data = {}
+        if self.direction == 'incoming':
             if not auto_create_leads_for_in_calls:
                 debug(self, 'Autocreate not enabled for incomig calls')
                 return False
             # Incoming answered call
-            elif self.status == 'answered' \
+            elif self.status == 'completed' \
                     and auto_create_leads_for_in_answered_calls:
                 debug(self, 'Creating a lead for answered incoming call.')
             # Not answered 2nd leg and auto create for missed calls is set.
-            elif self.status != 'answered' and \
-                    auto_create_leads_for_in_missed_calls and \
-                    not self.is_active:
+            elif self.status != 'completed' and \
+                    auto_create_leads_for_in_missed_calls:
                 debug(self, 'Creating a lead for missed incoming call.')
             # Incoming Call from unknown caller.
             elif auto_create_leads_for_in_unknown_callers:
                 debug(self, 'Creating a lead for unknown incoming call.')
             else:
-                debug(self, 'No incoming rule matched for {}'.format(self.id))
+                debug(self, 'No CRM call auto create rule matched for {}'.format(self.id))
                 return False
             # Define a salesperson for the lead
-            user_id = self.answered_user.id or self.called_users[:1].id
-            if not user_id:
-                user_id = self.env['connect.user'].search(
-                    [('exten', '=', self.called_number)],
-                        limit=1).user.id
+            user_id = self.answered_pbx_user.id or self.called_pbx_users and self.called_pbx_users[:1].id
             if not user_id:
                 user_id = default_sales_person.id
             # Data dict for created lead
             data = {
-                'name': self.partner.name or self.calling_number,
+                'name': self.partner.name or self.caller,
                 'type': lead_type,
                 'user_id': user_id,
                 'partner_id': self.partner.id,
-                'source_id': source.id,
+                'source_id': self.source.id,
             }
             # set number only if partner is not set
             if not self.partner:
-                data['phone'] = self.calling_number
-        elif self.direction == 'out':
+                data['phone'] = self.caller
+        elif self.direction == 'outgoing':
             if not auto_create_leads_for_out_calls:
                 debug(self, 'Autocreate not enabled for outgoing calls')
                 return False
-            if self.called_users:
+            if self.called_pbx_users:
                 debug(self, 'Autocreate skip "out" call to local users')
                 return False
             # Answered call
-            elif self.status == 'answered' \
+            elif self.status == 'completed' \
                     and auto_create_leads_for_out_answered_calls:
                 debug(self, 'Creating a lead for answered outgoing call.')
             # Not answered 2nd leg and auto create for missed calls is set.
-            elif self.status != 'answered' and \
-                    auto_create_leads_for_out_missed_calls and \
-                    not self.is_active:
+            elif self.status != 'completed' and \
+                    auto_create_leads_for_out_missed_calls:
                 debug(self, 'Creating a lead for missed outgoing call.')
             else:
                 debug(self, 'No outgoing rule matched for {}'.format(self.id))
                 return False
-            # Data dict for created lead
+            # Define a salesperson for the lead
+            user_id = self.caller_pbx_user.id or default_sales_person.id
             data = {
-                'name': self.partner.name or self.called_number,
+                'name': self.partner.name or self.called,
                 'type': lead_type,
-                'user_id': self.calling_user.id or default_sales_person.id,
+                'user_id': user_id,
                 'partner_id': self.partner.id,
-                'source_id': source.id,
+                'source_id': self.source.id,
             }
             # set number only if partner is not set
             if not self.partner:
-                data['phone'] = self.called_number
+                data['phone'] = self.called
         # Finally create a lead
-        debug(self, 'Lead create data: {}'.format(data))
-        lead = self.env['crm.lead'].create(data)
-        debug(self, 'Set lead {} for call {}'.format(lead.id, self.id))
-        self.lead = lead
-        return True
+        if data:
+            debug(self, 'Lead create data: {}'.format(data))
+            lead = self.env['crm.lead'].create(data)
+            debug(self, 'Set lead {} for call {}'.format(lead.id, self.id))
+            self.lead = lead
+            return True
 
     def create_lead_button(self):
         self.ensure_one()
@@ -203,3 +199,18 @@ class CrmCall(models.Model):
         fields = super().get_widget_fields()
         fields.append('lead')
         return fields
+
+    @api.constrains('summary')
+    def register_crm_lead_call_summary(self):
+        reload_view = False
+        register_summary = self.env['connect.settings'].sudo().get_param('register_summary')
+        if not register_summary:
+            return
+        for rec in self:
+            if rec.lead and rec.summary:
+                self.register_summary_to_rec(rec.lead, rec.summary)
+                reload_view = True
+        # Reload changed view.
+        if reload_view:
+            # Reload the view of res.partner
+            self.env['connect.settings'].connect_reload_view('crm.lead')

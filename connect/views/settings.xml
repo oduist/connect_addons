@@ -25,8 +25,9 @@
                       invisible="is_registered == False">
                   <group>
                     <group>
-                      <field name="api_url"/>
-                      <field name="api_fallback_url"/>
+                      <field name="api_url" string="Odoo URL"/>
+                      <button name="action_open_system_parameters" type="object" string="Change Odoo URL"/>
+                      <field name="api_fallback_url" string="Fallback URL"/>
                       <field name="debug_mode"/>
                     </group>
                   </group>
@@ -35,6 +36,9 @@
                       invisible="is_registered == False">
                   <group>
                     <group string="Twilio" name="twilio_api">
+                      <div colspan="2">
+                        <small><strong>You can find your Twilio API data in <a href="https://console.twilio.com/" target="_blank">your Twilio Console</a></strong></small>
+                      </div>
                       <field name="account_sid"/>
                       <field name="display_auth_token" string="Auth Token" password="1"/>
                       <field name="twilio_api_key" string="API Key SID"/>
@@ -42,6 +46,9 @@
                       <button colspan="2" name="sync" type="object" string="SYNC TWILIO ACCOUNT" class="btn btn-primary"/>
                     </group>
                     <group name="openai_api" string="OpenAI">
+                      <div colspan="2">
+                        <small><strong>You can find your OpenAI API key in <a href="https://platform.openai.com/settings/organization/api-keys" target="_blank">your OpenAI Setings</a></strong></small>
+                      </div>
                       <field name="display_openai_api_key" string="OpenAI API Key" password="1"/>
                     </group>
                   </group>
@@ -70,15 +77,6 @@
                       <field name="remove_recording_after_transcript"
                              invisible="transcript_calls == False"/>
                     </group>
-                    <group string="Transcribe Rules"
-                           invisible="transcript_calls == False">
-                      <field name="transcription_rules" nolabel="1" colspan="2">
-                        <list editable="bottom">
-                          <field name="calling_number"/>
-                          <field name="called_number"/>
-                        </list>
-                      </field>
-                    </group>
                   </group>
                 </page>
                 <page string="Development" groups="base.group_no_one"
@@ -105,7 +103,7 @@
                     </div>
                     <div colspan="2" style="font-size: small;">
                       <field name="i_agree_to_register" nolabel="1"/>
-                      <label for="i_agree_to_register" string="I agree to create an account in the Oduist users portal to receive free technical support from Oduist team."/>
+                      <label for="i_agree_to_register" string="I agree to register my instance on the Oduist Users Portal."/>
                     </div>
                     <div colspan="2" style="font-size: small;">
                     <field name="i_agree_to_receive"/>
@@ -118,11 +116,14 @@
                   </group>
                   <group>
                     <group name="registration" string="Registration">
+                      <div colspan="2" invisible="is_registered == True">
+                        <small><strong>Your customer code is available on <a target="_blank" href="https://oduist.com/my">your Customer Portal</a>.</strong></small>
+                      </div>
                       <field colspan="2" name="registration_number"
                              invisible="is_registered == False"/>
-                      <field colspan="2" name="customer_code"
+                      <field colspan="2" name="customer_code" string="CUSTOMER CODE"
                              invisible="is_registered == True"/>
-                      <button colspan="2" name="register_instance" class="btn btn-info btn-lg me-1" type="object" string="SUBMIT REGISTRATION"
+                      <button colspan="2" name="register_instance" class="btn btn-primary btn-lg me-1" type="object" string="SUBMIT REGISTRATION"
                               invisible="is_registered or not i_agree_to_register or not i_agree_to_receive or not i_agree_to_contact"/>
                       <field name="is_registered" invisible="1"/>
                       <p colspan="2"
@@ -156,11 +157,11 @@
                       <field name="company_phone"/>
                       <field name="company_country"/>
                       <field name="company_city"/>
-                      <button colspan="2" name="update_company_data_button" string="UPDATE COMPANY DATA" type="object"/>
+                      <button colspan="2" class="btn-info btn-sm" name="update_company_data_button" string="UPDATE COMPANY DATA" type="object"/>
                       <field name="admin_name"/>
                       <field name="admin_email"/>
                       <field name="admin_phone"/>
-                      <button colspan="2" name="update_admin_data_button" string="UPDATE ADMIN DATA" type="object"/>
+                      <button colspan="2" class="btn-info btn-sm" name="update_admin_data_button" string="UPDATE ADMIN DATA" type="object"/>
                       <field name="web_base_url"/>
                     </group>
                   </group>

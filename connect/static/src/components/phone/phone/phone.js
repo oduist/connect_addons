@@ -439,9 +439,8 @@ export class Phone extends Component {
                 }
             } else {
                 self.state.callerId = {phoneNumber}
+                await self.searchPartner(phoneNumber)
             }
-
-            const partner = await self.searchPartner(phoneNumber)
 
             self.state.isDisplayLastState = self.state.isDisplay
             if (!self.state.isDisplay) {
@@ -510,7 +509,7 @@ export class Phone extends Component {
     }
 
     setIncomingVolume() {
-        this.userAgent.audio.incoming(this.state.isSoundMute)
+        this.userAgent.audio.incoming(!this.state.isSoundMute)
     }
 
     getJsonCallData() {

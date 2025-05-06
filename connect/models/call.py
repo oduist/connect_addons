@@ -203,7 +203,9 @@ class Call(models.Model):
         # Check if we need to set a partner from child channel
         if not channel.call.partner and channel.partner:
             channel.call.partner = channel.partner
-        if channel.call.direction == 'incoming' and params.get('CallStatus') == 'initiated':
+        if (channel.call.direction == 'incoming' and params.get('CallStatus') == 'initiated' and
+                params.get('To').startswith('sip:')):
+            # Desktop notification only for SIP calls.
             channel.connect_notify()
         # Register call when the last channel closes.
         latest_channel = channel.call.channels.sorted(key='id', reverse=True)[0]
@@ -300,24 +302,28 @@ class Call(models.Model):
         except Exception:
             logger.exception('Register call error: ')
 
+    def register_summary_to_rec(self, rec, summary):
+        try:
+            if release.version_info[0] < 14:
+                rec.sudo(SUPERUSER_ID).message_post(body=summary)
+            else:
+                rec.with_user(SUPERUSER_ID).message_post(body=summary)
+        except Exception as e:
+            logger.error('Cannot register summary: %s', e)
+
     @api.constrains('summary')
-    def register_call_summary(self):
-        if not self.env['connect.settings'].sudo().get_param('register_summary'):
+    def register_partner_call_summary(self):
+        reload_view = False
+        register_summary = self.env['connect.settings'].sudo().get_param('register_summary')
+        if not register_summary:
             return
-        reload_partner_view = False
         for rec in self:
-            if rec.summary:
-                mt_note = self.env.ref('mail.mt_note').id
-                kwargs = {
-                    'subtype_id': mt_note,
-                    'subject': 'Call Summary',
-                    'body': rec.summary,
-                }
-                if rec.partner:
-                    rec.partner.with_context(
-                        mail_create_nosubscribe=False).message_post(**kwargs)
-                    reload_partner_view = True
-        if reload_partner_view:
+            if rec.partner and rec.summary:
+                self.register_summary_to_rec(rec.partner, rec.summary)
+                reload_view = True
+        # Reload changed view.
+        if reload_view:
+            # Reload the view of res.partner
             self.env['connect.settings'].connect_reload_view('res.partner')
 
     def create_partner_button(self):

@@ -2,7 +2,7 @@
 
 {
     'name': 'Connect',
-    'version': '1.0.1',
+    'version': '1.0.2',
     'author': 'Oduist',
     'maintainer': 'Oduist',
     'live_test_url': 'https://connect-demo-18.oduist.com/',
@@ -50,17 +50,18 @@
         'views/favorite.xml',
         'views/res_partner.xml',
         'views/message.xml',
+        'views/message_configuration.xml',
         'views/versions.xml',
         # Wizard
         'wizard/transfer.xml',
+        'wizard/sms_composer_views.xml',
         ],
     'demo': [
     ],
     'installable': True,
     'application': True,
     'auto_install': False,
-    'pre_init_hook': 'pre_init_hook',
-    'images': ['static/description/icon.png'],
+    'images': ['static/description/logo.png'],
     'assets': {
         'web.assets_backend': [
             '/connect/static/src/icomoon/style.css',
@@ -70,8 +71,8 @@
             '/connect/static/src/widgets/phone_field/*',
             '/connect/static/src/services/actions/*',
             '/connect/static/src/services/active_calls/*',
+            '/connect/static/src/services/mail/*',
         ],
     }
 }
-
 

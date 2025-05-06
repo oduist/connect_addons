@@ -52,6 +52,9 @@ class OutgoingCallerID(models.Model):
                     'number': number.phone_number,
                     'friendly_name': number.friendly_name,
                 }
+                callerid_count = self.search_count([])
+                if callerid_count == 0:
+                    data['is_default'] = True
                 if callerid_type == 'outgoing_callerid':
                     data['status'] = 'validated'
                 self.with_context(skip_validation=True).create(data)
@@ -135,10 +138,16 @@ class OutgoingCallerID(models.Model):
         if 'friendly_name' in vals:
             client = self.env['connect.settings'].get_client()
             for rec in self:
-                client.outgoing_caller_ids(rec.sid).update(
-                                friendly_name=vals['friendly_name'])
+                if rec.callerid_type == 'outgoing_callerid':
+                    client.outgoing_caller_ids(rec.sid).update(friendly_name=vals['friendly_name'])
         return super().write(vals)
 
+    @api.constrains('friendly_name')
+    def _change_number_friendly_name(self):
+        for rec in self:
+            if rec.callerid_type == 'number':
+                number = self.env['connect.number'].search([('phone_number', '=', rec.number)])
+                number.friendly_name = rec.friendly_name
 
     def unlink(self):
         sids = {}

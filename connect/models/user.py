@@ -34,7 +34,7 @@ class User(models.Model):
     username = fields.Char(required=True)
     password = fields.Char(groups="connect.group_connect_admin,connect.group_connect_user")
     uri = fields.Char('SIP URI', compute='_get_sip_uri', store=True)
-    record_calls = fields.Boolean()
+    record_calls = fields.Boolean(default=True)
     voicemail_enabled = fields.Boolean()
     voicemail_prompt = fields.Text(default="Hello, this is {{user.name}}. I'm unable to take your call right now. Please leave a message after the tone.")
     application = fields.Many2one('connect.twiml')
@@ -48,12 +48,6 @@ class User(models.Model):
     outgoing_callerid = fields.Many2one('connect.outgoing_callerid', ondelete='set null',
         domain=['|',('status', '=', 'validated'),('callerid_type', '=', 'number')])
     missed_calls_notify = fields.Boolean(default=False, help='Notify user on missed calls.')
-    fallback_destination = fields.Selection([
-        ('mobile', 'Mobile'),
-        # ('exten', 'Extension') # TODO: Not implemented yet.
-    ])
-    fallback_destination_mobile = fields.Char('Mobile Phone')
-    fallback_destination_exten = fields.Many2one('connect.exten')
     greeting_message = fields.Char()
 
     _sql_constraints = [
@@ -100,6 +94,8 @@ class User(models.Model):
                         raise ValidationError(msg)
                     else:
                         raise ValidationError(format_connect_response(e))
+        for connect_user in recs:
+            connect_user.manage_group()
         if recs and not self.env.context.get('no_clear_cache'):
             if release.version_info[0] >= 17:
                 self.env.registry.clear_cache()
@@ -128,6 +124,7 @@ class User(models.Model):
     def unlink(self):
         for rec in self:
             rec.delete_sip_account()
+        self.manage_group('remove')
         res = super().unlink()
         if res and not self.env.context.get('no_clear_cache'):
             if release.version_info[0] >= 17:
@@ -155,9 +152,27 @@ class User(models.Model):
             else:
                 raise ValidationError(format_connect_response(e))
 
+    def manage_group(self, action='add'):
+        if self.user and self.user.has_group('base.group_system') and self.user.has_group('base.group_erp_manager'):
+            group_connect_admin = self.env.ref('connect.group_connect_admin')
+            if action == 'add':
+                group_connect_admin.write({'users': [(4, self.user.id)]})
+            else:
+                group_connect_admin.with_context(install_mode=True).write({'users': [(3, self.user.id)]})
+        elif self.user:
+            group_connect_user = self.env.ref('connect.group_connect_user')
+            if action == 'add':
+                group_connect_user.write({'users': [(4, self.user.id)]})
+            else:
+                group_connect_user.with_context(install_mode=True).write({'users': [(3, self.user.id)]})
+
     def write(self, vals):
+        if 'user' in vals.keys():
+            self.manage_group('remove')
         if self.env.context.get('skip_sync'):
-            return super().write(vals)
+            res = super().write(vals)
+            self.manage_group()
+            return res
         if 'username' in vals:
             raise ValidationError('Username cannot be changed!')
         for rec in self:
@@ -181,6 +196,7 @@ class User(models.Model):
                 # Don't keep SIP password in Odoo.
                 vals['password'] = '*' * len(vals['password'])
         res = super().write(vals)
+        self.manage_group()
         if res and not self.env.context.get('no_clear_cache'):
             if release.version_info[0] >= 17:
                 self.env.registry.clear_cache()
@@ -262,25 +278,6 @@ class User(models.Model):
             response.append(dial_sip)
         elif self.ring_second == 'client':
             response.append(dial_client)
-        if self.fallback_destination:
-            if self.fallback_destination == 'mobile':
-                dial_mobile_kwargs = {
-                    'timeout': 60,
-                    # Dial out using user's personal callerid number.
-                    'callerId': self.outgoing_callerid.number,
-                }
-                if self.record_calls:
-                    dial_mobile_kwargs.update({
-                        'recordingStatusCallback': record_status_url,
-                        'record': 'record-from-answer-dual'
-                    })
-                # Clean the number.
-                dial = Dial('+{}'.format(strip_number(
-                    self.fallback_destination_mobile)), **dial_mobile_kwargs)
-                response.append(dial)
-            elif self.fallback_destination == 'exten':
-                # TODO: Not implemented yet.
-                raise Exception('Not implemented')
         # Voicemail
         if user.voicemail_enabled:
             # The call voicemail
@@ -408,8 +405,3 @@ class User(models.Model):
         else:
             self.ring_second = 'client'
 
-    @api.onchange
-    def _set_fallback_destination_mobile(self):
-        # Set user's mobile by default.
-        if self.fallback_destination == 'mobile' and not self.fallback_destination_mobile:
-            self.fallback_destination_mobile = self.user.partner_id.mobile

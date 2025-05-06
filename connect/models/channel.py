@@ -151,6 +151,10 @@ class Channel(models.Model):
             elif params.get('Direction') == 'outbound-dial':
                     data['partner'] = self.env['res.partner'].get_partner_by_number(params['Called']).id
                     debug(self, 'Setting partner for outbound dial by called.')
+            elif params.get('Direction') == 'inbound' and \
+                    params['Called'].startswith('+') and params['Caller'].startswith('+'):
+                debug(self, 'Incoming DID call. Get the partner from caller number.')
+                data['partner'] = self.env['res.partner'].get_partner_by_number(params['Caller']).id
             else:
                 debug(self, 'Not setting channel partner without channel users.')
             channel = self.with_context(tracking_disable=True).create(data)

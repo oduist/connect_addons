@@ -161,24 +161,13 @@
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="0"/>
     <field name="perm_create" eval="0"/>
-    <field name="perm_unlink" eval="0"/>
+    <field name="perm_unlink" eval="1"/>
   </record>
 
 <!-- Recording -->
   <record id="connect_recording_admin" model="ir.model.access">
     <field name="name">connect_recording_admin</field>
     <field name="model_id" ref="connect.model_connect_recording"/>
-    <field name="group_id" ref="connect.group_connect_admin"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="1"/>
-    <field name="perm_create" eval="1"/>
-    <field name="perm_unlink" eval="1"/>
-  </record>
-
-<!-- Transcription rules -->
-  <record id="connect_transcription_rule_admin" model="ir.model.access">
-    <field name="name">connect_transcription_rule_admin</field>
-    <field name="model_id" ref="connect.model_connect_transcription_rule"/>
     <field name="group_id" ref="connect.group_connect_admin"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="1"/>
@@ -201,6 +190,17 @@
   <record id="connect_message_admin" model="ir.model.access">
     <field name="name">connect_message_admin</field>
     <field name="model_id" ref="connect.model_connect_message"/>
+    <field name="group_id" ref="connect.group_connect_admin"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
+  </record>
+
+  <!-- Message Configuration-->
+  <record id="connect_message_configuration_admin" model="ir.model.access">
+    <field name="name">connect_message_configuration_admin</field>
+    <field name="model_id" ref="connect.model_connect_message_configuration"/>
     <field name="group_id" ref="connect.group_connect_admin"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="1"/>

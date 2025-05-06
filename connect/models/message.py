@@ -1,10 +1,11 @@
+import ast
 import logging
 
 import phonenumbers
 from phonenumbers import parse, format_number, PhoneNumberFormat
 from twilio.twiml.messaging_response import MessagingResponse
 
-from odoo import models, fields, api, SUPERUSER_ID
+from odoo import models, fields, api, SUPERUSER_ID, release
 from odoo.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,16 @@ class ConnectMessage(models.Model):
     error_message = fields.Char()
     res_model = fields.Char()
     res_id = fields.Integer()
+    media_url = fields.Char()
+    if release.version_info[0] >= 17.0:
+        media_widget = fields.Html(compute='_get_media_widget', string='Media', sanitize=False)
+    else:
+        media_widget = fields.Char(compute='_get_media_widget', string='Media')
+
+    def _get_media_widget(self):
+        for rec in self:
+            rec.media_widget = '<audio id="sound_file" preload="auto" controls="controls"> ' \
+                               '<source src="{}"/></audio>'.format(rec.media_url)
 
     @staticmethod
     def _format_phone_number(number):
@@ -59,7 +70,7 @@ class ConnectMessage(models.Model):
         res = super().create(vals_list)
         for record in res:
             if not record.message_type:
-                record.message_type = 'MMS' if record.num_media > 0 else 'SMS'
+                record.message_type = 'mms' if record.num_media > 0 else 'sms'
         return res
 
     @api.depends('from_number', 'create_date', 'message_type')
@@ -70,6 +81,22 @@ class ConnectMessage(models.Model):
                 record.name = f"{record.message_type} from {formatted_number} on {record.create_date.strftime('%Y-%m-%d %H:%M:%S')}"
             else:
                 record.name = f"New {record.message_type}"
+
+    def get_receive_message_values(self, params):
+        return {
+            'message_sid': params.get('MessageSid'),
+            'from_number': params.get('From'),
+            'to_number': params.get('To'),
+            'body': params.get('Body'),
+            'num_media': int(params.get('NumMedia', 0)),
+            'from_city': params.get('FromCity'),
+            'from_state': params.get('FromState'),
+            'from_zip': params.get('FromZip'),
+            'from_country': params.get('FromCountry'),
+            'account_sid': params.get('AccountSid'),
+            'messaging_service_sid': params.get('MessagingServiceSid'),
+            'status': params.get('SmsStatus'),
+        }
 
     @api.model
     def receive(self, params):
@@ -82,20 +109,9 @@ class ConnectMessage(models.Model):
                 # Create SMS message record
                 from_number = params.get('From')
                 to_number = params.get('To')
-                values = {
-                    'message_sid': params.get('MessageSid'),
-                    'from_number': from_number,
-                    'to_number': to_number,
-                    'body': params.get('Body'),
-                    'num_media': int(params.get('NumMedia', 0)),
-                    'from_city': params.get('FromCity'),
-                    'from_state': params.get('FromState'),
-                    'from_zip': params.get('FromZip'),
-                    'from_country': params.get('FromCountry'),
-                    'account_sid': params.get('AccountSid'),
-                    'messaging_service_sid': params.get('MessagingServiceSid'),
-                    'status': params.get('SmsStatus'),
-                }
+                values = self.get_receive_message_values(params)
+                if params.get('MessageType') == 'audio':
+                    values.update({'media_url': params.get('MediaUrl0')})
                 if 'whatsapp:' in from_number:
                     from_number = from_number.replace('whatsapp:', '')
                     to_number = to_number.replace('whatsapp:', '')
@@ -111,22 +127,53 @@ class ConnectMessage(models.Model):
                 number = self.env['connect.number'].search([('phone_number', '=', to_number)], limit=1)
                 if number and number.user:
                     values.update({'receiver_user': number.user.user.id})
-
-                message_id = self.env['connect.message'].sudo().create(values)
-                last_message = self.env['connect.message'].search([('from_number', '=', to_number)], limit=1)
+                message = self.env['connect.message'].sudo().create(values)
+                # Add message to chatter
+                last_message = self.env['connect.message'].search([
+                    ('from_number', '=', to_number), ('to_number', '=', from_number)], limit=1)
                 if last_message and last_message.res_model and last_message.res_id:
                     mt_note = self.env.ref('mail.mt_note').id
-                    obj = self.env[last_message.res_model].browse(last_message.res_id)
+                    obj = self.env[last_message.res_model].with_user(SUPERUSER_ID).browse(last_message.res_id)
                     if hasattr(obj, 'message_post'):
                         kwargs = {
-                            'body': params.get('Body'),
+                            'body': values.get('body'),
                             'subtype_id': mt_note,
+                            'message_type': message.message_type
                         }
                         if partner:
                             kwargs.update({'author_id': partner.id})
                         else:
                             kwargs.update({'body': 'From: {}. Message: {}'.format(from_number, params.get('Body'))})
-                        obj.with_user(SUPERUSER_ID).with_context(mail_create_nosubscribe=False).message_post(**kwargs)
+                        chatter = obj.with_context(mail_create_nosubscribe=False).message_post(**kwargs)
+                        chatter.connect_message = message
+
+                        mail_notification_values = [{
+                            'author_id': chatter.author_id.id,
+                            'mail_message_id': chatter.id,
+                            'res_partner_id': chatter.author_id.id,
+                            'sms_number': from_number,
+                            'notification_type': message.message_type,
+                            'is_read': True,
+                            'notification_status': 'ready',
+                        }]
+                        self.env['mail.notification'].sudo().create(mail_notification_values)
+                        self.env['connect.settings'].connect_reload_view(last_message.res_model)
+                # Message Configuration
+                config = self.env['connect.message_configuration'].search([('number.phone_number', '=', to_number)])
+                lead = self.env['crm.lead'].get_lead_by_number(from_number)
+                if not lead and config:
+                    data = {}
+                    try:
+                        data = dict(ast.literal_eval(config.default_values))
+                    except Exception as e:
+                        logger.error('Invalid default data: {}\n{}'.format(config.default_values, e))
+
+                    data.update({
+                        'name': from_number,
+                        'phone': from_number,
+                    })
+                    logger.info('Create Lead: {}'.format(from_number))
+                    self.env['crm.lead'].create(data)
             else:
                 # Update message status
                 logger.info("Received Update Twilio SMS webhook data:\n%s", params)
@@ -143,36 +190,70 @@ class ConnectMessage(models.Model):
         finally:
             return str(MessagingResponse())  # Return empty TwiML response, i.e. no reply.
 
-    def send(self, recipient, body, res_id=None, res_model=None):
-        sender_user_id = self.env.user.id
-        number = self.env['connect.number'].search([('user.user', '=', sender_user_id)], limit=1)
-        # Check if user have a number
-        if not number:
-            raise ValidationError('You dont have a number!')
-        sender = number.phone_number
+    def send(self, recipient, body, res_id=None, res_model=None, outgoing_callerid=None):
+        sender_user = self.env.user
+        message_data = {
+            'message_type': 'WhatsApp',
+            'to_number': recipient,
+            'body': body,
+            'sender_user': sender_user.id,
+            'res_id': res_id,
+            'res_model': res_model,
+            'status': 'sent'
+        }
+        if outgoing_callerid:
+            sender = outgoing_callerid
+        else:
+            number = sender_user.connect_user.outgoing_callerid
+            # Check if user have a number
+            if not number:
+                raise ValidationError('You dont have an outgoing callerid number!')
+            sender = number.number
         message = self.client_send(recipient, sender, body, whatsapp=True)
         if not message:
             message = self.client_send(recipient, sender, body)
+            message_data.update({'message_type': 'sms'})
         if not message:
             raise ValidationError('Unexpected error! Contact admin or maintainer!')
         # Create message record
         partner = self.env['res.partner'].get_partner_by_number(recipient)
-        self.env['connect.message'].sudo().create({
+        message_data.update({
             'account_sid': message.account_sid,
             'from_number': sender,
-            'to_number': recipient,
-            'body': body,
             'partner': partner.id,
-            'sender_user': sender_user_id,
             'messaging_service_sid': message.messaging_service_sid,
             'num_media': message.num_media,
             'error_code': message.error_code,
             'error_message': message.error_message,
             'message_sid': message.sid,
-            'res_id': res_id,
-            'res_model': res_model,
-            'status': 'sent'
         })
+        message = self.env['connect.message'].sudo().create(message_data)
+
+        # Add message to chatter
+        if res_model and res_id:
+            mt_note = self.env.ref('mail.mt_note').id
+            obj = self.env[res_model].with_user(SUPERUSER_ID).browse(res_id)
+            if hasattr(obj, 'message_post'):
+                kwargs = {
+                    'body': body,
+                    'subtype_id': mt_note,
+                    'message_type': message.message_type
+                }
+
+                kwargs.update({'author_id': sender_user.partner_id.id})
+                chatter = obj.with_context(mail_create_nosubscribe=False).message_post(**kwargs)
+
+                mail_notification_values = [{
+                    'author_id': chatter.author_id.id,
+                    'mail_message_id': chatter.id,
+                    'res_partner_id': chatter.author_id.id,
+                    'sms_number': sender,
+                    'notification_type': message.message_type,
+                    'is_read': True,
+                    'notification_status': 'ready',
+                }]
+                self.env['mail.notification'].sudo().create(mail_notification_values)
+                self.env['connect.settings'].connect_reload_view(res_model)
 
     def client_send(self, recipient, sender, body, whatsapp=False):
         try:
@@ -183,12 +264,13 @@ class ConnectMessage(models.Model):
                 from_='whatsapp:{}'.format(sender) if whatsapp else sender,
                 body=body,
             )
-            if message.error_code == '63003':
+            if message.error_code:
                 return False
+            logger.info('Message to %s is sent.', recipient)
             return message
         except Exception as e:
             if not whatsapp:
                 logger.exception(e)
             else:
-                logger.info('Unable to send WhatsUp message to "{}"!'.format(recipient))
+                logger.warning('Unable to send WhatsUp message to "{}"!'.format(recipient))
             return False

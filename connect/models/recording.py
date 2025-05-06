@@ -17,31 +17,6 @@ from .settings import format_connect_response, debug
 logger = logging.getLogger(__name__)
 
 
-class TranscriptionRules(models.Model):
-    _name = 'connect.transcription_rule'
-    _description = 'Transcription rule'
-    _order = 'id'
-
-    settings = fields.Many2one('connect.settings', required=True, default=1)
-    calling_number = fields.Char(required=True)
-    called_number = fields.Char(required=True)
-
-    @api.model
-    def check_rules(self, calling_number, called_number):
-        for rec in self.search([]):
-            try:
-                if calling_number and not re.search(rec.calling_number, calling_number):
-                    debug(self, 'Transcription rule {} calling number pattern does not match'.format(rec.id))
-                    continue
-                if called_number and not re.search(rec.called_number, called_number):
-                    debug(self, 'Transcription rule {} called number pattern does not match'.format(rec.id))
-                    continue
-                debug(self, 'Transcription rule {} matched!'.format(rec.id))
-                return True
-            except Exception as e:
-                logger.error('Error checking transcription rule %s: %s', rec.id, e)
-
-
 class Recording(models.Model):
     _name = 'connect.recording'
     _description = 'Recording'
@@ -141,7 +116,6 @@ class Recording(models.Model):
         finally:
             self.write(result)
 
-
     def get_transcript(self, fail_silently=False):
         self.ensure_one()
         openai_key = self.env['connect.settings'].sudo().get_param('openai_api_key')
@@ -152,11 +126,6 @@ class Recording(models.Model):
             else:
                 raise ValidationError('OpenAI key is not set!')
         summary_prompt = self.env['connect.settings'].get_param('summary_prompt')
-        # First check if the call matches the transcription rules.
-        if fail_silently and not self.env['connect.transcription_rule'].sudo().check_rules(
-                self.call.caller, self.call.called):
-            debug(self, 'No transcription rules matched.')
-            return False
         if not self.media_url:
             raise ValidationError('Recording is not available yet!')
         self.transcribe_recording(openai_key, summary_prompt)
@@ -180,8 +149,10 @@ class Recording(models.Model):
         # Update call summary.
         if self.call:
             self.call.summary = data.get('summary')
+            # Reload calls view when transcription has come.
+            self.env['connect.settings'].connect_reload_view('connect.call')
         # Reload views when transcription has come.
-        self.env['connect.settings'].pbx_reload_view('connect.recording')
+        self.env['connect.settings'].connect_reload_view('connect.recording')
         # Notify user
         if data.get('notify_uid'):
             self.env['connect.settings'].connect_notify(
@@ -234,7 +205,7 @@ class Recording(models.Model):
                 try:
                     rec.get_transcript(fail_silently=True)
                 except Exception as e:
-                    logger.exception('Transcript error:')
+                    logger.exception('Transcript error: %s', e)
         return recs
 
     @api.model
