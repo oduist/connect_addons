@@ -2,23 +2,23 @@
 <odoo>
 
     <record id="ai_agent_action" model="ir.actions.act_window">
-        <field name="name">AI Agent</field>
-        <field name="res_model">connect_elevenlabs.ai_agent</field>
+        <field name="name">Agent</field>
+        <field name="res_model">connect.elevenlabs_agent</field>
         <field name="view_mode">list,form</field>
     </record>
 
-    <menuitem id="connect_elevenlabs.ai_agent_menu"
+    <menuitem id="connect.elevenlabs_agent_menu"
               sequence="1200"
               parent="elevenlabs_menu"
-              name="AI Agent"
-              action="connect_elevenlabs.ai_agent_action"/>
+              name="Agents"
+              action="connect.elevenlabs_agent_action"/>
 
     <record id="connect_elevenlabs_ai_agent_list" model="ir.ui.view">
         <field name="name">connect_elevenlabs_ai_agent_list</field>
-        <field name="model">connect_elevenlabs.ai_agent</field>
+        <field name="model">connect.elevenlabs_agent</field>
         <field name="arch" type="xml">
             <list>
-                <field name="agent_name"/>
+                <field name="name"/>
                 <field name="agent_id"/>
             </list>
         </field>
@@ -26,13 +26,16 @@
 
     <record id="connect_elevenlabs_ai_agent_form" model="ir.ui.view">
         <field name="name">connect_elevenlabs_ai_agent_form</field>
-        <field name="model">connect_elevenlabs.ai_agent</field>
+        <field name="model">connect.elevenlabs_agent</field>
         <field name="arch" type="xml">
             <form>
+                <header>
+                    <button name="create_extension" type="object" string="Extension" class="btn btn-primary"/>
+                </header>
                 <sheet>
                     <group>
                         <group>
-                            <field name="agent_name"/>
+                            <field name="name"/>
                             <field name="agent_id"/>
                         </group>
                     </group>

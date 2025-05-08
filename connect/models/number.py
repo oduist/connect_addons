@@ -120,10 +120,8 @@ class Number(models.Model):
                 message=user_message
             )
 
-    @api.model
-    def render(self, request):
-        if not self:
-            return '<Response><Say>Number not found. Goodbye!</Say></Response>'
+    def render(self, request={}, params={}):
+        self.ensure_one()
         if self.destination == 'twiml' and self.twiml:
             return self.twiml.render(request)
         elif self.destination == 'user' and self.user:
@@ -134,10 +132,12 @@ class Number(models.Model):
             return '<Response><Say>Number not configured. Goodbye!</Say></Response>'
 
     @api.model
-    def route_call(self, request):
+    def route_call(self, request, params={}):
         debug(self, 'Route number call: %s' % json.dumps(request, indent=2))
         # Create call
-        self.env['connect.call'].sudo().on_call_status(request)
+        self.env['connect.call'].on_call_status(request)
         # Find the number
-        number = self.search([('phone_number', '=', request['Called'])])
-        return number.render(request)
+        number = self.sudo().search([('phone_number', '=', request['Called'])])
+        if not number:
+            return '<Response><Say>Number not found. Goodbye!</Say></Response>'
+        return number.render(request=request, params=params)

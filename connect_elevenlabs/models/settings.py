@@ -21,7 +21,7 @@ class Elevenlabsettings(models.Model):
     display_elevenlabs_api_key = fields.Char(groups="connect.group_connect_admin")
     elevenlabs_voice = fields.Many2one('connect.elevenlabs_voice', ondelete='set null', string='Selected Voice')
     elevenlabs_enabled = fields.Boolean()
-    agent_url = fields.Char(string='Agent URL', required=True, default='https://localhost:48000')
+    agent_url = fields.Char(string='Agent URL', required=True, default='https://elevenlabs-agent.ngrok.io')
 
     def elevenlabs_get_voices(self):
         self.env['connect.elevenlabs_voice'].get_voices()
