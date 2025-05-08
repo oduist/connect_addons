@@ -48,7 +48,7 @@
           <page name="agent" string="Agent">
             <group>
               <group>
-                <field name="agent_url"/>
+                <field name="elevenlabs_agent_url"/>
               </group>
             </group>
             <group>

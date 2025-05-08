@@ -20,7 +20,8 @@ class Exten(models.Model):
     res_id = fields.Integer()
     dst = fields.Reference(
         string='Destination',
-        required=True,
+        ondelete='cascade', # Remove extensions when the corresponding addon is uninstalled.
+        required=False,
         selection=[
             ('connect.user', 'User'),
             ('connect.callflow', 'Call Flow'),

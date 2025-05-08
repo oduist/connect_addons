@@ -21,7 +21,7 @@ class Elevenlabsettings(models.Model):
     display_elevenlabs_api_key = fields.Char(groups="connect.group_connect_admin")
     elevenlabs_voice = fields.Many2one('connect.elevenlabs_voice', ondelete='set null', string='Selected Voice')
     elevenlabs_enabled = fields.Boolean()
-    agent_url = fields.Char(string='Agent URL', required=True, default='https://elevenlabs-agent.ngrok.io')
+    elevenlabs_agent_url = fields.Char(string='Agent URL', required=True, default='https://elevenlabs-agent.ngrok.io')
 
     def elevenlabs_get_voices(self):
         self.env['connect.elevenlabs_voice'].get_voices()
@@ -48,7 +48,7 @@ class Elevenlabsettings(models.Model):
     def ping_agent(self):
         self.ensure_one()
         try:
-            response = requests.post(urljoin(self.agent_url, '/agent/ping'))
+            response = requests.post(urljoin(self.elevenlabs_agent_url, '/agent/ping'))
             if response.text == 'true':
                 self.connect_notify('Pong', title='Elevenlabs Agent', notify_uid=self.env.user.id)
             else:

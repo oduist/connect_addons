@@ -10,35 +10,29 @@ logger = logging.getLogger(__name__)
 
 class ElevenlabsAgent(models.Model):
     _name = 'connect.elevenlabs_agent'
+    _description = 'Elevenlabs Agent'
 
     name = fields.Char(required=True)
     agent_id = fields.Char(string="Agent ID", required=True)
+    exten = fields.Many2one('connect.exten', ondelete='set null', readonly=True)
+    exten_number = fields.Char(related='exten.number')
 
     def create_extension(self):
         self.ensure_one()
         return self.env['connect.exten'].create_extension(self, 'elevenlabs_agent')
 
 
-    @api.model
-    def route_call(self, request):
-        # Find the number
-        number = self.sudo().search([('phone_number', '=', request['Called'])])
-
-        if number.enable_ai_agent and number.agent:
-            # Create call
-            self.env['connect.call'].sudo().on_call_status(request)
-            # Collect data for agent
-            call_sid = request.get("CallSid")
-            agent_url = self.env['connect.settings'].get_param('agent_url')
-            agent_id = number.agent.agent_id
-            connect = Connect()
-            connect.stream(url=f"{agent_url}/twilio/stream/{call_sid}/{agent_id}")
-            response = VoiceResponse()
-            response.append(connect)
-            debug(self, pretty_xml(response))
-            return response
-
-        return super().route_call(request)
+    def render(self, request, params={}):
+        self.ensure_one()
+        call_sid = request.get("CallSid")
+        elevenlabs_agent_url = self.env['connect.settings'].get_param('elevenlabs_agent_url')
+        agent_id = self.agent_id
+        connect = Connect()
+        connect.stream(url=f"{elevenlabs_agent_url}/twilio/stream/{call_sid}/{agent_id}")
+        response = VoiceResponse()
+        response.append(connect)
+        debug(self, pretty_xml(response))
+        return response
 
     @api.model
     def transfer(self, call_sid):

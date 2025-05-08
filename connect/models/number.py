@@ -31,7 +31,7 @@ class Number(models.Model):
         ('user', 'User'),
         ('callflow', 'CallFlow'),
         ('twiml', 'TwiML'),
-    ])
+    ], ondelete='set null')
     callflow = fields.Many2one('connect.callflow', ondelete='set null')
     user = fields.Many2one('connect.user', ondelete='set null')
 
