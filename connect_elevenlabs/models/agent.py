@@ -25,7 +25,7 @@ class ElevenlabsAgent(models.Model):
     def render(self, request, params={}):
         self.ensure_one()
         call_sid = request.get("CallSid")
-        elevenlabs_agent_url = self.env['connect.settings'].get_param('elevenlabs_agent_url')
+        elevenlabs_agent_url = self.env['connect.settings'].get_param('elevenlabs_agent_url').replace('https://','wss://')
         agent_id = self.agent_id
         connect = Connect()
         connect.stream(url=f"{elevenlabs_agent_url}/twilio/stream/{call_sid}/{agent_id}")
@@ -39,8 +39,11 @@ class ElevenlabsAgent(models.Model):
         self = self.sudo()
         client = self.env['connect.settings'].get_client()
         channel = self.env['connect.channel'].search([('sid', '=', call_sid)])
-        twiml = self.search([('phone_number', '=', channel.called)]).render({
-            'CallSid': call_sid, 'From': channel.caller
+        twiml = self.env['connect.exten'].search([('number', '=', '1002')]).render({
+            'Caller': channel.caller,
+            'Called': channel.called,
+            'CallSid': channel.sid,
         })
+        debug(self, 'Transfer to: {}'.format(pretty_xml(twiml)))
         client.calls(call_sid).update(twiml=twiml)
         return True
