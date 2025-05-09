@@ -24,11 +24,12 @@ class ElevenlabsAgent(models.Model):
 
     def render(self, request, params={}):
         self.ensure_one()
-        call_sid = request.get("CallSid")
+        channel_sid = request.get("CallSid")
+        call_id = self.env['connect.channel'].search([('sid', '=', channel_sid)], limit=1).call.id
         elevenlabs_agent_url = self.env['connect.settings'].get_param('elevenlabs_agent_url').replace('https://','wss://')
         agent_id = self.agent_id
         connect = Connect()
-        connect.stream(url=f"{elevenlabs_agent_url}/twilio/stream/{call_sid}/{agent_id}")
+        connect.stream(url=f"{elevenlabs_agent_url}/twilio/stream/{call_id}/{agent_id}")
         response = VoiceResponse()
         response.append(connect)
         debug(self, pretty_xml(response))
