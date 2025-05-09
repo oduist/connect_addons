@@ -445,3 +445,19 @@ class Call(models.Model):
             "create_date",
             "direction"
         ]
+
+    def get_call_data(self):
+        self.ensure_one()
+        return {
+            'id': self.id,
+            'caller_user_name': self.caller_user.name,
+            'caller_number': self.caller,
+            'called_number': self.called,
+            'partner_name': self.partner.name,
+            'partner_id': self.partner.id,
+
+        }
+
+    @api.model
+    def get_call_data_by_id(self, call_id):
+        return self.sudo().browse(int(call_id)).get_call_data()

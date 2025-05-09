@@ -1,3 +1,4 @@
+import asyncio
 import json
 import httpx
 import logging
@@ -66,16 +67,14 @@ class OdooConnection:
         try:
             call_data = await self.odoo.execute_kw(
                 model_name='connect.call',
-                method='search_read',
-                args=[['id', '=', call_id]],
-                kwargs={'fields': ['id', 'caller','called', 'partner', 'caller_user']}
+                method='get_call_data_by_id',
+                args=call_id,
+                kwargs={}
             )
-            logger.info('Call data: %s', call_data[0])
-            return {
-                'caller_user_name': call_data[0]['caller_user'][1],
-            }
+            logger.info('Call data: %s', call_data)
+            return call_data
         except Exception as e:
-            logger.error('Cannot get partner: %s', e)
+            logger.error('Cannot get call data: %s', e)
             return {}
 
 
@@ -95,6 +94,7 @@ async def agent_ping():
 @app.websocket("/twilio/stream/{call_id}/{agent_id}")
 async def handle_media_stream(websocket: WebSocket, call_id: str, agent_id: str):
     # Connect to Odoo
+    await asyncio.sleep(1)
     odoo = OdooConnection()
     await odoo.login()
     call_info = await odoo.get_call_info(call_id)
