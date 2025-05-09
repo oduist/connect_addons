@@ -99,7 +99,7 @@ class CallFlow(models.Model):
             self.get_prompt_message(response)
         # Add ringall users
         if self.ring_users:
-            callerId = request.get('From')
+            callerId = request.get('Caller')
             # Hack to enable testing callflow from SIP or Client.
             if callerId.startswith('sip:') or callerId.startswith('client:'):
                 # Take the default number

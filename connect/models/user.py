@@ -219,7 +219,7 @@ class User(models.Model):
         channel = self.env['connect.channel'].search([('sid', '=', request.get('CallSid'))])
         call = channel.call
         # Check callerid for client calls
-        user = self.env['connect.user'].get_user_by_uri(request.get('From'))
+        user = self.env['connect.user'].get_user_by_uri(request.get('Caller'))
         caller_name = params.get('CallerName', False)
         if user:
             callerId = user.exten.number or ''
@@ -227,7 +227,7 @@ class User(models.Model):
                 logger.warning('Exten not set for user %s', user.name)
             caller_name = user.name
         else:
-            callerId = request.get('From')
+            callerId = request.get('Caller')
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
         record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus')
         status_url = urljoin(api_url, 'twilio/webhook/callstatus')
