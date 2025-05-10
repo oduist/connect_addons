@@ -13,10 +13,10 @@ class Exten(models.Model):
     _description = 'Exten'
     _order = 'number'
 
-    name = fields.Char(compute='_get_name', store=True, copy=False)
+    name = fields.Char(compute='_get_name', copy=False)
     number = fields.Char('Extension Number', required=True, copy=False)
     model = fields.Char('AppModel')
-    model_friendly = fields.Char('Model', compute='_get_name', store=True, copy=False)
+    model_friendly = fields.Char('Model', compute='_get_model_friendly', store=True, copy=False)
     res_id = fields.Integer()
     dst = fields.Reference(
         string='Destination',
@@ -34,16 +34,21 @@ class Exten(models.Model):
         ('number_uniq', 'UNIQUE(number)', 'This extension number is already defined in the domain!')
     ]
 
-    @api.depends('number', 'model', 'res_id', 'dst')
     def _get_name(self):
         for rec in self:
             try:
                 rec.name = "{} <{}>".format(rec.number, rec.dst.name if rec.dst else '')
-                rec.model_friendly = dict(
-                    self.env['connect.exten']._fields['dst'].selection).get(rec.model)
             except Exception as e:
                 logger.exception('Exten name error:')
                 rec.name = 'See Odoo Error Log'
+
+    def _get_model_friendly(self):
+        for rec in self:
+            try:
+                rec.model_friendly = dict(
+                    self.env['connect.exten']._fields['dst'].selection).get(rec.model)
+            except Exception as e:
+                logger.exception('Exten Model friendly error:')
                 rec.model_friendly = ''
 
     @api.model_create_multi
