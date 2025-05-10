@@ -29,22 +29,24 @@ class ElevenlabsAgent(models.Model):
         elevenlabs_agent_url = self.env['connect.settings'].get_param('elevenlabs_agent_url').replace('https://','wss://')
         agent_id = self.agent_id
         connect = Connect()
-        connect.stream(url=f"{elevenlabs_agent_url}/twilio/stream/{call_id}/{agent_id}")
+        connect.stream(url=f"{elevenlabs_agent_url}/twilio/stream/{agent_id}/{call_id}/{channel_sid}")
         response = VoiceResponse()
         response.append(connect)
         debug(self, pretty_xml(response))
         return response
 
     @api.model
-    def transfer(self, call_sid):
+    def transfer(self, params):
+        channel_sid = params['channel_sid']
+        exten = params['exten'] or params['default_exten']
         self = self.sudo()
         client = self.env['connect.settings'].get_client()
-        channel = self.env['connect.channel'].search([('sid', '=', call_sid)])
-        twiml = self.env['connect.exten'].search([('number', '=', '1002')]).render({
+        channel = self.env['connect.channel'].search([('sid', '=', channel_sid)])
+        twiml = self.env['connect.exten'].search([('number', '=', exten)]).render({
             'Caller': channel.caller,
             'Called': channel.called,
             'CallSid': channel.sid,
         })
         debug(self, 'Transfer to: {}'.format(pretty_xml(twiml)))
-        client.calls(call_sid).update(twiml=twiml)
+        client.calls(channel_sid).update(twiml=twiml)
         return True

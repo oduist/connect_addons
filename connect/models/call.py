@@ -454,8 +454,8 @@ class Call(models.Model):
             'caller_number': self.caller,
             'called_number': self.called,
             'partner_name': self.partner.name,
-            'partner_id': self.partner.id,
-
+            'partner_id': self.partner.id or self.caller_user.partner_id.id,
+            'user_name': self.partner.name or self.caller_user.name or 'dear customer'
         }
 
     @api.model

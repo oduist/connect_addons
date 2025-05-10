@@ -25,14 +25,6 @@ app = FastAPI()
 eleven_labs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 
 
-def log_message(parameters):
-    message = parameters.get("message")
-    print('100: ', message)
-
-client_tools = ClientTools()
-client_tools.register("logMessage", log_message)
-
-
 # Odoo connection
 class OdooConnection:
     odoo = None
@@ -78,6 +70,74 @@ class OdooConnection:
             return {}
 
 
+async def odoo_query(params):
+    logger.info('Odoo query params: %s', params)
+    try:
+        odoo_connection = OdooConnection()
+        await odoo_connection.login()
+        model = params.get('model')
+        res_id = params.get('number')
+        if not (model or res_id):
+            return 'Parameters not set!'
+        res = await odoo_connection.odoo.execute_kw(
+            model_name=model,
+            method='search_read',
+            args=[['id', '=', res_id]],
+            kwargs={'fields': ['name', 'description', 'date_deadline']}
+        )
+        if not res:
+            return 'Nothing was found'
+        else:
+            logger.info('Result: %s', res)
+            return json.dumps(res[0])
+    except Exception as e:
+        logger.error('Odoo query error: %s', e)
+        return 'Error calling the tool: {}'.format(e)
+
+
+async def odoo_execute(params):
+    logger.info('Odoo execute params: %s', params)
+    try:
+        odoo_connection = OdooConnection()
+        await odoo_connection.login()
+        model = params.pop('model', False)
+        method = params.get('number', False)
+        if not (model or method):
+            return 'Required parameters are not set!'
+        res = await odoo_connection.odoo.execute_kw(
+            model_name=model,
+            method=method,
+            args=params,
+            kwargs={}
+        )
+        logger.info('Result: %s', res)
+        return json.dumps(res)
+    except Exception as e:
+        logger.error('Odoo execute error: %s', e)
+        return 'Error calling the tool: {}'.format(e)
+
+async def transfer_to_extension(params):
+    logger.info('Transfer params: %s', params)
+    try:
+        odoo_connection = OdooConnection()
+        await odoo_connection.login()
+        res = await odoo_connection.odoo.execute_kw(
+            model_name='connect.elevenlabs_agent',
+            method='transfer',
+            args=params,
+            kwargs={}
+        )
+        logger.info('Result: %s', res)
+        return json.dumps(res)
+    except Exception as e:
+        logger.error('Odoo execute error: %s', e)
+        return 'Error calling the tool: {}'.format(e)
+
+
+client_tools = ClientTools()
+client_tools.register('transfer_to_extension', transfer_to_extension, is_async=True)
+
+
 @app.get("/")
 async def root():
     return {"message": "Twilio-ElevenLabs Integration Server"}
@@ -91,10 +151,13 @@ async def agent_ping():
     return True
 
 
-@app.websocket("/twilio/stream/{call_id}/{agent_id}")
-async def handle_media_stream(websocket: WebSocket, call_id: str, agent_id: str):
+@app.websocket("/twilio/stream/{agent_id}/{call_id}/{channel_sid}")
+async def handle_media_stream(websocket: WebSocket, agent_id: str, call_id: str, channel_sid: str):
     # Connect to Odoo
-    await asyncio.sleep(1)
+    call_info = {
+        'caller_user_name': 'Administrator',
+        'partner_id': 3,
+    }
     odoo = OdooConnection()
     await odoo.login()
     call_info = await odoo.get_call_info(call_id)
@@ -102,7 +165,10 @@ async def handle_media_stream(websocket: WebSocket, call_id: str, agent_id: str)
     audio_interface = TwilioAudioInterface(websocket)
     conversation = None
 
-    dynamic_variables = {"call_id": call_id}
+    dynamic_variables = {
+        'call_id': call_id,
+        'channel_sid': channel_sid,
+    }
     dynamic_variables.update(call_info)
     config = ConversationInitiationData(dynamic_variables=dynamic_variables)
     try:

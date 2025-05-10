@@ -44,8 +44,8 @@ class ElevenlabsFile(models.Model):
         media_url = self.env['connect.settings'].sudo().get_param('media_url')
         if media_url:
             api_url = media_url
-        url = urljoin(api_url, 'proxy/{}/content/connect.elevenlabs_file/{}/file/{}'.format(
-            instance_uid, self.id, self.filename)
+        url = urljoin(api_url, '/web/content/connect.elevenlabs_file/{}/file/{}'.format(
+            self.id, self.filename)
         )
         return url
 

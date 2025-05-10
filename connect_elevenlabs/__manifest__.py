@@ -20,6 +20,7 @@
     'data': [
         'security/admin.xml',
         'security/user.xml',
+        'security/webhook.xml',
         'views/settings.xml',
         'views/voice.xml',
         'views/callflow.xml',
