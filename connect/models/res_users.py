@@ -37,7 +37,7 @@ class ResUser(models.Model):
 
     def _get_connect_user(self):
         for rec in self:
-            rec.connect_user = self.env['connect.user'].search([('user', '=', rec.id)])
+            rec.connect_user = self.env['connect.user'].search([('user', '=', rec.id)], limit=1)
 
     @api.model
     def connect_notify(self, message, title='PBX', notify_uid=None,

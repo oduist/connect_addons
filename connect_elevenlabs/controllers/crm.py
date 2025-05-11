@@ -13,6 +13,24 @@ logger = logging.getLogger(__name__)
 
 class ConnectCrmController(http.Controller):
 
+    @http.route('/connect_elevenlabs/create_partner', methods=['POST'], type='json',
+                auth='public', csrf=False)
+    def create_partner(self):
+        data = json.loads(http.request.httprequest.get_data(as_text=True))
+        #auth_token = http.request.env['connect.settings'].sudo().get_param('elevenlabs_agent_token')
+        partner = http.request.env['res.partner'].sudo().create({
+                'name': data['name'],
+            })
+        print('Partner created: ', partner)
+        # Now assign partner to the call.
+        http.request.env['connect.call'].sudo().partner = partner.id
+        return {
+            'partner_id': partner.id,
+            'message': 'Partner created'
+
+        }
+
+
     @http.route('/connect_elevenlabs/create_lead', methods=['POST'], type='json',
                 auth='public', csrf=False)
     def create_lead(self):

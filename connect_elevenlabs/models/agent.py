@@ -42,7 +42,10 @@ class ElevenlabsAgent(models.Model):
         self = self.sudo()
         client = self.env['connect.settings'].get_client()
         channel = self.env['connect.channel'].search([('sid', '=', channel_sid)])
-        twiml = self.env['connect.exten'].search([('number', '=', exten)]).render({
+        exten = self.env['connect.exten'].search([('number', '=', exten)])
+        if not exten:
+            return 'Extension not found, please try again.'
+        twiml = exten.render({
             'Caller': channel.caller,
             'Called': channel.called,
             'CallSid': channel.sid,
