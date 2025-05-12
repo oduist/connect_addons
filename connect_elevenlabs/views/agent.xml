@@ -8,9 +8,9 @@
     </record>
 
     <menuitem id="connect.elevenlabs_agent_menu"
-              sequence="1200"
-              parent="elevenlabs_menu"
-              name="Agents"
+              sequence="40"
+              parent="connect.connect_voice_menu"
+              name="Agent"
               action="connect_elevenlabs.agent_action"/>
 
     <record id="connect_elevenlabs_agent_list" model="ir.ui.view">
@@ -41,10 +41,9 @@
                             <field name="prompt"/>
                             <field name="language"/>
                             <field name="llm"/>
-                            <field name="tools"/>
+                            <field name="tools" widget="many2many_tags"/>
                         </group>
                         <group>
-                            <field name="agent_id"/>
                             <field name="exten_number" string="Exten"/>
                         </group>
                     </group>
