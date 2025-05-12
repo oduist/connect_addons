@@ -44,7 +44,6 @@
                             <field name="tools"/>
                         </group>
                         <group>
-                            <field name="agent_id"/>
                             <field name="exten_number" string="Exten"/>
                         </group>
                     </group>
