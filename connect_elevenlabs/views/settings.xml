@@ -28,7 +28,8 @@
           <page name="elevenlabs_api" string="API">
             <group>
               <group>
-                <a colspan="2" href="https://try.elevenlabs.io/connect">Open Your Elevenlabs account -&gt;</a>
+                <a invisible="display_elevenlabs_api_key" class="btn btn-info"
+                  colspan="2" target="_new" href="https://try.elevenlabs.io/connect">OPEN A NEW ELEVENLABS ACCOUNT HERE</a>
                 <field name="elevenlabs_enabled"/>
                 <field name="display_elevenlabs_api_key" password="1" string="API Key"
                        invisible="not elevenlabs_enabled"
@@ -43,7 +44,8 @@
                   <button name="elevenlabs_sync_ai_agents" type="object" string="SYNC AI AGENTS" class="btn btn-secondary me-1"
                           invisible="not elevenlabs_enabled"/>
                 </div>
-                <a colspan="2" target="_new" href="https://elevenlabs.io/app/voice-library?">Add shared voices</a>
+                <a invisible="not elevenlabs_enabled"
+                  colspan="2" target="_new" href="https://elevenlabs.io/app/voice-library?">Add shared voices</a>
               </group>
             </group>
           </page>
