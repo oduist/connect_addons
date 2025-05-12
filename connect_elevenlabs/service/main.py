@@ -56,18 +56,14 @@ class OdooConnection:
                 logger.error('Odoo connect error: %s', e)
 
     async def get_call_info(self, call_id):
-        try:
-            call_data = await self.odoo.execute_kw(
-                model_name='connect.call',
-                method='get_call_data_by_id',
-                args=call_id,
-                kwargs={}
-            )
-            logger.info('Call data: %s', call_data)
-            return call_data
-        except Exception as e:
-            logger.error('Cannot get call data: %s', e)
-            return {}
+        call_data = await self.odoo.execute_kw(
+            model_name='connect.call',
+            method='get_call_data_by_id',
+            args=call_id,
+            kwargs={}
+        )
+        logger.info('Call data: %s', call_data)
+        return call_data
 
 
 async def odoo_query(params):
@@ -153,24 +149,30 @@ async def agent_ping():
 
 @app.websocket("/twilio/stream/{agent_id}/{call_id}/{channel_sid}")
 async def handle_media_stream(websocket: WebSocket, agent_id: str, call_id: str, channel_sid: str):
-    # Connect to Odoo
+    # Set some defaults required by prompt and tools.
     call_info = {
-        'caller_user_name': 'Administrator',
-        'partner_id': 3,
+        'partner_id': False,
+        'partner_phone': '',
+        'call_id': call_id,
+        'channel_sid': channel_sid,
+        'greeting_name': 'Dear customer', # Default name.
+        'system_error_message': '', # Empty
     }
     odoo = OdooConnection()
-    await odoo.login()
-    call_info = await odoo.get_call_info(call_id)
+    try:
+        await odoo.login()
+        call_info.update(await odoo.get_call_info(call_id))
+    except Exception:
+        logger.exception('Get call data error:')
+        call_info['system_error_message'] = 'Oops! Something went wrong. Please reach out to our support team.'
+        call_info['system_error'] = True
+
+    logger.info('Call info: {}'.format(json.dumps(call_info, indent=2)))
     await websocket.accept()
     audio_interface = TwilioAudioInterface(websocket)
     conversation = None
 
-    dynamic_variables = {
-        'call_id': call_id,
-        'channel_sid': channel_sid,
-    }
-    dynamic_variables.update(call_info)
-    config = ConversationInitiationData(dynamic_variables=dynamic_variables)
+    config = ConversationInitiationData(dynamic_variables=call_info)
     try:
         conversation = Conversation(
             client=eleven_labs_client,

@@ -53,7 +53,7 @@ class ElevenlabsAgent(models.Model):
     name = fields.Char(required=True)
     voice = fields.Many2one('connect.elevenlabs_voice', required=True)
     first_message = fields.Char(default="Hi there! How could I help you today?", required=True)
-    prompt = fields.Text(required=True, default="You are Harper, a vibrant and personable sales consultant with "
+    prompt = fields.Html(required=True, default="You are Harper, a vibrant and personable sales consultant with "
                                                 "a passion for Conversational AI systems. ")
     language = fields.Selection(selection=language_list, default='en', required=True)
     temperature = fields.Float(required=True, default=0.0)

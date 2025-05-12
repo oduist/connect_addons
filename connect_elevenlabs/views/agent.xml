@@ -8,7 +8,7 @@
     </record>
 
     <menuitem id="connect.elevenlabs_agent_menu"
-        sequence="40"
+        sequence="60"
         parent="connect.connect_voice_menu"
         name="Agent"
         action="connect_elevenlabs.agent_action"/>
@@ -34,14 +34,24 @@
                     <button name="create_extension" type="object" string="Extension" class="btn btn-primary"/>
                 </header>
                 <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <label class="oe_edit_only" for="name"/>
+                            <field name="name" placeholder="Agent name..."/>
+                        </h1>
+                    </div>
                     <notebook>
+                        <page name="prompt" string="Prompt">
+                            <group>
+                                <field name="first_message"/>
+                                <field name="prompt"/>
+                            </group>
+                        </page>
                         <page string="Conversation" name="conversation">
                             <group>
                                 <group>
                                     <field name="name"/>
                                     <field name="voice"/>
-                                    <field name="first_message"/>
-                                    <field name="prompt"/>
                                 </group>
                                 <group>
                                     <field name="tools" widget="many2many_tags"/>
