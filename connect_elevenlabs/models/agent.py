@@ -55,6 +55,7 @@ class ElevenlabsAgent(models.Model):
     prompt = fields.Text(required=True, default="You are Harper, a vibrant and personable sales consultant with "
                                                 "a passion for Conversational AI systems. ")
     language = fields.Selection(selection=language_list, default='en', required=True)
+    temperature = fields.Float(required=True, default=0.0)
     tools = fields.One2many('connect.elevenlabs_agent_tool', 'agent')
     llm = fields.Selection(selection=llm_list, default='gpt-3.5-turbo', required=True)
     agent_id = fields.Char(string="Agent ID", readonly=True)
@@ -79,6 +80,12 @@ class ElevenlabsAgent(models.Model):
     def unlink(self):
         self.delete_elevenlabs_agent()
         return super().unlink()
+
+    @api.constraint('temperature')
+    def check_temperature(self):
+        for rec in self:
+            if rec.temperature and rec.temperature < 0 or rec.temperature > 1.0:
+                raise ValidationError('Please enter a temperature value between 0.0 and 1.0.')
 
     def create_extension(self):
         self.ensure_one()
