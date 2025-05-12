@@ -261,7 +261,8 @@ class User(models.Model):
             statusCallbackEvent='initiated answered completed',
             statusCallback=status_url)
         client.identity(self.uri)
-        client.parameter(name='CallerName', value=caller_name)
+        if caller_name:
+            client.parameter(name='CallerName', value=caller_name)
         if call and call.partner:
             partner_id = call.partner.id
         elif channel and channel.caller_user:

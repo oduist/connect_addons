@@ -455,6 +455,7 @@ class Call(models.Model):
             'caller_number': self.caller,
             'called_number': self.called,
             'partner_name': self.partner.name,
+            'partner_phone': self.called if self.direction == 'outgoing' else self.caller,
             'partner_id': self.partner.id or self.caller_user.partner_id.id,
             'greeting_name': self.partner.name or self.caller_user.name or 'Dear customer',
             'users_directory': ', '.join(['{} <{}>'.format(k.user.name, k.exten.number) for k in users])

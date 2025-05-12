@@ -18,8 +18,10 @@ class ConnectCrmController(http.Controller):
     def create_partner(self):
         data = json.loads(http.request.httprequest.get_data(as_text=True))
         #auth_token = http.request.env['connect.settings'].sudo().get_param('elevenlabs_agent_token')
-        partner = http.request.env['res.partner'].sudo().create({
+        partner = http.request.env['res.partner'].sudo().with_context(
+            connect_call_id=int(data['call_id'])).create({
                 'name': data['name'],
+                'phone': data['partner_phone']
             })
         print('Partner created: ', partner)
         # Now assign partner to the call.
