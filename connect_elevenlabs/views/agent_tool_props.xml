@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="connect_elevenlabs_agent_tool_props_list" model="ir.ui.view">
+        <field name="name">connect_elevenlabs_agent_tool_props_list</field>
+        <field name="model">connect.agent_tool_props</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="connect_elevenlabs_agent_tool_props_form" model="ir.ui.view">
+        <field name="name">connect_elevenlabs_agent_tool_props_form</field>
+        <field name="model">connect.agent_tool_props</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" string="Identifier"/>
+                            <field name="type" string="Data Type"/>
+                            <field name="value_type"/>
+                            <field name="constant_value" invisible="value_type != 'constant'" required="value_type == 'constant'"/>
+                            <field name="dynamic_variable" invisible="value_type != 'dynamic_variable'" required="value_type == 'dynamic_variable'"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>

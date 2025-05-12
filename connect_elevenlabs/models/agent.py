@@ -5,7 +5,7 @@ from twilio.twiml.voice_response import VoiceResponse, Connect
 from odoo.addons.connect.models.settings import debug
 from odoo.addons.connect.models.twiml import pretty_xml
 from odoo.exceptions import ValidationError
-from elevenlabs import ElevenLabs
+from elevenlabs import ElevenLabs, ConversationConfig
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,22 @@ llm_list = [
 ]
 
 
+class ElevenlabsAgentToolProps(models.Model):
+    _name = 'connect.agent_tool_props'
+    _description = 'Elevenlabs Agent Tool'
+
+    name = fields.Char()
+    type = fields.Selection(
+        [('string', 'String'), ('boolean', 'Boolean'), ('integer', 'Integer')], default='string', required=True)
+    required = fields.Boolean()
+    value_type = fields.Selection(
+        [('dynamic_variable', 'Dynamic Variable'), ('constant', 'Constant Variable')],
+        default='dynamic_variable', required=True)
+    constant_value = fields.Char()
+    dynamic_variable = fields.Char()
+    tool = fields.Many2one('connect.elevenlabs_agent_tool')
+
+
 class ElevenlabsAgentTool(models.Model):
     _name = 'connect.elevenlabs_agent_tool'
     _description = 'Elevenlabs Agent Tool'
@@ -41,9 +57,23 @@ class ElevenlabsAgentTool(models.Model):
     name = fields.Char(required=True)
     tool_id = fields.Char(readonly=True)
     description = fields.Char(required=True)
-    dynamic_variables = fields.Text()
-    type = fields.Selection([('client', 'Client'), ('webhook', 'Webhook')], default='webhook', required=True)
-    agent = fields.Many2one('connect.elevenlabs_agent')
+    type = fields.Selection(
+        [('client', 'Client'), ('webhook', 'Webhook'), ('system', 'System')], default='webhook', required=True)
+    url = fields.Char()
+    method = fields.Selection([('POST', 'POST'), ('GET', 'GET')], default='POST')
+    props = fields.One2many('connect.agent_tool_props', 'tool')
+    props_description = fields.Char()
+    param = fields.Selection([('end_call', 'end_call')])
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for val in vals_list:
+            val.update({'name': val.get('param')})
+        return super().create(vals_list)
+
+    @api.onchange('param')
+    def on_set_param(self):
+        self.name = self.param
 
 
 class ElevenlabsAgent(models.Model):
@@ -55,7 +85,7 @@ class ElevenlabsAgent(models.Model):
     prompt = fields.Text(required=True, default="You are Harper, a vibrant and personable sales consultant with "
                                                 "a passion for Conversational AI systems. ")
     language = fields.Selection(selection=language_list, default='en', required=True)
-    tools = fields.One2many('connect.elevenlabs_agent_tool', 'agent')
+    tools = fields.Many2many('connect.elevenlabs_agent_tool')
     llm = fields.Selection(selection=llm_list, default='gpt-4o', required=True)
     agent_id = fields.Char(string="Agent ID", readonly=True)
     exten = fields.Many2one('connect.exten', ondelete='set null', readonly=True)
@@ -68,6 +98,7 @@ class ElevenlabsAgent(models.Model):
             for rec in res:
                 agent = rec.create_elevenlabs_agent()
                 rec.agent_id = agent.agent_id
+                rec.update_elevenlabs_agent()
         return res
 
     def write(self, vals):
@@ -77,7 +108,10 @@ class ElevenlabsAgent(models.Model):
         return res
 
     def unlink(self):
-        self.delete_elevenlabs_agent()
+        try:
+            self.delete_elevenlabs_agent()
+        except Exception as e:
+            logger.exception("Error Delete Elevenlabs agent: ", e)
         return super().unlink()
 
     def create_extension(self):
@@ -88,7 +122,8 @@ class ElevenlabsAgent(models.Model):
         self.ensure_one()
         channel_sid = request.get("CallSid")
         call_id = self.env['connect.channel'].search([('sid', '=', channel_sid)], limit=1).call.id
-        elevenlabs_agent_url = self.env['connect.settings'].get_param('elevenlabs_agent_url').replace('https://', 'wss://')
+        elevenlabs_agent_url = self.env['connect.settings'].get_param('elevenlabs_agent_url').replace('https://',
+                                                                                                      'wss://')
         agent_id = self.agent_id
         connect = Connect()
         connect.stream(url=f"{elevenlabs_agent_url}/twilio/stream/{agent_id}/{call_id}/{channel_sid}")
@@ -116,24 +151,12 @@ class ElevenlabsAgent(models.Model):
         client.calls(channel_sid).update(twiml=twiml)
         return True
 
-    def compute_agent_conversation_config(self):
-        return {
-            'agent': {
-                'first_message': self.first_message,
-                'language': self.language,
-                'prompt': {
-                    'prompt': self.prompt,
-                    'llm': self.llm
-                },
-            }
-        }
-
     def create_elevenlabs_agent(self):
         # try:
         client = self.env['connect.settings'].get_elevenlabs_client()
         return client.conversational_ai.create_agent(
             name=self.name,
-            conversation_config=self.compute_agent_conversation_config()
+            conversation_config=self.compute_agent_conversation_config(skip_tools=True)
         )
         # except Exception as e:
         #     logger.exception("Error create Elevenlabs agent: ", e)
@@ -158,6 +181,48 @@ class ElevenlabsAgent(models.Model):
         # except Exception as e:
         #     logger.exception("Error update Elevenlabs agent: ", e)
 
+    def compute_agent_conversation_config(self, skip_tools=False):
+        config = {
+            'agent': {
+                'first_message': self.first_message,
+                'language': self.language,
+                'prompt': {
+                    'prompt': self.prompt,
+                    'llm': self.llm,
+                    'tools': self.compute_agent_tool() if self.tools and not skip_tools else []
+                }
+            }
+        }
+        from pprint import pprint
+        pprint(config)
+        return config
+
+    def compute_agent_tool(self):
+        tools = []
+        for tool in self.tools:
+            tools.append({
+                'name': tool.name,
+                'description': tool.description,
+                'type': tool.type,
+                'api_schema': {
+                    'method': tool.method,
+                    'url': tool.url,
+                    'request_body_schema': {
+                        "description": tool.props_description,
+                        'properties': {
+                            prop.name: {
+                                'type': prop.type,
+                                'value_type': prop.value_type,
+                                "constant_value": prop.constant_value if prop.value_type == 'constant' else '',
+                                "dynamic_variable": prop.dynamic_variable if prop.value_type == 'dynamic_variable' else '',
+                            } for prop in tool.props
+                        }
+                    }
+                },
+                'dynamic_variables': {tool.name: f'test_{tool.name}' if tool.type == 'dynamic_variable' else {}},
+            })
+        return tools
+
     @staticmethod
     def get_agent_data(agent):
         return {
@@ -169,22 +234,15 @@ class ElevenlabsAgent(models.Model):
             'llm': agent.conversation_config.agent.prompt.llm,
         }
 
-    def update_agent_tool(self, agent):
-        tools = []
-        for tool in agent.conversation_config.agent.prompt.tools:
-            print('TOOL', tool)
-            tools.append({
-                'name': tool.name,
-                'description': tool.description,
-                'type': tool.type,
-                'dynamic_variables': '\n'.join(list(tool.dynamic_variables.dynamic_variable_placeholders.keys()))
-            })
-
     def sync(self):
         client = self.env['connect.settings'].get_elevenlabs_client()
         agents = client.conversational_ai.get_agents().agents
         for agent in agents:
             agent = client.conversational_ai.get_agent(agent_id=agent.agent_id)
+            tools = agent.conversation_config.agent.prompt.tools
+            for tool in tools:
+                print(tool)
+            break
             agent_instance = self.search([('agent_id', '=', agent.agent_id)])
             if agent_instance:
                 logger.info('Update agent: %s', agent.name)

@@ -1,0 +1,12 @@
+<odoo>
+    <data>
+
+        <record id="agent_tool_end_call" model="connect.elevenlabs_agent_tool">
+            <field name="name">end_call</field>
+            <field name="description">end_call</field>
+            <field name="type">system</field>
+            <field name="param">end_call</field>
+        </record>
+
+    </data>
+</odoo>

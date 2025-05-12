@@ -18,14 +18,20 @@
         'python': ['elevenlabs'],
     },
     'data': [
+        # Data
+        'data/data.xml',
+        # Security
         'security/admin.xml',
         'security/user.xml',
         'security/webhook.xml',
+        # Views
         'views/settings.xml',
         'views/voice.xml',
         'views/callflow.xml',
         'views/user.xml',
         'views/agent.xml',
+        'views/agent_tool.xml',
+        'views/agent_tool_props.xml',
         'views/number.xml',
     ],
     'demo': [],

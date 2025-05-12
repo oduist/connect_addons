@@ -1,11 +1,33 @@
 <odoo>
     <record id="connect_elevenlabs_agent_webhook" model="ir.model.access">
-    <field name="name">connect_elevenlabs_agent_webhook</field>
-    <field name="model_id" ref="connect_elevenlabs.model_connect_elevenlabs_agent"/>
-    <field name="group_id" ref="connect.group_connect_webhook"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="0"/>
-    <field name="perm_create" eval="0"/>
-    <field name="perm_unlink" eval="0"/>
-  </record>
+        <field name="name">connect_elevenlabs_agent_webhook</field>
+        <field name="model_id" ref="connect_elevenlabs.model_connect_elevenlabs_agent"/>
+        <field name="group_id" ref="connect.group_connect_webhook"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="0"/>
+        <field name="perm_create" eval="0"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+
+    <!-- Elevenlabs Agent Tool -->
+    <record id="connect_elevenlabs_agent_tool_webhook" model="ir.model.access">
+        <field name="name">connect_elevenlabs_agent_tool_webhook</field>
+        <field name="model_id" ref="connect_elevenlabs.model_connect_elevenlabs_agent_tool"/>
+        <field name="group_id" ref="connect.group_connect_webhook"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="0"/>
+        <field name="perm_create" eval="0"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+
+    <!-- Elevenlabs Agent Tool Props-->
+    <record id="connect_elevenlabs_agent_tool_props_webhook" model="ir.model.access">
+        <field name="name">connect_elevenlabs_agent_tool_props_webhook</field>
+        <field name="model_id" ref="connect_elevenlabs.model_connect_agent_tool_props"/>
+        <field name="group_id" ref="connect.group_connect_webhook"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="0"/>
+        <field name="perm_create" eval="0"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
 </odoo>
