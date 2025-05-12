@@ -37,9 +37,14 @@
                     <group>
                         <group>
                             <field name="name"/>
-                            <field name="agent_id"/>
+                            <field name="first_message"/>
+                            <field name="prompt"/>
+                            <field name="language"/>
+                            <field name="llm"/>
+                            <field name="tools"/>
                         </group>
                         <group>
+                            <field name="agent_id"/>
                             <field name="exten_number" string="Exten"/>
                         </group>
                     </group>

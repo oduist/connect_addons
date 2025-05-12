@@ -1,5 +1,6 @@
 <odoo>
 
+  <!-- Elevenlabs Voice -->
   <record id="connect_elevenlabs_voice_admin" model="ir.model.access">
     <field name="name">connect_elevenlabs_voice_admin</field>
     <field name="model_id" ref="connect_elevenlabs.model_connect_elevenlabs_voice"/>
@@ -10,6 +11,7 @@
     <field name="perm_unlink" eval="1"/>
   </record>
 
+  <!-- Elevenlabs File -->
   <record id="connect_elevenlabs_file_admin" model="ir.model.access">
     <field name="name">connect_elevenlabs_file_admin</field>
     <field name="model_id" ref="connect_elevenlabs.model_connect_elevenlabs_file"/>
@@ -20,9 +22,21 @@
     <field name="perm_unlink" eval="1"/>
   </record>
 
+  <!-- Elevenlabs Agent -->
   <record id="connect_elevenlabs_agent_admin" model="ir.model.access">
     <field name="name">connect_elevenlabs_agent_admin</field>
     <field name="model_id" ref="connect_elevenlabs.model_connect_elevenlabs_agent"/>
+    <field name="group_id" ref="connect.group_connect_admin"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
+  </record>
+
+  <!-- Elevenlabs Agent Tool -->
+  <record id="connect_elevenlabs_agent_tool_admin" model="ir.model.access">
+    <field name="name">connect_elevenlabs_agent_tool_admin</field>
+    <field name="model_id" ref="connect_elevenlabs.model_connect_elevenlabs_agent_tool"/>
     <field name="group_id" ref="connect.group_connect_admin"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="1"/>

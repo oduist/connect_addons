@@ -4,9 +4,10 @@ import logging
 from urllib.parse import urljoin
 
 import requests
-from odoo.addons.connect.models.settings import PROTECTED_FIELDS
+from elevenlabs import ElevenLabs
 
 from odoo import fields, models
+from odoo.addons.connect.models.settings import PROTECTED_FIELDS
 from odoo.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -56,3 +57,11 @@ class Elevenlabsettings(models.Model):
         except Exception as e:
             raise ValidationError(str(e))
 
+    def elevenlabs_sync_ai_agents(self):
+        self.env['connect.elevenlabs_agent'].sync()
+
+    def get_elevenlabs_client(self):
+        key = self.sudo().get_param('elevenlabs_api_key')
+        if not key:
+            raise ValidationError('Elevenlabs API key not set!')
+        return ElevenLabs(api_key=key)
