@@ -51,14 +51,45 @@ class ElevenlabsAgent(models.Model):
     _description = 'Elevenlabs Agent'
 
     name = fields.Char(required=True)
+    voice = fields.Many2one('connect.elevenlabs_voice', required=True)
     first_message = fields.Char(default="Hi there! How could I help you today?", required=True)
     prompt = fields.Text(required=True, default="You are Harper, a vibrant and personable sales consultant with "
                                                 "a passion for Conversational AI systems. ")
     language = fields.Selection(selection=language_list, default='en', required=True)
     temperature = fields.Float(required=True, default=0.0)
+    max_tokens = fields.Integer(required=True, default=-1,
+                                       help='If greater than 0, maximum number of tokens the LLM can predict')
     tools = fields.One2many('connect.elevenlabs_agent_tool', 'agent')
     llm = fields.Selection(selection=llm_list, default='gpt-4o', required=True)
     agent_id = fields.Char(string="Agent ID", readonly=True)
+    knowledge_base_note = fields.Text()
+    use_flash = fields.Boolean(default=True)
+    output_audio_format = fields.Selection([
+        ('ulaw_8000', 'ulaw 8000'),
+        ('pcm_8000', 'PCM 8000'),
+        ('pcm_16000', 'PCM 16000'),
+        ('pcm_22050', 'PCM 22050'),
+        ('pcm_24000', 'PCM 24000'),
+        ('pcm_44100', 'PCM 44100'),
+        ('pcm_48000', 'PCM 48000'),
+    ], required=True, default='ulaw_8000')
+    user_input_audio_format = fields.Selection([
+        ('ulaw_8000', 'ulaw 8000'),
+        ('pcm_8000', 'PCM 8000'),
+        ('pcm_16000', 'PCM 16000'),
+        ('pcm_22050', 'PCM 22050'),
+        ('pcm_24000', 'PCM 24000'),
+        ('pcm_44100', 'PCM 44100'),
+        ('pcm_48000', 'PCM 48000'),
+    ], required=True, default='ulaw_8000')
+    stability = fields.Float(default=0.5, required=True)
+    speed = fields.Float(default=1.0, required=True)
+    max_duration_seconds = fields.Integer(default=600, required=True)
+    agent_concurrency_limit = fields.Integer(default=-1, required=True,
+                                             help='The maximum number of concurrent conversations. -1 indicates that there is no maximum')
+    daily_limit = fields.Integer(default=100000, required=True,
+                                    help='The maximum number of conversations per day')
+    similarity_boost = fields.Float(default=0.8, required=True)
     exten = fields.Many2one('connect.exten', ondelete='set null', readonly=True)
     exten_number = fields.Char(related='exten.number')
 
@@ -81,11 +112,29 @@ class ElevenlabsAgent(models.Model):
         self.delete_elevenlabs_agent()
         return super().unlink()
 
-    @api.constraint('temperature')
-    def check_temperature(self):
+    @api.constrains('temperature')
+    def _check_temperature(self):
         for rec in self:
             if rec.temperature and rec.temperature < 0 or rec.temperature > 1.0:
                 raise ValidationError('Please enter a temperature value between 0.0 and 1.0.')
+
+    @api.constrains('stability')
+    def _check_stability(self):
+        for rec in self:
+            if rec.stability and rec.stability < 0 or rec.temperature > 1.0:
+                raise ValidationError('Please enter a stability value between 0.0 and 1.0.')
+
+    @api.constrains('speed')
+    def _check_speed(self):
+        for rec in self:
+            if rec.speed and rec.speed < 0.7 or rec.speed > 1.2:
+                raise ValidationError('Please enter a speed value between 0.7 and 1.2.')
+
+    @api.constrains('speed')
+    def _check_similarity_boost(self):
+        for rec in self:
+            if rec.similarity_boost and rec.similarity_boost < 0 or rec.similarity_boost > 1:
+                raise ValidationError('Please enter a similarity boost value between 0 and 1.')
 
     def create_extension(self):
         self.ensure_one()
