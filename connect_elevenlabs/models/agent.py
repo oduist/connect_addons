@@ -57,7 +57,7 @@ class ElevenlabsAgent(models.Model):
     language = fields.Selection(selection=language_list, default='en', required=True)
     temperature = fields.Float(required=True, default=0.0)
     tools = fields.One2many('connect.elevenlabs_agent_tool', 'agent')
-    llm = fields.Selection(selection=llm_list, default='gpt-3.5-turbo', required=True)
+    llm = fields.Selection(selection=llm_list, default='gpt-4o', required=True)
     agent_id = fields.Char(string="Agent ID", readonly=True)
     exten = fields.Many2one('connect.exten', ondelete='set null', readonly=True)
     exten_number = fields.Char(related='exten.number')
