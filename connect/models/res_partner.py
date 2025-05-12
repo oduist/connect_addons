@@ -57,7 +57,13 @@ class Partner(models.Model):
     connect_mobile_normalized = fields.Char(compute='_get_connect_phone_normalized',
                                     index=True, store=True,
                                     string='E.164 mobile')
+    connect_user = fields.Many2one('connect.user', compute='_get_connect_user')
 
+
+    def _get_connect_user(self):
+        for rec in self:
+            user = self.env['res.users'].sudo().search([('partner_id', '=', rec.id)])
+            rec.connect_user = user.connect_user
 
     @api.model_create_multi
     def create(self, vals_list):

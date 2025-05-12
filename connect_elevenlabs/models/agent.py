@@ -84,32 +84,36 @@ class ElevenlabsAgent(models.Model):
         self.ensure_one()
         return self.env['connect.exten'].create_extension(self, 'elevenlabs_agent')
 
-        def render(self, request, params={}):
-            self.ensure_one()
-            channel_sid = request.get("CallSid")
-            call_id = self.env['connect.channel'].search([('sid', '=', channel_sid)], limit=1).call.id
-            elevenlabs_agent_url = self.env['connect.settings'].get_param('elevenlabs_agent_url').replace('https://',
-                                                                                                          'wss://')
-            agent_id = self.agent_id
-            connect = Connect()
-            connect.stream(url=f"{elevenlabs_agent_url}/twilio/stream/{call_id}/{agent_id}")
-            response = VoiceResponse()
-            response.append(connect)
-            debug(self, pretty_xml(response))
-            return response
+    def render(self, request, params={}):
+        self.ensure_one()
+        channel_sid = request.get("CallSid")
+        call_id = self.env['connect.channel'].search([('sid', '=', channel_sid)], limit=1).call.id
+        elevenlabs_agent_url = self.env['connect.settings'].get_param('elevenlabs_agent_url').replace('https://', 'wss://')
+        agent_id = self.agent_id
+        connect = Connect()
+        connect.stream(url=f"{elevenlabs_agent_url}/twilio/stream/{agent_id}/{call_id}/{channel_sid}")
+        response = VoiceResponse()
+        response.append(connect)
+        debug(self, pretty_xml(response))
+        return response
 
     @api.model
-    def transfer(self, call_sid):
+    def transfer(self, params):
+        channel_sid = params['channel_sid']
+        exten = params['exten'] or params['default_exten']
         self = self.sudo()
         client = self.env['connect.settings'].get_client()
-        channel = self.env['connect.channel'].search([('sid', '=', call_sid)])
-        twiml = self.env['connect.exten'].search([('number', '=', '1002')]).render({
+        channel = self.env['connect.channel'].search([('sid', '=', channel_sid)])
+        exten = self.env['connect.exten'].search([('number', '=', exten)])
+        if not exten:
+            return 'Extension not found, please try again.'
+        twiml = exten.render({
             'Caller': channel.caller,
             'Called': channel.called,
             'CallSid': channel.sid,
         })
         debug(self, 'Transfer to: {}'.format(pretty_xml(twiml)))
-        client.calls(call_sid).update(twiml=twiml)
+        client.calls(channel_sid).update(twiml=twiml)
         return True
 
     def compute_agent_conversation_config(self):
@@ -143,7 +147,7 @@ class ElevenlabsAgent(models.Model):
             conversation_config=self.compute_agent_conversation_config()
         )
         # except Exception as e:
-            # logger.exception("Error update Elevenlabs agent: ", e)
+        # logger.exception("Error update Elevenlabs agent: ", e)
 
     def delete_elevenlabs_agent(self):
         # try:

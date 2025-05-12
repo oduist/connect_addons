@@ -448,14 +448,16 @@ class Call(models.Model):
 
     def get_call_data(self):
         self.ensure_one()
+        users = self.env['connect.user'].search([])
         return {
             'id': self.id,
             'caller_user_name': self.caller_user.name,
             'caller_number': self.caller,
             'called_number': self.called,
             'partner_name': self.partner.name,
-            'partner_id': self.partner.id,
-
+            'partner_id': self.partner.id or self.caller_user.partner_id.id,
+            'greeting_name': self.partner.name or self.caller_user.name or 'Dear customer',
+            'users_directory': ', '.join(['{} <{}>'.format(k.user.name, k.exten.number) for k in users])
         }
 
     @api.model

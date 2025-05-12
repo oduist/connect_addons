@@ -10,7 +10,7 @@ from odoo import http
 logger = logging.getLogger(__name__)
 
 
-class ConnectElevenlabsControllers(http.Controller):
+class CalendarController(http.Controller):
 
     @http.route('/connect_elevenlabs/get_available_slots/<int:user_id>', methods=['POST'], type='json', auth='public',
                 csrf=False)
