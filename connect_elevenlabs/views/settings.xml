@@ -28,7 +28,7 @@
           <page name="elevenlabs_api" string="API">
             <group>
               <group>
-                <a invisible="display_elevenlabs_api_key" class="btn btn-info"
+                <a invisible="display_elevenlabs_api_key" class="btn btn-info" role="button"
                   colspan="2" target="_new" href="https://try.elevenlabs.io/connect">OPEN A NEW ELEVENLABS ACCOUNT HERE</a>
                 <field name="elevenlabs_enabled"/>
                 <field name="display_elevenlabs_api_key" password="1" string="API Key"

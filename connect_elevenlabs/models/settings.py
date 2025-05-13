@@ -18,8 +18,8 @@ PROTECTED_FIELDS.append('display_elevenlabs_api_key')
 class Elevenlabsettings(models.Model):
     _inherit = 'connect.settings'
 
-    elevenlabs_api_key = fields.Char(groups="connect.group_connect_webhook")
-    display_elevenlabs_api_key = fields.Char(groups="connect.group_connect_admin")
+    elevenlabs_api_key = fields.Char(groups="base.group_erp_manager")
+    display_elevenlabs_api_key = fields.Char()
     elevenlabs_voice = fields.Many2one('connect.elevenlabs_voice', ondelete='set null', string='Selected Voice')
     elevenlabs_enabled = fields.Boolean()
     elevenlabs_agent_url = fields.Char(string='Agent URL', required=True, default='https://elevenlabs-agent.ngrok.io')
@@ -61,6 +61,7 @@ class Elevenlabsettings(models.Model):
         self.env['connect.elevenlabs_agent'].sync()
 
     def get_elevenlabs_client(self):
+        # Take this using super access because nobody must be able to access it.
         key = self.sudo().get_param('elevenlabs_api_key')
         if not key:
             raise ValidationError('Elevenlabs API key not set!')
