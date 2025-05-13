@@ -5,7 +5,6 @@ from twilio.twiml.voice_response import VoiceResponse, Connect
 from odoo.addons.connect.models.settings import debug
 from odoo.addons.connect.models.twiml import pretty_xml
 from odoo.exceptions import ValidationError
-from elevenlabs import ElevenLabs, ConversationConfig
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +92,7 @@ class ElevenlabsAgent(models.Model):
     llm = fields.Selection(selection=llm_list, default='gpt-4o', required=True)
     agent_id = fields.Char(string="Agent ID", readonly=True)
     knowledge_base_note = fields.Text()
+    knowledge_base_id = fields.Char()
     use_flash = fields.Boolean(default=True)
     output_audio_format = fields.Selection([
         ('ulaw_8000', 'ulaw 8000'),
@@ -243,14 +243,33 @@ class ElevenlabsAgent(models.Model):
                 'first_message': self.first_message,
                 'language': self.language,
                 'prompt': {
+                    'max_tokens': self.max_tokens,
                     'prompt': self.prompt,
                     'llm': self.llm,
+                    'temperature': self.temperature,
                     'tools': self.compute_agent_tool() if self.tools and not skip_tools else []
+                }
+            },
+            'asr': {
+                'user_input_audio_format': self.user_input_audio_format
+            },
+            'conversation': {
+                'max_duration_seconds': self.max_duration_seconds
+            },
+            'tts': {
+                'agent_output_audio_format': self.output_audio_format,
+                'similarity_boost': self.similarity_boost,
+                'speed': self.speed,
+                'stability': self.stability,
+                'voice_id': self.voice.voice_id
+            },
+            'platform_settings': {
+                "call_limits": {
+                    "agent_concurrency_limit": self.agent_concurrency_limit,
+                    "daily_limit": self.daily_limit,
                 }
             }
         }
-        from pprint import pprint
-        pprint(config)
         return config
 
     def compute_agent_tool(self):
