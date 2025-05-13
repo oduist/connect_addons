@@ -6,6 +6,10 @@
         <field name="arch" type="xml">
             <list>
                 <field name="name"/>
+                <field name="data_type" string="Data Type"/>
+                <field name="value_type"/>
+                <field name="constant_value"/>
+                <field name="dynamic_variable"/>
             </list>
         </field>
     </record>
@@ -19,10 +23,11 @@
                     <group>
                         <group>
                             <field name="name" string="Identifier"/>
-                            <field name="data_type" string="Data Type"/>
+                            <field name="data_type"/>
                             <field name="value_type"/>
                             <field name="constant_value" invisible="value_type != 'constant'" required="value_type == 'constant'"/>
                             <field name="dynamic_variable" invisible="value_type != 'dynamic_variable'" required="value_type == 'dynamic_variable'"/>
+                            <field name="description" invisible="value_type != 'llm_prompt'" required="value_type == 'llm_prompt'"/>
                         </group>
                     </group>
                 </sheet>

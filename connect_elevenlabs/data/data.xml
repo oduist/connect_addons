@@ -14,7 +14,7 @@
         <field name="tool_type">webhook</field>
         <field name="url">https://connect-demo-18.oduist.com/connect_elevenlabs/create_partner</field>
         <field name="method">POST</field>
-        <field name="props_description">
+        <field name="body_props_description">
             Requires partner name to be passed and current call ID from call_id variable (required).
         </field>
     </record>
@@ -25,7 +25,7 @@
         <field name="description">Partner's name.</field>
         <field name="data_type">string</field>
         <field name="required">True</field>
-        <field name="value_type">llm</field>
+        <field name="value_type">llm_prompt</field>
         <field name="dynamic_variable">name</field>
         <field name="tool" ref="tool_create_partner"/>
     </record>

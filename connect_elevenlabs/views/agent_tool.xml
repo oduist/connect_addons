@@ -32,15 +32,14 @@
             <form>
                 <sheet>
                     <group>
-                        <group>
-                            <field name="name" readonly="tool_type == 'system'"/>
-                            <field name="tool_type"/>
-                            <field name="description"/>
-                            <field name="url" invisible="tool_type == 'system'"/>
-                            <field name="method" invisible="tool_type == 'system'"/>
-                            <field name="props" invisible="tool_type == 'system'"/>
-                            <field name="props_description" invisible="tool_type == 'system'" required="props.length > 0"/>
-                        </group>
+                        <field name="name" readonly="tool_type == 'system'"/>
+                        <field name="tool_type"/>
+                        <field name="description"/>
+                        <field name="param_type" string="Parameters Type"/>
+                        <field name="url" invisible="tool_type == 'system'"/>
+                        <field name="method" invisible="tool_type == 'system'"/>
+                        <field name="props" invisible="tool_type == 'system'"/>
+                        <field name="body_props_description" invisible="param_type != 'body'" required="props.length > 0"/>
                     </group>
                 </sheet>
             </form>

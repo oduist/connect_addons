@@ -32,46 +32,6 @@ llm_list = [
     ('grok-beta', 'Grok Beta'),
 ]
 
-
-class ElevenlabsAgentToolProps(models.Model):
-    _name = 'connect.agent_tool_props'
-    _description = 'Elevenlabs Agent Tool'
-
-    name = fields.Char()
-    data_type = fields.Selection(
-        [('string', 'String'), ('boolean', 'Boolean'), ('integer', 'Integer')], default='string', required=True)
-    required = fields.Boolean()
-    value_type = fields.Selection(
-        [('dynamic_variable', 'Dynamic Variable'),
-         ('constant', 'Constant Variable'),
-         ('llm', 'LLM Prompt'),
-        ],
-        default='llm', required=True)
-    constant_value = fields.Char()
-    dynamic_variable = fields.Char()
-    description = fields.Char()
-    tool = fields.Many2one('connect.elevenlabs_agent_tool')
-
-
-class ElevenlabsAgentTool(models.Model):
-    _name = 'connect.elevenlabs_agent_tool'
-    _description = 'Elevenlabs Agent Tool'
-
-    name = fields.Char(required=True)
-    tool_id = fields.Char(readonly=True)
-    description = fields.Char(required=True)
-    tool_type = fields.Selection(
-        [('client', 'Client'), ('webhook', 'Webhook'), ('system', 'System')], default='webhook', required=True)
-    url = fields.Char()
-    method = fields.Selection([('POST', 'POST'), ('GET', 'GET')], default='POST')
-    props = fields.One2many('connect.agent_tool_props', 'tool')
-    props_description = fields.Char()
-
-    @api.model_create_multi
-    def create(self, vals_list):
-        return super().create(vals_list)
-
-
 class ElevenlabsAgent(models.Model):
     _name = 'connect.elevenlabs_agent'
     _description = 'Elevenlabs Agent'
@@ -280,8 +240,8 @@ class ElevenlabsAgent(models.Model):
                     'method': tool.method,
                     'url': tool.url,
                     'request_body_schema': {
-                        "description": tool.props_description,
-                        'properties': {
+                        "description": tool.body_props_description,
+                        'props': {
                             prop.name: {
                                 'type': prop.data_type,
                                 'value_type': prop.value_type,
@@ -292,6 +252,7 @@ class ElevenlabsAgent(models.Model):
                     }
                 },
                 'dynamic_variables': {tool.name: f'test_{tool.name}' if tool.type == 'dynamic_variable' else {}},
+                'response_timeout_secs': tool.response_timeout_secs,
             })
         return tools
 
