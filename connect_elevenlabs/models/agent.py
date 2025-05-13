@@ -275,7 +275,7 @@ class ElevenlabsAgent(models.Model):
             tools.append({
                 'name': tool.name,
                 'description': tool.description,
-                'type': tool.type,
+                'type': tool.tool_type,
                 'api_schema': {
                     'method': tool.method,
                     'url': tool.url,
@@ -283,7 +283,7 @@ class ElevenlabsAgent(models.Model):
                         "description": tool.props_description,
                         'properties': {
                             prop.name: {
-                                'type': prop.type,
+                                'type': prop.data_type,
                                 'value_type': prop.value_type,
                                 "constant_value": prop.constant_value if prop.value_type == 'constant' else '',
                                 "dynamic_variable": prop.dynamic_variable if prop.value_type == 'dynamic_variable' else '',
