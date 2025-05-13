@@ -3,10 +3,52 @@
 
         <record id="agent_tool_end_call" model="connect.elevenlabs_agent_tool">
             <field name="name">end_call</field>
-            <field name="description">end_call</field>
-            <field name="type">system</field>
-            <field name="param">end_call</field>
+            <field name="description">Elevenlabs built-in tool to end the call by user request.</field>
+            <field name="tool_type">system</field>
         </record>
+
+    <!-- tool_create_partner -->
+    <record id="tool_create_partner" model="connect.elevenlabs_agent_tool">
+        <field name="name">create_partner</field>
+        <field name="description">Creates a new partner. Returns partner_id that should be used as Partner ID.</field>
+        <field name="tool_type">webhook</field>
+        <field name="url">https://connect-demo-18.oduist.com/connect_elevenlabs/create_partner</field>
+        <field name="method">POST</field>
+        <field name="props_description">
+            Requires partner name to be passed and current call ID from call_id variable (required).
+        </field>
+    </record>
+
+    <!-- Tool property: name -->
+    <record id="tool_create_partner_name" model="connect.agent_tool_props">
+        <field name="name">name</field>
+        <field name="description">Partner's name.</field>
+        <field name="data_type">string</field>
+        <field name="required">True</field>
+        <field name="value_type">llm</field>
+        <field name="dynamic_variable">name</field>
+        <field name="tool" ref="tool_create_partner"/>
+    </record>
+
+    <!-- Tool property: partner_phone -->
+    <record id="tool_create_partner_partner_phone" model="connect.agent_tool_props">
+        <field name="name">partner_phone</field>
+        <field name="data_type">string</field>
+        <field name="required">True</field>
+        <field name="value_type">dynamic_variable</field>
+        <field name="dynamic_variable">partner_phone</field>
+        <field name="tool" ref="tool_create_partner"/>
+    </record>
+
+    <!-- Tool property: call_id -->
+    <record id="tool_create_partner_call_id" model="connect.agent_tool_props">
+        <field name="name">call_id</field>
+        <field name="data_type">integer</field>
+        <field name="required">True</field>
+        <field name="value_type">dynamic_variable</field>
+        <field name="dynamic_variable">call_id</field>
+        <field name="tool" ref="tool_create_partner"/>
+    </record>
 
     </data>
 </odoo>

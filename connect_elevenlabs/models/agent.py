@@ -38,14 +38,18 @@ class ElevenlabsAgentToolProps(models.Model):
     _description = 'Elevenlabs Agent Tool'
 
     name = fields.Char()
-    type = fields.Selection(
+    data_type = fields.Selection(
         [('string', 'String'), ('boolean', 'Boolean'), ('integer', 'Integer')], default='string', required=True)
     required = fields.Boolean()
     value_type = fields.Selection(
-        [('dynamic_variable', 'Dynamic Variable'), ('constant', 'Constant Variable')],
-        default='dynamic_variable', required=True)
+        [('dynamic_variable', 'Dynamic Variable'),
+         ('constant', 'Constant Variable'),
+         ('llm', 'LLM Prompt'),
+        ],
+        default='llm', required=True)
     constant_value = fields.Char()
     dynamic_variable = fields.Char()
+    description = fields.Char()
     tool = fields.Many2one('connect.elevenlabs_agent_tool')
 
 
@@ -56,23 +60,16 @@ class ElevenlabsAgentTool(models.Model):
     name = fields.Char(required=True)
     tool_id = fields.Char(readonly=True)
     description = fields.Char(required=True)
-    type = fields.Selection(
+    tool_type = fields.Selection(
         [('client', 'Client'), ('webhook', 'Webhook'), ('system', 'System')], default='webhook', required=True)
     url = fields.Char()
     method = fields.Selection([('POST', 'POST'), ('GET', 'GET')], default='POST')
     props = fields.One2many('connect.agent_tool_props', 'tool')
     props_description = fields.Char()
-    param = fields.Selection([('end_call', 'end_call')])
 
     @api.model_create_multi
     def create(self, vals_list):
-        for val in vals_list:
-            val.update({'name': val.get('param')})
         return super().create(vals_list)
-
-    @api.onchange('param')
-    def on_set_param(self):
-        self.name = self.param
 
 
 class ElevenlabsAgent(models.Model):

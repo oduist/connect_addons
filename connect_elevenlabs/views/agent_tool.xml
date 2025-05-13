@@ -2,7 +2,7 @@
 <odoo>
 
     <record id="agent_tool_action" model="ir.actions.act_window">
-        <field name="name">Agent Tool</field>
+        <field name="name">Tools</field>
         <field name="res_model">connect.elevenlabs_agent_tool</field>
         <field name="view_mode">list,form</field>
     </record>
@@ -10,7 +10,7 @@
     <menuitem id="connect.elevenlabs_agent_tool_menu"
               sequence="1300"
               parent="elevenlabs_menu"
-              name="Agent Tool"
+              name="Tools"
               action="connect_elevenlabs.agent_tool_action"/>
 
     <record id="connect_elevenlabs_agent_tool_list" model="ir.ui.view">
@@ -19,7 +19,7 @@
         <field name="arch" type="xml">
             <list>
                 <field name="name"/>
-                <field name="type"/>
+                <field name="tool_type"/>
                 <field name="description"/>
             </list>
         </field>
@@ -33,14 +33,13 @@
                 <sheet>
                     <group>
                         <group>
-                            <field name="name" readonly="type == 'system'"/>
-                            <field name="type"/>
+                            <field name="name" readonly="tool_type == 'system'"/>
+                            <field name="tool_type"/>
                             <field name="description"/>
-                            <field name="param" invisible="type != 'system'" required="type == 'system'"/>
-                            <field name="url" invisible="type == 'system'"/>
-                            <field name="method" invisible="type == 'system'"/>
-                            <field name="props" invisible="type == 'system'"/>
-                            <field name="props_description" invisible="type == 'system'" required="props.length > 0"/>
+                            <field name="url" invisible="tool_type == 'system'"/>
+                            <field name="method" invisible="tool_type == 'system'"/>
+                            <field name="props" invisible="tool_type == 'system'"/>
+                            <field name="props_description" invisible="tool_type == 'system'" required="props.length > 0"/>
                         </group>
                     </group>
                 </sheet>
