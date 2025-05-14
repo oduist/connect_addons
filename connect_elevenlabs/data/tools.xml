@@ -24,8 +24,8 @@
         <field name="param_type">body</field>
     </record>
 
-    <!-- Properties for transfer_to_extension tool -->
-    <record id="transfer_to_extension_prop_default_exten" model="connect.agent_tool_props">
+    <!-- paramerties for transfer_to_extension tool -->
+    <record id="transfer_to_extension_param_default_exten" model="connect.agent_tool_params">
         <field name="name">default_exten</field>
         <field name="data_type">string</field>
         <field name="required">True</field>
@@ -35,7 +35,7 @@
         <field name="tool" ref="transfer_to_extension_tool"/>
     </record>
 
-    <record id="transfer_to_extension_prop_exten" model="connect.agent_tool_props">
+    <record id="transfer_to_extension_param_exten" model="connect.agent_tool_params">
         <field name="name">exten</field>
         <field name="data_type">string</field>
         <field name="required">False</field>
@@ -44,7 +44,7 @@
         <field name="tool" ref="transfer_to_extension_tool"/>
     </record>
 
-    <record id="transfer_to_extension_prop_channel_sid" model="connect.agent_tool_props">
+    <record id="transfer_to_extension_param_channel_sid" model="connect.agent_tool_params">
         <field name="name">channel_sid</field>
         <field name="data_type">string</field>
         <field name="required">True</field>
@@ -61,11 +61,11 @@
         <field name="tool_type">webhook</field>
         <field name="url">https://connect-demo-18.oduist.com/connect_elevenlabs/create_partner</field>
         <field name="method">POST</field>
-        <field name="body_props_description">Requires partner name to be passed and current call ID from call_id variable (required).</field>
+        <field name="body_params_description">Requires partner name to be passed and current call ID from call_id variable (required).</field>
     </record>
 
-    <!-- Tool property: name -->
-    <record id="tool_create_partner_name" model="connect.agent_tool_props">
+    <!-- Tool paramerty: name -->
+    <record id="tool_create_partner_name" model="connect.agent_tool_params">
         <field name="name">name</field>
         <field name="description">Partner's name.</field>
         <field name="data_type">string</field>
@@ -74,8 +74,8 @@
         <field name="tool" ref="tool_create_partner"/>
     </record>
 
-    <!-- Tool property: partner_phone -->
-    <record id="tool_create_partner_partner_phone" model="connect.agent_tool_props">
+    <!-- Tool paramerty: partner_phone -->
+    <record id="tool_create_partner_partner_phone" model="connect.agent_tool_params">
         <field name="name">partner_phone</field>
         <field name="data_type">string</field>
         <field name="required">True</field>
@@ -84,8 +84,8 @@
         <field name="tool" ref="tool_create_partner"/>
     </record>
 
-    <!-- Tool property: call_id -->
-    <record id="tool_create_partner_call_id" model="connect.agent_tool_props">
+    <!-- Tool paramerty: call_id -->
+    <record id="tool_create_partner_call_id" model="connect.agent_tool_params">
         <field name="name">call_id</field>
         <field name="data_type">integer</field>
         <field name="required">True</field>

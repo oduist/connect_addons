@@ -45,9 +45,9 @@
   </record>
 
   <!-- Elevenlabs Agent Tool -->
-  <record id="connect_elevenlabs_agent_tool_props_admin" model="ir.model.access">
-    <field name="name">connect_elevenlabs_agent_tool_props_admin</field>
-    <field name="model_id" ref="connect_elevenlabs.model_connect_agent_tool_props"/>
+  <record id="connect_elevenlabs_agent_tool_params_admin" model="ir.model.access">
+    <field name="name">connect_elevenlabs_agent_tool_params_admin</field>
+    <field name="model_id" ref="connect_elevenlabs.model_connect_agent_tool_params"/>
     <field name="group_id" ref="connect.group_connect_admin"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="1"/>

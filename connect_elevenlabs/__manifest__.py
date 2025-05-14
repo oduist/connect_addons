@@ -31,7 +31,7 @@
         'views/user.xml',
         'views/agent.xml',
         'views/agent_tool.xml',
-        'views/agent_tool_props.xml',
+        'views/agent_tool_params.xml',
         'views/number.xml',
     ],
     'demo': [],

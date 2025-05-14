@@ -21,11 +21,14 @@ class ElevenlabsAgentTool(models.Model):
     method = fields.Selection(
         [('GET', 'GET'), ('POST', 'POST'), ('PATCH', 'PATCH'), ('PUT', 'PUT'), ('DELETE', 'DELETE')],
         default='POST', required=True)
-    props = fields.One2many('connect.agent_tool_props', 'tool', string='Properties')
-    body_props_description = fields.Char(string='Properties Description')
+    params = fields.One2many('connect.agent_tool_params', 'tool', string='Parameters')
+    body_params_description = fields.Char(string='Parameters Description')
     response_timeout_secs = fields.Integer(required=True, default=20, string='Response Timeout')
-    param_type = fields.Selection([('query', 'Query'), ('path', 'Path'), ('body', 'Body')],
-                                default='body', required=True)
+    param_type = fields.Selection([
+        #('query', 'Query'),
+        #('path', 'Path'),
+        ('body', 'Body') # Only JSON is implemented for now.
+        ], default='body', required=True)
     client_expects_response = fields.Boolean(string='Expects Response',
         help='If true, calling this tool should block the conversation until the client responds with some response which is passed to the llm. If false then we will continue the conversation without waiting for the client to respond, this is useful to show content to a user but not block the conversation')
 
@@ -52,9 +55,9 @@ class ElevenlabsAgentTool(models.Model):
         return super().create(vals_list)
 
 
-class ElevenlabsAgentToolProps(models.Model):
-    _name = 'connect.agent_tool_props'
-    _description = 'Elevenlabs Agent Tool'
+class ElevenlabsAgentToolparams(models.Model):
+    _name = 'connect.agent_tool_params'
+    _description = 'Elevenlabs Agent Tool Parameters'
 
     name = fields.Char(name='Identifier')
     data_type = fields.Selection(

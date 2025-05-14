@@ -240,7 +240,7 @@ class ElevenlabsAgent(models.Model):
         for tool in self.tools:
             if not tool.is_enabled:
                 continue
-            dynamic_variables_placeholders = dict([(prop.name, f'test_{prop.name}') for prop in tool.props if prop.value_type == 'dynamic_variable'])
+            dynamic_variables_placeholders = dict([(param.name, f'test_{param.name}') for param in tool.params if param.value_type == 'dynamic_variable'])
             if tool.tool_type == 'client':
                 tool_config = {
                     'type': tool.tool_type,
@@ -249,15 +249,15 @@ class ElevenlabsAgent(models.Model):
                     'dynamic_variables': dynamic_variables_placeholders,
                     'expects_response': tool.client_expects_response,
                     'parameters': {
-                        "description": tool.body_props_description or '',
-                        'required': [prop.name for prop in tool.props if prop.required],
-                        'properties': {
-                            prop.name: {
-                                'type': prop.data_type,
-                                'description': prop.description if prop.value_type == 'description' else '',
-                                "constant_value": prop.constant_value if prop.value_type == 'constant_value' else '',
-                                "dynamic_variable": prop.dynamic_variable if prop.value_type == 'dynamic_variable' else '',
-                            } for prop in tool.props
+                        "description": tool.body_params_description or '',
+                        'required': [param.name for param in tool.params if param.required],
+                        'paramerties': {
+                            param.name: {
+                                'type': param.data_type,
+                                'description': param.description if param.value_type == 'description' else '',
+                                "constant_value": param.constant_value if param.value_type == 'constant_value' else '',
+                                "dynamic_variable": param.dynamic_variable if param.value_type == 'dynamic_variable' else '',
+                            } for param in tool.params
                         }
                     },
                     'response_timeout_secs': tool.response_timeout_secs,
@@ -276,15 +276,15 @@ class ElevenlabsAgent(models.Model):
                         'method': tool.method,
                         'url': tool.url,
                         'request_body_schema': {
-                            "description": tool.body_props_description,
-                            'required': [prop.name for prop in tool.props if prop.required],
-                            'properties': {
-                                prop.name: {
-                                    'type': prop.data_type,
-                                    'description': prop.description if prop.value_type == 'description' else '',
-                                    "constant_value": prop.constant_value if prop.value_type == 'constant_value' else '',
-                                    "dynamic_variable": prop.dynamic_variable if prop.value_type == 'dynamic_variable' else '',
-                                } for prop in tool.props
+                            "description": tool.body_params_description,
+                            'required': [param.name for param in tool.params if param.required],
+                            'paramerties': {
+                                param.name: {
+                                    'type': param.data_type,
+                                    'description': param.description if param.value_type == 'description' else '',
+                                    "constant_value": param.constant_value if param.value_type == 'constant_value' else '',
+                                    "dynamic_variable": param.dynamic_variable if param.value_type == 'dynamic_variable' else '',
+                                } for param in tool.params
                             }
                         }
                     },
