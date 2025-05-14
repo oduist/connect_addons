@@ -41,12 +41,14 @@
                         </group>
                         <group>
                             <field name="is_enabled"/>
+                            <field name="path"/>
                             <field name="url"
                                 invisible="tool_type == 'system'"/>
                             <field name="method"
                                 invisible="tool_type == 'system'"/>
                             <field name="client_expects_response"
                                 invisible="tool_type != 'client'"/>
+                            <field name="response_timeout_secs"/>
                         </group>
                     </group>
                     <group string="Parameters" invisible="tool_type == 'system'">
