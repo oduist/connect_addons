@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import logging
+import re
 import urllib.parse
 
 from odoo import models, fields, api
@@ -25,23 +25,30 @@ class ElevenlabsAgentTool(models.Model):
     body_params_description = fields.Char(string='Parameters Description')
     response_timeout_secs = fields.Integer(required=True, default=20, string='Response Timeout')
     param_type = fields.Selection([
-        #('query', 'Query'),
-        #('path', 'Path'),
-        ('body', 'Body') # Only JSON is implemented for now.
-        ], default='body', required=True)
+        # ('query', 'Query'),
+        # ('path', 'Path'),
+        ('body', 'Body')  # Only JSON is implemented for now.
+    ], default='body', required=True)
     client_expects_response = fields.Boolean(string='Expects Response',
-        help='If true, calling this tool should block the conversation until the client responds with some response which is passed to the llm. If false then we will continue the conversation without waiting for the client to respond, this is useful to show content to a user but not block the conversation')
+                                             help='If true, calling this tool should block the conversation until the client responds with some response which is passed to the llm. If false then we will continue the conversation without waiting for the client to respond, this is useful to show content to a user but not block the conversation')
 
     _sql_constraints = [
         ('name_unique', 'UNIQUE(name)', 'This name is already used!')
     ]
+
+    def write(self, vals):
+        if 'name' in vals.keys():
+            match = re.match("^[a-zA-Z0-9_-]{1,64}", vals.get('name'))
+            if match:
+                vals.update({'name': match.group()})
+        return super().write(vals)
 
     @api.constrains('response_timeout_secs')
     def _check_response_timeout_secs(self):
         for rec in self:
             max_response_timeout_secs = 120 if rec.tool_type == 'webhook' else 30
             min_response_timeout_secs = 5 if rec.tool_type == 'webhook' else 1
-            if rec.response_timeout_secs and rec.response_timeout_secs > max_response_timeout_secs  or rec.response_timeout_secs < min_response_timeout_secs:
+            if rec.response_timeout_secs and rec.response_timeout_secs > max_response_timeout_secs or rec.response_timeout_secs < min_response_timeout_secs:
                 raise ValidationError(
                     f'Please enter a response timeout value between {min_response_timeout_secs} and {max_response_timeout_secs}')
 
