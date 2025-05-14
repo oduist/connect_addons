@@ -172,7 +172,12 @@ async def handle_media_stream(websocket: WebSocket, agent_id: str, call_id: str,
     audio_interface = TwilioAudioInterface(websocket)
     conversation = None
 
-    config = ConversationInitiationData(dynamic_variables=call_info)
+    config = ConversationInitiationData(
+        dynamic_variables=call_info,
+        conversation_config_override={
+            'agent': {'language': call_info.get('partner_language', 'en')}
+        }
+    )
     try:
         conversation = Conversation(
             client=eleven_labs_client,

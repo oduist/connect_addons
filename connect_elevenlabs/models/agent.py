@@ -245,10 +245,15 @@ class ElevenlabsAgent(models.Model):
         #     logger.exception("Error update Elevenlabs agent: ", e)
 
     def compute_agent_conversation_config(self, skip_tools=False):
+        dynamic_variable_placeholders = {}
+        for tool in self.tools:
+            dynamic_variable_placeholders.update(
+                dict([(param.name, f'test_{param.name}') for param in tool.params if param.value_type == 'dynamic_variable']))
         config = {
             'agent': {
                 'first_message': self.first_message,
                 'language': self.language,
+                'dynamic_variables': dynamic_variable_placeholders,
                 'prompt': {
                     'max_tokens': self.max_tokens,
                     'prompt': self.prompt,
@@ -282,6 +287,7 @@ class ElevenlabsAgent(models.Model):
                 }
             }
         }
+        logger.info('Tools: {}'.format(json.dumps(config, indent=2)))
         return config
 
     def compute_agent_tools(self):
@@ -348,7 +354,6 @@ class ElevenlabsAgent(models.Model):
                     'name': tool.name,
                 }
                 tools.append(tool_config)
-        logger.info('Tools: {}'.format(json.dumps(tools, indent=2)))
         return tools
 
     @staticmethod
@@ -367,6 +372,7 @@ class ElevenlabsAgent(models.Model):
         agents = client.conversational_ai.get_agents().agents
         for agent in agents:
             agent = client.conversational_ai.get_agent(agent_id=agent.agent_id)
+            print(agent.conversation_config.agent)
             tools = agent.conversation_config.agent.prompt.tools
             for tool in tools:
                 print(tool)
