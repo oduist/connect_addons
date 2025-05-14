@@ -251,7 +251,7 @@ class ElevenlabsAgent(models.Model):
                     'parameters': {
                         "description": tool.body_params_description or '',
                         'required': [param.name for param in tool.params if param.required],
-                        'paramerties': {
+                        'properties': {
                             param.name: {
                                 'type': param.data_type,
                                 'description': param.description if param.value_type == 'description' else '',
@@ -278,7 +278,7 @@ class ElevenlabsAgent(models.Model):
                         'request_body_schema': {
                             "description": tool.body_params_description,
                             'required': [param.name for param in tool.params if param.required],
-                            'paramerties': {
+                            'properties': {
                                 param.name: {
                                     'type': param.data_type,
                                     'description': param.description if param.value_type == 'description' else '',
