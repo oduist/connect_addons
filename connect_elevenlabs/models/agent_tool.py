@@ -17,13 +17,13 @@ class ElevenlabsAgentTool(models.Model):
         [('GET', 'GET'), ('POST', 'POST'), ('PATCH', 'PATCH'), ('PUT', 'PUT'), ('DELETE', 'DELETE')], default='POST')
     props = fields.One2many('connect.agent_tool_props', 'tool', string='Properties')
     body_props_description = fields.Char()
-    response_timeout_secs = fields.Integer(default=20, string='Response Timeout')
+    response_timeout_secs = fields.Integer(required=True, default=20, string='Response Timeout')
     param_type = fields.Selection([('query', 'query'), ('path', 'path'), ('body', 'body')], default='body')
 
     @api.constrains('response_timeout_secs')
     def _check_response_timeout_secs(self):
         for rec in self:
-            if rec.response_timeout_secs and rec.response_timeout_secs <= 120 or rec.response_timeout_secs >= 5:
+            if rec.response_timeout_secs and rec.response_timeout_secs > 120  or rec.response_timeout_secs < 5:
                 raise ValidationError('Please enter a response timeout value between 5 and 120')
 
     @api.model_create_multi
