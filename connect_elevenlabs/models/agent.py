@@ -232,6 +232,8 @@ class ElevenlabsAgent(models.Model):
     def compute_agent_tool(self):
         tools = []
         for tool in self.tools:
+            if not tool.is_enabled:
+                continue
             tools.append({
                 'name': tool.name,
                 'description': tool.description,

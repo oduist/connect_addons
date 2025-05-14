@@ -1,6 +1,13 @@
 <odoo>
     <data>
 
+        <record id="agent_tool_language_detection" model="connect.elevenlabs_agent_tool">
+            <field name="name">language_detection</field>
+            <field name="is_enabled" eval="False"/>
+            <field name="description">Detect language of the caller.</field>
+            <field name="tool_type">system</field>
+        </record>
+
         <record id="agent_tool_end_call" model="connect.elevenlabs_agent_tool">
             <field name="name">end_call</field>
             <field name="description">Elevenlabs built-in tool to end the call by user request.</field>
@@ -14,9 +21,7 @@
         <field name="tool_type">webhook</field>
         <field name="url">https://connect-demo-18.oduist.com/connect_elevenlabs/create_partner</field>
         <field name="method">POST</field>
-        <field name="body_props_description">
-            Requires partner name to be passed and current call ID from call_id variable (required).
-        </field>
+        <field name="body_props_description">Requires partner name to be passed and current call ID from call_id variable (required).</field>
     </record>
 
     <!-- Tool property: name -->

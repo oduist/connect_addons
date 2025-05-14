@@ -9,16 +9,23 @@ class ElevenlabsAgentTool(models.Model):
     _description = 'Elevenlabs Agent Tool'
 
     name = fields.Char(required=True)
+    is_enabled = fields.Boolean(default=True, string='Enabled')
     description = fields.Char(required=True)
     tool_type = fields.Selection(
         [('client', 'Client'), ('webhook', 'Webhook'), ('system', 'System')], default='webhook', required=True)
-    url = fields.Char()
+    url = fields.Char(string='URL')
     method = fields.Selection(
-        [('GET', 'GET'), ('POST', 'POST'), ('PATCH', 'PATCH'), ('PUT', 'PUT'), ('DELETE', 'DELETE')], default='POST')
+        [('GET', 'GET'), ('POST', 'POST'), ('PATCH', 'PATCH'), ('PUT', 'PUT'), ('DELETE', 'DELETE')],
+        default='POST', required=True)
     props = fields.One2many('connect.agent_tool_props', 'tool', string='Properties')
-    body_props_description = fields.Char()
+    body_props_description = fields.Char(string='Properties Description')
     response_timeout_secs = fields.Integer(required=True, default=20, string='Response Timeout')
-    param_type = fields.Selection([('query', 'query'), ('path', 'path'), ('body', 'body')], default='body')
+    param_type = fields.Selection([('query', 'Query'), ('path', 'Path'), ('body', 'Body')],
+                                default='body', required=True)
+
+    _sql_constraints = [
+        ('name_unique', 'UNIQUE(name)', 'This name is already used!')
+    ]
 
     @api.constrains('response_timeout_secs')
     def _check_response_timeout_secs(self):
