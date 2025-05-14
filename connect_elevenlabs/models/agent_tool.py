@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
+import urllib.parse
+
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 
@@ -13,6 +15,7 @@ class ElevenlabsAgentTool(models.Model):
     description = fields.Char(required=True)
     tool_type = fields.Selection(
         [('client', 'Client'), ('webhook', 'Webhook'), ('system', 'System')], default='webhook', required=True)
+    path = fields.Char()
     url = fields.Char(string='URL')
     method = fields.Selection(
         [('GET', 'GET'), ('POST', 'POST'), ('PATCH', 'PATCH'), ('PUT', 'PUT'), ('DELETE', 'DELETE')],
@@ -30,8 +33,13 @@ class ElevenlabsAgentTool(models.Model):
     @api.constrains('response_timeout_secs')
     def _check_response_timeout_secs(self):
         for rec in self:
-            if rec.response_timeout_secs and rec.response_timeout_secs > 120  or rec.response_timeout_secs < 5:
+            if rec.response_timeout_secs and rec.response_timeout_secs > 120 or rec.response_timeout_secs < 5:
                 raise ValidationError('Please enter a response timeout value between 5 and 120')
+
+    @api.onchange('path')
+    def _compute_url(self):
+        api_url = self.env['ir.config_parameter'].sudo().get_param('connect.api_url')
+        self.url = urllib.parse.urljoin(api_url, self.path)
 
     @api.model_create_multi
     def create(self, vals_list):
