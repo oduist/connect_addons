@@ -1,10 +1,16 @@
 # -*- coding: utf-8 -*-
+import json
 import logging
 from odoo import models, fields, release, api
 from twilio.twiml.voice_response import VoiceResponse, Connect
 from odoo.addons.connect.models.settings import debug
 from odoo.addons.connect.models.twiml import pretty_xml
 from odoo.exceptions import ValidationError
+
+# Supress a warning message.
+import warnings
+from pydantic.warnings import PydanticDeprecatedSince20
+warnings.filterwarnings("ignore", category=PydanticDeprecatedSince20)
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +210,7 @@ class ElevenlabsAgent(models.Model):
                     'prompt': self.prompt,
                     'llm': self.llm,
                     'temperature': self.temperature,
-                    'tools': self.compute_agent_tool() if self.tools and not skip_tools else []
+                    'tools': self.compute_agent_tools() if self.tools and not skip_tools else []
                 }
             },
             'asr': {
@@ -229,33 +235,70 @@ class ElevenlabsAgent(models.Model):
         }
         return config
 
-    def compute_agent_tool(self):
+    def compute_agent_tools(self):
         tools = []
         for tool in self.tools:
             if not tool.is_enabled:
                 continue
-            tools.append({
-                'name': tool.name,
-                'description': tool.description,
-                'type': tool.tool_type,
-                'api_schema': {
-                    'method': tool.method,
-                    'url': tool.url,
-                    'request_body_schema': {
-                        "description": tool.body_props_description,
-                        'props': {
+            dynamic_variables_placeholders = dict([(prop.name, f'test_{prop.name}') for prop in tool.props if prop.value_type == 'dynamic_variable'])
+            if tool.tool_type == 'client':
+                tool_config = {
+                    'type': tool.tool_type,
+                    'description': tool.description,
+                    'name': tool.name,
+                    'dynamic_variables': dynamic_variables_placeholders,
+                    'expects_response': tool.client_expects_response,
+                    'parameters': {
+                        "description": tool.body_props_description or '',
+                        'required': [prop.name for prop in tool.props if prop.required],
+                        'properties': {
                             prop.name: {
                                 'type': prop.data_type,
-                                'value_type': prop.value_type,
-                                "constant_value": prop.constant_value if prop.value_type == 'constant' else '',
+                                'description': prop.description if prop.value_type == 'description' else '',
+                                "constant_value": prop.constant_value if prop.value_type == 'constant_value' else '',
                                 "dynamic_variable": prop.dynamic_variable if prop.value_type == 'dynamic_variable' else '',
                             } for prop in tool.props
                         }
-                    }
-                },
-                'dynamic_variables': {tool.name: f'test_{tool.name}' if tool.type == 'dynamic_variable' else {}},
-                'response_timeout_secs': tool.response_timeout_secs,
-            })
+                    },
+                    'response_timeout_secs': tool.response_timeout_secs,
+                }
+                tools.append(tool_config)
+            elif tool.tool_type == 'webhook':
+                tool_config = {
+                    'type': tool.tool_type,
+                    'description': tool.description,
+                    'name': tool.name,
+                    'dynamic_variables': dynamic_variables_placeholders,
+                    'response_timeout_secs': tool.response_timeout_secs,
+                }
+                tool_config.update({
+                    'api_schema': {
+                        'method': tool.method,
+                        'url': tool.url,
+                        'request_body_schema': {
+                            "description": tool.body_props_description,
+                            'required': [prop.name for prop in tool.props if prop.required],
+                            'properties': {
+                                prop.name: {
+                                    'type': prop.data_type,
+                                    'description': prop.description if prop.value_type == 'description' else '',
+                                    "constant_value": prop.constant_value if prop.value_type == 'constant_value' else '',
+                                    "dynamic_variable": prop.dynamic_variable if prop.value_type == 'dynamic_variable' else '',
+                                } for prop in tool.props
+                            }
+                        }
+                    },
+                    'response_timeout_secs': tool.response_timeout_secs,
+                })
+                tools.append(tool_config)
+            elif tool.tool_type == 'system':
+                tool_config = {
+                    'type': tool.tool_type,
+                    'description': tool.description,
+                    'name': tool.name,
+                }
+                tools.append(tool_config)
+        logger.info('Tools: {}'.format(json.dumps(tools, indent=2)))
         return tools
 
     @staticmethod

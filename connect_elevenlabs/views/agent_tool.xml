@@ -20,7 +20,6 @@
             <list>
                 <field name="name"/>
                 <field name="tool_type"/>
-                <field name="description"/>
                 <field name="is_enabled"/>
             </list>
         </field>
@@ -46,12 +45,14 @@
                                 invisible="tool_type == 'system'"/>
                             <field name="method"
                                 invisible="tool_type == 'system'"/>
+                            <field name="client_expects_response"
+                                invisible="tool_type != 'client'"/>
                         </group>
                     </group>
                     <group string="Parameters" invisible="tool_type == 'system'">
                         <field name="body_props_description"
-                            invisible="param_type != 'body' or tool_type == 'system'" required="props.length > 0"/>
-                        <field name="props"
+                            invisible="param_type != 'body' or tool_type not in ['webhook','client']" required="props.length > 0"/>
+                        <field name="props" nolabel="1"
                             invisible="tool_type == 'system'"/>
                     </group>
                 </sheet>

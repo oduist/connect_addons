@@ -19,7 +19,7 @@
     },
     'data': [
         # Data
-        'data/data.xml',
+        'data/tools.xml',
         # Security
         'security/admin.xml',
         'security/user.xml',
