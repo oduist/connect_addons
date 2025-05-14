@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 import json
 import logging
+
+import requests
+
 from odoo import models, fields, release, api
 from twilio.twiml.voice_response import VoiceResponse, Connect
 from odoo.addons.connect.models.settings import debug
@@ -10,6 +13,7 @@ from odoo.exceptions import ValidationError
 # Supress a warning message.
 import warnings
 from pydantic.warnings import PydanticDeprecatedSince20
+
 warnings.filterwarnings("ignore", category=PydanticDeprecatedSince20)
 
 logger = logging.getLogger(__name__)
@@ -38,6 +42,7 @@ llm_list = [
     ('grok-beta', 'Grok Beta'),
 ]
 
+
 class ElevenlabsAgent(models.Model):
     _name = 'connect.elevenlabs_agent'
     _description = 'Elevenlabs Agent'
@@ -54,6 +59,7 @@ class ElevenlabsAgent(models.Model):
         required=True, default=-1, help='If greater than 0, maximum number of tokens the LLM can predict')
     llm = fields.Selection(selection=llm_list, default='gpt-4o', required=True)
     agent_id = fields.Char(string="Agent ID", readonly=True)
+    knowledge_base_name = fields.Char()
     knowledge_base_note = fields.Text()
     knowledge_base_id = fields.Char()
     use_flash = fields.Boolean(default=True)
@@ -91,6 +97,7 @@ class ElevenlabsAgent(models.Model):
         res = super().create(vals_list)
         if not self.env.context.get('skip_elevenlabs'):
             for rec in res:
+                rec.create_elevenlabs_knowledge_base()
                 agent = rec.create_elevenlabs_agent()
                 rec.agent_id = agent.agent_id
                 rec.update_elevenlabs_agent()
@@ -99,12 +106,18 @@ class ElevenlabsAgent(models.Model):
     def write(self, vals):
         res = super().write(vals)
         if not self.env.context.get('skip_elevenlabs'):
+            if 'knowledge_base_note' or 'knowledge_base_name' in vals.keys() and self.knowledge_base_note:
+                self.update_elevenlabs_knowledge_base()
             self.update_elevenlabs_agent()
+            if not self.knowledge_base_note and self.knowledge_base_id:
+                self.delete_elevenlabs_knowledge_base()
+
         return res
 
     def unlink(self):
         try:
             self.delete_elevenlabs_agent()
+            self.delete_elevenlabs_knowledge_base()
         except Exception as e:
             logger.exception("Error Delete Elevenlabs agent: ", e)
         return super().unlink()
@@ -170,6 +183,37 @@ class ElevenlabsAgent(models.Model):
         client.calls(channel_sid).update(twiml=twiml)
         return True
 
+    def create_elevenlabs_knowledge_base(self):
+        if self.knowledge_base_note:
+            client = self.env['connect.settings'].get_elevenlabs_client()
+            knowledge_base = client.conversational_ai.create_knowledge_base_text_document(
+                text=self.knowledge_base_note, name=self.knowledge_base_name)
+            if knowledge_base:
+                self.with_context(skip_elevenlabs=True).update({'knowledge_base_id': knowledge_base.id})
+            return knowledge_base.id
+        return None
+
+    def update_elevenlabs_knowledge_base(self):
+        if self.knowledge_base_note and self.knowledge_base_id:
+            key = self.env['connect.settings'].sudo().get_param('elevenlabs_api_key')
+            url = f"https://api.elevenlabs.io/v1/convai/knowledge-base/{self.knowledge_base_id}"
+            headers = {"Content-Type": "application/json", "xi-api-key": key}
+            payload = {'name': self.knowledge_base_name, 'text': self.knowledge_base_note}
+            response = requests.patch(url, headers=headers, json=payload)
+        elif self.knowledge_base_note and not self.knowledge_base_id:
+            self.create_elevenlabs_knowledge_base()
+        return True
+
+    def delete_elevenlabs_knowledge_base(self):
+        if self.knowledge_base_id:
+            key = self.env['connect.settings'].sudo().get_param('elevenlabs_api_key')
+            url = f"https://api.elevenlabs.io/v1/convai/knowledge-base/{self.knowledge_base_id}"
+            headers = {"Content-Type": "application/json", "xi-api-key": key}
+            response = requests.delete(url, headers=headers)
+            # client = self.env['connect.settings'].get_elevenlabs_client()
+            # client.conversational_ai.delete_knowledge_base_document(documentation_id=self.knowledge_base_id)
+            self.with_context(skip_elevenlabs=True).update({'knowledge_base_id': None})
+
     def create_elevenlabs_agent(self):
         # try:
         client = self.env['connect.settings'].get_elevenlabs_client()
@@ -210,6 +254,11 @@ class ElevenlabsAgent(models.Model):
                     'prompt': self.prompt,
                     'llm': self.llm,
                     'temperature': self.temperature,
+                    'knowledge_base': [{
+                        "type": "text",
+                        "name": self.knowledge_base_name,
+                        "id": self.knowledge_base_id,
+                    }] if self.knowledge_base_note else [],
                     'tools': self.compute_agent_tools() if self.tools and not skip_tools else []
                 }
             },
@@ -240,7 +289,8 @@ class ElevenlabsAgent(models.Model):
         for tool in self.tools:
             if not tool.is_enabled:
                 continue
-            dynamic_variables_placeholders = dict([(param.name, f'test_{param.name}') for param in tool.params if param.value_type == 'dynamic_variable'])
+            dynamic_variables_placeholders = dict(
+                [(param.name, f'test_{param.name}') for param in tool.params if param.value_type == 'dynamic_variable'])
             if tool.tool_type == 'client':
                 tool_config = {
                     'type': tool.tool_type,
