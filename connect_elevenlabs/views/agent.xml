@@ -52,9 +52,9 @@
                                 <group>
                                     <field name="name"/>
                                     <field name="voice"/>
+                                    <field name="tools" widget="many2many_tags"/>
                                 </group>
                                 <group>
-                                    <field name="tools" widget="many2many_tags"/>
                                     <field name="language"/>
                                     <field name="max_duration_seconds"/>
                                     <field name="agent_concurrency_limit"/>

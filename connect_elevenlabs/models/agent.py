@@ -330,7 +330,7 @@ class ElevenlabsAgent(models.Model):
                 tool_config.update({
                     'api_schema': {
                         'method': tool.method,
-                        'url': tool.url,
+                        'url': tool.get_tool_url(),
                         'request_body_schema': {
                             "description": tool.body_params_description,
                             'required': [param.name for param in tool.params if param.required],

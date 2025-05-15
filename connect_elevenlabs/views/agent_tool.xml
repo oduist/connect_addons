@@ -41,11 +41,12 @@
                         </group>
                         <group>
                             <field name="is_enabled"/>
-                            <field name="path"/>
+                            <field name="path"
+                                invisible="tool_type != 'webhook' or url != False"/>
                             <field name="url"
-                                invisible="tool_type == 'system'"/>
+                                invisible="tool_type != 'webhook' or path != False"/>
                             <field name="method"
-                                invisible="tool_type == 'system'"/>
+                                invisible="tool_type != 'webhook'"/>
                             <field name="client_expects_response"
                                 invisible="tool_type != 'client'"/>
                             <field name="response_timeout_secs"/>
