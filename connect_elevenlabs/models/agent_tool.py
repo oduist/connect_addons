@@ -36,12 +36,25 @@ class ElevenlabsAgentTool(models.Model):
         ('name_unique', 'UNIQUE(name)', 'This name is already used!')
     ]
 
+    def get_tool_url(self):
+        api_url = self.env['ir.config_parameter'].sudo().get_param('connect.api_url')
+        if self.path:
+            # We return Odoo URL for internal tools.
+            return urllib.parse.urljoin(api_url, self.path)
+        elif self.url:
+            # External URLs.
+            return self.url
+        else:
+            # Constraint to set path or URL!
+            raise ValidationError('Tool {} path or URL is not set!'.format(self.name))
+
     def write(self, vals):
         if 'name' in vals.keys():
             match = re.match("^[a-zA-Z0-9_-]{1,64}", vals.get('name'))
             if match:
                 vals.update({'name': match.group()})
         return super().write(vals)
+
 
     @api.constrains('response_timeout_secs')
     def _check_response_timeout_secs(self):
@@ -51,11 +64,6 @@ class ElevenlabsAgentTool(models.Model):
             if rec.response_timeout_secs and rec.response_timeout_secs > max_response_timeout_secs or rec.response_timeout_secs < min_response_timeout_secs:
                 raise ValidationError(
                     f'Please enter a response timeout value between {min_response_timeout_secs} and {max_response_timeout_secs}')
-
-    @api.onchange('path')
-    def _compute_url(self):
-        api_url = self.env['ir.config_parameter'].sudo().get_param('connect.api_url')
-        self.url = urllib.parse.urljoin(api_url, self.path)
 
     @api.model_create_multi
     def create(self, vals_list):

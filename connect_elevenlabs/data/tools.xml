@@ -59,7 +59,7 @@
         <field name="name">create_partner</field>
         <field name="description">Creates a new partner. Returns partner_id that should be used as Partner ID. You can call this tool only once per session with user. It's not allowed to call this tool if Partner ID is set.</field>
         <field name="tool_type">webhook</field>
-        <field name="url">https://connect-demo-18.oduist.com/connect_elevenlabs/create_partner</field>
+        <field name="path">/create_partner</field>
         <field name="method">POST</field>
         <field name="body_params_description">Requires partner name to be passed and current call ID from call_id variable (required).</field>
     </record>
