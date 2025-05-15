@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import urllib.parse
 from urllib.parse import urljoin
 
 import requests
@@ -23,6 +24,8 @@ class Elevenlabsettings(models.Model):
     elevenlabs_voice = fields.Many2one('connect.elevenlabs_voice', ondelete='set null', string='Selected Voice')
     elevenlabs_enabled = fields.Boolean()
     elevenlabs_agent_url = fields.Char(string='Agent URL', required=True, default='https://elevenlabs-agent.ngrok.io')
+    elevenlabs_post_call_webhook_url = fields.Char(compute='_get_post_call_webhook_url')
+    elevenlabs_post_call_webhook_secret = fields.Char()
 
     def elevenlabs_get_voices(self):
         self.env['connect.elevenlabs_voice'].get_voices()
@@ -66,3 +69,7 @@ class Elevenlabsettings(models.Model):
         if not key:
             raise ValidationError('Elevenlabs API key not set!')
         return ElevenLabs(api_key=key)
+
+    def _get_post_call_webhook_url(self):
+        api_url = self.env['connect.settings'].sudo().get_param('api_url')
+        self.elevenlabs_post_call_webhook_url = urljoin(api_url, 'connect_elevenlabs/agent/call')

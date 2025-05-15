@@ -25,6 +25,7 @@
         'security/user.xml',
         'security/webhook.xml',
         # Views
+        'views/call.xml',
         'views/settings.xml',
         'views/voice.xml',
         'views/callflow.xml',
