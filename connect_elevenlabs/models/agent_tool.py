@@ -13,7 +13,7 @@ class ElevenlabsAgentTool(models.Model):
 
     name = fields.Char(required=True)
     is_enabled = fields.Boolean(default=True, string='Enabled')
-    description = fields.Char(required=True)
+    description = fields.Text(required=True)
     tool_type = fields.Selection(
         [('client', 'Client'), ('webhook', 'Webhook'), ('system', 'System')], default='webhook', required=True)
     path = fields.Char()

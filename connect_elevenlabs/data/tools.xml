@@ -3,7 +3,6 @@
 
         <record id="agent_tool_language_detection" model="connect.elevenlabs_agent_tool">
             <field name="name">language_detection</field>
-            <field name="is_enabled" eval="False"/>
             <field name="description">Detect language of the caller.</field>
             <field name="tool_type">system</field>
         </record>
@@ -24,7 +23,7 @@
         <field name="param_type">body</field>
     </record>
 
-    <!-- paramerties for transfer_to_extension tool -->
+    <!-- parameters for transfer_to_extension tool -->
     <record id="transfer_to_extension_param_default_exten" model="connect.agent_tool_params">
         <field name="name">default_exten</field>
         <field name="data_type">string</field>
@@ -52,46 +51,6 @@
         <field name="dynamic_variable">channel_sid</field>
         <field name="description">Channel SID for the current call</field>
         <field name="tool" ref="transfer_to_extension_tool"/>
-    </record>
-
-    <!-- tool_create_partner -->
-    <record id="tool_create_partner" model="connect.elevenlabs_agent_tool">
-        <field name="name">create_partner</field>
-        <field name="description">Creates a new partner. Returns partner_id that should be used as Partner ID. You can call this tool only once per session with user. It's not allowed to call this tool if Partner ID is set.</field>
-        <field name="tool_type">webhook</field>
-        <field name="path">/create_partner</field>
-        <field name="method">POST</field>
-        <field name="body_params_description">Requires partner name to be passed and current call ID from call_id variable (required).</field>
-    </record>
-
-    <!-- Tool paramerty: name -->
-    <record id="tool_create_partner_name" model="connect.agent_tool_params">
-        <field name="name">name</field>
-        <field name="description">Partner's name.</field>
-        <field name="data_type">string</field>
-        <field name="required">True</field>
-        <field name="value_type">description</field>
-        <field name="tool" ref="tool_create_partner"/>
-    </record>
-
-    <!-- Tool paramerty: partner_phone -->
-    <record id="tool_create_partner_partner_phone" model="connect.agent_tool_params">
-        <field name="name">partner_phone</field>
-        <field name="data_type">string</field>
-        <field name="required">True</field>
-        <field name="value_type">dynamic_variable</field>
-        <field name="dynamic_variable">partner_phone</field>
-        <field name="tool" ref="tool_create_partner"/>
-    </record>
-
-    <!-- Tool paramerty: call_id -->
-    <record id="tool_create_partner_call_id" model="connect.agent_tool_params">
-        <field name="name">call_id</field>
-        <field name="data_type">integer</field>
-        <field name="required">True</field>
-        <field name="value_type">dynamic_variable</field>
-        <field name="dynamic_variable">call_id</field>
-        <field name="tool" ref="tool_create_partner"/>
     </record>
 
     </data>
