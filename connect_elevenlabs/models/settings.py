@@ -82,7 +82,6 @@ class Elevenlabsettings(models.Model):
         self.elevenlabs_reset_token()
         for agent in self.env['connect.elevenlabs_agent'].search([]):
             agent.update_elevenlabs_agent()
-        # self.env['connect.elevenlabs_agent'].sync()
         self.connect_notify('Sync done', title='Elevenlabs Agent', notify_uid=self.env.user.id)
 
     def ping_agent(self):

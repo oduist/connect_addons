@@ -58,10 +58,11 @@ class ElevenlabsAgent(models.Model):
 
     name = fields.Char(required=True)
     voice = fields.Many2one('connect.elevenlabs_voice', required=True)
-    first_message = fields.Char(default="Hi there! How could I help you today?", required=True)
+    first_message = fields.Char(default="Hi there! How could I help you today?", required=True, translate=True)
     prompt = fields.Html(required=True, default="You are Harper, a vibrant and personable sales consultant with "
                                                 "a passion for Conversational AI systems. ")
     language = fields.Selection(selection=language_list, default='en', required=True)
+    additional_languages = fields.Many2many('res.lang', domain=[('active', '=', True)], required=True)
     tools = fields.Many2many('connect.elevenlabs_agent_tool')
     temperature = fields.Float(required=True, default=0.0)
     max_tokens = fields.Integer(
@@ -243,7 +244,8 @@ class ElevenlabsAgent(models.Model):
         client = self.env['connect.settings'].get_elevenlabs_client()
         return client.conversational_ai.create_agent(
             name=self.name,
-            conversation_config=self.compute_agent_conversation_config(skip_tools=True)
+            conversation_config=self.compute_agent_conversation_config(skip_tools=True),
+            platform_settings=self.compute_platform_settings(),
         )
         # except Exception as e:
         #     logger.exception("Error create Elevenlabs agent: ", e)
@@ -254,7 +256,8 @@ class ElevenlabsAgent(models.Model):
         agent = client.conversational_ai.update_agent(
             agent_id=self.agent_id,
             name=self.name,
-            conversation_config=self.compute_agent_conversation_config()
+            conversation_config=self.compute_agent_conversation_config(),
+            platform_settings=self.compute_platform_settings(),
         )
         # except Exception as e:
         # logger.exception("Error update Elevenlabs agent: ", e)
@@ -267,6 +270,39 @@ class ElevenlabsAgent(models.Model):
         )
         # except Exception as e:
         #     logger.exception("Error update Elevenlabs agent: ", e)
+
+    def compute_platform_settings(self):
+        return {
+            'overrides': {
+                'conversation_config_override': {
+                    'agent': {
+                        'language': True,
+                    }
+                },
+            },
+            "call_limits": {
+                "agent_concurrency_limit": self.agent_concurrency_limit,
+                "daily_limit": self.daily_limit,
+            }
+        }
+
+    def compute_language_presets(self):
+        res = {}
+        # TODO: Works on Odoo 18.0, backport to older version later.
+        first_message_translations = self.get_field_translations('first_message')[0]
+        for trans in first_message_translations:
+            if trans['lang'] not in self.additional_languages.mapped('code'):
+                logger.info('Not using language %s because not included in additional_languages.',
+                            trans['lang'])
+                continue
+            res[trans['lang'].split('_')[0]] = {
+                "overrides": {
+                    "agent": {
+                        "first_message": trans['value'],
+                    }
+                }
+            }
+        return res
 
     def compute_agent_conversation_config(self, skip_tools=False):
         dynamic_variable_placeholders = {}
@@ -291,6 +327,7 @@ class ElevenlabsAgent(models.Model):
                     'tools': self.compute_agent_tools() if self.tools and not skip_tools else []
                 }
             },
+            "language_presets": self.compute_language_presets(),
             'asr': {
                 'user_input_audio_format': self.user_input_audio_format
             },
@@ -304,12 +341,6 @@ class ElevenlabsAgent(models.Model):
                 'stability': self.stability,
                 'voice_id': self.voice.voice_id
             },
-            'platform_settings': {
-                "call_limits": {
-                    "agent_concurrency_limit": self.agent_concurrency_limit,
-                    "daily_limit": self.daily_limit,
-                }
-            }
         }
         logger.info('Tools: {}'.format(json.dumps(config, indent=2)))
         return config
@@ -394,15 +425,15 @@ class ElevenlabsAgent(models.Model):
             'llm': agent.conversation_config.agent.prompt.llm,
         }
 
-    def sync(self):
+    def print_config(self):
         client = self.env['connect.settings'].get_elevenlabs_client()
         agents = client.conversational_ai.get_agents().agents
         for agent in agents:
             agent = client.conversational_ai.get_agent(agent_id=agent.agent_id)
-            print(agent.conversation_config.agent)
-            tools = agent.conversation_config.agent.prompt.tools
-            for tool in tools:
-                print(tool)
+            print(json.dumps(str(agent.conversation_config.agent), indent=2))
+            #tools = agent.conversation_config.agent.prompt.tools
+            #for tool in tools:
+            #    print(tool)
             break
             agent_instance = self.search([('agent_id', '=', agent.agent_id)])
             if agent_instance:
@@ -411,4 +442,4 @@ class ElevenlabsAgent(models.Model):
             else:
                 logger.info('Create agent: %s', agent.name)
                 self.with_context(skip_elevenlabs=True).create([self.get_agent_data(agent)])
-        self.env['connect.settings'].connect_notify('Sync complete.')
+        #self.env['connect.settings'].connect_notify('Sync complete.')
