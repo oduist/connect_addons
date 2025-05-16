@@ -47,20 +47,20 @@
               </group>
             </group>
           </page>
-          <page name="webhook" string="Webhook">
+          <page name="webhook" string="Webhook"
+              invisible="not elevenlabs_enabled or not display_elevenlabs_api_key">
             <group>
-              <group>
                 <div colspan="2">
-                  <small><strong>Add Elevenlabs post call webhook url! <a href="https://elevenlabs.io/app/conversational-ai/settings" target="_blank">Elevenlabs Settings</a></strong></small>
+                  <small><strong>Add Elevenlabs post call webhook URL in <a href="https://elevenlabs.io/app/conversational-ai/settings" target="_blank">Elevenlabs Settings</a></strong>.</small>
                 </div>
-                <field name="elevenlabs_post_call_webhook_url" string="Post Call Webhook Url"/>
-                <field name="elevenlabs_post_call_webhook_secret" string="Post Call Webhook Secret" password="True"/>
-              </group>
+                <field name="elevenlabs_post_call_webhook_url" string="Post Call Webhook URL"/>
+                <field name="display_elevenlabs_post_call_webhook_secret" string="Post Call Webhook Secret" password="True"/>
             </group>
             <group>
             </group>
           </page>
-          <page name="agent" string="Agent">
+          <page name="agent" string="Agent"
+              invisible="not elevenlabs_enabled or not display_elevenlabs_api_key">
             <group>
               <group>
                 <field name="elevenlabs_agent_url"/>

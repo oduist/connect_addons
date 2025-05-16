@@ -28,7 +28,7 @@ class ConnectElevenlabsController(http.Controller):
         return 'Transfered'
 
 
-    @http.route('/connect_elevenlabs/agent/call', methods=['POST'], type='http', auth='public', csrf=False)
+    @http.route('/connect_elevenlabs/post_call', methods=['POST'], type='http', auth='public', csrf=False)
     def post_call_webhook(self):
         data = json.loads(http.request.httprequest.get_data(as_text=True)).get('data')
 
