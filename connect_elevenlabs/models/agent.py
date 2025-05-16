@@ -204,7 +204,7 @@ class ElevenlabsAgent(models.Model):
             knowledge_base = client.conversational_ai.create_knowledge_base_text_document(
                 text=self.knowledge_base_note, name=self.knowledge_base_name)
             if knowledge_base:
-                self.with_context(skip_elevenlabs=True).update({'knowledge_base_id': knowledge_base.id})
+                self.with_context(skip_elevenlabs=True).write({'knowledge_base_id': knowledge_base.id})
             return knowledge_base.id
         return None
 
@@ -227,7 +227,7 @@ class ElevenlabsAgent(models.Model):
             response = requests.delete(url, headers=headers)
             # client = self.env['connect.settings'].get_elevenlabs_client()
             # client.conversational_ai.delete_knowledge_base_document(documentation_id=self.knowledge_base_id)
-            self.with_context(skip_elevenlabs=True).update({'knowledge_base_id': None})
+            self.with_context(skip_elevenlabs=True).write({'knowledge_base_id': None})
 
     def create_elevenlabs_agent(self):
         # try:
@@ -398,7 +398,7 @@ class ElevenlabsAgent(models.Model):
             agent_instance = self.search([('agent_id', '=', agent.agent_id)])
             if agent_instance:
                 logger.info('Update agent: %s', agent.name)
-                agent_instance.with_context(skip_elevenlabs=True).update(self.get_agent_data(agent))
+                agent_instance.with_context(skip_elevenlabs=True).write(self.get_agent_data(agent))
             else:
                 logger.info('Create agent: %s', agent.name)
                 self.with_context(skip_elevenlabs=True).create([self.get_agent_data(agent)])

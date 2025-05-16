@@ -48,13 +48,12 @@ class ElevenlabsAgentTool(models.Model):
             # Constraint to set path or URL!
             raise ValidationError('Tool {} path or URL is not set!'.format(self.name))
 
-    def write(self, vals):
-        if 'name' in vals.keys():
-            match = re.match("^[a-zA-Z0-9_-]{1,64}", vals.get('name'))
-            if match:
-                vals.update({'name': match.group()})
-        return super().write(vals)
-
+    @api.constrains('name')
+    def _check_name(self):
+        match = re.match("^[a-zA-Z0-9_-]{1,64}$", self.name)
+        if not match:
+            raise ValidationError(
+                'Name must be less than 64 characters long and contain only alphanumerics, underscores and hyphens')
 
     @api.constrains('response_timeout_secs')
     def _check_response_timeout_secs(self):

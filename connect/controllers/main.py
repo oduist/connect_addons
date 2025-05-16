@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*
 
 import json
+import hmac
+from hashlib import sha256
 import logging
 import requests
+import time
 from odoo import http, SUPERUSER_ID, registry, release
 from werkzeug.exceptions import BadRequest, NotFound
 

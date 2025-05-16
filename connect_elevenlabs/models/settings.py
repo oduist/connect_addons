@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import urllib.parse
 from urllib.parse import urljoin
 import requests
 import uuid
@@ -25,6 +26,8 @@ class Elevenlabsettings(models.Model):
     elevenlabs_voice = fields.Many2one('connect.elevenlabs_voice', ondelete='set null', string='Selected Voice')
     elevenlabs_enabled = fields.Boolean()
     elevenlabs_agent_url = fields.Char(string='Agent URL', required=True, default='https://elevenlabs-agent.ngrok.io')
+    elevenlabs_post_call_webhook_url = fields.Char(compute='_get_post_call_webhook_url')
+    elevenlabs_post_call_webhook_secret = fields.Char()
 
     def open_elevenlabs_form(self):
         rec = self.search([])
@@ -85,3 +88,20 @@ class Elevenlabsettings(models.Model):
                 response.raise_for_status()
         except Exception as e:
             raise ValidationError(str(e))
+<<<<<<< HEAD
+=======
+
+    def elevenlabs_sync_ai_agents(self):
+        self.env['connect.elevenlabs_agent'].sync()
+
+    def get_elevenlabs_client(self):
+        # Take this using super access because nobody must be able to access it.
+        key = self.sudo().get_param('elevenlabs_api_key')
+        if not key:
+            raise ValidationError('Elevenlabs API key not set!')
+        return ElevenLabs(api_key=key)
+
+    def _get_post_call_webhook_url(self):
+        api_url = self.env['connect.settings'].sudo().get_param('api_url')
+        self.elevenlabs_post_call_webhook_url = urljoin(api_url, 'connect_elevenlabs/agent/call')
+>>>>>>> ac1ef493e79d353f23c04fe3d6c134a5b71999f3
