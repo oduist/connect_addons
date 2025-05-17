@@ -49,7 +49,7 @@ const ConnectTalkButtonWidget = publicWidget.Widget.extend({
     },
 
     initUserAgent: async function () {
-        await loadJS('/connect_website/static/src/snippets/s_connect_talk_button/twilio.min.js')
+        await loadJS('/connect_website/static/src/snippets/s_talk_button/twilio.min.js')
 
         this.identity = this.getIdentity()
         const token = await this.getToken()
