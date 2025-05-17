@@ -35,7 +35,7 @@
             <form>
                 <header>
                     <button name="create_extension" type="object" string="Extension" class="btn btn-primary"/>
-                    <button name="transfer_test" type="object" string="Test" class="btn btn-primary"/>
+                    <!-- <button name="transfer_test" type="object" string="Test" class="btn btn-primary"/> -->
                     <button name="print_config" type="object" string="Print" class="btn"/>
                 </header>
                 <sheet>

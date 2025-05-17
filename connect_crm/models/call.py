@@ -215,12 +215,3 @@ class CrmCall(models.Model):
             # Reload the view of res.partner
             self.env['connect.settings'].connect_reload_view('crm.lead')
 
-    def get_call_data(self):
-        res = super(CrmCall, self).get_call_data()
-        res.update({
-            'lead_id': self.lead.id,
-            'lead_name': self.lead.name,
-            'lead_sales_person': self.lead.user_id.name,
-            'lead_description': self.lead.description,
-        })
-        return res

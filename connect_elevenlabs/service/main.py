@@ -55,11 +55,11 @@ class OdooConnection:
             else:
                 logger.error('Odoo connect error: %s', e)
 
-    async def get_call_info(self, call_id):
+    async def start_call_event(self, call_id, agent_uid):
         call_data = await self.odoo.execute_kw(
             model_name='connect.call',
-            method='get_call_data_by_id',
-            args=call_id,
+            method='elevenlabs_agent_start_call_event',
+            args={'call_id': call_id, 'agent_uid': agent_uid},
             kwargs={}
         )
         logger.info('Call data: %s', call_data)
@@ -147,8 +147,8 @@ async def agent_ping():
     return True
 
 
-@app.websocket("/twilio/stream/{agent_id}/{call_id}/{channel_sid}")
-async def handle_media_stream(websocket: WebSocket, agent_id: str, call_id: str, channel_sid: str):
+@app.websocket("/twilio/stream/{agent_uid}/{call_id}/{channel_sid}")
+async def handle_media_stream(websocket: WebSocket, agent_uid: str, call_id: str, channel_sid: str):
     # Set some defaults required by prompt and tools.
     call_info = {
         'partner_id': False,
@@ -161,7 +161,7 @@ async def handle_media_stream(websocket: WebSocket, agent_id: str, call_id: str,
     odoo = OdooConnection()
     try:
         await odoo.login()
-        call_info.update(await odoo.get_call_info(call_id))
+        call_info.update(await odoo.start_call_event(call_id, agent_uid))
     except Exception:
         logger.exception('Get call data error:')
         call_info['system_error_message'] = 'Oops! Something went wrong. Please reach out to our support team.'
@@ -181,7 +181,7 @@ async def handle_media_stream(websocket: WebSocket, agent_id: str, call_id: str,
     try:
         conversation = Conversation(
             client=eleven_labs_client,
-            agent_id=agent_id,
+            agent_id=agent_uid,
             config=config,
             requires_auth=False,
             client_tools=client_tools,

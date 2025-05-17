@@ -68,7 +68,7 @@ class ElevenlabsAgent(models.Model):
     max_tokens = fields.Integer(
         required=True, default=-1, help='If greater than 0, maximum number of tokens the LLM can predict')
     llm = fields.Selection(selection=llm_list, default='gpt-4o', required=True)
-    agent_id = fields.Char(string="Agent ID", readonly=True)
+    agent_uid = fields.Char(string="Agent ID", readonly=True)
     knowledge_base_name = fields.Char()
     knowledge_base_note = fields.Text()
     knowledge_base_id = fields.Char()
@@ -109,7 +109,7 @@ class ElevenlabsAgent(models.Model):
             for rec in res:
                 rec.create_elevenlabs_knowledge_base()
                 agent = rec.create_elevenlabs_agent()
-                rec.agent_id = agent.agent_id
+                rec.agent_uid = agent.agent_id
                 rec.update_elevenlabs_agent()
         return res
 
@@ -166,10 +166,10 @@ class ElevenlabsAgent(models.Model):
         call_id = self.env['connect.channel'].search([('sid', '=', channel_sid)], limit=1).call.id
         elevenlabs_agent_url = self.env['connect.settings'].get_param('elevenlabs_agent_url').replace('https://',
                                                                                                       'wss://')
-        agent_id = self.agent_id
+        agent_uid = self.agent_uid
         connect = Connect()
         connect.stream(
-            url=f"{elevenlabs_agent_url}/twilio/stream/{agent_id}/{call_id}/{channel_sid}",
+            url=f"{elevenlabs_agent_url}/twilio/stream/{agent_uid}/{call_id}/{channel_sid}",
         )
         response = VoiceResponse()
         response.append(connect)
@@ -184,7 +184,7 @@ class ElevenlabsAgent(models.Model):
             twiml="""<Response>
                 <Pause length="1"/>
                 <Connect>
-                    <Stream url="wss://740e-2001-19f0-7400-1cfe-5400-4ff-fec7-4bbd.ngrok-free.app/twilio/stream/SvozHqQtCQi05pUCX98u/237/CA8ba5afd6763d6b6298500e6f96c66c14"/>
+                    <Stream url="wss://740e-2001-19f0-7400-1cfe-5400-4ff-fec7-4bbd.ngrok-free.app/twilio/stream/agent_01jvf4w2mretqvv55sxy0h50np/237/CA8ba5afd6763d6b6298500e6f96c66c14"/>
                 </Connect>
             </Response> """
             )
@@ -254,7 +254,7 @@ class ElevenlabsAgent(models.Model):
         # try:
         client = self.env['connect.settings'].get_elevenlabs_client()
         agent = client.conversational_ai.update_agent(
-            agent_id=self.agent_id,
+            agent_id=self.agent_uid,
             name=self.name,
             conversation_config=self.compute_agent_conversation_config(),
             platform_settings=self.compute_platform_settings(),
@@ -266,7 +266,7 @@ class ElevenlabsAgent(models.Model):
         # try:
         client = self.env['connect.settings'].get_elevenlabs_client()
         client.conversational_ai.delete_agent(
-            agent_id=self.agent_id
+            agent_id=self.agent_uid
         )
         # except Exception as e:
         #     logger.exception("Error update Elevenlabs agent: ", e)
@@ -414,32 +414,13 @@ class ElevenlabsAgent(models.Model):
                 tools.append(tool_config)
         return tools
 
-    @staticmethod
-    def get_agent_data(agent):
-        return {
-            'agent_id': agent.agent_id,
-            'name': agent.name,
-            'first_message': agent.conversation_config.agent.first_message,
-            'language': agent.conversation_config.agent.language,
-            'prompt': agent.conversation_config.agent.prompt.prompt,
-            'llm': agent.conversation_config.agent.prompt.llm,
-        }
 
     def print_config(self):
         client = self.env['connect.settings'].get_elevenlabs_client()
         agents = client.conversational_ai.get_agents().agents
         for agent in agents:
-            agent = client.conversational_ai.get_agent(agent_id=agent.agent_id)
+            agent = client.conversational_ai.get_agent(agent_id=agent.agent_uid)
             print(json.dumps(str(agent.conversation_config.agent), indent=2))
             #tools = agent.conversation_config.agent.prompt.tools
             #for tool in tools:
             #    print(tool)
-            break
-            agent_instance = self.search([('agent_id', '=', agent.agent_id)])
-            if agent_instance:
-                logger.info('Update agent: %s', agent.name)
-                agent_instance.with_context(skip_elevenlabs=True).write(self.get_agent_data(agent))
-            else:
-                logger.info('Create agent: %s', agent.name)
-                self.with_context(skip_elevenlabs=True).create([self.get_agent_data(agent)])
-        #self.env['connect.settings'].connect_notify('Sync complete.')

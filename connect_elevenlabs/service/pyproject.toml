@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10.0"
 dependencies = [
     "httpx",
-    "aio_odoorpc",
+    "aio-odoorpc",
     "elevenlabs==1.54.0",
     "fastapi[standard]>=0.115.11",
     "python-dotenv>=1.0.1",
