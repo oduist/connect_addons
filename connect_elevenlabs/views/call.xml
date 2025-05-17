@@ -5,14 +5,17 @@
         <field name="model">connect.call</field>
         <field name="inherit_id" ref="connect.connect_call_form"/>
         <field name="arch" type="xml">
-            <page name="call" position="after">
-                <page name="elevenlabs" string="Elevenlabs" invisible="not elevenlabs_summary and elevenlabs_transcription">
+            <page name="recording" position="after">
+                <page name="elevenlabs" string="Agent" invisible="not elevenlabs_summary and elevenlabs_transcription">
                     <group>
+                        <field name="elevenlabs_recording_widget" nolabel="1"/>
                         <field name="elevenlabs_transcription"/>
-                        <field name="elevenlabs_summary"/>
                     </group>
                 </page>
             </page>
+            <field name="summary" position="after">
+                <field name="elevenlabs_summary" string="Agent Summary"/>
+            </field>
         </field>
     </record>
 </odoo>

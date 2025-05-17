@@ -8,3 +8,4 @@ from . import number
 from . import settings
 from . import user
 from . import voice
+from . import recording
