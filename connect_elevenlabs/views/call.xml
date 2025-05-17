@@ -19,14 +19,23 @@
         <field name="inherit_id" ref="connect.connect_call_form"/>
         <field name="arch" type="xml">
             <page name="call" position="after">
-                <page name="elevenlabs" string="Agent" invisible="not elevenlabs_summary and elevenlabs_transcription">
+                <page name="elevenlabs" string="Agent" invisible="not elevenlabs_transcript">
                     <group>
-                        <field name="elevenlabs_agent"/>
-                        <field name="elevenlabs_summary"/>
-                        <field name="elevenlabs_transcription"/>
+                        <group>
+                            <field name="elevenlabs_recording_widget" nolabel="1"/>
+                        </group>
+                        <group>
+                            <field name="elevenlabs_agent"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="elevenlabs_transcript" string="Transcription"/>
                     </group>
                 </page>
             </page>
+            <field name="summary" position="after">
+                <field name="elevenlabs_summary" string="Agent Summary"/>
+            </field>
         </field>
     </record>
 

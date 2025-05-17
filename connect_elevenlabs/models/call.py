@@ -1,12 +1,17 @@
-from odoo import models, fields, api
+from odoo import models, fields, release, api
 
 
 class Call(models.Model):
     _inherit = 'connect.call'
 
     elevenlabs_agent = fields.Many2one('connect.elevenlabs_agent', string='Agent', readonly=True)
-    elevenlabs_transcription = fields.Text(readonly=True, string='Transcription')
-    elevenlabs_summary = fields.Text(readonly=True, string='Summary')
+    elevenlabs_summary = fields.Html(readonly=True)
+    elevenlabs_transcript = fields.Text(compute='_get_elevenlabs_recording_data')
+    if release.version_info[0] >= 17.0:
+        elevenlabs_recording_widget = fields.Html(compute='_get_elevenlabs_recording_data', sanitize=False, string='Agent Recording')
+    else:
+        elevenlabs_recording_widget = fields.Char(compute='_get_elevenlabs_recording_data', string='Agent Recording')
+
 
     def elevenlabs_agent_get_call_data(self):
         self.ensure_one()
@@ -34,3 +39,15 @@ class Call(models.Model):
         # Link call to the Agent.
         call.elevenlabs_agent = agent.id
         return call.elevenlabs_agent_get_call_data()
+
+    def _get_elevenlabs_recording_data(self):
+        # Make one query to get all records.
+        recordings = self.env['connect.recording'].search([('call', 'in', [k.id for k in self])])
+        for rec in self:
+            recording = recordings.filtered(lambda x: x.call.id == rec.id)
+            if recording and recording[0].elevenlabs_transcript:
+                rec.elevenlabs_transcript = recording[0].elevenlabs_transcript
+                rec.elevenlabs_recording_widget = recording[0].elevenlabs_recording_widget
+            else:
+                rec.elevenlabs_transcript = ''
+                rec.elevenlabs_recording_widget = ''

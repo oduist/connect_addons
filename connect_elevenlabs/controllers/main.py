@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*
-
+import base64
 import json
 import logging
 import requests
@@ -30,6 +30,7 @@ class ConnectElevenlabsController(http.Controller):
 
     @http.route('/connect_elevenlabs/post_call', methods=['POST'], type='http', auth='public', csrf=False)
     def post_call_webhook(self):
+        user_connect_webhook = http.request.env.ref("connect.user_connect_webhook")
         data = json.loads(http.request.httprequest.get_data(as_text=True)).get('data')
 
         # headers = http.request.httprequest.headers.get("elevenlabs-signature")
@@ -59,7 +60,26 @@ class ConnectElevenlabsController(http.Controller):
         transcript_list = [f"{transcript['role']}: {transcript['message']}" for transcript in transcript_data]
         transcript = '\n'.join(transcript_list)
 
-        call = http.request.env['connect.call'].with_user(http.request.env.ref("connect.user_connect_webhook")).browse(call_id)
-        call.write({'elevenlabs_transcription': transcript, 'elevenlabs_summary': transcript_summary})
+        call = http.request.env['connect.call'].with_user(user_connect_webhook).browse(call_id)
+        call.write({'elevenlabs_summary': transcript_summary})
 
+        # Recording
+        url = f"https://api.elevenlabs.io/v1/convai/conversations/{data.get('conversation_id')}/audio"
+        elevenlabs_api_key = http.request.env['connect.settings'].sudo().get_param('elevenlabs_api_key')
+        headers = {"Content-Type": "application/json",
+                   "xi-api-key": elevenlabs_api_key}
+
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            audio_data = base64.b64encode(response.content)
+            http.request.env['connect.recording'].with_context(
+                    skip_transcription=True).with_user(user_connect_webhook).sudo().create({
+                'call': call_id,
+                'elevenlabs_transcript': transcript,
+                'elevenlabs_summary': transcript_summary,
+                'sid': data.get('conversation_id'),
+                'call_sid': call.channels[0].sid,
+                'start_time': call.create_date,
+                'elevenlabs_media_file': audio_data,
+            })
         return ''
