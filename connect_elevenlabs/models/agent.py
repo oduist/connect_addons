@@ -4,7 +4,7 @@ import logging
 
 import requests
 
-from odoo import models, fields, release, api
+from odoo import models, fields, release, api, tools
 from twilio.twiml.voice_response import VoiceResponse, Connect
 from odoo.addons.connect.models.settings import debug
 from odoo.addons.connect.models.twiml import pretty_xml
@@ -316,7 +316,7 @@ class ElevenlabsAgent(models.Model):
                 'dynamic_variables': dynamic_variable_placeholders,
                 'prompt': {
                     'max_tokens': self.max_tokens,
-                    'prompt': self.prompt,
+                    'prompt': tools.html2plaintext(self.prompt),
                     'llm': self.llm,
                     'temperature': self.temperature,
                     'knowledge_base': [{

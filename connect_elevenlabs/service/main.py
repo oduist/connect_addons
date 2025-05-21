@@ -10,6 +10,7 @@ from aio_odoorpc import AsyncOdooRPC
 from elevenlabs import ElevenLabs
 from elevenlabs.conversational_ai.conversation import ClientTools, Conversation, ConversationInitiationData
 from twilio_audio_interface import TwilioAudioInterface
+import signal
 import uvicorn
 
 logging.basicConfig(level=logging.INFO)
@@ -186,8 +187,9 @@ async def handle_media_stream(websocket: WebSocket, agent_uid: str, call_id: str
             requires_auth=False,
             client_tools=client_tools,
             audio_interface=audio_interface,
-            callback_agent_response=lambda text: print(f"Agent said: {text}"),
-            callback_user_transcript=lambda text: print(f"User said: {text}"),
+            callback_agent_response=lambda text: print(f"Agent: {text}"),
+            callback_agent_response_correction=lambda original, corrected: print(f"Agent: {original} -> {corrected}"),
+            callback_user_transcript=lambda text: print(f"User: {text}"),
         )
 
         conversation.start_session()
@@ -210,7 +212,8 @@ async def handle_media_stream(websocket: WebSocket, agent_uid: str, call_id: str
         if conversation:
             print("Ending conversation session...")
             conversation.end_session()
-            conversation.wait_for_session_end()
+            conversation_id = conversation.wait_for_session_end()
+            print(f"Conversation ID: {conversation_id}")
 
 
 if __name__ == "__main__":
