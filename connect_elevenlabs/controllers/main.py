@@ -61,19 +61,21 @@ class ConnectElevenlabsController(http.Controller):
         transcript = '\n'.join(transcript_list)
 
         call = http.request.env['connect.call'].with_user(user_connect_webhook).browse(call_id)
-        call.write({'elevenlabs_summary': transcript_summary})
+        call.write({
+            'elevenlabs_summary': transcript_summary,
+            'elevenlabs_conversation_id': data.get('conversation_id', '')
+        })
 
         # Recording
         url = f"https://api.elevenlabs.io/v1/convai/conversations/{data.get('conversation_id')}/audio"
         elevenlabs_api_key = http.request.env['connect.settings'].sudo().get_param('elevenlabs_api_key')
-        headers = {"Content-Type": "application/json",
-                   "xi-api-key": elevenlabs_api_key}
+        headers = {"Content-Type": "application/json", "xi-api-key": elevenlabs_api_key}
 
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
             audio_data = base64.b64encode(response.content)
-            http.request.env['connect.recording'].with_context(
-                    skip_transcription=True).with_user(user_connect_webhook).sudo().create({
+            recording = http.request.env['connect.recording'].with_context(skip_transcription=True)
+            recording.with_user(user_connect_webhook).sudo().create({
                 'call': call_id,
                 'elevenlabs_transcript': transcript,
                 'elevenlabs_summary': transcript_summary,

@@ -212,7 +212,7 @@ class ElevenlabsAgent(models.Model):
                     <Stream url="wss://740e-2001-19f0-7400-1cfe-5400-4ff-fec7-4bbd.ngrok-free.app/twilio/stream/agent_01jvf4w2mretqvv55sxy0h50np/237/CA8ba5afd6763d6b6298500e6f96c66c14"/>
                 </Connect>
             </Response> """
-            )
+        )
 
     @api.model
     def transfer(self, params):
@@ -334,6 +334,7 @@ class ElevenlabsAgent(models.Model):
         for tool in self.tools:
             dynamic_variable_placeholders.update(
                 dict([(param.name, f'test_{param.name}') for param in tool.params if param.value_type == 'dynamic_variable']))
+        previous_topics = '\nLast conversation summary {{previous_topics}}.'
         config = {
             'agent': {
                 'first_message': self.first_message,
@@ -341,7 +342,7 @@ class ElevenlabsAgent(models.Model):
                 'dynamic_variables': dynamic_variable_placeholders,
                 'prompt': {
                     'max_tokens': self.max_tokens,
-                    'prompt': tools.html2plaintext(self.prompt),
+                    'prompt': f'{tools.html2plaintext(self.prompt)}{previous_topics}',
                     'llm': self.llm,
                     'temperature': self.temperature,
                     'knowledge_base': [{

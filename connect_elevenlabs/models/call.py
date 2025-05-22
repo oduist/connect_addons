@@ -7,6 +7,7 @@ class Call(models.Model):
     elevenlabs_agent = fields.Many2one('connect.elevenlabs_agent', string='Agent', readonly=True)
     elevenlabs_summary = fields.Html(readonly=True)
     elevenlabs_transcript = fields.Text(compute='_get_elevenlabs_recording_data')
+    elevenlabs_conversation_id = fields.Char(readonly=True)
     if release.version_info[0] >= 17.0:
         elevenlabs_recording_widget = fields.Html(compute='_get_elevenlabs_recording_data', sanitize=False, string='Agent Recording')
     else:
@@ -31,6 +32,8 @@ class Call(models.Model):
             'partner_id': partner.id,
             'greeting': partner.name or 'Dear customer',
             'users_directory': ', '.join(['{} <{}>'.format(k.user.name, k.exten.number) for k in users]),
+            'previous_conversation_id': '',
+            'previous_topics': '',
         }
         if partner.lang:
             # Workaround for pt-br option for the language.
@@ -38,6 +41,14 @@ class Call(models.Model):
                 data['partner_language'] = 'pt-br' # Format that Elevenlabs accepts for this.
             else:
                 data['partner_language'] = partner.lang.split('_')[0]
+
+        previous_conversations = self.env['connect.call'].sudo().search([
+            ('caller', '=', self.caller), ('called', '=', self.called), ('elevenlabs_conversation_id', '!=', False)])
+        if previous_conversations:
+            data.update({
+                'previous_conversation_id': previous_conversations[0].elevenlabs_conversation_id,
+                'previous_topics': previous_conversations[0].elevenlabs_summary,
+            })
         return data
 
     @api.model
