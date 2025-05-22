@@ -52,6 +52,7 @@ class Recording(models.Model):
     transcription_error = fields.Char()
     transcription_price = fields.Char()
     summary = fields.Html()
+    list_view_summary = fields.Html(compute='_get_list_view_summary')
 
     ############## TRANSCRIPTION METHODS #####################################
 
@@ -175,6 +176,10 @@ class Recording(models.Model):
                 'controls="controls"> ' \
                 '<source src="{}"/>' \
                 '</audio>'.format(media_url)
+
+    def _get_list_view_summary(self):
+        for rec in self:
+            rec.list_view_summary = rec.summary
 
     @api.model
     def prepare_data(self, rec):

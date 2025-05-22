@@ -19,7 +19,7 @@
         <field name="arch" type="xml">
             <list edit="false" create="false">
                 <field name="start_time"/>
-                <field name="summary" widget="html" optional="hide"/>
+                <field name="list_view_summary" widget="html" optional="hide" string="Summary"/>
                 <field name="caller_number" optional="hide"/>
                 <field name="caller_user"/>
                 <field name="called_number" optional="hide"/>
