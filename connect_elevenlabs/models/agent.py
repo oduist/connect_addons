@@ -19,15 +19,40 @@ warnings.filterwarnings("ignore", category=PydanticDeprecatedSince20)
 logger = logging.getLogger(__name__)
 
 language_list = [
+    ('ar', 'Arabic'),
+    ('bg', 'Bulgarian'),
+    ('zh', 'Chinese'),
+    ('hr', 'Croatian'),
+    ('cs', 'Czech'),
+    ('da', 'Danish'),
+    ('nl', 'Dutch'),
     ('en', 'English'),
+    ('fi', 'Finnish'),
     ('fr', 'French'),
     ('de', 'German'),
-    ('es', 'Spanish'),
-    ('pt', 'Portuguese'),
-    ('ru', 'Russian'),
-    ('zh', 'Chinese'),
+    ('el', 'Greek'),
     ('hi', 'Hindi'),
+    ('hu', 'Hungarian'),
+    ('id', 'Indonesian'),
+    ('it', 'Italian'),
+    ('ja', 'Japanese'),
+    ('ko', 'Korean'),
+    ('ms', 'Malay'),
+    ('no', 'Norwegian'),
+    ('pl', 'Polish'),
+    ('pt-br', 'Portuguese (Brazil)'),
+    ('pt', 'Portuguese (Portugal)'),
+    ('ro', 'Romanian'),
+    ('ru', 'Russian'),
+    ('sk', 'Slovak'),
+    ('es', 'Spanish'),
+    ('sv', 'Swedish'),
+    ('ta', 'Tamil'),
+    ('tr', 'Turkish'),
+    ('uk', 'Ukrainian'),
+    ('vi', 'Vietnamese'),
 ]
+
 
 llm_list = [
     ('gpt-3.5-turbo', 'GPT 3.5 Turbo'),
@@ -68,7 +93,7 @@ class ElevenlabsAgent(models.Model):
     max_tokens = fields.Integer(
         required=True, default=-1, help='If greater than 0, maximum number of tokens the LLM can predict')
     llm = fields.Selection(selection=llm_list, default='gpt-4o', required=True)
-    agent_uid = fields.Char(string="Agent ID", readonly=True)
+    agent_uid = fields.Char(string="Agent ID")
     knowledge_base_name = fields.Char()
     knowledge_base_note = fields.Text()
     knowledge_base_id = fields.Char()

@@ -92,6 +92,13 @@
                                 <field name="knowledge_base_note"/>
                             </group>
                         </page>
+                        <page name="dev" string="Development" groups="base.group_no_one">
+                            <group>
+                                <group>
+                                    <field name="agent_uid"/>
+                                </group>
+                            </group>
+                        </page>
                     </notebook>
                 </sheet>
             </form>

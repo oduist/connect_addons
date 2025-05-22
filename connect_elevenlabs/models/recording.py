@@ -25,3 +25,10 @@ class Recording(models.Model):
                     recording_id=rec.id,
                     filename='elevenlabs_recording.mp3',
                     source='elevenlabs_media_file')
+
+    def _get_list_view_summary(self):
+        for rec in self:
+            if rec.elevenlabs_summary:
+                rec.list_view_summary = rec.elevenlabs_summary
+            else:
+                rec.list_view_summary = rec.summary

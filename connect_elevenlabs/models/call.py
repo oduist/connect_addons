@@ -16,18 +16,29 @@ class Call(models.Model):
     def elevenlabs_agent_get_call_data(self):
         self.ensure_one()
         users = self.env['connect.user'].search([])
-        return {
+        partner = self.partner
+        if not partner:
+            # Test outgoing call:
+            if self.direction in ['outgoing', 'internal']:
+                partner = self.caller_user.partner_id
+        data = {
             'id': self.id,
-            'caller_user_name': self.caller_user.name,
             'caller_number': self.caller,
             'called_number': self.called,
-            'partner_name': self.partner.name,
-            'partner_language': self.partner.lang.split('_')[0] if self.partner.lang else 'en',
-            'partner_phone': self.called if self.direction == 'outgoing' else self.caller,
-            'partner_id': self.partner.id or self.caller_user.partner_id.id,
-            'greeting_name': self.partner.name or self.caller_user.name or 'Dear customer',
-            'users_directory': ', '.join(['{} <{}>'.format(k.user.name, k.exten.number) for k in users])
+            'partner_name': partner.name or 'Not registered',
+            'existing_partner': 'Yes' if partner else 'No',
+            'partner_phone': partner.phone,
+            'partner_id': partner.id,
+            'greeting': partner.name or 'Dear customer',
+            'users_directory': ', '.join(['{} <{}>'.format(k.user.name, k.exten.number) for k in users]),
         }
+        if partner.lang:
+            # Workaround for pt-br option for the language.
+            if partner.lang == 'pt_BR':
+                data['partner_language'] = 'pt-br' # Format that Elevenlabs accepts for this.
+            else:
+                data['partner_language'] = partner.lang.split('_')[0]
+        return data
 
     @api.model
     def elevenlabs_agent_start_call_event(self, params):

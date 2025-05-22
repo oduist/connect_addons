@@ -153,11 +153,9 @@ async def handle_media_stream(websocket: WebSocket, agent_uid: str, call_id: str
     # Set some defaults required by prompt and tools.
     call_info = {
         'partner_id': False,
-        'partner_phone': '',
         'call_id': call_id,
         'channel_sid': channel_sid,
-        'greeting_name': 'Dear customer', # Default name.
-        'system_error_message': '', # Empty
+        'greeting': 'Dear customer', # Default name.
     }
     odoo = OdooConnection()
     try:
@@ -165,7 +163,7 @@ async def handle_media_stream(websocket: WebSocket, agent_uid: str, call_id: str
         call_info.update(await odoo.start_call_event(call_id, agent_uid))
     except Exception:
         logger.exception('Get call data error:')
-        call_info['system_error_message'] = 'Oops! Something went wrong. Please reach out to our support team.'
+        call_info['greeting'] = 'Oops! Something went wrong. Please reach out to our support team.'
         call_info['system_error'] = True
 
     logger.info('Call info: {}'.format(json.dumps(call_info, indent=2)))

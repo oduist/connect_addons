@@ -32,7 +32,7 @@ class ConnectElevenlabsController(http.Controller):
     def post_call_webhook(self):
         user_connect_webhook = http.request.env.ref("connect.user_connect_webhook")
         data = json.loads(http.request.httprequest.get_data(as_text=True)).get('data')
-
+        print(json.dumps(data, indent=2))
         # headers = http.request.httprequest.headers.get("elevenlabs-signature")
         # if not headers:
         #     return
@@ -81,5 +81,11 @@ class ConnectElevenlabsController(http.Controller):
                 'call_sid': call.channels[0].sid,
                 'start_time': call.create_date,
                 'elevenlabs_media_file': audio_data,
+                'duration': data['metadata']['call_duration_secs'],
+                'caller_number': data['conversation_initiation_client_data']['dynamic_variables']['caller_number'],
+                'called_number': data['conversation_initiation_client_data']['dynamic_variables']['called_number'],
+                'status': 'completed',
+                'partner': call.partner.id,
+                'caller_user': call.caller_user.id,
             })
         return ''
