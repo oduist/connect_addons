@@ -95,7 +95,6 @@ class Settings(models.Model):
     transcript_calls = fields.Boolean()
     summary_prompt = fields.Text(required=True, default='Summarise this phone call')
     register_summary = fields.Boolean(default=True, help='Register summary at partner of reference chat.')
-    remove_recording_after_transcript = fields.Boolean()
     ############################################################
     instance_uid = fields.Char('Instance UID', compute='_get_instance_data')
     api_url = fields.Char('API URL', compute='_get_instance_data')

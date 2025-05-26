@@ -74,8 +74,6 @@
                              attrs="{'invisible': [('transcript_calls', '=', False)]}"/>
                       <field name="register_summary"
                              attrs="{'invisible': [('transcript_calls', '=', False)]}"/>
-                      <field name="remove_recording_after_transcript"
-                             attrs="{'invisible': [('transcript_calls', '=', False)]}"/>
                     </group>
                   </group>
                 </page>
