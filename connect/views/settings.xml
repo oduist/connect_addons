@@ -71,9 +71,9 @@
                     <group>
                       <field name="transcript_calls"/>
                       <field name="summary_prompt"
-                             attrs="{'invisible': [('transcript_calls', '=', False)]}"/>
+                             invisible="transcript_calls == False"/>
                       <field name="register_summary"
-                             attrs="{'invisible': [('transcript_calls', '=', False)]}"/>
+                             invisible="transcript_calls == False"/>
                     </group>
                   </group>
                 </page>
