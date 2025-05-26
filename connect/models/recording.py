@@ -52,6 +52,7 @@ class Recording(models.Model):
     transcription_error = fields.Char()
     transcription_price = fields.Char()
     summary = fields.Html()
+    list_view_summary = fields.Html(compute='_get_list_view_summary')
 
     ############## TRANSCRIPTION METHODS #####################################
 
@@ -156,13 +157,17 @@ class Recording(models.Model):
         # Notify user
         if data.get('notify_uid'):
             self.env['connect.settings'].connect_notify(
-                'Transcription updated', notify_uid=data['notify_uid'])
+                'Transcript updated', notify_uid=data['notify_uid'])
 
 ##########  END OF TRANSCRIPTION METHODS #########################################################
 
     def _get_recording_widget(self):
         proxy_recordings = self.env['connect.settings'].sudo().get_param('proxy_recordings')
         for rec in self:
+            if not rec.media_url:
+                # Fix for Agent recordings.
+                rec.recording_widget = ''
+                continue
             if proxy_recordings:
                 media_url = '/connect/recording/{}'.format(rec.id)
             else:
@@ -171,6 +176,10 @@ class Recording(models.Model):
                 'controls="controls"> ' \
                 '<source src="{}"/>' \
                 '</audio>'.format(media_url)
+
+    def _get_list_view_summary(self):
+        for rec in self:
+            rec.list_view_summary = rec.summary
 
     @api.model
     def prepare_data(self, rec):
@@ -189,12 +198,16 @@ class Recording(models.Model):
     def sync(self):
         client = self.env['connect.settings'].get_client()
         for rec in self:
+            if not rec.media_url:
+                continue
             recording = client.recordings(rec.sid).fetch()
             data = self.prepare_data(recording)
             rec.write(data)
 
     @api.model_create_multi
     def create(self, vals_list):
+        if self.env.context.get('skip_transcription'):
+            return super().create(vals_list)
         transcript_calls = self.env['connect.settings'].sudo().get_param('transcript_calls')
         recs = super(Recording, self.with_context(
             mail_create_nosubscribe=True, mail_create_nolog=True)).create(vals_list)

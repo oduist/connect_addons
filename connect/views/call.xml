@@ -110,7 +110,8 @@
                                 </group>
                             </group>
                             <group>
-                                <field name="transcript"/>
+                                <field name="transcript"
+                                    invisible="not transcript"/>
                             </group>
                         </page>
                         <page name="details" string="Details">

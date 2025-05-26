@@ -284,7 +284,7 @@ class Domain(models.Model):
             return '<Response><Say>No outgoing rule found for this destination! Goodbye!</Say></Response>'
         default_number = self.env['connect.outgoing_callerid'].search([('is_default', '=', True)], limit=1)
         # Find the user by caller.
-        user = self.env['connect.user'].get_user_by_uri(request.get('From'))
+        user = self.env['connect.user'].get_user_by_uri(request.get('Caller'))
         if user.outgoing_callerid:
             callerId = user.outgoing_callerid.number
         else:

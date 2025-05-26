@@ -40,7 +40,7 @@ class Domain(models.Model):
                 call = self.env['connect.call'].browse(call_id)
                 call.partner = partner.id
                 caller_name = partner.name
-            elif request.get('UserId') != "false":
+            elif request.get('UserId') != "null":
                 user = self.env['res.users'].sudo().browse(int(request.get('UserId')))
                 call = self.env['connect.call'].browse(call_id)
                 call.partner = user.partner_id

@@ -17,21 +17,21 @@
         </div>
     </template>
 
-    <record id="connect_website.s_connect_talk_button_000_js" model="ir.asset">
+    <record id="connect_website.s_talk_button_000_js" model="ir.asset">
         <field name="name">Connect Talk Button 000 JS</field>
         <field name="bundle">web.assets_frontend</field>
         <field name="path">connect_website/static/src/snippets/s_talk_button/000.js</field>
         <field name="active" eval="True"/>
     </record>
 
-    <record id="connect_website.s_connect_talk_button_000_xml" model="ir.asset">
+    <record id="connect_website.s_talk_button_000_xml" model="ir.asset">
         <field name="name">Connect Talk Button 000 XML</field>
         <field name="bundle">web.assets_frontend</field>
         <field name="path">connect_website/static/src/snippets/s_talk_button/000.xml</field>
         <field name="active" eval="True"/>
     </record>
 
-    <record id="connect_website.s_connect_talk_button_000_scss" model="ir.asset">
+    <record id="connect_website.s_talk_button_000_scss" model="ir.asset">
         <field name="name">Connect Talk Button 000 SCSS</field>
         <field name="bundle">web.assets_frontend</field>
         <field name="path">connect_website/static/src/snippets/s_talk_button/000.scss</field>

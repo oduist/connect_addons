@@ -31,7 +31,7 @@ class Number(models.Model):
         ('user', 'User'),
         ('callflow', 'CallFlow'),
         ('twiml', 'TwiML'),
-    ])
+    ], ondelete='set null')
     callflow = fields.Many2one('connect.callflow', ondelete='set null')
     user = fields.Many2one('connect.user', ondelete='set null')
 
@@ -120,20 +120,24 @@ class Number(models.Model):
                 message=user_message
             )
 
-    @api.model
-    def route_call(self, request):
-        debug(self, 'Route number call: %s' % json.dumps(request, indent=2))
-        # Create call
-        self.env['connect.call'].sudo().on_call_status(request)
-        # Find the number
-        number = self.search([('phone_number', '=', request['Called'])])
-        if not number:
-            return '<Response><Say>Number not found. Goodbye!</Say></Response>'
-        if number.destination == 'twiml' and number.twiml:
-            return number.twiml.render(request)
-        elif number.destination == 'user' and number.user:
-            return number.user.render(request)
-        elif number.destination == 'callflow' and number.callflow:
-            return number.callflow.render(request)
+    def render(self, request={}, params={}):
+        self.ensure_one()
+        if self.destination == 'twiml' and self.twiml:
+            return self.twiml.render(request)
+        elif self.destination == 'user' and self.user:
+            return self.user.render(request)
+        elif self.destination == 'callflow' and self.callflow:
+            return self.callflow.render(request)
         else:
             return '<Response><Say>Number not configured. Goodbye!</Say></Response>'
+
+    @api.model
+    def route_call(self, request, params={}):
+        debug(self, 'Route number call: %s' % json.dumps(request, indent=2))
+        # Create call
+        self.env['connect.call'].on_call_status(request)
+        # Find the number
+        number = self.sudo().search([('phone_number', '=', request['Called'])])
+        if not number:
+            return '<Response><Say>Number not found. Goodbye!</Say></Response>'
+        return number.render(request=request, params=params)

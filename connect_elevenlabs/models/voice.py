@@ -42,10 +42,7 @@ class ElevenlabsVoice(models.Model):
 
     @api.model
     def get_voices(self):
-        key = self.env['connect.settings'].sudo().get_param('elevenlabs_api_key')
-        if not key:
-            raise ValidationError('Elevenlabs API key not set!')
-        client = ElevenLabs(api_key=key)
+        client = self.env['connect.settings'].get_elevenlabs_client()
         response = client.voices.get_all()
         elevenlabs_voice_ids = set([k.voice_id for k in response.voices])
         odoo_voice_ids = set(self.search([]).mapped('voice_id'))
