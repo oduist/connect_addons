@@ -26,7 +26,7 @@
                   <group>
                     <group>
                       <field name="api_url" string="Odoo URL"/>
-                      <button name="action_open_system_parameters" type="object" string="Change Odoo URL"/>
+                      <button class="btn btn-primary" colspan="2" name="action_open_system_parameters" type="object" string="Change Odoo URL"/>
                       <field name="api_fallback_url" string="Fallback URL"/>
                       <field name="debug_mode"/>
                     </group>
@@ -71,11 +71,9 @@
                     <group>
                       <field name="transcript_calls"/>
                       <field name="summary_prompt"
-                             invisible="transcript_calls == False"/>
+                             attrs="{'invisible': [('transcript_calls', '=', False)]}"/>
                       <field name="register_summary"
-                             invisible="transcript_calls == False"/>
-                      <field name="remove_recording_after_transcript"
-                             invisible="transcript_calls == False"/>
+                             attrs="{'invisible': [('transcript_calls', '=', False)]}"/>
                     </group>
                   </group>
                 </page>
