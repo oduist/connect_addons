@@ -1,0 +1,57 @@
+<odoo>
+    <data>
+
+        <record id="agent_tool_language_detection" model="connect.elevenlabs_agent_tool">
+            <field name="name">language_detection</field>
+            <field name="description">Detect language of the caller.</field>
+            <field name="tool_type">system</field>
+        </record>
+
+        <record id="agent_tool_end_call" model="connect.elevenlabs_agent_tool">
+            <field name="name">end_call</field>
+            <field name="description">Elevenlabs built-in tool to end the call by user request.</field>
+            <field name="tool_type">system</field>
+        </record>
+
+    <!-- Elevenlabs Agent Tool: transfer_to_extension -->
+    <record id="transfer_to_extension_tool" model="connect.elevenlabs_agent_tool">
+        <field name="name">transfer_to_extension</field>
+        <field name="description">Transfer (connect) the call to human by his extension. Always pass all parameters. If user does not enter an extension use default_exten as exten.</field>
+        <field name="tool_type">client</field>
+        <field name="client_expects_response">True</field>
+        <field name="response_timeout_secs">5</field>
+        <field name="param_type">body</field>
+    </record>
+
+    <!-- parameters for transfer_to_extension tool -->
+    <record id="transfer_to_extension_param_default_exten" model="connect.agent_tool_params">
+        <field name="name">default_exten</field>
+        <field name="data_type">string</field>
+        <field name="required">True</field>
+        <field name="value_type">constant_value</field>
+        <field name="constant_value">2001</field>
+        <field name="description">Default extension to use when none is provided.</field>
+        <field name="tool" ref="transfer_to_extension_tool"/>
+    </record>
+
+    <record id="transfer_to_extension_param_exten" model="connect.agent_tool_params">
+        <field name="name">exten</field>
+        <field name="data_type">string</field>
+        <field name="required">False</field>
+        <field name="value_type">description</field>
+        <field name="description">Extension of person to connect</field>
+        <field name="tool" ref="transfer_to_extension_tool"/>
+    </record>
+
+    <record id="transfer_to_extension_param_channel_sid" model="connect.agent_tool_params">
+        <field name="name">channel_sid</field>
+        <field name="data_type">string</field>
+        <field name="required">True</field>
+        <field name="value_type">dynamic_variable</field>
+        <field name="dynamic_variable">channel_sid</field>
+        <field name="description">Channel SID for the current call</field>
+        <field name="tool" ref="transfer_to_extension_tool"/>
+    </record>
+
+    </data>
+</odoo>

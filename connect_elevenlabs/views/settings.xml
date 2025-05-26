@@ -28,7 +28,8 @@
           <page name="elevenlabs_api" string="API">
             <group>
               <group>
-                <a colspan="2" href="https://try.elevenlabs.io/connect">Open Your Elevenlabs account -&gt;</a>
+                <a attrs="{'invisible': [('display_elevenlabs_api_key', '!=', False)]" class="btn btn-info" role="button"
+                  colspan="2" target="_new" href="https://try.elevenlabs.io/connect">OPEN A NEW ELEVENLABS ACCOUNT HERE</a>
                 <field name="elevenlabs_enabled"/>
                 <field name="display_elevenlabs_api_key" password="1" string="API Key"
                        attrs="{'invisible': [('elevenlabs_enabled', '=', False)],
@@ -36,12 +37,38 @@
                 <field name="elevenlabs_voice"
                        attrs="{'invisible': [('elevenlabs_enabled', '=', False)]}"/>
                 <div class="d-flex flex-row" colspan="2">
-                  <button name="elevenlabs_get_voices" type="object" string="SYNC VOICES" colspan="2"
+                  <button name="elevenlabs_sync" type="object" string="SYNC" class="btn btn-secondary me-1"
                           attrs="{'invisible': [('elevenlabs_enabled', '=', False)]}"/>
-                  <button name="elevenlabs_regenerate_prompts" type="object" string="REGENERATE PROMPTS"
+                  <button name="elevenlabs_regenerate_prompts" type="object" string="REGENERATE PROMPTS" class="btn btn-secondary me-1"
                           attrs="{'invisible': [('elevenlabs_enabled', '=', False)]}"/>
                 </div>
-                <a colspan="2" target="_new" href="https://elevenlabs.io/app/voice-library?">Add shared voices</a>
+                <a attrs="{'invisible': [('elevenlabs_enabled', '=', False)]}"
+                  colspan="2" target="_new" href="https://elevenlabs.io/app/voice-library?">Add shared voices</a>
+              </group>
+            </group>
+          </page>
+          <page name="webhook" string="Webhook"
+              invisible="not elevenlabs_enabled or not display_elevenlabs_api_key">
+            <group>
+                <div colspan="2">
+                  <small><strong>Add Elevenlabs post call webhook URL in <a href="https://elevenlabs.io/app/conversational-ai/settings" target="_blank">Elevenlabs Settings</a></strong>.</small>
+                </div>
+                <field name="elevenlabs_post_call_webhook_url" string="Post Call Webhook URL"/>
+                <field name="display_elevenlabs_post_call_webhook_secret" string="Post Call Webhook Secret" password="True"/>
+            </group>
+            <group>
+            </group>
+          </page>
+          <page name="agent" string="Agent"
+                attrs="{'invisible': ['|', ('elevenlabs_enabled', '=', False), ('display_elevenlabs_api_key', '=', False)]}">
+            <group>
+              <group>
+                <field name="elevenlabs_agent_url"/>
+              </group>
+            </group>
+            <group>
+              <group>
+                <button type="object" string="Agent Ping" icon="fa-check" name="ping_agent"/>
               </group>
             </group>
           </page>
