@@ -44,8 +44,8 @@ class ElevenlabsFile(models.Model):
         media_url = self.env['connect.settings'].sudo().get_param('media_url')
         if media_url:
             api_url = media_url
-        url = urljoin(api_url, 'proxy/{}/content/connect.elevenlabs_file/{}/file/{}'.format(
-            instance_uid, self.id, self.filename)
+        url = urljoin(api_url, '/web/content/connect.elevenlabs_file/{}/file/{}'.format(
+            self.id, self.filename)
         )
         return url
 
@@ -56,7 +56,7 @@ class ElevenlabsFile(models.Model):
 
     def generate_elevenlabs_voice(self, text):
         try:
-            client = ElevenLabs(api_key=self.env['connect.settings'].sudo().get_param('elevenlabs_api_key'))
+            client = self.env['connect.settings'].get_elevenlabs_client()
             audio = client.generate(text=text,
                 voice=self.env['connect.settings'].sudo().get_param('elevenlabs_voice').voice_id,
                 model="eleven_multilingual_v2"

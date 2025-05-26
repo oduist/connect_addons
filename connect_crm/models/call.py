@@ -214,3 +214,4 @@ class CrmCall(models.Model):
         if reload_view:
             # Reload the view of res.partner
             self.env['connect.settings'].connect_reload_view('crm.lead')
+

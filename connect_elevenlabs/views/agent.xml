@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="agent_action" model="ir.actions.act_window">
+        <field name="name">Agents</field>
+        <field name="res_model">connect.elevenlabs_agent</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="connect.elevenlabs_agent_menu"
+        sequence="60"
+        parent="connect.connect_voice_menu"
+        name="Agents"
+        action="connect_elevenlabs.agent_action"/>
+
+    <record id="connect_elevenlabs_agent_list" model="ir.ui.view">
+        <field name="name">connect_elevenlabs_agent_list</field>
+        <field name="model">connect.elevenlabs_agent</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="llm"/>
+                <field name="voice"/>
+                <field name="language" optional="show"/>
+                <field name="additional_languages" widget="many2many_tags" optional="show"/>
+                <field name="exten_number" string="Exten"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="connect_elevenlabs_agent_form" model="ir.ui.view">
+        <field name="name">connect_elevenlabs_agent_form</field>
+        <field name="model">connect.elevenlabs_agent</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="create_extension" type="object" string="Extension" class="btn btn-primary"/>
+                    <!-- <button name="transfer_test" type="object" string="Test" class="btn btn-primary"/> -->
+                    <button name="print_config" type="object" string="Print" class="btn"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <label class="oe_edit_only" for="name"/>
+                            <field name="name" placeholder="Agent name..."/>
+                        </h1>
+                    </div>
+                    <notebook>
+                        <page name="prompt" string="Prompt">
+                            <group>
+                                <field name="first_message"/>
+                                <field name="prompt"/>
+                            </group>
+                        </page>
+                        <page string="Conversation" name="conversation">
+                            <group>
+                                <group>
+                                    <field name="name"/>
+                                    <field name="voice"/>
+                                    <field name="tools" widget="many2many_tags"/>
+                                </group>
+                                <group>
+                                    <field name="language"/>
+                                    <field name="additional_languages" widget="many2many_tags"/>
+                                    <field name="max_duration_seconds"/>
+                                    <field name="agent_concurrency_limit"/>
+                                    <field name="daily_limit"/>
+                                    <field name="exten_number" string="Exten"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="llm" string="LLM / TTS">
+                            <group>
+                                <group>
+                                    <field name="llm"/>
+                                    <field name="max_tokens"/>
+                                </group>
+                                <group>
+                                    <field name="output_audio_format"/>
+                                    <field name="user_input_audio_format"/>
+                                    <field name="temperature"/>
+                                    <field name="stability"/>
+                                    <field name="speed"/>
+                                    <field name="similarity_boost"/>
+                                    <field name="use_flash"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="Knowledge base" string="Knowledge base">
+                            <group>
+                                <field name="knowledge_base_name" required="knowledge_base_note"/>
+                                <field name="knowledge_base_note"/>
+                            </group>
+                        </page>
+                        <page name="dev" string="Development" groups="base.group_no_one">
+                            <group>
+                                <group>
+                                    <field name="agent_uid"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>
