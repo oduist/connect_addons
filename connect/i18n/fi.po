@@ -2234,11 +2234,6 @@ msgid "Remove"
 msgstr "Poista"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_settings__remove_recording_after_transcript
-msgid "Remove Recording After Transcript"
-msgstr "Poista tallennus puheentunnistuksen ja tekstityksen jälkeen"
-
-#. module: connect
 #: model:ir.actions.server,name:connect.remove_from_callout_action
 msgid "Remove from Callout"
 msgstr "Poista ulos lähtevästä puhelusta"
