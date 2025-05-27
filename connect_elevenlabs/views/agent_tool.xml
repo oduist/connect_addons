@@ -33,31 +33,32 @@
                 <sheet>
                     <group>
                         <group>
-                        <field name="name"/>
-                        <field name="description"/>
-                        <field name="tool_type"/>
-                        <field name="param_type" string="Parameters Type"
-                            invisible="tool_type != 'webhook'"/>
+                            <field name="name"/>
+                            <field name="description"/>
+                            <field name="tool_type"/>
+                            <field name="param_type" string="Parameters Type"
+                                   invisible="tool_type != 'webhook'"/>
                         </group>
                         <group>
                             <field name="is_enabled"/>
                             <field name="path"
-                                invisible="tool_type != 'webhook' or url != False"/>
+                                   invisible="tool_type != 'webhook' or url != False"/>
                             <field name="url"
-                                invisible="tool_type != 'webhook' or path != False"/>
+                                   invisible="tool_type != 'webhook' or path != False"/>
                             <field name="method"
-                                invisible="tool_type != 'webhook'"/>
+                                   invisible="tool_type != 'webhook'"/>
                             <field name="client_expects_response"
-                                invisible="tool_type != 'client'"/>
+                                   invisible="tool_type != 'client'"/>
                             <field name="response_timeout_secs"/>
                         </group>
                     </group>
-                    <group string="Parameters" invisible="tool_type == 'system'">
+                    <group string="Parameters"
+                           invisible="tool_type == 'system'">
                         <field name="body_params_description"
-                            invisible="param_type != 'body' or tool_type not in ['webhook','client']" required="params.length > 0"/>
-                        <field name="params" nolabel="1"
-                            invisible="tool_type == 'system'"/>
+                               invisible="param_type != 'body' or tool_type not in ['webhook','client']" required="params.length > 0"/>
                     </group>
+                    <field name="params" nolabel="1"
+                           invisible="tool_type == 'system'"/>
                 </sheet>
             </form>
         </field>
