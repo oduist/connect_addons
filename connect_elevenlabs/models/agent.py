@@ -9,6 +9,7 @@ from twilio.twiml.voice_response import VoiceResponse, Connect
 from odoo.addons.connect.models.settings import debug
 from odoo.addons.connect.models.twiml import pretty_xml
 from odoo.exceptions import ValidationError
+from elevenlabs import ConversationConfig
 
 # Supress a warning message.
 import warnings
@@ -269,7 +270,7 @@ class ElevenlabsAgent(models.Model):
         client = self.env['connect.settings'].get_elevenlabs_client()
         return client.conversational_ai.create_agent(
             name=self.name,
-            conversation_config=self.compute_agent_conversation_config(skip_tools=True),
+            conversation_config=ConversationConfig(),
             platform_settings=self.compute_platform_settings(),
         )
         # except Exception as e:
@@ -365,7 +366,8 @@ class ElevenlabsAgent(models.Model):
                 'similarity_boost': self.similarity_boost,
                 'speed': self.speed,
                 'stability': self.stability,
-                'voice_id': self.voice.voice_id
+                'voice_id': self.voice.voice_id,
+                'model_id': 'eleven_flash_v2_5' if self.use_flash else 'eleven_turbo_v2_5',
             },
         }
         logger.info('Tools: {}'.format(json.dumps(config, indent=2)))

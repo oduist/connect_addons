@@ -33,6 +33,9 @@
                     </group>
                 </page>
             </page>
+            <page name="recording" position="attributes">
+                <attribute name="invisible">elevenlabs_agent != False or recording == False</attribute>
+            </page>
             <field name="summary" position="after">
                 <field name="elevenlabs_summary" string="Agent Summary"/>
             </field>
