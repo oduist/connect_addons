@@ -17,11 +17,11 @@
         <field name="name">connect_elevenlabs_agent_tool_list</field>
         <field name="model">connect.elevenlabs_agent_tool</field>
         <field name="arch" type="xml">
-            <list>
+            <tree>
                 <field name="name"/>
                 <field name="tool_type"/>
                 <field name="is_enabled"/>
-            </list>
+            </tree>
         </field>
     </record>
 
