@@ -49,9 +49,9 @@
                     <group>
                         <group>
                             <field name="summary" widget="html"
-                                invisible="not summary"/>
+                                   attrs="{'invisible': [('summary', '=', False)]}"/>
                             <field name="recording_widget" widget="html"
-                                invisible="not recording_widget"/>
+                                   attrs="{'invisible': [('recording_widget', '=', False)]}"/>
                             <field name="start_time"/>
                             <field name="caller_number"/>
                             <field name="called_number"/>
@@ -69,7 +69,7 @@
                     </group>
                     </page>
                     <page name="transcript" string="Transcript"
-                            invisible="not transcript">
+                          attrs="{'invisible': [('transcript', '=', False)]}">
                         <group>
                             <group>
                                 <field name="transcription_error"

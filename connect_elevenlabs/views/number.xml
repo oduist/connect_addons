@@ -19,8 +19,8 @@
     <field name="arch" type="xml">
       <field name="callflow" position="after">
         <field name="elevenlabs_agent"
-               invisible="destination != 'elevenlabs_agent'"
-               required="destination == 'elevenlabs_agent'"/>
+               attrs="{'invisible': [('destination', '!=', 'elevenlabs_agent')],
+                       'required': [('destination', '=', 'elevenlabs_agent')]}"/>
       </field>
     </field>
   </record>

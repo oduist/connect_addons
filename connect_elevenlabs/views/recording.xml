@@ -7,13 +7,13 @@
         <field name="arch" type="xml">
             <field name="summary" position="after">
                 <field name="elevenlabs_summary" string="Agent Summary"
-                    invisible="not elevenlabs_summary"/>
+                       attrs="{'invisible': [('elevenlabs_summary', '=', False)]}"/>
                 <field name="elevenlabs_recording_widget" string="Agent Recording"
-                    invisible="not elevenlabs_transcript"/>
+                       attrs="{'invisible': [('elevenlabs_transcript', '=', False)]}"/>
             </field>
             <page name="transcript" position="after">
                 <page name="agent" string="Agent"
-                        invisible="not elevenlabs_transcript">
+                      attrs="{'invisible': [('elevenlabs_transcript', '=', False)]}">
                     <group>
                         <field name="elevenlabs_transcript" string="Transcript"/>
                     </group>

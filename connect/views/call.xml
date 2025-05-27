@@ -112,7 +112,7 @@
                             </group>
                             <group>
                                 <field name="transcript"
-                                    invisible="not transcript"/>
+                                       attrs="{'invisible': [('transcript', '=', False)]}"/>
                             </group>
                         </page>
                         <page name="details" string="Details">

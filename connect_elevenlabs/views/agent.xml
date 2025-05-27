@@ -88,7 +88,8 @@
                         </page>
                         <page name="Knowledge base" string="Knowledge base">
                             <group>
-                                <field name="knowledge_base_name" required="knowledge_base_note"/>
+                                <field name="knowledge_base_name"
+                                       attrs="{'required': [('knowledge_base_note', '!=', False)]}"/>
                                 <field name="knowledge_base_note"/>
                             </group>
                         </page>

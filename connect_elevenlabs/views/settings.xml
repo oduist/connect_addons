@@ -28,7 +28,7 @@
           <page name="elevenlabs_api" string="API">
             <group>
               <group>
-                <a attrs="{'invisible': [('display_elevenlabs_api_key', '!=', False)]" class="btn btn-info" role="button"
+                <a attrs="{'invisible': [('display_elevenlabs_api_key', '!=', False)]}" class="btn btn-info" role="button"
                   colspan="2" target="_new" href="https://try.elevenlabs.io/connect">OPEN A NEW ELEVENLABS ACCOUNT HERE</a>
                 <field name="elevenlabs_enabled"/>
                 <field name="display_elevenlabs_api_key" password="1" string="API Key"
@@ -48,7 +48,7 @@
             </group>
           </page>
           <page name="webhook" string="Webhook"
-              invisible="not elevenlabs_enabled or not display_elevenlabs_api_key">
+                attrs="{'invisible': ['|', ('elevenlabs_enabled', '=', False), ('display_elevenlabs_api_key', '=', False)]}">
             <group>
                 <div colspan="2">
                   <small><strong>Add Elevenlabs post call webhook URL in <a href="https://elevenlabs.io/app/conversational-ai/settings" target="_blank">Elevenlabs Settings</a></strong>.</small>
