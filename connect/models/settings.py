@@ -503,12 +503,16 @@ class Settings(models.Model):
         client = self.get_client()
         partner_id = False
         obj = self.env[res_model].browse(res_id)
+        caller_name = ''
         if res_model == 'res.partner':
             partner_id = res_id
+            caller_name = obj.display_name
         elif hasattr(obj, 'partner_id'):
             partner_id = obj.partner_id.id
+            caller_name = obj.partner_id.display_name
         elif hasattr(obj, 'partner'):
             partner_id = obj.partner.id
+            caller_name = obj.partner.display_name
         # If user is not set use current user.
         if not user:
             user = self.env.user
@@ -518,7 +522,8 @@ class Settings(models.Model):
         if user.connect_user.sip_enabled:
             ring_options['sip'] = self.compute_sip_uri(user)
         if user.connect_user.client_enabled:
-            ring_options['client'] = 'client:{}?autoAnswer=yes&Partner={}'.format(self.env.user.connect_user.uri, partner_id)
+            ring_options['client'] = 'client:{}?autoAnswer=yes&Partner={}&CallerName={}'.format(
+                self.env.user.connect_user.uri, partner_id, caller_name)
         to = ring_options.get(self.env.user.connect_user.ring_first)
         if not to:
             # Get available option.

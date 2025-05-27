@@ -17,14 +17,14 @@
         <field name="name">connect_elevenlabs_agent_list</field>
         <field name="model">connect.elevenlabs_agent</field>
         <field name="arch" type="xml">
-            <list>
+            <tree>
                 <field name="name"/>
                 <field name="llm"/>
                 <field name="voice"/>
                 <field name="language" optional="show"/>
                 <field name="additional_languages" widget="many2many_tags" optional="show"/>
                 <field name="exten_number" string="Exten"/>
-            </list>
+            </tree>
         </field>
     </record>
 

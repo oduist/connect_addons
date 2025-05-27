@@ -4,7 +4,7 @@
         <field name="name">connect_elevenlabs_agent_tool_params_list</field>
         <field name="model">connect.agent_tool_params</field>
         <field name="arch" type="xml">
-            <list>
+            <tree>
                 <field name="name"/>
                 <field name="description"/>
                 <field name="data_type"/>
@@ -12,7 +12,7 @@
                 <field name="value_type"/>
                 <field name="constant_value"/>
                 <field name="dynamic_variable"/>
-            </list>
+            </tree>
         </field>
     </record>
 
