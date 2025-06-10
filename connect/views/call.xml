@@ -55,9 +55,9 @@
             <form create="false">
                 <header>
                     <button string="Partner" name="create_partner_button" type="object" class="btn-primary" icon='fa-user'
-                            invisible="not partner"/>
+                            attrs="{'invisible': [('partner', '=', False)]}"/>
                     <button string="Partner" name="create_partner_button" type="object" class="btn-primary" icon='fa-user-plus'
-                            invisible="partner"/>
+                            attrs="{'invisible': [('partner', '!=', False)]}"/>
                     <!--
                     <button name="transfer" type="object" string="Transfer"/>
                     <button name="redial" type="object" string="Redial"/>
