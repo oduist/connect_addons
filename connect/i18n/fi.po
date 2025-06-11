@@ -228,7 +228,6 @@ msgid "Answered User Avatar"
 msgstr "Vastanneen käyttäjän avatar"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_byoc__app
 msgid "App"
 msgstr "Sovellus"
 
@@ -274,18 +273,6 @@ msgstr "Käytettävissä olevat ulos lähtevät puhelut"
 #, python-format
 msgid "Avatar"
 msgstr "Avatar-kuva"
-
-#. module: connect
-#: model:ir.actions.act_window,name:connect.byoc_action model:ir.model,name:connect.model_connect_byoc
-#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__byoc
-#: model_terms:ir.ui.view,arch_db:connect.connect_outgoing_rule_search
-msgid "BYOC"
-msgstr "BYOC"
-
-#. module: connect
-#: model:ir.ui.menu,name:connect.byocs_menu
-msgid "BYOCs"
-msgstr "BYOC:t"
 
 #. module: connect
 #. odoo-javascript
@@ -714,11 +701,6 @@ msgid "Connect User"
 msgstr "Soittosovelluksen käyttäjä"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_byoc__connection_policy_sid
-msgid "Connection Policy Sid"
-msgstr "Yhteyspolitiikka SID"
-
-#. module: connect
 #: model:ir.model,name:connect.model_res_partner
 msgid "Contact"
 msgstr "Kontakti"
@@ -740,7 +722,6 @@ msgid "Country"
 msgstr "Maa"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_byoc__create_uid
 #: model:ir.model.fields,field_description:connect.field_connect_call__create_uid
 #: model:ir.model.fields,field_description:connect.field_connect_callflow__create_uid
 #: model:ir.model.fields,field_description:connect.field_connect_callflow_choice__create_uid
@@ -757,7 +738,6 @@ msgstr "Maa"
 #: model:ir.model.fields,field_description:connect.field_connect_message__create_uid
 #: model:ir.model.fields,field_description:connect.field_connect_number__create_uid
 #: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__create_uid
-#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__create_uid
 #: model:ir.model.fields,field_description:connect.field_connect_query__create_uid
 #: model:ir.model.fields,field_description:connect.field_connect_query_prompt__create_uid
 #: model:ir.model.fields,field_description:connect.field_connect_query_source__create_uid
@@ -772,7 +752,6 @@ msgid "Created by"
 msgstr "Luonut"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_byoc__create_date
 #: model:ir.model.fields,field_description:connect.field_connect_call__create_date
 #: model:ir.model.fields,field_description:connect.field_connect_callflow__create_date
 #: model:ir.model.fields,field_description:connect.field_connect_callflow_choice__create_date
@@ -789,7 +768,6 @@ msgstr "Luonut"
 #: model:ir.model.fields,field_description:connect.field_connect_message__create_date
 #: model:ir.model.fields,field_description:connect.field_connect_number__create_date
 #: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__create_date
-#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__create_date
 #: model:ir.model.fields,field_description:connect.field_connect_query__create_date
 #: model:ir.model.fields,field_description:connect.field_connect_query_prompt__create_date
 #: model:ir.model.fields,field_description:connect.field_connect_query_source__create_date
@@ -923,17 +901,11 @@ msgid "Direction"
 msgstr "Suunta"
 
 #. module: connect
-#: model_terms:ir.ui.view,arch_db:connect.connect_outgoing_rule_search
-msgid "Disabled"
-msgstr "Pois käytöstä"
-
-#. module: connect
 #: model:ir.model.fields,field_description:connect.field_connect_settings__display_auth_token
 msgid "Display Auth Token"
 msgstr "Näytä Auth-tunniste"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_byoc__display_name
 #: model:ir.model.fields,field_description:connect.field_connect_call__display_name
 #: model:ir.model.fields,field_description:connect.field_connect_callflow__display_name
 #: model:ir.model.fields,field_description:connect.field_connect_callflow_choice__display_name
@@ -950,7 +922,6 @@ msgstr "Näytä Auth-tunniste"
 #: model:ir.model.fields,field_description:connect.field_connect_message__display_name
 #: model:ir.model.fields,field_description:connect.field_connect_number__display_name
 #: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__display_name
-#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__display_name
 #: model:ir.model.fields,field_description:connect.field_connect_query__display_name
 #: model:ir.model.fields,field_description:connect.field_connect_query_prompt__display_name
 #: model:ir.model.fields,field_description:connect.field_connect_query_source__display_name
@@ -1053,8 +1024,6 @@ msgid "Empty"
 msgstr "Tyhjä"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__is_enabled
-#: model_terms:ir.ui.view,arch_db:connect.connect_outgoing_rule_search
 #: model_terms:ir.ui.view,arch_db:connect.connect_user_form
 msgid "Enabled"
 msgstr "Käytössä"
@@ -1244,7 +1213,6 @@ msgid "From Country"
 msgstr "Maasta"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_byoc__from_domain_sid
 msgid "From Domain Sid"
 msgstr "Lähdetoimialueen SID"
 
@@ -1384,7 +1352,6 @@ msgstr ""
 "korjaukset, jotka voivat vaikuttaa asennukseeni."
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_byoc__id
 #: model:ir.model.fields,field_description:connect.field_connect_call__id
 #: model:ir.model.fields,field_description:connect.field_connect_callflow__id
 #: model:ir.model.fields,field_description:connect.field_connect_callflow_choice__id
@@ -1401,7 +1368,6 @@ msgstr ""
 #: model:ir.model.fields,field_description:connect.field_connect_message__id
 #: model:ir.model.fields,field_description:connect.field_connect_number__id
 #: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__id
-#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__id
 #: model:ir.model.fields,field_description:connect.field_connect_query__id
 #: model:ir.model.fields,field_description:connect.field_connect_query_prompt__id
 #: model:ir.model.fields,field_description:connect.field_connect_query_source__id
@@ -1512,7 +1478,6 @@ msgid "Language"
 msgstr "Kieli"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_byoc__write_uid
 #: model:ir.model.fields,field_description:connect.field_connect_call__write_uid
 #: model:ir.model.fields,field_description:connect.field_connect_callflow__write_uid
 #: model:ir.model.fields,field_description:connect.field_connect_callflow_choice__write_uid
@@ -1529,7 +1494,6 @@ msgstr "Kieli"
 #: model:ir.model.fields,field_description:connect.field_connect_message__write_uid
 #: model:ir.model.fields,field_description:connect.field_connect_number__write_uid
 #: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__write_uid
-#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__write_uid
 #: model:ir.model.fields,field_description:connect.field_connect_query__write_uid
 #: model:ir.model.fields,field_description:connect.field_connect_query_prompt__write_uid
 #: model:ir.model.fields,field_description:connect.field_connect_query_source__write_uid
@@ -1544,7 +1508,6 @@ msgid "Last Updated by"
 msgstr "Viimeisin muokkaaja"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_byoc__write_date
 #: model:ir.model.fields,field_description:connect.field_connect_call__write_date
 #: model:ir.model.fields,field_description:connect.field_connect_callflow__write_date
 #: model:ir.model.fields,field_description:connect.field_connect_callflow_choice__write_date
@@ -1561,7 +1524,6 @@ msgstr "Viimeisin muokkaaja"
 #: model:ir.model.fields,field_description:connect.field_connect_message__write_date
 #: model:ir.model.fields,field_description:connect.field_connect_number__write_date
 #: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__write_date
-#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__write_date
 #: model:ir.model.fields,field_description:connect.field_connect_query__write_date
 #: model:ir.model.fields,field_description:connect.field_connect_query_prompt__write_date
 #: model:ir.model.fields,field_description:connect.field_connect_query_source__write_date
@@ -1734,7 +1696,6 @@ msgid "My Activity Deadline"
 msgstr "Oman toimenpiteen määräaika"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_byoc__friendly_name
 #: model:ir.model.fields,field_description:connect.field_connect_call__name
 #: model:ir.model.fields,field_description:connect.field_connect_callflow__name
 #: model:ir.model.fields,field_description:connect.field_connect_callout__name
@@ -1742,7 +1703,6 @@ msgstr "Oman toimenpiteen määräaika"
 #: model:ir.model.fields,field_description:connect.field_connect_favorite__name
 #: model:ir.model.fields,field_description:connect.field_connect_message__name
 #: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__name
-#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__name
 #: model:ir.model.fields,field_description:connect.field_connect_query_prompt__name
 #: model:ir.model.fields,field_description:connect.field_connect_query_source__name
 #: model:ir.model.fields,field_description:connect.field_connect_queue__name
@@ -1942,15 +1902,6 @@ msgstr "Lähtevät soittajan tunnisteet"
 msgid "Outgoing Callerid"
 msgstr "Lähtevä soittajan tunniste"
 
-#. module: connect
-#: model:ir.actions.act_window,name:connect.outgoing_rule_action model:ir.model,name:connect.model_connect_outgoing_rule
-msgid "Outgoing Rule"
-msgstr "Lähtevä sääntö"
-
-#. module: connect
-#: model:ir.ui.menu,name:connect.outgoing_rules_menu
-msgid "Outgoing Rules"
-msgstr "Lähtevät säännöt"
 
 #. module: connect
 #: model:ir.model,name:connect.model_sms_sms
@@ -2014,11 +1965,6 @@ msgstr "Yhteistyökumppanit"
 #: model:ir.model.fields,field_description:connect.field_connect_user__password
 msgid "Password"
 msgstr "Salasana"
-
-#. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_outgoing_rule__pattern
-msgid "Pattern"
-msgstr "Kuvio"
 
 #. module: connect
 #: model_terms:ir.ui.view,arch_db:connect.connect_callout_form
@@ -2412,7 +2358,6 @@ msgid "Show Partner Code"
 msgstr "Näytä kumppanikoodi"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_byoc__sid
 #: model:ir.model.fields,field_description:connect.field_connect_number__sid
 #: model:ir.model.fields,field_description:connect.field_connect_outgoing_callerid__sid
 msgid "Sid"
@@ -2765,11 +2710,6 @@ msgid "UPDATE COMPANY DATA"
 msgstr "PÄIVITTÄ YRITYKSEN TIETOJA"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_byoc__url
-msgid "Url"
-msgstr "URL"
-
-#. module: connect
 #. odoo-javascript
 #: code:addons/connect/static/src/components/phone/calls/calls.xml:0
 #: code:addons/connect/static/src/components/phone/favorites/favorites.xml:0 model:ir.model,name:connect.model_res_users
@@ -2824,21 +2764,18 @@ msgid "Voice"
 msgstr "Ääni"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_byoc__voice_fallback_url
 #: model:ir.model.fields,field_description:connect.field_connect_number__voice_fallback_url
 #: model:ir.model.fields,field_description:connect.field_connect_twiml__voice_fallback_url
 msgid "Voice Fallback Url"
 msgstr "Voice Fallback Url"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_byoc__voice_status_url
 #: model:ir.model.fields,field_description:connect.field_connect_number__voice_status_url
 #: model:ir.model.fields,field_description:connect.field_connect_twiml__voice_status_url
 msgid "Voice Status Url"
 msgstr "Äänen tila Url"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_byoc__voice_url
 #: model:ir.model.fields,field_description:connect.field_connect_number__voice_url
 #: model:ir.model.fields,field_description:connect.field_connect_twiml__voice_url
 msgid "Voice Url"
