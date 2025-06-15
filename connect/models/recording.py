@@ -64,25 +64,52 @@ class Recording(models.Model):
                     api_key=openai_api_key, http_client=httpx.Client(proxy=os.environ.get('HTTPS_PROXY')))
             else:
                 client = openai.OpenAI(api_key=openai_api_key)
+
+            max_size_mb = 25
+            max_bytes = max_size_mb * 1024 * 1024  # 25MB
+            file_count = 0
+            temp_files = []
+
             response = requests.get(self.media_url, stream=True)
             response.raise_for_status()
-            with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
-                # Write the content from the URL to the temporary file
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        temp_file.write(chunk)
-                temp_file_path = temp_file.name
-            with open(temp_file_path, 'rb') as audio_file:
-                transcript = client.audio.transcriptions.create(
-                    model="whisper-1", file=audio_file,
-                    response_format='verbose_json', timestamp_granularities=["segment"])
-                # result['minutes'] = round(transcript.duration / 60.0, 2)
-            # Create segments
+
+            current_file = NamedTemporaryFile(delete=False, suffix=".mp3")
+            temp_files.append(current_file.name)
+            current_size = 0
+
+            for chunk in response.iter_content(chunk_size=8192):
+                if not chunk:
+                    continue
+
+                if current_size + len(chunk) > max_bytes:
+                    current_file.close()
+                    file_count += 1
+                    current_file = NamedTemporaryFile(delete=False, suffix=f"_{file_count}.mp3")
+                    temp_files.append(current_file.name)
+                    current_size = 0
+
+                current_file.write(chunk)
+                current_size += len(chunk)
+            current_file.close()
+
             segments = ''
-            for s in transcript.segments:
-                seconds = int(s.start)
-                ts = f"{int(seconds // 3600):02d}:{int((seconds % 3600) // 60):02d}:{int(seconds % 60):02d}"
-                segments += '{} {}\n'.format(ts, s.text)
+            sum_file_seconds = 0
+            for temp_file_path in temp_files:
+                with open(temp_file_path, 'rb') as audio_file:
+                    transcript = client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_file,
+                        response_format='verbose_json',
+                        timestamp_granularities=["segment"]
+                    )
+                    # result['minutes'] = round(transcript.duration / 60.0, 2)
+                # Create segments
+                for s in transcript.segments:
+                    seconds = int(s.start) + sum_file_seconds
+                    ts = f"{int(seconds // 3600):02d}:{int((seconds % 3600) // 60):02d}:{int(seconds % 60):02d}"
+                    segments += '{} {}\n'.format(ts, s.text)
+                sum_file_seconds += round(transcript.duration / 60.0, 2)
+
             result['transcript'] = segments
             # Make a summary
             response = client.chat.completions.create(
