@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 
 CALL_END_STATUSES = ['completed', 'busy', 'failed', 'no-answer', 'canceled']
 
+IGNORE_ERROR_CODES = ['32009']
+
 
 class Call(models.Model):
     _name = 'connect.call'
@@ -213,7 +215,7 @@ class Call(models.Model):
             self.register_call(channel, params)
         # Reload call view
         self.env['connect.settings'].connect_reload_view('connect.call')
-        if params.get('ErrorCode'):
+        if params.get('ErrorCode') and params.get('ErrorCode') not in IGNORE_ERROR_CODES:
             channel.call.update({
                 'has_error': True,
                 'error_code': params.get('ErrorCode'),
