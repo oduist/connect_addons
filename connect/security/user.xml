@@ -33,17 +33,6 @@
     <field name="perm_unlink" eval="0"/>
   </record>
 
-  <!-- BYOC -->
-  <record id="connect_byoc_user" model="ir.model.access">
-    <field name="name">connect_byoc_user</field>
-    <field name="model_id" ref="connect.model_connect_byoc"/>
-    <field name="group_id" ref="connect.group_connect_user"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="0"/>
-    <field name="perm_create" eval="0"/>
-    <field name="perm_unlink" eval="0"/>
-  </record>
-
 <!-- User -->
   <record id="connect_user_user" model="ir.model.access">
     <field name="name">connect_user_user</field>
@@ -92,17 +81,6 @@
   <record id="connect_outgoing_callerid_user" model="ir.model.access">
     <field name="name">connect_outgoing_callerid_user</field>
     <field name="model_id" ref="connect.model_connect_outgoing_callerid"/>
-    <field name="group_id" ref="connect.group_connect_user"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="0"/>
-    <field name="perm_create" eval="0"/>
-    <field name="perm_unlink" eval="0"/>
-  </record>
-
-<!-- Outgoing Rules -->
-  <record id="connect_outgoing_rule_user" model="ir.model.access">
-    <field name="name">connect_outgoing_rule_user</field>
-    <field name="model_id" ref="connect.model_connect_outgoing_rule"/>
     <field name="group_id" ref="connect.group_connect_user"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="0"/>

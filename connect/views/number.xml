@@ -13,8 +13,8 @@
             name="Numbers"
             action="connect.number_action"/>
 
-    <record id="connect.number_list" model="ir.ui.view">
-        <field name="name">connect.number_list</field>
+    <record id="connect_number_list" model="ir.ui.view">
+        <field name="name">connect_number_list</field>
         <field name="model">connect.number</field>
         <field name="arch" type="xml">
             <tree create="false">
@@ -39,7 +39,7 @@
                     <div class="oe_title">
                         <h1>
                             <label class="oe_edit_only" for="phone_number"/>
-                            <field name="phone_number" placeholder="Number..."/>
+                            <field name="phone_number" readonly="1" placeholder="Number..."/>
                         </h1>
                     </div>
                         <group>
