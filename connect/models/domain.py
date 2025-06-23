@@ -125,7 +125,7 @@ class Domain(models.Model):
 
     def unlink(self):
         for rec in self:
-            if rec.delete_protection:
+            if rec.delete_protection and not self.env.context.get('force_delete'):
                 raise ValidationError("Remove delete protection to delete the domain!")
         client = self.env["connect.settings"].get_client()
         for rec in self:
