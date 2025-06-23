@@ -1,4 +1,3 @@
-from . import byoc
 from . import call
 from . import callflow
 from . import channel
@@ -11,8 +10,6 @@ from . import message
 from . import message_configuration
 from . import number
 from . import outgoing_callerid
-from . import outgoing_callerid
-from . import outgoing_rule
 from . import recording
 from . import res_partner
 from . import res_users
