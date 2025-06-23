@@ -2,6 +2,10 @@
 import inspect
 import json
 import logging
+import os
+
+import httpx
+import openai
 import requests
 import random
 import re
@@ -11,7 +15,6 @@ import uuid
 from odoo import fields, models, api, release
 from odoo.exceptions import ValidationError, UserError
 from twilio.rest import Client
-
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +65,7 @@ def generate_password():
     random.shuffle(characters)
     return ''.join(characters)
 
+
 ######### COPY FROM SETTINGS TO ELIMINATE CIRULAR IMPORT
 def strip_number(number):
     """Strip number formating"""
@@ -93,6 +97,7 @@ class Settings(models.Model):
     ############# RECORDING & TRANSCRIPT FIELDS ##############################################
     proxy_recordings = fields.Boolean(help='Re-stream recordings using Odoo user auth.', default=True)
     transcript_calls = fields.Boolean()
+    transcript_provider = fields.Selection(selection=[('openai', 'Open AI')], default='openai', required=True)
     summary_prompt = fields.Text(required=True, default='Summarise this phone call')
     register_summary = fields.Boolean(default=True, help='Register summary at partner of reference chat.')
     ############################################################
@@ -322,7 +327,6 @@ class Settings(models.Model):
             'connect.registration_number', res.get('registration_number'))
         self.set_param('is_registered', True)
 
-
     def prepare_registration_data(self):
         return {
             'instance_uid': self.get_param('instance_uid'),
@@ -463,6 +467,18 @@ class Settings(models.Model):
             else:
                 raise
 
+    @api.model
+    def get_openai_client(self):
+        api_key = self.sudo().get_param('openai_api_key')
+        if not api_key:
+            return False
+        if os.environ.get('OPENAI_PROXY'):
+            client = openai.OpenAI(
+                api_key=api_key, http_client=httpx.Client(proxy=os.environ.get('HTTPS_PROXY')))
+        else:
+            client = openai.OpenAI(api_key=api_key)
+        return client
+
     def check_api_url(self):
         message = None
         if re.match(r"^http://", self.get_param('api_url')):
@@ -530,7 +546,7 @@ class Settings(models.Model):
             to = list(ring_options.items())[0][1]
         if 'client:' in to:
             # Strip + before sending as param.
-            to += '&From={}'.format(number.replace('+',''))
+            to += '&From={}'.format(number.replace('+', ''))
         exten = self.env['connect.exten'].search([('number', '=', number)], limit=1)
         default_number = self.env['connect.outgoing_callerid'].search([('is_default', '=', True)], limit=1)
         if exten:
@@ -562,11 +578,12 @@ class Settings(models.Model):
         record = self.env.user.connect_user.record_calls
         record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus')
         channel = client.calls.create(twiml=twiml, to=to, from_=callerId,
-            status_callback=status_url,
-            record=record, recording_channels='dual',
-            recording_status_callback=record_status_url, recording_status_callback_event=["completed"],
-            status_callback_event=['initiated','answered', 'completed'],
-        )
+                                      status_callback=status_url,
+                                      record=record, recording_channels='dual',
+                                      recording_status_callback=record_status_url,
+                                      recording_status_callback_event=["completed"],
+                                      status_callback_event=['initiated', 'answered', 'completed'],
+                                      )
         self.env['connect.channel'].sudo().create({
             'sid': channel.sid,
             'technical_direction': 'outboubd-api',
