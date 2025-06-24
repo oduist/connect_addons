@@ -4,7 +4,7 @@
   <record id="elevenlabs_number_list" model="ir.ui.view">
     <field name="name">elevenlabs_number_list</field>
     <field name="model">connect.number</field>
-    <field name="inherit_id" ref="connect.number_list"/>
+    <field name="inherit_id" ref="connect.connect_number_list"/>
     <field name="arch" type="xml">
       <field name="callflow" position="after">
         <field name="elevenlabs_agent"/>
