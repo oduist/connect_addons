@@ -279,7 +279,7 @@ class Domain(models.Model):
         # Create in Twilio what is only in Odoo.
         for sid in only_in_odoo:
             odoo_domain = self.search([("sid", "=", sid)])
-            odoo_domain.create_twilio_domain(client)
+            odoo_domain.create_domain(client)
         # Update what exists in both.
         for sid in common_recs:
             odoo_domain = self.search([("sid", "=", sid)])
