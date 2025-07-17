@@ -64,16 +64,16 @@ export class PhoneSysTray extends Component {
                 // Check microphone permission for Firefox
             } else if (this.browser === browser.firefox) {
                 navigator.mediaDevices
-                        .getUserMedia({video: false, audio: true})
-                        .then((stream) => {
-                            stream.getTracks().forEach(function (track) {
-                                track.stop()
-                                self.microphone = true
-                            })
+                    .getUserMedia({video: false, audio: true})
+                    .then((stream) => {
+                        stream.getTracks().forEach(function (track) {
+                            track.stop()
+                            self.microphone = true
                         })
-                        .catch((err) => {
-                            console.error(`you got an error: ${err}`)
-                        })
+                    })
+                    .catch((err) => {
+                        console.error(`you got an error: ${err}`)
+                    })
             }
         })
     }
@@ -93,7 +93,9 @@ export class PhoneSysTray extends Component {
     }
 
     _onClick() {
-        if (this.state.exception){
+        if (this.state.exception === 'AccessTokenInvalid') {
+            this.notification.add('Please reload the page to refresh the Phone!', {title: 'Connect', type: 'warning'})
+        } else if (this.state.exception) {
             this.notification.add(markup(this.state.exception), {title: 'Connect', type: 'warning'})
         } else {
             this.bus.trigger('busPhoneToggleDisplay')

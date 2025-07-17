@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <record id="elevenlabs_number_list" model="ir.ui.view">
+    <field name="name">elevenlabs_number_list</field>
+    <field name="model">connect.number</field>
+    <field name="inherit_id" ref="connect.connect_number_list"/>
+    <field name="arch" type="xml">
+      <field name="callflow" position="after">
+        <field name="elevenlabs_agent"/>
+      </field>
+    </field>
+  </record>
+
+  <record id="elevenlabs_number_form" model="ir.ui.view">
+    <field name="name">elevenlabs_number_list</field>
+    <field name="model">connect.number</field>
+    <field name="inherit_id" ref="connect.connect_number_form"/>
+    <field name="arch" type="xml">
+      <field name="callflow" position="after">
+        <field name="elevenlabs_agent"
+               attrs="{'invisible': [('destination', '!=', 'elevenlabs_agent')],
+                       'required': [('destination', '=', 'elevenlabs_agent')]}"/>
+      </field>
+    </field>
+  </record>
+
+</odoo>

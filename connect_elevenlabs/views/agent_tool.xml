@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="agent_tool_action" model="ir.actions.act_window">
+        <field name="name">Tools</field>
+        <field name="res_model">connect.elevenlabs_agent_tool</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="connect.elevenlabs_agent_tool_menu"
+              sequence="1300"
+              parent="elevenlabs_menu"
+              name="Tools"
+              action="connect_elevenlabs.agent_tool_action"/>
+
+    <record id="connect_elevenlabs_agent_tool_list" model="ir.ui.view">
+        <field name="name">connect_elevenlabs_agent_tool_list</field>
+        <field name="model">connect.elevenlabs_agent_tool</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="tool_type"/>
+                <field name="is_enabled"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="connect_elevenlabs_agent_tool_form" model="ir.ui.view">
+        <field name="name">connect_elevenlabs_agent_tool_form</field>
+        <field name="model">connect.elevenlabs_agent_tool</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="description"/>
+                            <field name="tool_type"/>
+                            <field name="param_type" string="Parameters Type"
+                                   attrs="{'invisible': [('tool_type', '!=', 'webhook')]}"/>
+                        </group>
+                        <group>
+                            <field name="is_enabled"/>
+                            <field name="path"
+                                   attrs="{'invisible': [('tool_type', '!=', 'webhook'), ('url', '!=', False)]}"/>
+                            <field name="url"
+                                   attrs="{'invisible': [('tool_type', '!=', 'webhook'), ('path', '!=', False)]}"/>
+                            <field name="method"
+                                   attrs="{'invisible': [('tool_type', '!=', 'webhook')]}"/>
+                            <field name="client_expects_response"
+                                   attrs="{'invisible': [('tool_type', '!=', 'client')]}"/>
+                            <field name="response_timeout_secs"/>
+                        </group>
+                    </group>
+                    <group string="Parameters"
+                           attrs="{'invisible': [('tool_type', '=', 'system')]}">
+                        <group>
+                            <field name="body_params_description"
+                                   attrs="{'invisible': ['|', ('param_type', '!=', 'body'), ('tool_type', 'not in', ['webhook','client'])]}"/>
+                        </group>
+                    </group>
+                    <field name="params" nolabel="1"
+                           attrs="{'invisible': [('tool_type', '=', 'system')]}"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>

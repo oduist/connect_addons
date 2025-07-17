@@ -16,10 +16,10 @@ class Number(models.Model):
     _rec_name = 'phone_number'
     _order = 'phone_number'
 
-    sid = fields.Char(required=True)
+    sid = fields.Char()
     is_ignored = fields.Boolean('Ignored')
     is_default = fields.Boolean(string='Default') # TODO: Remove after version 1.0
-    phone_number = fields.Char(required=True, readonly=True)
+    phone_number = fields.Char(required=True)
     friendly_name = fields.Char()
     voice_url = fields.Char(compute='_get_twilio_urls', compute_sudo=True)
     voice_fallback_url = fields.Char(compute='_get_twilio_urls', compute_sudo=True)
@@ -31,7 +31,7 @@ class Number(models.Model):
         ('user', 'User'),
         ('callflow', 'CallFlow'),
         ('twiml', 'TwiML'),
-    ])
+    ], ondelete='set null')
     callflow = fields.Many2one('connect.callflow', ondelete='set null')
     user = fields.Many2one('connect.user', ondelete='set null')
 
@@ -81,7 +81,8 @@ class Number(models.Model):
         res = super().write(vals)
         client = self.env['connect.settings'].get_client()
         for rec in self:
-            rec.update_twilio_number(client)
+            if not self.env.context.get('skip_twilio_sync'):
+                rec.update_twilio_number(client)
         return res
 
     @api.model
@@ -108,7 +109,10 @@ class Number(models.Model):
                 # Number already in Odoo, update Voice URLs
                 rec.update_twilio_number(client)
         # Remove numbers that exist only in Odoo (number was removed in Twilio).
-        numbers_to_remove = self.search([('sid', 'not in', [k.sid for k in numbers])])
+        numbers_to_remove = self.search([
+            ('sid', 'not in', [k.sid for k in numbers]),
+            ('sid', '!=', False) # BYOC not included.
+        ])
         if numbers_to_remove:
             user_message = 'Number(s) {} removed in Twilio!'.format(
                 ','.join([k.phone_number for k in numbers_to_remove]))
@@ -120,20 +124,24 @@ class Number(models.Model):
                 message=user_message
             )
 
-    @api.model
-    def route_call(self, request):
-        debug(self, 'Route number call: %s' % json.dumps(request, indent=2))
-        # Create call
-        self.env['connect.call'].sudo().on_call_status(request)
-        # Find the number
-        number = self.search([('phone_number', '=', request['Called'])])
-        if not number:
-            return '<Response><Say>Number not found. Goodbye!</Say></Response>'
-        if number.destination == 'twiml' and number.twiml:
-            return number.twiml.render(request)
-        elif number.destination == 'user' and number.user:
-            return number.user.render(request)
-        elif number.destination == 'callflow' and number.callflow:
-            return number.callflow.render(request)
+    def render(self, request={}, params={}):
+        self.ensure_one()
+        if self.destination == 'twiml' and self.twiml:
+            return self.twiml.render(request)
+        elif self.destination == 'user' and self.user:
+            return self.user.render(request)
+        elif self.destination == 'callflow' and self.callflow:
+            return self.callflow.render(request)
         else:
             return '<Response><Say>Number not configured. Goodbye!</Say></Response>'
+
+    @api.model
+    def route_call(self, request, params={}):
+        debug(self, 'Route number call: %s' % json.dumps(request, indent=2))
+        # Create call
+        self.env['connect.call'].on_call_status(request)
+        # Find the number
+        number = self.sudo().search([('phone_number', '=', request['Called'])])
+        if not number:
+            return '<Response><Say>Number not found. Goodbye!</Say></Response>'
+        return number.render(request=request, params=params)

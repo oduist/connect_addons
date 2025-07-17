@@ -18,12 +18,23 @@
         'python': ['elevenlabs'],
     },
     'data': [
+        # Data
+        'data/tools.xml',
+        # Security
         'security/admin.xml',
         'security/user.xml',
+        'security/webhook.xml',
+        # Views
+        'views/call.xml',
         'views/settings.xml',
         'views/voice.xml',
         'views/callflow.xml',
         'views/user.xml',
+        'views/agent.xml',
+        'views/agent_tool.xml',
+        'views/agent_tool_params.xml',
+        'views/number.xml',
+        'views/recording.xml',
     ],
     'demo': [],
     'installable': True,

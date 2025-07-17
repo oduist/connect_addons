@@ -54,8 +54,10 @@
         <field name="arch" type="xml">
             <form create="false">
                 <header>
-                    <button string="Partner" name="create_partner_button" type="object"
-                            class="btn-primary" icon='fa-user-plus'/>
+                    <button string="Partner" name="create_partner_button" type="object" class="btn-primary" icon='fa-user'
+                            attrs="{'invisible': [('partner', '=', False)]}"/>
+                    <button string="Partner" name="create_partner_button" type="object" class="btn-primary" icon='fa-user-plus'
+                            attrs="{'invisible': [('partner', '!=', False)]}"/>
                     <!--
                     <button name="transfer" type="object" string="Transfer"/>
                     <button name="redial" type="object" string="Redial"/>
@@ -111,7 +113,8 @@
                                 </group>
                             </group>
                             <group>
-                                <field name="transcript"/>
+                                <field name="transcript"
+                                       attrs="{'invisible': [('transcript', '=', False)]}"/>
                             </group>
                         </page>
                         <page name="details" string="Details">
