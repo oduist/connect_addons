@@ -239,6 +239,9 @@ class User(models.Model):
         if self.greeting_message:
             self.get_greeting_message(response)
         dial_sip_kwargs = {'timeout': self.sip_ring_timeout, 'callerId': callerId}
+        # Check for action callback URL.
+        if params.get('dial_action_url'):
+            dial_sip_kwargs['action'] = params['dial_action_url']
         if self.record_calls:
             dial_sip_kwargs.update({
                 'recordingStatusCallback': record_status_url,
@@ -249,8 +252,10 @@ class User(models.Model):
             'sip:{}'.format(self.uri),
             statusCallbackEvent='initiated answered completed',
             statusCallback=status_url)
-
         dial_client_kwargs = {'timeout': self.client_ring_timeout, 'callerId': callerId}
+        # Check for action callback URL.
+        if params.get('dial_action_url'):
+            dial_client_kwargs['action'] = params['dial_action_url']
         if self.record_calls:
             dial_client_kwargs.update({
                 'record': 'record-from-answer',
