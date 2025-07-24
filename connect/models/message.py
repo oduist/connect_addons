@@ -2,13 +2,17 @@ import ast
 import logging
 
 import phonenumbers
+from markupsafe import Markup
 from phonenumbers import parse, format_number, PhoneNumberFormat
 from twilio.twiml.messaging_response import MessagingResponse
 
 from odoo import models, fields, api, SUPERUSER_ID, release
 from odoo.exceptions import ValidationError
+from odoo.tools import mail
 
 logger = logging.getLogger(__name__)
+
+mail.safe_attrs = mail.safe_attrs | frozenset(['controls'])
 
 
 class ConnectMessage(models.Model):
@@ -135,8 +139,11 @@ class ConnectMessage(models.Model):
                     mt_note = self.env.ref('mail.mt_note').id
                     obj = self.env[last_message.res_model].with_user(SUPERUSER_ID).browse(last_message.res_id)
                     if hasattr(obj, 'message_post'):
+                        body = values.get('body')
+                        if message.media_url:
+                            body = Markup(f"<span>{values.get('body')}</span><br/>{message.media_widget}")
                         kwargs = {
-                            'body': values.get('body'),
+                            'body': body,
                             'subtype_id': mt_note,
                             'message_type': message.message_type
                         }
