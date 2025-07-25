@@ -20,7 +20,6 @@
             <list>
                 <field name="name"/>
                 <field name="tool_type"/>
-                <field name="is_enabled"/>
             </list>
         </field>
     </record>
@@ -40,11 +39,10 @@
                             invisible="tool_type != 'webhook'"/>
                         </group>
                         <group>
-                            <field name="is_enabled"/>
                             <field name="path"
-                                invisible="tool_type != 'webhook' or url != False"/>
+                                invisible="tool_type != 'webhook'"/>
                             <field name="url"
-                                invisible="tool_type != 'webhook' or path != False"/>
+                                invisible="tool_type != 'webhook'"/>
                             <field name="method"
                                 invisible="tool_type != 'webhook'"/>
                             <field name="client_expects_response"
@@ -53,8 +51,6 @@
                         </group>
                     </group>
                     <group string="Parameters" invisible="tool_type == 'system'">
-                        <field name="body_params_description"
-                            invisible="param_type != 'body' or tool_type not in ['webhook','client']" required="params.length > 0"/>
                         <field name="params" nolabel="1"
                             invisible="tool_type == 'system'"/>
                     </group>

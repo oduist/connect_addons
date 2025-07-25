@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
+import json
 import re
 import urllib.parse
+import logging
 
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
+from elevenlabs import ToolRequestModel, ToolRequestModelToolConfig_Client, ToolRequestModelToolConfig_Webhook
+
+logger = logging.getLogger(__name__)
 
 
 class ElevenlabsAgentTool(models.Model):
@@ -12,7 +17,7 @@ class ElevenlabsAgentTool(models.Model):
     _order = 'name'
 
     name = fields.Char(required=True)
-    is_enabled = fields.Boolean(default=True, string='Enabled')
+    tool_id = fields.Char()
     description = fields.Text(required=True)
     tool_type = fields.Selection(
         [('client', 'Client'), ('webhook', 'Webhook'), ('system', 'System')], default='webhook', required=True)
@@ -66,7 +71,64 @@ class ElevenlabsAgentTool(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        return super().create(vals_list)
+        res = super().create(vals_list)
+        client = self.env['connect.settings'].get_elevenlabs_client()
+        try:
+            tool = client.conversational_ai.tools.create(
+                request=ToolRequestModel(
+                    tool_config=res.compute_agent_tools()
+                )
+            )
+            res.tool_id = tool.id
+        except Exception as e:
+            logger.exception(f'Error create tool: {e}')
+            raise e
+        return res
+
+    def compute_agent_tools(self):
+        dynamic_variables_placeholders = dict(
+            [(param.name, f'test_{param.name}') for param in self.params if param.value_type == 'dynamic_variable'])
+        tool_config = None
+        if self.tool_type == 'client':
+            tool_config = {
+                'type': self.tool_type,
+                'name': self.name,
+                'description': self.description,
+                'parameters': [{
+                    'type': param.data_type,
+                    'description': param.description if param.value_type == 'description' else '',
+                    'required': param.required,
+
+                } for param in self.params],
+                'expects_response': self.client_expects_response,
+                'response_timeout_secs': self.response_timeout_secs,
+                'dynamic_variables': {'dynamic_variable_placeholders': dynamic_variables_placeholders},
+            }
+            logger.info(f'Tool config: {json.dumps(tool_config, indent=2)}')
+            return ToolRequestModelToolConfig_Client(**tool_config)
+        elif self.tool_type == 'webhook':
+            tool_config = {
+                'type': self.tool_type,
+                'description': self.description,
+                'name': self.name,
+                'dynamic_variables': {'dynamic_variable_placeholders': dynamic_variables_placeholders},
+                'response_timeout_secs': self.response_timeout_secs,
+                'api_schema': {
+                    'method': self.method,
+                    'url': self.get_tool_url(),
+                    'query_params_schema': [{
+                        'id': param.name,
+                        'required': param.required,
+                        'type': param.data_type,
+                        'description': param.description if param.value_type == 'description' else '',
+                        "constant_value": param.constant_value if param.value_type == 'constant_value' else '',
+                        "dynamic_variable": param.dynamic_variable if param.value_type == 'dynamic_variable' else '',
+                        "value_type": param.value_type
+                    } for param in self.params]
+                },
+            }
+            logger.info(f'Tool config: {json.dumps(tool_config, indent=2)}')
+            return ToolRequestModelToolConfig_Webhook(**tool_config)
 
 
 class ElevenlabsAgentToolparams(models.Model):

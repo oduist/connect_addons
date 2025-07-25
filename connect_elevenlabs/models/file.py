@@ -57,9 +57,10 @@ class ElevenlabsFile(models.Model):
     def generate_elevenlabs_voice(self, text):
         try:
             client = self.env['connect.settings'].get_elevenlabs_client()
-            audio = client.generate(text=text,
-                voice=self.env['connect.settings'].sudo().get_param('elevenlabs_voice').voice_id,
-                model="eleven_multilingual_v2"
+            audio = client.text_to_speech.convert(
+                text=text,
+                voice_id=self.env['connect.settings'].sudo().get_param('elevenlabs_voice').voice_id,
+                model_id="eleven_multilingual_v2"
             )
             data = b''.join(audio)
             return base64.b64encode(data).decode('utf-8')
