@@ -19,6 +19,10 @@ warnings.filterwarnings("ignore", category=PydanticDeprecatedSince20)
 
 logger = logging.getLogger(__name__)
 
+default_prompt = """
+You are Harper, a vibrant and personable sales consultant with a passion for Conversational AI systems.
+"""
+
 language_list = [
     ('ar', 'Arabic'),
     ('bg', 'Bulgarian'),
@@ -85,8 +89,7 @@ class ElevenlabsAgent(models.Model):
     name = fields.Char(required=True)
     voice = fields.Many2one('connect.elevenlabs_voice', required=True)
     first_message = fields.Char(default="Hi there! How could I help you today?", required=True, translate=True)
-    prompt = fields.Html(required=True, default="You are Harper, a vibrant and personable sales consultant with "
-                                                "a passion for Conversational AI systems. ")
+    prompt = fields.Html(required=True, default=default_prompt)
     language = fields.Selection(selection=language_list, default='en', required=True)
     additional_languages = fields.Many2many('res.lang', domain=[('active', '=', True)], required=True)
     tools = fields.Many2many('connect.elevenlabs_agent_tool')
@@ -98,7 +101,6 @@ class ElevenlabsAgent(models.Model):
     knowledge_base_name = fields.Char()
     knowledge_base_note = fields.Text()
     knowledge_base_id = fields.Char()
-    use_flash = fields.Boolean(default=True)
     output_audio_format = fields.Selection([
         ('ulaw_8000', 'ulaw 8000'),
         ('pcm_8000', 'PCM 8000'),
@@ -117,6 +119,13 @@ class ElevenlabsAgent(models.Model):
         ('pcm_44100', 'PCM 44100'),
         ('pcm_48000', 'PCM 48000'),
     ], required=True, default='ulaw_8000')
+    model = fields.Selection([
+        ('eleven_turbo_v2', 'Eleven Turbo v2'),
+        ('eleven_turbo_v2_5', 'Eleven Turbo v2.5'),
+        ('eleven_flash_v2', 'Eleven Flash v2'),
+        ('eleven_flash_v2_5', 'Eleven Flash v2.5'),
+        ],
+        required=True, default='eleven_flash_v2_5')
     stability = fields.Float(default=0.5, required=True)
     speed = fields.Float(default=1.0, required=True)
     max_duration_seconds = fields.Integer(default=600, required=True)
@@ -125,6 +134,7 @@ class ElevenlabsAgent(models.Model):
     daily_limit = fields.Integer(default=100000, required=True,
                                  help='The maximum number of conversations per day')
     similarity_boost = fields.Float(default=0.8, required=True)
+    turn_timeout = fields.Float(default=7.0, required=True)
     exten = fields.Many2one('connect.exten', ondelete='set null', readonly=True)
     exten_number = fields.Char(related='exten.number')
 
@@ -135,11 +145,14 @@ class ElevenlabsAgent(models.Model):
             for rec in res:
                 rec.create_elevenlabs_knowledge_base()
                 agent = rec.create_elevenlabs_agent()
-                rec.agent_uid = agent.agent_id
+                rec.with_context(skip_elevenlabs=True).write({'agent_uid': agent.agent_id})
                 rec.update_elevenlabs_agent()
         return res
 
     def write(self, vals):
+        if vals.get('exten'):
+            # Skip all syncing.
+            return super().write(vals)
         res = super().write(vals)
         if not self.env.context.get('skip_elevenlabs'):
             if 'knowledge_base_note' or 'knowledge_base_name' in vals.keys() and self.knowledge_base_note:
@@ -155,7 +168,7 @@ class ElevenlabsAgent(models.Model):
             self.delete_elevenlabs_agent()
             self.delete_elevenlabs_knowledge_base()
         except Exception as e:
-            logger.exception("Error Delete Elevenlabs agent: ", e)
+            logger.exception("Error Delete Elevenlabs agent: %s", e)
         return super().unlink()
 
     @api.constrains('temperature')
@@ -190,7 +203,7 @@ class ElevenlabsAgent(models.Model):
         self.ensure_one()
         channel_sid = request.get("CallSid")
         call_id = self.env['connect.channel'].search([('sid', '=', channel_sid)], limit=1).call.id
-        elevenlabs_agent_url = self.env['connect.settings'].get_param('elevenlabs_agent_url').replace('https://',
+        elevenlabs_agent_url = self.env['connect.settings'].sudo().get_param('elevenlabs_agent_url').replace('https://',
                                                                                                       'wss://')
         agent_uid = self.agent_uid
         connect = Connect()
@@ -266,36 +279,35 @@ class ElevenlabsAgent(models.Model):
             self.with_context(skip_elevenlabs=True).write({'knowledge_base_id': None})
 
     def create_elevenlabs_agent(self):
-        # try:
         client = self.env['connect.settings'].get_elevenlabs_client()
         return client.conversational_ai.create_agent(
             name=self.name,
             conversation_config=ConversationConfig(),
             platform_settings=self.compute_platform_settings(),
         )
-        # except Exception as e:
-        #     logger.exception("Error create Elevenlabs agent: ", e)
 
     def update_elevenlabs_agent(self):
-        # try:
-        client = self.env['connect.settings'].get_elevenlabs_client()
-        agent = client.conversational_ai.update_agent(
-            agent_id=self.agent_uid,
-            name=self.name,
-            conversation_config=self.compute_agent_conversation_config(),
-            platform_settings=self.compute_platform_settings(),
-        )
-        # except Exception as e:
-        # logger.exception("Error update Elevenlabs agent: ", e)
+        try:
+            client = self.env['connect.settings'].get_elevenlabs_client()
+            agent = client.conversational_ai.update_agent(
+                agent_id=self.agent_uid,
+                name=self.name,
+                conversation_config=self.compute_agent_conversation_config(),
+                platform_settings=self.compute_platform_settings(),
+            )
+        # We
+        except Exception as e:
+            if 'English Agents must use turbo or flash v2' in str(e):
+                 error_msg = 'English only Agents must use v2 models!'
+            else:
+                error_msg = str(e)
+            self.env['connect.settings'].connect_notify(error_msg, title='Agent Sync Error')
 
     def delete_elevenlabs_agent(self):
-        # try:
         client = self.env['connect.settings'].get_elevenlabs_client()
         client.conversational_ai.delete_agent(
             agent_id=self.agent_uid
         )
-        # except Exception as e:
-        #     logger.exception("Error update Elevenlabs agent: ", e)
 
     def compute_platform_settings(self):
         return {
@@ -367,8 +379,13 @@ class ElevenlabsAgent(models.Model):
                 'speed': self.speed,
                 'stability': self.stability,
                 'voice_id': self.voice.voice_id,
-                'model_id': 'eleven_flash_v2_5' if self.use_flash else 'eleven_turbo_v2_5',
+                'model_id': self.model,
             },
+            'turn': {
+                'turn_timeout': self.turn_timeout,
+                'silence_end_call_timeout': 30.0,
+                'mode': "turn"
+            }
         }
         logger.info('Tools: {}'.format(json.dumps(config, indent=2)))
         return config
