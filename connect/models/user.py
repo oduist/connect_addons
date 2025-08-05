@@ -16,6 +16,13 @@ from .twiml import pretty_xml
 logger = logging.getLogger(__name__)
 
 
+class UserCallRender(models.Model):
+    _name = 'connect.user_call_render'
+
+    call = fields.Many2one('connect.call', required=True, ondelete='cascade')
+    render_type = fields.Char()
+
+
 class User(models.Model):
     _name = 'connect.user'
     _rec_name = 'username'
@@ -30,7 +37,7 @@ class User(models.Model):
     name = fields.Char(compute='_get_name')
     user = fields.Many2one('res.users', string='Odoo User', domain=[('share', '=', False)])
     domain = fields.Many2one('connect.domain', required=True, ondelete='cascade',
-                            default=lambda x: x.env['connect.domain'].search([], limit=1))
+                            default=lambda x: x.env['connect.domain'].search([('subdomain', 'not like', 'byoc')], limit=1))
     username = fields.Char(required=True)
     password = fields.Char(groups="connect.group_connect_admin,connect.group_connect_user")
     uri = fields.Char('SIP URI', compute='_get_sip_uri', store=True)
@@ -214,48 +221,37 @@ class User(models.Model):
             if not rec.username.isalnum():
                 raise ValidationError('Username must be alphanumeric!')
 
-    def render(self, request={}, params={}):
-        self.ensure_one()
-        channel = self.env['connect.channel'].search([('sid', '=', request.get('CallSid'))])
-        call = channel.call
-        # Check callerid for client calls
-        user = self.env['connect.user'].get_user_by_uri(request.get('Caller'))
-        caller_name = params.get('CallerName', False)
-        if user:
-            callerId = user.exten.number or ''
+    def _get_caller_id(self, request, params):
+        caller_user = self.env['connect.user'].get_user_by_uri(request.get('Caller'))
+        if caller_user:
+            callerId = caller_user.exten.number or ''
             if not callerId:
-                logger.warning('Exten not set for user %s', user.name)
-            caller_name = user.name
+                logger.warning('Exten not set for user %s', caller_user.name)
         else:
             callerId = request.get('Caller')
+        return callerId
+
+    def _get_caller_name(self, request, params):
+        caller_user = self.env['connect.user'].get_user_by_uri(request.get('Caller'))
+        caller_name = params.get('CallerName', False)
+        if caller_user:
+            caller_name = caller_user.name
+
+
+    def render_client(self, request, params):
+        caller_name = self._get_caller_name(request, params)
+        callerId = self._get_caller_id(request, params)
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
         record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus')
         status_url = urljoin(api_url, 'twilio/webhook/callstatus')
-        #action_url = urljoin(
-        #    api_url, 'twilio/webhook/connect.user/call_action/{}'.format(self.id)
-        #)
+        dial_action_url = urljoin(api_url, 'twilio/webhook/connect.user/call_action/{}'.format(self.id))
         response = VoiceResponse()
-        # Greet the caller
-        if self.greeting_message:
-            self.get_greeting_message(response)
-        dial_sip_kwargs = {'timeout': self.sip_ring_timeout, 'callerId': callerId}
-        # Check for action callback URL.
-        if params.get('dial_action_url'):
-            dial_sip_kwargs['action'] = params['dial_action_url']
-        if self.record_calls:
-            dial_sip_kwargs.update({
-                'recordingStatusCallback': record_status_url,
-                'record': 'record-from-answer-dual'
-            })
-        dial_sip = Dial(**dial_sip_kwargs)
-        dial_sip.sip(
-            'sip:{}'.format(self.uri),
-            statusCallbackEvent='initiated answered completed',
-            statusCallback=status_url)
         dial_client_kwargs = {'timeout': self.client_ring_timeout, 'callerId': callerId}
         # Check for action callback URL.
         if params.get('dial_action_url'):
             dial_client_kwargs['action'] = params['dial_action_url']
+        else:
+            dial_client_kwargs['action'] = dial_action_url
         if self.record_calls:
             dial_client_kwargs.update({
                 'record': 'record-from-answer',
@@ -268,6 +264,8 @@ class User(models.Model):
         client.identity(self.uri)
         if caller_name:
             client.parameter(name='CallerName', value=caller_name)
+        channel = self.env['connect.channel'].search([('sid', '=', request.get('CallSid'))])
+        call = channel.call
         if call and call.partner:
             partner_id = call.partner.id
         elif channel and channel.caller_user:
@@ -276,6 +274,64 @@ class User(models.Model):
             partner_id = False
         client.parameter(name='Partner', value=partner_id)
         dial_client.append(client)
+        return dial_client
+
+    def render_sip(self, request, params):
+        callerId = self._get_caller_id(request, params)
+        api_url = self.env['connect.settings'].sudo().get_param('api_url')
+        dial_action_url = urljoin(api_url, 'twilio/webhook/connect.user/call_action/{}'.format(self.id))
+        record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus')
+        status_url = urljoin(api_url, 'twilio/webhook/callstatus')
+        dial_sip_kwargs = {'timeout': self.sip_ring_timeout, 'callerId': callerId}
+        # Check for action callback URL.
+        if params.get('dial_action_url'):
+            dial_sip_kwargs['action'] = params['dial_action_url']
+        else:
+            dial_sip_kwargs['action'] = dial_action_url
+        if self.record_calls:
+            dial_sip_kwargs.update({
+                'recordingStatusCallback': record_status_url,
+                'record': 'record-from-answer-dual'
+            })
+        dial_sip = Dial(**dial_sip_kwargs)
+        dial_sip.sip(
+            'sip:{}'.format(self.uri),
+            statusCallbackEvent='initiated answered completed',
+            statusCallback=status_url)
+        return dial_sip
+
+
+    def render_voicemail(self, request, params):
+        voicemail_record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus')
+        response = VoiceResponse()
+        self.get_voicemail_prompt(response)
+        response.record(
+            maxLength=120,
+            finishOnKey='#',
+            playBeep=True,
+            recordingStatusCallback=voicemail_record_status_url)
+        debug(self, pretty_xml(response.to_xml()))
+        return response.to_xml()
+
+
+    def render(self, request={}, params={}):
+        self.ensure_one()
+        channel = self.env['connect.channel'].search([('sid', '=', request.get('CallSid'))])
+        call = channel.call
+        response = VoiceResponse()
+        # Check if this is real call.
+        if call:
+            # Get the dialplan render.
+            call_renders = self.env['connect.user_call_render'].search([('call', '=', call.id)])
+            if not call_renders:
+                # First call.
+                if self.ring_first == 'sip':
+                    response.append(dial_sip)
+        # Greet the caller
+        if self.greeting_message:
+            self.get_greeting_message(response)
+        dial_sip = self.render_sip(request, params)
+        dial_client = self.render_client(request, params)
         if self.ring_first == 'sip':
             response.append(dial_sip)
         elif self.ring_first == 'client':
@@ -285,8 +341,9 @@ class User(models.Model):
         elif self.ring_second == 'client':
             response.append(dial_client)
         # Voicemail
-        if user.voicemail_enabled:
+        if self.voicemail_enabled:
             # The call voicemail
+            api_url = self.env['connect.settings'].sudo().get_param('api_url')
             voicemail_record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus')
             self.get_voicemail_prompt(response)
             response.record(
@@ -358,7 +415,8 @@ class User(models.Model):
         debug(self, 'Call action: {}'.format(json.dumps(request, indent=2)))
         response = VoiceResponse()
         user = self.browse(record_id)
-        debug(self, pretty_xml(str(response)))
+        dialplan = user.render(request)
+        debug(self, pretty_xml(str(dialplan)))
         return response
 
     def get_greeting_message(self, response):
