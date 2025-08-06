@@ -348,6 +348,10 @@ class User(models.Model):
                 debug(self, pretty_xml(response.to_xml()))
                 return response.to_xml()
             else:
+                # Cleanup.
+                callflows = self.env['connect.user_callflow_call'].sudo().search(
+                    [('call', '=', call.id)])
+                callflows.sudo().unlink()
                 response.hangup()
                 return response.to_xml()
         else:
@@ -424,13 +428,6 @@ class User(models.Model):
             dialplan = user.render(request)
             return dialplan
         else:
-            # Cleanup.
-            channel = self.env['connect.channel'].search(
-                [('sid', '=', request.get('CallSid'))], order='id desc')
-            call = channel.call
-            callflows = self.env['connect.user_callflow_call'].sudo().search(
-                [('call', '=', call.id)])
-            callflows.sudo().unlink()
             response = VoiceResponse()
             response.hangup()
             return response.to_xml()
