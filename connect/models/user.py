@@ -46,7 +46,9 @@ class User(models.Model):
     exten = fields.Many2one('connect.exten', ondelete='set null', readonly=True)
     exten_number = fields.Char(related='exten.number', store=True)
     sip_enabled = fields.Boolean('SIP Phone Enabled')
+    sip_priority = fields.Selection([('1', '1'),('2', '2')], required=True, default='2')
     client_enabled = fields.Boolean('Web Phone Enabled', default=True)
+    client_priority = fields.Selection([('1', '1'),('2', '2')], required=True, default='1')
     name = fields.Char(compute='_get_name')
     user = fields.Many2one('res.users', string='Odoo User', domain=[('share', '=', False)])
     domain = fields.Many2one('connect.domain', required=True, ondelete='cascade',
@@ -58,10 +60,6 @@ class User(models.Model):
     voicemail_enabled = fields.Boolean()
     voicemail_prompt = fields.Text(default="Hello, this is {{user.name}}. I'm unable to take your call right now. Please leave a message after the tone.")
     application = fields.Many2one('connect.twiml')
-    ring_first = fields.Selection(selection=[('sip', 'SIP'),('client', 'Client')],
-                                  required=True, default='client')
-    ring_second = fields.Selection(selection=[('sip', 'SIP'),('client', 'Client')],
-                                  required=False, default='sip')
     sip_ring_timeout = fields.Integer(required=True, default=30, string='SIP ring timeout')
     client_ring_timeout = fields.Integer(required=True, default=10, string='Web client ring timeout')
     callerid_number = fields.Many2one('connect.number', ondelete='restrict') # TODO: Remove after 1.0
@@ -198,11 +196,6 @@ class User(models.Model):
         for rec in self:
             sip_enabled = vals.get('sip_enabled', rec.sip_enabled)
             client_enabled = vals.get('client_enabled', rec.client_enabled)
-            if not sip_enabled or not client_enabled:
-                vals.update({
-                    'ring_first': 'sip' if sip_enabled else 'client',
-                    'ring_second': False,
-                })
             if vals.get('sip_enabled') is False and rec.sid:
                 rec.delete_sip_account()
                 vals['sid'] = False
@@ -459,78 +452,39 @@ class User(models.Model):
         if self.sip_enabled:
             self.password = ''
 
-    @api.onchange('sip_enabled', 'client_enabled')
-    def set_ring_priority(self):
-        if self.client_enabled and not self.sip_enabled:
-            self.ring_first = 'client'
-            self.ring_second = False
-        elif not self.client_enabled and self.sip_enabled:
-            self.ring_first = 'sip'
-            self.ring_second = False
-        elif self.client_enabled and self.sip_enabled:
-            self.ring_first = 'client'
-            self.ring_second = 'sip'
-        else:
-            self.ring_first = 'client'
-
-    @api.onchange('ring_first')
-    def on_change_ring_priority(self):
-        if not self.client_enabled or not self.sip_enabled:
-            return
-        if self.ring_first == 'client':
-            self.ring_second = 'sip'
-        else:
-            self.ring_second = 'client'
-
-    def _manage_channel_callflow(self, channel, enable, prio=1):
+    def _manage_channel_callflow(self, channel, enable):
         if enable:
-            if not self.env['connect.user_callflow'].search(
-                    [('user', '=', self.id), ('callflow_type', '=', channel)]):
+            callflow = self.env['connect.user_callflow'].search(
+                    [('user', '=', self.id), ('callflow_type', '=', channel)])
+            if not callflow:
                 self.env['connect.user_callflow'].create({
                     'user': self.id,
                     'callflow_type': channel,
+                    'prio': int(getattr(self, '{}_priority'.format(channel))),
                     'method': 'render_{}'.format(channel),
                 })
+            else:
+                # Existing record, change prio
+                callflow.prio = getattr(self, '{}_priority'.format(channel))
         else:
             # Disabled
             self.env['connect.user_callflow'].search(
                 [('user', '=', self.id), ('callflow_type', '=', channel)]).unlink()
 
 
-    @api.constrains('sip_enabled')
+    @api.constrains('sip_enabled', 'sip_priority')
     def _manage_sip_callflow(self):
         if self.sip_enabled:
-            if self.ring_first == 'sip':
-                prio = 1
-            else:
-                prio = 2
-            self._manage_channel_callflow('sip', True, prio=prio)
+            self._manage_channel_callflow('sip', True)
         else:
             self._manage_channel_callflow('sip', False)
 
-    @api.constrains('client_enabled')
+    @api.constrains('client_enabled', 'client_priority')
     def _manage_client_callflow(self):
         if self.client_enabled:
-            if self.ring_first == 'client':
-                prio = 1
-            else:
-                prio = 2
-            self._manage_channel_callflow('client', True, prio=prio)
+            self._manage_channel_callflow('client', True)
         else:
             self._manage_channel_callflow('client', False)
-
-    @api.constrains('ring_first')
-    def _change_channel_prio(self):
-        first_channel = self.env['connect.user_callflow'].search(
-                [('user', '=', self.id), ('callflow_type', '=', self.ring_first)])
-        first_channel.prio = 1
-        ring_second = set(['sip', 'client']) - set([self.ring_first])
-        if ring_second:
-            # Extract string from the set
-            ring_second = ring_second.pop()
-            second_channel = self.env['connect.user_callflow'].search(
-                    [('user', '=', self.id), ('callflow_type', '=', ring_second)])
-            second_channel.prio = 2
 
     @api.constrains('voicemail_enabled')
     def _manage_voicemail_enabled(self):

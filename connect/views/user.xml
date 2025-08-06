@@ -23,7 +23,6 @@
                 <field name="exten_number" string="Exten"/>
                 <field name="outgoing_callerid"/>
                 <field name="user"/>
-                <field name="ring_first"/>
                 <field name="sip_enabled" string="SIP"/>
                 <field name="client_enabled" string="Web"/>
                 <field name="application"/>
@@ -66,6 +65,7 @@
                             <group>
                                 <group string="SIP Phone">
                                     <field name="sip_enabled" string="Enabled"/>
+                                    <field name="sip_priority" string="Priority"/>
                                     <field name="password" password="1"
                                            invisible="sip_enabled == False"/>
                                     <field name="sip_ring_timeout" string="Ring Timeout"
@@ -76,6 +76,7 @@
                                 </group>
                                 <group string="WEB Phone">
                                     <field name="client_enabled" string="Enabled"/>
+                                    <field name="client_priority" string="Priority"/>
                                     <field name="client_ring_timeout" string="Ring Timeout"
                                            invisible="client_enabled == False"/>
                                 </group>
@@ -87,8 +88,7 @@
                                     <field name="greeting_message"/>
                                     <field name="outgoing_callerid" placeholder="Outgoing CallerId number or empty for the default..."/>
                                     <field name="record_calls"/>
-                                    <field name="ring_first"
-                                           readonly="sip_enabled == False or client_enabled == False"/>
+
                                 </group>
                                 <group>
                                     <field name="voicemail_enabled"/>
