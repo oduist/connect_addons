@@ -42,6 +42,7 @@ class Exten(models.Model):
                 logger.exception('Exten name error:')
                 rec.name = 'See Odoo Error Log'
 
+    @api.depends('model')
     def _get_model_friendly(self):
         for rec in self:
             try:
