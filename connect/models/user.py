@@ -16,11 +16,23 @@ from .twiml import pretty_xml
 logger = logging.getLogger(__name__)
 
 
-class UserCallRender(models.Model):
-    _name = 'connect.user_call_render'
+class UserCallflowCall(models.Model):
+    _name = 'connect.user_callflow_call'
+    _log_access = False
+    _description = 'User Callflow Call'
 
     call = fields.Many2one('connect.call', required=True, ondelete='cascade')
-    render_type = fields.Char()
+    callflow = fields.Many2one('connect.user_callflow', required=True, ondelete='cascade')
+
+
+class UserCallflow(models.Model):
+    _name = 'connect.user_callflow'
+    _description = 'User Callflow'
+
+    user = fields.Many2one('connect.user', required=True, ondelete='cascade')
+    prio = fields.Integer(required=True, default=1)
+    callflow_type = fields.Char(string='Type', required=True)
+    method = fields.Char(required=True)
 
 
 class User(models.Model):
@@ -30,6 +42,7 @@ class User(models.Model):
     _order = 'username'
 
     sid = fields.Char('SID', readonly=True)
+    callflow = fields.One2many('connect.user_callflow', 'user')
     exten = fields.Many2one('connect.exten', ondelete='set null', readonly=True)
     exten_number = fields.Char(related='exten.number', store=True)
     sip_enabled = fields.Boolean('SIP Phone Enabled')
@@ -238,14 +251,13 @@ class User(models.Model):
             caller_name = caller_user.name
 
 
-    def render_client(self, request, params):
+    def render_client(self, response, request, params):
         caller_name = self._get_caller_name(request, params)
         callerId = self._get_caller_id(request, params)
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
         record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus')
         status_url = urljoin(api_url, 'twilio/webhook/callstatus')
         dial_action_url = urljoin(api_url, 'twilio/webhook/connect.user/call_action/{}'.format(self.id))
-        response = VoiceResponse()
         dial_client_kwargs = {'timeout': self.client_ring_timeout, 'callerId': callerId}
         # Check for action callback URL.
         if params.get('dial_action_url'):
@@ -274,9 +286,9 @@ class User(models.Model):
             partner_id = False
         client.parameter(name='Partner', value=partner_id)
         dial_client.append(client)
-        return dial_client
+        response.append(dial_client)
 
-    def render_sip(self, request, params):
+    def render_sip(self, response, request, params):
         callerId = self._get_caller_id(request, params)
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
         dial_action_url = urljoin(api_url, 'twilio/webhook/connect.user/call_action/{}'.format(self.id))
@@ -298,61 +310,52 @@ class User(models.Model):
             'sip:{}'.format(self.uri),
             statusCallbackEvent='initiated answered completed',
             statusCallback=status_url)
-        return dial_sip
+        response.append(dial_sip)
 
 
-    def render_voicemail(self, request, params):
+    def render_voicemail(self, response, request, params):
+        api_url = self.env['connect.settings'].sudo().get_param('api_url')
         voicemail_record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus')
-        response = VoiceResponse()
         self.get_voicemail_prompt(response)
         response.record(
             maxLength=120,
             finishOnKey='#',
             playBeep=True,
             recordingStatusCallback=voicemail_record_status_url)
-        debug(self, pretty_xml(response.to_xml()))
-        return response.to_xml()
-
 
     def render(self, request={}, params={}):
         self.ensure_one()
-        channel = self.env['connect.channel'].search([('sid', '=', request.get('CallSid'))])
+        channel = self.env['connect.channel'].search(
+            [('sid', '=', request.get('CallSid'))], order='id desc')
         call = channel.call
         response = VoiceResponse()
         # Check if this is real call.
         if call:
-            # Get the dialplan render.
-            call_renders = self.env['connect.user_call_render'].search([('call', '=', call.id)])
-            if not call_renders:
-                # First call.
-                if self.ring_first == 'sip':
-                    response.append(dial_sip)
-        # Greet the caller
-        if self.greeting_message:
-            self.get_greeting_message(response)
-        dial_sip = self.render_sip(request, params)
-        dial_client = self.render_client(request, params)
-        if self.ring_first == 'sip':
-            response.append(dial_sip)
-        elif self.ring_first == 'client':
-            response.append(dial_client)
-        if self.ring_second == 'sip':
-            response.append(dial_sip)
-        elif self.ring_second == 'client':
-            response.append(dial_client)
-        # Voicemail
-        if self.voicemail_enabled:
-            # The call voicemail
-            api_url = self.env['connect.settings'].sudo().get_param('api_url')
-            voicemail_record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus')
-            self.get_voicemail_prompt(response)
-            response.record(
-                maxLength=120,
-                finishOnKey='#',
-                playBeep=True,
-                recordingStatusCallback=voicemail_record_status_url)
-        debug(self, pretty_xml(response.to_xml()))
-        return response.to_xml()
+            done_callflow_ids = self.env['connect.user_callflow_call'].sudo().search(
+                [('call', '=', call.id)]).mapped('callflow').mapped('id')
+            if not done_callflow_ids and self.greeting_message:
+                # First attempt. Greet the caller if required.
+                self.get_greeting_message(response)
+            next_call_flow = self.env['connect.user_callflow'].sudo().search(
+                [('user', '=', self.id), ('id', 'not in', done_callflow_ids)], order='prio', limit=1)
+            if next_call_flow:
+                self.env['connect.user_callflow_call'].sudo().create({
+                    'call': call.id,
+                    'callflow': next_call_flow.id,
+                })
+                # Call the method
+                getattr(self, next_call_flow.method)(response, request, params)
+                debug(self, pretty_xml(response.to_xml()))
+                return response.to_xml()
+            else:
+                response.hangup()
+                return response.to_xml()
+        else:
+            # Dialplan view render, just render all one by one
+            all_flows = self.env['connect.user_callflow'].sudo().search([('user', '=', self.id)], order='prio')
+            for flow in all_flows:
+                getattr(self, flow.method)(response, request, params)
+            return response.to_xml()
 
     @api.model
     def get_client_token(self):
@@ -412,12 +415,25 @@ class User(models.Model):
     @api.model
     def on_call_action(self, record_id, request):
         # Was used for VoiceMail. Left for future features.
-        debug(self, 'Call action: {}'.format(json.dumps(request, indent=2)))
-        response = VoiceResponse()
         user = self.browse(record_id)
-        dialplan = user.render(request)
-        debug(self, pretty_xml(str(dialplan)))
-        return response
+        call_status = request.get('CallStatus')
+        if not call_status:
+            # VoiceMail
+            call_status = request.get('DialCallStatus')
+        if call_status != 'completed':
+            dialplan = user.render(request)
+            return dialplan
+        else:
+            # Cleanup.
+            channel = self.env['connect.channel'].search(
+                [('sid', '=', request.get('CallSid'))], order='id desc')
+            call = channel.call
+            callflows = self.env['connect.user_callflow_call'].sudo().search(
+                [('call', '=', call.id)])
+            callflows.sudo().unlink()
+            response = VoiceResponse()
+            response.hangup()
+            return response.to_xml()
 
     def get_greeting_message(self, response):
         # Override in Elevenlabs module.
@@ -468,4 +484,69 @@ class User(models.Model):
             self.ring_second = 'sip'
         else:
             self.ring_second = 'client'
+
+    def _manage_channel_callflow(self, channel, enable, prio=1):
+        if enable:
+            if not self.env['connect.user_callflow'].search(
+                    [('user', '=', self.id), ('callflow_type', '=', channel)]):
+                self.env['connect.user_callflow'].create({
+                    'user': self.id,
+                    'callflow_type': channel,
+                    'method': 'render_{}'.format(channel),
+                })
+        else:
+            # Disabled
+            self.env['connect.user_callflow'].search(
+                [('user', '=', self.id), ('callflow_type', '=', channel)]).unlink()
+
+
+    @api.constrains('sip_enabled')
+    def _manage_sip_callflow(self):
+        if self.sip_enabled:
+            if self.ring_first == 'sip':
+                prio = 1
+            else:
+                prio = 2
+            self._manage_channel_callflow('sip', True, prio=prio)
+        else:
+            self._manage_channel_callflow('sip', False)
+
+    @api.constrains('client_enabled')
+    def _manage_client_callflow(self):
+        if self.client_enabled:
+            if self.ring_first == 'client':
+                prio = 1
+            else:
+                prio = 2
+            self._manage_channel_callflow('client', True, prio=prio)
+        else:
+            self._manage_channel_callflow('client', False)
+
+    @api.constrains('ring_first')
+    def _change_channel_prio(self):
+        first_channel = self.env['connect.user_callflow'].search(
+                [('user', '=', self.id), ('callflow_type', '=', self.ring_first)])
+        first_channel.prio = 1
+        ring_second = set(['sip', 'client']) - set([self.ring_first])
+        if ring_second:
+            # Extract string from the set
+            ring_second = ring_second.pop()
+            second_channel = self.env['connect.user_callflow'].search(
+                    [('user', '=', self.id), ('callflow_type', '=', ring_second)])
+            second_channel.prio = 2
+
+    @api.constrains('voicemail_enabled')
+    def _manage_voicemail_enabled(self):
+        if self.voicemail_enabled:
+            if not self.env['connect.user_callflow'].search(
+                    [('user', '=', self.id), ('callflow_type', '=', 'voicemail')]):
+                self.env['connect.user_callflow'].create({
+                    'user': self.id,
+                    'prio': 10,
+                    'callflow_type': 'voicemail',
+                    'method': 'render_voicemail'
+                })
+        else:
+            self.env['connect.user_callflow'].search(
+                [('user', '=', self.id), ('callflow_type', '=', 'voicemail')]).unlink()
 
