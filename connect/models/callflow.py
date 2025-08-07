@@ -115,29 +115,20 @@ class CallFlow(models.Model):
             else:
                 dial = Dial(callerId=callerId, action=action_url)
             for user in self.ring_users:
-                if user.ring_first == 'sip':
-                    dial.sip('sip:{}'.format(user.uri),
+                callflows = self.env['connect.user_callflow'].sudo().search(
+                    [('callflow_type', 'in', ['sip', 'client']), ('user', '=', user.id)], order='prio')
+                for callflow in callflows:
+                    if callflow.callflow_type == 'sip':
+                        dial.sip('sip:{}'.format(user.uri),
+                                statusCallbackEvent='answered completed',
+                                statusCallback=status_url)
+                    else:
+                        client = Client(
                             statusCallbackEvent='answered completed',
                             statusCallback=status_url)
-                elif user.ring_first == 'client':
-                    client = Client(
-                        statusCallbackEvent='answered completed',
-                        statusCallback=status_url)
-                    client.identity(user.uri)
-                    client.parameter(name='CallerName', value=callerId)
-                    dial.append(client)
-                # Ring 2nd
-                if user.ring_second == 'sip':
-                    dial.sip('sip:{}'.format(user.uri),
-                            statusCallbackEvent='answered completed',
-                            statusCallback=status_url)
-                elif user.ring_second == 'client':
-                    client = Client(
-                        statusCallbackEvent='answered completed',
-                        statusCallback=status_url)
-                    client.identity(user.uri)
-                    client.parameter(name='CallerName', value=callerId)
-                    dial.append(client)
+                        client.identity(user.uri)
+                        client.parameter(name='CallerName', value=callerId)
+                        dial.append(client)
             response.append(dial)
         else:
             # No ring users set, just send to voicemail if enabled.
