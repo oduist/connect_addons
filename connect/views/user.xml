@@ -69,8 +69,8 @@
                                     <field name="password" password="1"
                                            invisible="sip_enabled == False"/>
                                     <field name="sip_ring_timeout" string="Ring Timeout"
-                                           required="sip_enabled == True"
-                                           invisible="sip_enabled == False"/>
+                                           invisible="sip_enabled == False"
+                                           required="sip_enabled == True"/>
                                     <field name='uri'
                                            invisible="sip_enabled == False"/>
                                 </group>
