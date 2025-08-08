@@ -36,6 +36,8 @@ class OdooConnection:
             password = os.getenv('ODOO_PASSWORD')
             url = os.getenv('ODOO_URL')
             db = os.getenv('ODOO_DB')
+            if not all([odoo_user, password, url, db]):
+                raise Exception('Not all Odoo connection parameters are set!')
             logger.info('Connecting to Odoo at %s', url)
             session = httpx.AsyncClient(base_url=url + '/jsonrpc', follow_redirects=True)
             self.odoo = AsyncOdooRPC(database=db, username_or_uid=odoo_user ,
@@ -55,6 +57,7 @@ class OdooConnection:
                 logger.error('Cannot connect to Odoo, check if it is running.')
             else:
                 logger.error('Odoo connect error: %s', e)
+        return False
 
     async def start_call_event(self, call_id, agent_uid):
         call_data = await self.odoo.execute_kw(
@@ -144,8 +147,12 @@ async def root():
 async def agent_ping():
     # Test Odoo connection.
     odoo = OdooConnection()
-    await odoo.login()
-    return True
+    if await odoo.login():
+        logger.info('Ping successful')
+        return True
+    else:
+        logger.error('Ping failed')
+        return False
 
 
 @app.websocket("/twilio/stream/{agent_uid}/{call_id}/{channel_sid}")
