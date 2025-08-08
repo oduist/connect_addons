@@ -39,11 +39,6 @@ class ElevenlabsFile(models.Model):
     def get_file_url(self):
         instance_uid = self.env['connect.settings'].sudo().get_param('instance_uid')
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        if 'api-' in api_url:
-            api_url = api_url.replace('api-', 'media-')
-        media_url = self.env['connect.settings'].sudo().get_param('media_url')
-        if media_url:
-            api_url = media_url
         url = urljoin(api_url, '/web/content/connect.elevenlabs_file/{}/file/{}'.format(
             self.id, self.filename)
         )
