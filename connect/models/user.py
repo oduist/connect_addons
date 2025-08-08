@@ -273,8 +273,12 @@ class User(models.Model):
         call = channel.call
         if call and call.partner:
             partner_id = call.partner.id
+            if not caller_name:
+                client.parameter(name="CallerName", value=call.partner.name)
         elif channel and channel.caller_user:
             partner_id = channel.caller_user.partner_id.id
+            if not caller_name:
+                client.parameter(name="CallerName", value=channel.caller_user.partner_id.name)
         else:
             partner_id = False
         client.parameter(name='Partner', value=partner_id)
@@ -362,8 +366,10 @@ class User(models.Model):
             return False
         user = self.search([('user', '=', self.env.user.id)])
         if not user:
+            logger.info("User %s not found!", self.env.user.id)
             return False
         if not user.client_enabled:
+            logger.info("Client for user %s not enabled!", self.env.user.id)
             return False
         account_sid = self.env['connect.settings'].sudo().get_param('account_sid')
         api_key = self.env['connect.settings'].sudo().get_param('twilio_api_key')
