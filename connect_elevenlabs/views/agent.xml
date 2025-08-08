@@ -63,6 +63,7 @@
                                     <field name="language"/>
                                     <field name="additional_languages" widget="many2many_tags"/>
                                     <field name="turn_timeout"/>
+                                    <field name="silence_end_call_timeout"/>
                                     <field name="max_duration_seconds"/>
                                     <field name="agent_concurrency_limit"/>
                                     <field name="daily_limit"/>

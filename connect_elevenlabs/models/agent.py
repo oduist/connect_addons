@@ -96,7 +96,7 @@ class ElevenlabsAgent(models.Model):
     temperature = fields.Float(required=True, default=0.0)
     max_tokens = fields.Integer(
         required=True, default=-1, help='If greater than 0, maximum number of tokens the LLM can predict')
-    llm = fields.Selection(selection=llm_list, default='gpt-4o', required=True)
+    llm = fields.Selection(selection=llm_list, string='LLM', default='gpt-4o', required=True)
     agent_uid = fields.Char(string="Agent ID")
     knowledge_base_name = fields.Char()
     knowledge_base_note = fields.Text()
@@ -135,6 +135,7 @@ class ElevenlabsAgent(models.Model):
                                  help='The maximum number of conversations per day')
     similarity_boost = fields.Float(default=0.8, required=True)
     turn_timeout = fields.Float(default=7.0, required=True)
+    silence_end_call_timeout = fields.Integer(required=True, default=10)
     exten = fields.Many2one('connect.exten', ondelete='set null', readonly=True)
     exten_number = fields.Char(related='exten.number')
 
@@ -383,7 +384,7 @@ class ElevenlabsAgent(models.Model):
             },
             'turn': {
                 'turn_timeout': self.turn_timeout,
-                'silence_end_call_timeout': 30.0,
+                'silence_end_call_timeout': self.silence_end_call_timeout,
                 'mode': "turn"
             }
         }
