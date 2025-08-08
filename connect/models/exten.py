@@ -118,7 +118,7 @@ class Exten(models.Model):
     def _get_twiml(self):
         for rec in self:
             try:
-                rec.twiml = pretty_xml(str(rec.dst.render()))
+                rec.twiml = pretty_xml(str(rec.dst.render({})))
             except Exception as e:
                 logger.warning('Cannot render exten: %s', e)
                 rec.twiml = 'Render error (normal case with dynamic values)'
