@@ -26,7 +26,7 @@
                   <group>
                     <group>
                       <field name="api_url" string="Odoo URL"/>
-                      <button name="action_open_system_parameters" type="object" string="Change Odoo URL"/>
+                      <button class="btn btn-primary" colspan="2" name="action_open_system_parameters" type="object" string="Change Odoo URL"/>
                       <field name="api_fallback_url" string="Fallback URL"/>
                       <field name="debug_mode"/>
                     </group>
