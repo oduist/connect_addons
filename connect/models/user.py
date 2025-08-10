@@ -67,6 +67,7 @@ class User(models.Model):
         domain=['|',('status', '=', 'validated'),('callerid_type', '=', 'number')])
     missed_calls_notify = fields.Boolean(default=False, help='Notify user on missed calls.')
     greeting_message = fields.Char()
+    summary_prompt = fields.Char()
 
     _sql_constraints = [
         ('user_uniq', 'UNIQUE("user")', 'This Odoo user account is already defined!'),
