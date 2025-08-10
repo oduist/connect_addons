@@ -626,19 +626,17 @@ class Settings(models.Model):
             user = self.env.user
         if not user.connect_user:
             raise ValidationError("User does not have a SIP username defined!")
-        ring_options = {}
-        if user.connect_user.sip_enabled:
-            ring_options["sip"] = self.compute_sip_uri(user)
-        if user.connect_user.client_enabled:
-            ring_options["client"] = (
+        # Get the first ring channel for the user
+        first_flow = self.env['connect.user_callflow'].search([
+            ('user', '=', user.id), ('callflow_type', 'in', ['client', 'sip'])], order='prio', limit=1)
+        if first_flow.callflow_type == 'sip':
+            to = self.compute_sip_uri(user)
+        else:
+            to = (
                 "client:{}?autoAnswer=yes&Partner={}&CallerName={}".format(
                     self.env.user.connect_user.uri, partner_id, caller_name
                 )
             )
-        to = ring_options.get(self.env.user.connect_user.ring_first)
-        if not to:
-            # Get available option.
-            to = list(ring_options.items())[0][1]
         if "client:" in to:
             # Strip + before sending as param.
             to += "&From={}".format(number.replace("+", ""))

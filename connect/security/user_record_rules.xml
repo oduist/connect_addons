@@ -1,5 +1,18 @@
 <odoo>
 
+    <!-- User Callflow -->
+    <record id="connect_user_callflow_user_rule" model="ir.rule">
+        <field name="name">connect_user_callflow_user_rule</field>
+        <field name="model_id" ref="connect.model_connect_user_callflow"/>
+        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
+        <field name="domain_force">[('user', '=', user.id)]</field>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+
     <!-- Callflow -->
     <record id="connect_callflow_user_rule" model="ir.rule">
         <field name="name">connect_callflow_user</field>

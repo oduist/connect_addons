@@ -42,7 +42,8 @@
                             <field name="from_number" widget="phone"/>
                             <field name="to_number" widget="phone"/>
                             <field name="body"/>
-                            <field name="num_media"/>
+                            <field name="ref"
+                                   attrs="{'invisible': [('ref', '=', False)]}"/>
                             <div class="d-flex flex-row" colspan="2" cols="3">
                                 <div class="d-flex flex-column" calspan="1" style="flex: 1">
                                     <field name="partner"/>
@@ -70,6 +71,7 @@
                             <field name="from_country" string="Country"/>
                             <field name="from_zip" string="Zip"/>
                             <field name="status"/>
+                            <field name="num_media"/>
                             <field name="media_url" invisible="1"/>
                             <field name="media_widget" widget="html"
                                    attrs="{'invisible': [('media_url', '=', False)]}"/>

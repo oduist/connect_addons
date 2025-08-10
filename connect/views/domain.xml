@@ -44,7 +44,7 @@
                         </group>
                         <group>
                             <field name="delete_protection"/>
-                            <field name="domain_name"  attrs="{'readonly': 1}"/>
+                            <field name="domain_name" attrs="{'readonly': 1}"/>
                         </group>
                     </group>
                 </sheet>

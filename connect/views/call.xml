@@ -77,7 +77,8 @@
                                     <div class="d-flex flex-row" colspan="2" cols="3">
                                         <div class="d-flex flex-column" calspan="1" style="flex: 1">
                                             <field name="partner"/>
-                                            <field name="partner_img" style="float: left" widget="image"  class="oe_avatar" attrs="{'invisible': [('partner', '=', False)]}"/>
+                                            <field name="partner_img" style="float: left" widget="image"  class="oe_avatar"
+                                                   attrs="{'invisible': [('partner', '=', False)]}"/>
                                             <div attrs="{'invisible': [('partner', '=', False)]}">Partner</div>
                                         </div>
                                         <field name="caller_user" attrs="{'invisible': 1}"/>
@@ -157,7 +158,7 @@
                                 </field>
                             </group>
                         </page>
-                        <field name="has_error"/>
+                        <field name="has_error" invisible="1"/>
                         <page name="error" string="Error"
                               attrs="{'invisible': [('has_error', '=', False)]}">
                             <group>
