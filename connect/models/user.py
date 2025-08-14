@@ -194,12 +194,6 @@ class User(models.Model):
         if 'username' in vals:
             raise ValidationError('Username cannot be changed!')
         for rec in self:
-            sip_enabled = vals.get('sip_enabled', rec.sip_enabled)
-            client_enabled = vals.get('client_enabled', rec.client_enabled)
-            if vals.get('sip_enabled') is False and rec.sid:
-                rec.delete_sip_account()
-                vals['sid'] = False
-                vals['password'] = False
             if vals.get('password'):
                 if rec.sid:
                     rec._update_sip_password(vals['password'])
