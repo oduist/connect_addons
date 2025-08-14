@@ -84,14 +84,6 @@ class Recording(models.Model):
                 ts = f"{int(seconds // 3600):02d}:{int((seconds % 3600) // 60):02d}:{int(seconds % 60):02d}"
                 segments += '{} {}\n'.format(ts, s.text)
             result['transcript'] = segments
-            # Check users summary prompt
-            if self.call.caller_pbx_user and self.call.caller_pbx_user.summary_prompt:
-                summary_prompt = self.call.caller_pbx_user.summary_prompt
-            elif self.call.called_pbx_users:
-                for user in self.call.called_pbx_users:
-                    if user.summary_prompt:
-                        summary_prompt = user.summary_prompt
-                        break
             # Make a summary
             response = client.chat.completions.create(
                 model=os.environ.get('OPENAI_COMPLETION_MODEL', 'gpt-4o'),
