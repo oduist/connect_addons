@@ -23,6 +23,19 @@ class ElevenlabsFile(models.Model):
     else:
         preview_audio = fields.Char(compute='_compute_preview_audio', string='Preview Audio')
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        res = super(ElevenlabsFile, self).create(vals_list)
+        for rec in res:
+            # Force the mime type.
+            attachment = self.env["ir.attachment"].search([
+                ("res_model", "=", "connect.elevenlabs_file"),
+                ("res_field", "=", "file"),
+                ("res_id", "=", rec.id),
+            ], limit=1)
+            attachment.mimetype = "audio/mpeg"
+        return res
+
     @api.constrains('text')
     def _regenerate_file(self):
         if not self.env['connect.settings'].sudo().get_param('elevenlabs_enabled'):
@@ -32,6 +45,16 @@ class ElevenlabsFile(models.Model):
                 'file': rec.generate_elevenlabs_voice(rec.text),
                 'filename': '{}.mp3'.format(uuid.uuid4().hex),
             })
+            # Fix for users of version 1.0.1 with "application/octet-stream" issue.
+            # TODO: Remove this code in future.
+            attachment = self.env["ir.attachment"].search([
+                ("res_model", "=", "connect.elevenlabs_file"),
+                ("res_field", "=", "file"),
+                ("res_id", "=", rec.id),
+            ], limit=1)
+            if attachment and attachment.mimetype != 'audio/mpeg':
+                attachment.mimetype = "audio/mpeg"
+
 
     def get_file_path(self):
         return '/web/content/connect.elevenlabs_file/{}/file/{}'.format(self.id, self.filename)
