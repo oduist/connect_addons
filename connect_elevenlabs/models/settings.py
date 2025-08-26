@@ -92,6 +92,6 @@ class Elevenlabsettings(models.Model):
             if response.text == 'true':
                 self.connect_notify('Pong', title='Elevenlabs Agent', notify_uid=self.env.user.id)
             else:
-                response.raise_for_status()
+                self.connect_notify('Error! Check the Agent error log.', title='Elevenlabs Agent', notify_uid=self.env.user.id)
         except Exception as e:
             raise ValidationError(str(e))

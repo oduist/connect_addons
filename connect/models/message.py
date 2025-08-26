@@ -2,13 +2,17 @@ import ast
 import logging
 
 import phonenumbers
+from markupsafe import Markup
 from phonenumbers import parse, format_number, PhoneNumberFormat
 from twilio.twiml.messaging_response import MessagingResponse
 
 from odoo import models, fields, api, SUPERUSER_ID, release
 from odoo.exceptions import ValidationError
+from odoo.tools import mail
 
 logger = logging.getLogger(__name__)
+
+mail.safe_attrs = mail.safe_attrs | frozenset(['controls'])
 
 
 class ConnectMessage(models.Model):
@@ -44,6 +48,7 @@ class ConnectMessage(models.Model):
     error_message = fields.Char()
     res_model = fields.Char()
     res_id = fields.Integer()
+    ref = fields.Reference(selection='_reference_models', compute='_compute_ref', store=True)
     media_url = fields.Char()
     if release.version_info[0] >= 17.0:
         media_widget = fields.Html(compute='_get_media_widget', string='Media', sanitize=False)
@@ -54,6 +59,21 @@ class ConnectMessage(models.Model):
         for rec in self:
             rec.media_widget = '<audio id="sound_file" preload="auto" controls="controls"> ' \
                                '<source src="{}"/></audio>'.format(rec.media_url)
+
+    @api.model
+    def _reference_models(self):
+        return [(model.model, model.name) for model in self.env['ir.model'].search([])]
+
+    @api.depends('res_model', 'res_id')
+    def _compute_ref(self):
+        for rec in self:
+            if rec.res_model and rec.res_id:
+                try:
+                    rec.ref = self.env[rec.res_model].browse(rec.res_id)
+                except Exception:
+                    rec.ref = False
+            else:
+                rec.ref = False
 
     @staticmethod
     def _format_phone_number(number):
@@ -132,11 +152,15 @@ class ConnectMessage(models.Model):
                 last_message = self.env['connect.message'].search([
                     ('from_number', '=', to_number), ('to_number', '=', from_number)], limit=1)
                 if last_message and last_message.res_model and last_message.res_id:
+                    message.write({'res_model': last_message.res_model, 'res_id': last_message.res_id})
                     mt_note = self.env.ref('mail.mt_note').id
                     obj = self.env[last_message.res_model].with_user(SUPERUSER_ID).browse(last_message.res_id)
                     if hasattr(obj, 'message_post'):
+                        body = values.get('body')
+                        if message.media_url:
+                            body = Markup(f"<span>{values.get('body')}</span><br/>{message.media_widget}")
                         kwargs = {
-                            'body': values.get('body'),
+                            'body': body,
                             'subtype_id': mt_note,
                             'message_type': message.message_type
                         }

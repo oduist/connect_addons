@@ -33,9 +33,10 @@
     <field name="perm_unlink" eval="1"/>
   </record>
 
-  <record id="connect_byoc_admin" model="ir.model.access">
-    <field name="name">connect_byoc_admin</field>
-    <field name="model_id" ref="connect.model_connect_byoc"/>
+<!-- User -->
+  <record id="connect_user_admin" model="ir.model.access">
+    <field name="name">connect_user_admin</field>
+    <field name="model_id" ref="connect.model_connect_user"/>
     <field name="group_id" ref="connect.group_connect_admin"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="1"/>
@@ -43,10 +44,21 @@
     <field name="perm_unlink" eval="1"/>
   </record>
 
-<!-- User -->
-  <record id="connect_user_admin" model="ir.model.access">
-    <field name="name">connect_user_admin</field>
-    <field name="model_id" ref="connect.model_connect_user"/>
+<!-- User Callflow -->
+  <record id="connect_user_callflow_admin" model="ir.model.access">
+    <field name="name">connect_user_callflow_admin</field>
+    <field name="model_id" ref="connect.model_connect_user_callflow"/>
+    <field name="group_id" ref="connect.group_connect_admin"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
+  </record>
+
+<!-- User Callflow Call -->
+  <record id="connect_user_callflow_call_admin" model="ir.model.access">
+    <field name="name">connect_user_callflow_call_admin</field>
+    <field name="model_id" ref="connect.model_connect_user_callflow_call"/>
     <field name="group_id" ref="connect.group_connect_admin"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="1"/>
@@ -91,17 +103,6 @@
   <record id="connect_outgoing_callerid_admin" model="ir.model.access">
     <field name="name">connect_outgoing_callerid_admin</field>
     <field name="model_id" ref="connect.model_connect_outgoing_callerid"/>
-    <field name="group_id" ref="connect.group_connect_admin"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="1"/>
-    <field name="perm_create" eval="1"/>
-    <field name="perm_unlink" eval="1"/>
-  </record>
-
-<!-- Outgoing Rules -->
-  <record id="connect_outgoing_rule_admin" model="ir.model.access">
-    <field name="name">connect_outgoing_rule_admin</field>
-    <field name="model_id" ref="connect.model_connect_outgoing_rule"/>
     <field name="group_id" ref="connect.group_connect_admin"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="1"/>

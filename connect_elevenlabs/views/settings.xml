@@ -66,11 +66,7 @@
                 <field name="elevenlabs_agent_url"/>
               </group>
             </group>
-            <group>
-              <group>
-                <button type="object" string="Agent Ping" icon="fa-check" name="ping_agent"/>
-              </group>
-            </group>
+            <button type="object" string="Agent Ping" icon="fa-check" name="ping_agent" style="width: 130px"/>
           </page>
         </notebook>
       </sheet>

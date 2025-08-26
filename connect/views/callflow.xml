@@ -13,7 +13,7 @@
             name="Call Flows"
             action="connect.callflow_action"/>
 
-    <record id="connect.callflow_list" model="ir.ui.view">
+    <record id="callflow_list" model="ir.ui.view">
         <field name="name">connect.callflow_list</field>
         <field name="model">connect.callflow</field>
         <field name="arch" type="xml">
@@ -25,7 +25,7 @@
         </field>
     </record>
 
-    <record id="connect_callflow_form" model="ir.ui.view" >
+    <record id="callflow_form" model="ir.ui.view" >
         <field name="name">connect_callflow_form</field>
         <field name="model">connect.callflow</field>
         <field name="arch" type="xml">
