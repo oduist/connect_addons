@@ -29,6 +29,9 @@ class Elevenlabsettings(models.Model):
     elevenlabs_post_call_webhook_url = fields.Char(compute='_get_post_call_webhook_url')
     display_elevenlabs_post_call_webhook_secret = fields.Char()
     elevenlabs_post_call_webhook_secret = fields.Char(groups="base.group_erp_manager")
+    # Transcript elevenlabs webhook
+    transcript_provider = fields.Selection(
+        selection_add=[('elevenlabs', 'Elevenlabs')], ondelete={'elevenlabs': 'set default'})
 
     def open_elevenlabs_form(self):
         rec = self.search([])
@@ -46,11 +49,9 @@ class Elevenlabsettings(models.Model):
             'target': 'current',
         }
 
-
     def _get_post_call_webhook_url(self):
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
         self.elevenlabs_post_call_webhook_url = urljoin(api_url, 'connect_elevenlabs/post_call')
-
 
     def get_elevenlabs_client(self):
         # Take this using super access because nobody must be able to access it.

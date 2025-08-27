@@ -2,6 +2,10 @@
 import inspect
 import json
 import logging
+import os
+
+import httpx
+import openai
 import requests
 import random
 import re
@@ -11,7 +15,6 @@ import uuid
 from odoo import fields, models, api, release
 from odoo.exceptions import ValidationError, UserError
 from twilio.rest import Client
-
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +110,7 @@ class Settings(models.Model):
         help="Re-stream recordings using Odoo user auth.", default=True
     )
     transcript_calls = fields.Boolean()
+    transcript_provider = fields.Selection(selection=[('openai', 'Open AI')], default='openai', required=True)
     summary_prompt = fields.Text(required=True, default="Summarise this phone call")
     register_summary = fields.Boolean(
         default=True, help="Register summary at partner of reference chat."
@@ -556,6 +560,18 @@ class Settings(models.Model):
                 raise ValidationError("Set Twilio API keys first!")
             else:
                 raise
+
+    @api.model
+    def get_openai_client(self):
+        api_key = self.sudo().get_param('openai_api_key')
+        if not api_key:
+            return False
+        if os.environ.get('OPENAI_PROXY'):
+            client = openai.OpenAI(
+                api_key=api_key, http_client=httpx.Client(proxy=os.environ.get('HTTPS_PROXY')))
+        else:
+            client = openai.OpenAI(api_key=api_key)
+        return client
 
     def check_api_url(self):
         message = None
