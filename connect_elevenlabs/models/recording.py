@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
+import io
+import logging
+
+import requests
+
 from odoo import fields, models, release
+
+logger = logging.getLogger(__name__)
 
 
 class Recording(models.Model):
@@ -32,3 +39,35 @@ class Recording(models.Model):
                 rec.list_view_summary = rec.elevenlabs_summary
             else:
                 rec.list_view_summary = rec.summary
+
+    def transcribe_recording(self, openai_api_key, summary_prompt):
+        transcript_provider = self.env['connect.settings'].sudo().get_param('transcript_provider')
+        if transcript_provider == 'elevenlabs':
+            client = self.env['connect.settings'].get_elevenlabs_client()
+
+            response = requests.get(self.media_url)
+            response.raise_for_status()
+            audio_file = io.BytesIO(response.content)
+
+            logger.info('Transcribe with Elevenlabs provider!')
+            result = {'transcription_error': False}
+            try:
+                response = client.speech_to_text.convert(
+                    file=audio_file,
+                    model_id="scribe_v1",  # Model to use, for now only "scribe_v1" is supported
+                    diarize=True,  # Whether to annotate who is speaking
+                    tag_audio_events=False,  # Tag audio events like laughter, applause, etc.
+                )
+                logger.info(f'Transcript: {response.text}')
+                print(response)
+                result['transcript'] = response.text if response.text else ""
+                # Make a summary
+                openai_client = self.env['connect.settings'].get_openai_client()
+                result.update(self.make_summary(openai_client, summary_prompt, result['transcript']))
+            except Exception as e:
+                logger.exception(f"Transcribe error: {e}")
+                result['transcription_error'] = str(e)
+            finally:
+                self.write(result)
+        else:
+            return super().transcribe_recording(openai_api_key, summary_prompt)

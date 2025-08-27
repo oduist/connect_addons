@@ -59,11 +59,7 @@ class Recording(models.Model):
     def transcribe_recording(self, openai_api_key, summary_prompt):
         result = {}
         try:
-            if os.environ.get('OPENAI_PROXY'):
-                client = openai.OpenAI(
-                    api_key=openai_api_key, http_client=httpx.Client(proxy=os.environ.get('HTTPS_PROXY')))
-            else:
-                client = openai.OpenAI(api_key=openai_api_key)
+            client = self.env['connect.settings'].get_elevenlabs_client()
             response = requests.get(self.media_url, stream=True)
             response.raise_for_status()
             with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
@@ -85,6 +81,17 @@ class Recording(models.Model):
                 segments += '{} {}\n'.format(ts, s.text)
             result['transcript'] = segments
             # Make a summary
+            result.update(self.make_summary(client, summary_prompt, result['transcript']))
+            result['transcription_error'] = False
+        except Exception as e:
+            logger.exception(f'Transcribe error: {e}')
+            result['transcription_error'] = str(e)
+        finally:
+            self.write(result)
+
+    def make_summary(self, client, summary_prompt, transcript):
+        logger.info('Make summary!')
+        try:
             response = client.chat.completions.create(
                 model=os.environ.get('OPENAI_COMPLETION_MODEL', 'gpt-4o'),
                 messages=[
@@ -94,7 +101,7 @@ class Recording(models.Model):
                     },
                     {
                         'role': 'user',
-                        'content': segments,
+                        'content': transcript,
                     },
                 ],
                 temperature=float(os.environ.get('OPENAI_COMPLETION_TEMPERATURE', 0.5)),
@@ -104,18 +111,13 @@ class Recording(models.Model):
                 presence_penalty=float(os.environ.get('OPENAI_COMPLETION_PRESENSE_PENALTY', 0.0)),
             )
             logger.info('%s', response.usage)
-            #result['finish_reason'] = response.choices[0].finish_reason
-            #result['completion_tokens'] = response.usage.completion_tokens
-            #result['prompt_tokens'] = response.usage.prompt_tokens
-            result['summary'] = response.choices[0].message.content.strip('\n\n')
-            #result['completion_model'] = completion_model
-            #result['prompt'] = summary_prompt
-            result['transcription_error'] = False
+            # result['finish_reason'] = response.choices[0].finish_reason
+            # result['completion_tokens'] = response.usage.completion_tokens
+            # result['prompt_tokens'] = response.usage.prompt_tokens
+            return {'summary': response.choices[0].message.content.strip('\n\n')}
         except Exception as e:
-            logger.exception('Transcribe error:')
-            result['transcription_error'] = str(e)
-        finally:
-            self.write(result)
+            logger.exception(f'Summary error: {e}')
+            return {'transcription_error': str(e)}
 
     def get_transcript(self, fail_silently=False):
         self.ensure_one()
