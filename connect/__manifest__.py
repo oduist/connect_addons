@@ -49,6 +49,7 @@
         "views/message.xml",
         "views/message_configuration.xml",
         "views/versions.xml",
+        "views/documentation.xml",
         # Wizard
         "wizard/transfer.xml",
         "wizard/sms_composer_views.xml",
