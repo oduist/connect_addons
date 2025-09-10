@@ -3,15 +3,10 @@
 import json
 import logging
 import os
-import re
 import requests
 from tempfile import NamedTemporaryFile
-from urllib.parse import urljoin
-import uuid
 from odoo import fields, models, api, release, SUPERUSER_ID
 from odoo.exceptions import ValidationError
-import httpx
-import openai
 from .settings import format_connect_response, debug
 
 logger = logging.getLogger(__name__)
@@ -59,7 +54,7 @@ class Recording(models.Model):
     def transcribe_recording(self, openai_api_key, summary_prompt):
         result = {}
         try:
-            client = self.env['connect.settings'].get_elevenlabs_client()
+            client = self.env['connect.settings'].get_openai_client()
             response = requests.get(self.media_url, stream=True)
             response.raise_for_status()
             with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
