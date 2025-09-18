@@ -1,0 +1,77 @@
+$color-red: #d92929;
+$color-green: #70bd53;
+$color-white: #ffffff;
+
+.red {
+  background-color: $color-red !important;
+}
+
+.s_connect_talk {
+  width: 180px;
+  height: 72px;
+  border-radius: 40px;
+  padding: unset !important;
+
+  .s_talk_button {
+    font-size: 2rem;
+    width: 100%;
+    height: 100%;
+    border-radius: 40px;
+    color: $color-white;
+    background-color: transparent;
+    white-space: nowrap;
+
+    &:hover {
+      cursor: pointer;
+    }
+
+    i {
+      rotate: 133deg;
+    }
+  }
+
+
+  .s_incoming_call {
+    position: absolute;
+    top: 4px;
+
+    button {
+      margin: 5px 10px;
+      border: none;
+      background: transparent;
+      font-size: x-large;
+      border-radius: 50%;
+      padding: 5px;
+      color: $color-white;
+      width: 54px;
+      height: 54px;
+
+      .fa {
+        font-size: 30px;
+      }
+
+
+      &.answer-call {
+        background: $color-green;
+        margin-right: 40px;
+
+        i {
+          margin-top: 7px
+        }
+      }
+
+      &.reject-call {
+        background: $color-red;
+
+        i {
+          margin-top: 7px;
+          rotate: 133deg;
+        }
+      }
+    }
+  }
+}
+
+.hide {
+  display: none !important;
+}
