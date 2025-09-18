@@ -1,0 +1,158 @@
+<odoo>
+    <data>
+
+        <!-- tool_create_partner -->
+        <record id="tool_create_partner" model="connect.elevenlabs_agent_tool">
+            <field name="name">create_partner</field>
+            <field name="description">Creates a new partner. Returns partner_id that should be used as Partner ID. You can call this tool only once per session with user. It's not allowed to call this tool if Partner ID is set.</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs_sale/create_partner</field>
+            <field name="method">POST</field>
+            <field name="body_params_description">All params must be passed.</field>
+        </record>
+
+        <!-- Tool parameter: name -->
+        <record id="tool_create_partner_name" model="connect.agent_tool_params">
+            <field name="name">name</field>
+            <field name="description">Partner's name.</field>
+            <field name="data_type">string</field>
+            <field name="required" eval="True"/>
+            <field name="value_type">description</field>
+            <field name="tool" ref="tool_create_partner"/>
+        </record>
+
+        <!-- Tool parameter: partner_phone -->
+        <record id="tool_create_partner_partner_phone" model="connect.agent_tool_params">
+            <field name="name">partner_phone</field>
+            <field name="data_type">string</field>
+            <field name="required" eval="True"/>
+            <field name="value_type">dynamic_variable</field>
+            <field name="dynamic_variable">partner_phone</field>
+            <field name="tool" ref="tool_create_partner"/>
+        </record>
+
+        <!-- Tool parameter: call_id -->
+        <record id="tool_create_partner_call_id" model="connect.agent_tool_params">
+            <field name="name">call_id</field>
+            <field name="data_type">integer</field>
+            <field name="required" eval="True"/>
+            <field name="value_type">dynamic_variable</field>
+            <field name="dynamic_variable">call_id</field>
+            <field name="tool" ref="tool_create_partner"/>
+        </record>
+
+        <!-- Sale Orders -->
+        <record id="tool_get_sale_orders" model="connect.elevenlabs_agent_tool">
+            <field name="name">get_sale_orders</field>
+            <field name="description">get_sale_orders is used to retrieve customer sale order names. </field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs_sale/get_orders</field>
+            <field name="method">POST</field>
+            <field name="param_type">body</field>
+            <field name="body_params_description">Partner ID must be known before calling this tool.</field>
+            <field name="response_timeout_secs">20</field>
+        </record>
+
+        <record id="tool_get_sale_orders_param_partner_id" model="connect.agent_tool_params">
+            <field name="name">partner_id</field>
+            <field name="required" eval="True"/>
+            <field name="data_type">integer</field>
+            <field name="value_type">description</field>
+            <field name="description">Partner ID</field>
+            <field name="tool" ref="tool_get_sale_orders"/>
+        </record>
+
+        <!-- Sale Order Info -->
+        <record id="tool_get_sale_order_info" model="connect.elevenlabs_agent_tool">
+            <field name="name">get_sale_order_info</field>
+            <field name="description">get_sale_order_info is used to retrieve information about a sale order. </field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs_sale/get_order</field>
+            <field name="method">POST</field>
+            <field name="param_type">body</field>
+            <field name="body_params_description">Partner ID and order name must be known before calling this tool.</field>
+            <field name="response_timeout_secs">20</field>
+        </record>
+
+        <record id="tool_get_sale_order_info_param_order_name" model="connect.agent_tool_params">
+            <field name="name">order_name</field>
+            <field name="data_type">string</field>
+            <field name="required" eval="True"/>
+            <field name="value_type">description</field>
+            <field name="description">The reference (name) of the sale order (e.g., "S00001").</field>
+            <field name="tool" ref="tool_get_sale_order_info"/>
+        </record>
+
+        <record id="tool_get_sale_order_info_param_partner_id" model="connect.agent_tool_params">
+            <field name="name">partner_id</field>
+            <field name="required" eval="True"/>
+            <field name="data_type">integer</field>
+            <field name="value_type">description</field>
+            <field name="description">Partner ID</field>
+            <field name="tool" ref="tool_get_sale_order_info"/>
+        </record>
+
+        <!-- Elevenlabs Agent Tool: create_sale_order -->
+        <record id="create_sale_order_tool" model="connect.elevenlabs_agent_tool">
+            <field name="name">create_sale_order</field>
+            <field name="description">Create sales order.</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs_sale/create_order</field>
+            <field name="method">POST</field>
+            <field name="body_params_description">Make sure you have all parameters before calling this method.</field>
+            <field name="response_timeout_secs">20</field>
+            <field name="param_type">body</field>
+        </record>
+
+        <!-- paramerties for create_sale_order tool -->
+        <record id="create_sale_order_param_product_quantity" model="connect.agent_tool_params">
+            <field name="name">product_quantity</field>
+            <field name="data_type">integer</field>
+            <field name="required" eval="True"/>
+            <field name="value_type">description</field>
+            <field name="description">How many quantity of the product customers want to order.</field>
+            <field name="tool" ref="create_sale_order_tool"/>
+        </record>
+
+        <record id="create_sale_order_param_partner_id" model="connect.agent_tool_params">
+            <field name="name">partner_id</field>
+            <field name="data_type">integer</field>
+            <field name="required" eval="True"/>
+            <field name="value_type">description</field>
+            <field name="description">Partner ID.</field>
+            <field name="tool" ref="create_sale_order_tool"/>
+        </record>
+
+        <record id="create_sale_order_param_product_id" model="connect.agent_tool_params">
+            <field name="name">product_id</field>
+            <field name="data_type">integer</field>
+            <field name="required" eval="True"/>
+            <field name="value_type">description</field>
+            <field name="description">ID of the product.</field>
+            <field name="tool" ref="create_sale_order_tool"/>
+        </record>
+
+        <!-- Elevenlabs Agent Tool: get_products -->
+        <record id="get_products_tool" model="connect.elevenlabs_agent_tool">
+            <field name="name">get_products</field>
+            <field name="description">Get list of product and categories.</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs_sale/get_products</field>
+            <field name="method">POST</field>
+            <field name="body_params_description">Pass category_id = 0 for listing of all products all categories.</field>
+            <field name="response_timeout_secs">20</field>
+            <field name="param_type">body</field>
+        </record>
+
+        <!-- parameter for get_products tool -->
+        <record id="get_products_param_category_id" model="connect.agent_tool_params">
+            <field name="name">category_id</field>
+            <field name="data_type">integer</field>
+            <field name="required" eval="True"/>
+            <field name="value_type">description</field>
+            <field name="description">Category ID.</field>
+            <field name="tool" ref="get_products_tool"/>
+        </record>
+
+    </data>
+</odoo>

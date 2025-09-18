@@ -1,0 +1,25 @@
+<odoo>
+
+<record id="view_connect_domain_byoc_list" model="ir.ui.view">
+    <field name="name">view_connect_domain_byoc_list</field>
+    <field name="model">connect.domain</field>
+    <field name="inherit_id" ref="connect.connect_domain_list"/>
+    <field name="arch" type="xml">
+        <xpath expr="//field[@name='domain_name']" position="after">
+            <field name="byoc"/>
+        </xpath>
+    </field>
+</record>
+
+<record id="view_connect_domain_byoc_form" model="ir.ui.view">
+    <field name="name">view_connect_domain_byoc_form</field>
+    <field name="model">connect.domain</field>
+    <field name="inherit_id" ref="connect.connect_domain_form"/>
+    <field name="arch" type="xml">
+        <xpath expr="//field[@name='domain_name']" position="after">
+            <field name="byoc"/>
+        </xpath>
+    </field>
+</record>
+
+</odoo>

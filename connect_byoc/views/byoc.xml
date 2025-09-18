@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="byoc_action" model="ir.actions.act_window">
+        <field name="name">BYOC</field>
+        <field name="res_model">connect.byoc</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="byocs_menu"
+            sequence="2000"
+            parent="connect.connect_voice_menu"
+            name="BYOC"
+            action="byoc_action"/>
+
+    <record id="byoc_tree" model="ir.ui.view">
+        <field name="name">connect.byoc_tree</field>
+        <field name="model">connect.byoc</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="friendly_name"/>
+                <field name="origination_uris" widget="many2many_tags"/>
+                <field name="default_callerid" string="CallerID"/>
+                <field name="app"/>
+                <field name="domain_name" string="Domain"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="byoc_form" model="ir.ui.view">
+        <field name="name">connect.byoc_form</field>
+        <field name="model">connect.byoc</field>
+        <field name="arch" type="xml">
+            <form string="BYOC">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="friendly_name"/>
+                            <field name="origination_uris"
+                                    invisible="id == False">
+                                <tree editable="bottom">
+                                    <field name="target" placeholder="sip:your.siptrunk.com:5060"/>
+                                    <field name="priority"/>
+                                    <field name="weight"/>
+                                </tree>
+                            </field>
+                            <field name="app"/>
+                        </group>
+                        <group>
+                            <field name="id" invisible="1"/>
+                            <field name="default_callerid"/>
+                            <field name="sip_username" invisible="id == False" required="id != False"/>
+                            <field name="sip_password" invisible="id == False" required="id != False"/>
+                            <field name="domain_name" string="Domain" invisible="id == False"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="connect_byoc_search" model="ir.ui.view" >
+        <field name="name">connect_byoc_search</field>
+        <field name="model">connect.byoc</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="friendly_name"/>
+            </search>
+        </field>
+    </record>
+
+</odoo>
