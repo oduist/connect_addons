@@ -134,17 +134,17 @@ class Settings(models.Model):
     installation_date = fields.Datetime(compute="_get_instance_data")
     module_version = fields.Char(compute="_get_instance_data")
     odoo_version = fields.Char(compute="_get_instance_data")
-    admin_name = fields.Char(compute="_get_instance_data")
-    admin_phone = fields.Char(compute="_get_instance_data")
-    admin_email = fields.Char(compute="_get_instance_data")
-    company_name = fields.Char(compute="_get_instance_data")
-    company_email = fields.Char(compute="_get_instance_data")
-    company_phone = fields.Char(compute="_get_instance_data")
-    company_country = fields.Char(compute="_get_instance_data")
-    company_state_name = fields.Char(compute="_get_instance_data")
-    company_country_code = fields.Char(compute="_get_instance_data")
-    company_country_name = fields.Char(compute="_get_instance_data")
-    company_city = fields.Char(compute="_get_instance_data")
+    admin_name = fields.Char(required=True)
+    admin_phone = fields.Char(required=True)
+    admin_email = fields.Char(required=True)
+    company_name = fields.Char(required=True)
+    company_email = fields.Char(required=True)
+    company_phone = fields.Char(required=True)
+    company_country = fields.Char(required=True)
+    company_state_name = fields.Char(required=True)
+    company_country_code = fields.Char(required=True)
+    company_country_name = fields.Char(required=True)
+    company_city = fields.Char(required=True)
     web_base_url = fields.Char(compute="_get_instance_data", string="Odoo URL")
     latest_versions = fields.Html(readonly=True)
 
@@ -188,6 +188,25 @@ class Settings(models.Model):
         )
         self.set_param("latest_versions", html)
 
+    def set_default_admin_and_company(self):
+        self.company_email = self.env.user.company_id.email
+        self.company_name = self.env.user.company_id.name
+        self.company_phone = self.env.user.company_id.phone
+        self.company_country = self.env.user.company_id.country_id.name
+        self.company_city = self.env.user.company_id.city
+        self.company_country_code = self.env.user.company_id.country_id.code
+        self.company_country_name = self.env.user.company_id.country_id.name
+        self.company_state_name = self.env.user.company_id.partner_id.state_id.name
+        self.admin_name = self.env.user.partner_id.name
+        self.admin_email = self.env.user.partner_id.email
+        self.admin_phone = self.env.user.partner_id.phone
+
+    def read(self, fields_to_read, load='_classic_read'):
+        if not self.admin_name:
+            self.set_default_admin_and_company()
+        res = super(Settings, self).read(fields_to_read, load=load)
+        return res
+
     def _get_instance_data(self):
         module = (
             self.env["ir.module.module"].sudo().search([("name", "=", MODULE_NAME)])
@@ -212,17 +231,6 @@ class Settings(models.Model):
                 .sudo()
                 .get_param("connect.registration_key")
             )
-            rec.company_email = self.env.user.company_id.email
-            rec.company_name = self.env.user.company_id.name
-            rec.company_phone = self.env.user.company_id.phone
-            rec.company_country = self.env.user.company_id.country_id.name
-            rec.company_city = self.env.user.company_id.city
-            rec.company_country_code = self.env.user.company_id.country_id.code
-            rec.company_country_name = self.env.user.company_id.country_id.name
-            rec.company_state_name = self.env.user.company_id.partner_id.state_id.name
-            rec.admin_name = self.env.user.partner_id.name
-            rec.admin_email = self.env.user.partner_id.email
-            rec.admin_phone = self.env.user.partner_id.phone
             rec.web_base_url = (
                 self.env["ir.config_parameter"].sudo().get_param("web.base.url")
             )
@@ -423,29 +431,6 @@ class Settings(models.Model):
                 "%Y-%m-%d"
             ),
             "customer_code": self.get_param("customer_code"),
-        }
-
-    def update_company_data_button(self):
-        main_company = self.env.company
-        if not main_company:
-            raise UserError("No main company found.")
-        return {
-            "type": "ir.actions.act_window",
-            "name": main_company.name,
-            "res_model": "res.company",
-            "view_mode": "form",
-            "res_id": main_company.id,
-            "target": "new",
-        }
-
-    def update_admin_data_button(self):
-        return {
-            "type": "ir.actions.act_window",
-            "name": self.env.user.partner_id.name,
-            "res_model": "res.partner",
-            "view_mode": "form",
-            "res_id": self.env.user.partner_id.id,
-            "target": "new",
         }
 
     def get_usage_model_list(self):
