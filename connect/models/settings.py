@@ -91,6 +91,29 @@ class Settings(models.Model):
 
     name = fields.Char(compute="_get_name")
     debug_mode = fields.Boolean()
+    twilio_region = fields.Selection([
+        ('us1', 'US East (Virginia)'),
+        ('us2', 'US West (Oregon)'),
+        ('au1', 'Australia (Sydney)'),
+        ('br1', 'Brazil (Sao Paulo)'),
+        ('de1', 'Germany (Frankfurt)'),
+        ('ie1', 'Ireland (Dublin)'),
+        ('jp1', 'Japan (Tokyo)'),
+        ('sg1', 'Singapore'),
+        ('in1', 'India (regional)'),
+        ('gll', 'Global Low Latency'),
+    ], default='us1')
+    twilio_edge = fields.Selection([
+        ('ashburn', 'US East Coast (Virginia)'),
+        ('umatilla', 'US West Coast (Oregon)'),
+        ('sydney', 'Australia'),
+        ('sao-paulo', 'Brazil'),
+        ('dublin', 'Ireland'),
+        ('frankfurt', 'Frankfurt'),
+        ('tokyo', 'Japan'),
+        ('singapore', 'Singapore'),
+        ('sydney', 'Australia'),
+    ], default='ashburn')
     account_sid = fields.Char(string="Account SID")
     auth_token = fields.Char(
         groups="base.group_erp_manager,connect.group_connect_webhook"
@@ -538,6 +561,12 @@ class Settings(models.Model):
             account_sid = self.sudo().get_param("account_sid")
             auth_token = self.sudo().get_param("auth_token")
             client = Client(account_sid, auth_token)
+            twilio_region = self.sudo().get_param("twilio_region")
+            if twilio_region:
+                client.region = twilio_region
+            twilio_edge = self.sudo().get_param("twilio_edge")
+            if twilio_edge:
+                client.region = twilio_edge
             client.http_client.logger.setLevel(TWILIO_LOG_LEVEL)
             return client
         except Exception as e:
