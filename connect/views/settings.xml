@@ -157,6 +157,7 @@
                       <field name="company_email" attrs="{'required': True}"/>
                       <field name="company_phone" attrs="{'required': True}"/>
                       <field name="company_country" attrs="{'required': True}"/>
+                      <field name="company_state_name" string="Company State"/>
                       <field name="company_city" attrs="{'required': True}"/>
                       <field name="admin_name" attrs="{'required': True}"/>
                       <field name="admin_email" attrs="{'required': True}"/>
