@@ -140,10 +140,8 @@ class Settings(models.Model):
     company_name = fields.Char()
     company_email = fields.Char()
     company_phone = fields.Char()
-    company_country = fields.Char()
-    company_state_name = fields.Char()
-    company_country_code = fields.Char()
-    company_country_name = fields.Char()
+    company_country = fields.Many2one('res.country')
+    company_state_name = fields.Many2one('res.country.state', domain="[('country_id', '=?', company_country)]")
     company_city = fields.Char()
     web_base_url = fields.Char(compute="_get_instance_data", string="Odoo URL")
     latest_versions = fields.Html(readonly=True)
@@ -192,11 +190,9 @@ class Settings(models.Model):
         self.company_email = self.env.user.company_id.email
         self.company_name = self.env.user.company_id.name
         self.company_phone = self.env.user.company_id.phone
-        self.company_country = self.env.user.company_id.country_id.name
+        self.company_country = self.env.user.company_id.country_id
         self.company_city = self.env.user.company_id.city
-        self.company_country_code = self.env.user.company_id.country_id.code
-        self.company_country_name = self.env.user.company_id.country_id.name
-        self.company_state_name = self.env.user.company_id.partner_id.state_id.name
+        self.company_state_name = self.env.user.company_id.partner_id.state_id
         self.admin_name = self.env.user.partner_id.name
         self.admin_email = self.env.user.partner_id.email
         self.admin_phone = self.env.user.partner_id.phone
@@ -409,13 +405,15 @@ class Settings(models.Model):
         self.set_param("is_registered", True)
 
     def prepare_registration_data(self):
+        company_country = self.get_param("company_country")
+        company_state_name = self.get_param("company_state_name")
         return {
             "instance_uid": self.get_param("instance_uid"),
             "company_name": self.get_param("company_name"),
-            "company_country": self.get_param("company_country"),
-            "company_state_name": self.get_param("company_state_name"),
-            "company_country_code": self.get_param("company_country_code"),
-            "company_country_name": self.get_param("company_country_name"),
+            "company_country": company_country.name if company_country else False,
+            "company_state_name": company_state_name.name if company_state_name else False,
+            "company_country_code": company_country.code if company_country else False,
+            "company_country_name": company_country.name if company_country else False,
             "company_email": self.get_param("company_email"),
             "company_city": self.get_param("company_city"),
             "company_phone": self.get_param("company_phone"),
