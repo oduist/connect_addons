@@ -25,7 +25,6 @@ MODULE_NAME = "connect"
 MAX_EXTEN_LEN = 4
 PROTECTED_FIELDS = [
     "display_auth_token",
-    "display_twilio_api_secret",
     "display_openai_api_key",
 ]
 
@@ -121,7 +120,6 @@ class Settings(models.Model):
     display_auth_token = fields.Char()
     twilio_api_key = fields.Char()
     twilio_api_secret = fields.Char(groups="base.group_erp_manager")
-    display_twilio_api_secret = fields.Char()
     twilio_balance = fields.Char(readonly=True)
     openai_api_key = fields.Char(groups="base.group_erp_manager")
     display_openai_api_key = fields.Char()
@@ -606,6 +604,16 @@ class Settings(models.Model):
         api_url_check = self.check_api_url()
         if api_url_check:
             raise ValidationError(api_url_check)
+        if not self.twilio_api_key and not self.twilio_api_secret:
+            # Create Api Key
+            logger.info('Create Twilio Api Key')
+            new_api_key = self.get_client().iam.v1.new_api_key.create(
+                friendly_name="Oduist Connect",
+                account_sid=self.sudo().get_param("account_sid"),
+            )
+            self.twilio_api_key = new_api_key.sid
+            self.twilio_api_secret = new_api_key.secret
+
         self.env["connect.twiml"].sync()
         self.env["connect.domain"].sync()
         self.env["connect.number"].sync()
