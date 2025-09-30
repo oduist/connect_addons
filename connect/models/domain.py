@@ -38,8 +38,9 @@ class Domain(models.Model):
     ]
 
     def _get_domain_name(self):
+        edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
         for rec in self:
-            rec.domain_name = rec.subdomain + "." + "sip.twilio.com"
+            rec.domain_name = rec.subdomain + ".sip." + edge + ".twilio.com"
 
     def _set_domain_name(self):
         for rec in self:
