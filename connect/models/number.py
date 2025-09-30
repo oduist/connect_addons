@@ -46,8 +46,13 @@ class Number(models.Model):
         for rec in self:
             rec.voice_status_url = urljoin(api_url, 'twilio/webhook/callstatus')
             rec.voice_url = urljoin(api_url, 'twilio/webhook/number')
-            rec.message_url = urljoin(api_url, 'twilio/webhook/message')
-            rec.message_fallback_url = urljoin(api_url, 'twilio/webhook/message')
+            if self.env['connect.settings'].get_param('twilio_region') == 'us1':
+                # Messages are supported only in US region.
+                rec.message_url = urljoin(api_url, 'twilio/webhook/message')
+                rec.message_fallback_url = urljoin(api_url, 'twilio/webhook/message')
+            else:
+                rec.message_url = ''
+                rec.message_fallback_url = ''
             if fallback_url:
                 rec.voice_fallback_url = urljoin(fallback_url, 'twilio/webhook/number')
             else:
@@ -91,6 +96,7 @@ class Number(models.Model):
         # We sync numbers Twilio -> Odoo.
         numbers = client.incoming_phone_numbers.list()
         for number in numbers:
+            print(11, number)
             rec = self.search([('sid', '=', number.sid)])
             if not rec:
                 # Create number in Odoo:

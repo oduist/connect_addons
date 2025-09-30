@@ -43,7 +43,10 @@
                       <field name="display_auth_token" string="Auth Token" password="1"/>
                       <field name="twilio_api_key" string="API Key SID"/>
                       <field name="display_twilio_api_secret" string="API Key Secret" password="1"/>
-                      <field name="twilio_region" string="Region"/>
+                      <field name="twilio_region_is_set" invisible="1"/>
+                      <p class="text-danger"> Caution: Once set, the region cannot be modified.</p>
+                      <field name="twilio_region" string="Region"
+                          readonly="twilio_region_is_set == True"/>
                       <field name="twilio_edge" string="Edge"/>
                       <button colspan="2" name="sync" type="object" string="SYNC TWILIO ACCOUNT" class="btn btn-primary"/>
                     </group>

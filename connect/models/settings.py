@@ -93,16 +93,9 @@ class Settings(models.Model):
     debug_mode = fields.Boolean()
     twilio_region = fields.Selection([
         ('us1', 'US East (Virginia)'),
-        ('us2', 'US West (Oregon)'),
-        ('au1', 'Australia (Sydney)'),
-        ('br1', 'Brazil (Sao Paulo)'),
-        ('de1', 'Germany (Frankfurt)'),
         ('ie1', 'Ireland (Dublin)'),
-        ('jp1', 'Japan (Tokyo)'),
-        ('sg1', 'Singapore'),
-        ('in1', 'India (regional)'),
-        ('gll', 'Global Low Latency'),
-    ], default='us1')
+        ('au1', 'Australia (Sydney)'),
+    ], default='us1', requied=True)
     twilio_edge = fields.Selection([
         ('ashburn', 'US East Coast (Virginia)'),
         ('umatilla', 'US West Coast (Oregon)'),
@@ -118,6 +111,7 @@ class Settings(models.Model):
     auth_token = fields.Char(
         groups="base.group_erp_manager,connect.group_connect_webhook"
     )
+    twilio_region_is_set = fields.Boolean()
     display_auth_token = fields.Char()
     twilio_api_key = fields.Char()
     twilio_api_secret = fields.Char(groups="base.group_erp_manager")
@@ -564,7 +558,7 @@ class Settings(models.Model):
                 client.region = twilio_region
             twilio_edge = self.sudo().get_param("twilio_edge")
             if twilio_edge:
-                client.region = twilio_edge
+                client.edge = twilio_edge
             client.http_client.logger.setLevel(TWILIO_LOG_LEVEL)
             return client
         except Exception as e:
@@ -610,6 +604,8 @@ class Settings(models.Model):
         self.env["connect.domain"].sync()
         self.env["connect.number"].sync()
         self.env["connect.outgoing_callerid"].sync()
+        if not self.get_param('twilio_region_is_set'):
+            self.set_param('twilio_region_is_set', True)
         self.connect_notify("Sync complete.")
 
     # Called from the settings.
