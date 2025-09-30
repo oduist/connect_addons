@@ -41,8 +41,6 @@
                       </div>
                       <field name="account_sid"/>
                       <field name="display_auth_token" string="Auth Token" password="1"/>
-                      <field name="twilio_api_key" string="API Key SID"/>
-                      <field name="display_twilio_api_secret" string="API Key Secret" password="1"/>
                       <field name="twilio_region_is_set" invisible="1"/>
                       <p class="text-danger"> Caution: Once set, the region cannot be modified.</p>
                       <field name="twilio_region" string="Region"
