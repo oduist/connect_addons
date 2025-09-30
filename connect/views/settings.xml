@@ -159,6 +159,7 @@
                       <field name="company_email" required="1"/>
                       <field name="company_phone" required="1"/>
                       <field name="company_country" required="1"/>
+                      <field name="company_state_name" string="Company State"/>
                       <field name="company_city" required="1"/>
                       <field name="admin_name" required="1"/>
                       <field name="admin_email" required="1"/>
