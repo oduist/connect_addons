@@ -29,6 +29,19 @@ PROTECTED_FIELDS = [
     "display_openai_api_key",
 ]
 
+TWILIO_EDGES = [
+    ('roaming', 'Global Low Latency routing'),
+    ('ashburn', 'US East Coast (Virginia)'),
+    ('umatilla', 'US West Coast (Oregon)'),
+    ('sydney', 'Australia'),
+    ('sao-paulo', 'Brazil'),
+    ('dublin', 'Ireland'),
+    ('frankfurt', 'Frankfurt'),
+    ('tokyo', 'Japan'),
+    ('singapore', 'Singapore'),
+    ('sydney', 'Australia'),
+]
+
 
 def debug(rec, message, level="info"):
     caller_module = inspect.stack()[1][3]
@@ -96,17 +109,7 @@ class Settings(models.Model):
         ('ie1', 'Ireland (Dublin)'),
         ('au1', 'Australia (Sydney)'),
     ], default='us1', required=True)
-    twilio_edge = fields.Selection([
-        ('ashburn', 'US East Coast (Virginia)'),
-        ('umatilla', 'US West Coast (Oregon)'),
-        ('sydney', 'Australia'),
-        ('sao-paulo', 'Brazil'),
-        ('dublin', 'Ireland'),
-        ('frankfurt', 'Frankfurt'),
-        ('tokyo', 'Japan'),
-        ('singapore', 'Singapore'),
-        ('sydney', 'Australia'),
-    ], default='ashburn')
+    twilio_edge = fields.Selection(selection=TWILIO_EDGES, default='roaming')
     account_sid = fields.Char(string="Account SID")
     auth_token = fields.Char(
         groups="base.group_erp_manager,connect.group_connect_webhook"
