@@ -60,6 +60,7 @@
                                 </group>
                                 <group>
                                     <field name="exten_number" widget="phone"/>
+                                    <field name="twilio_edge" string="Edge"/>
                                 </group>
                             </group>
                             <group>

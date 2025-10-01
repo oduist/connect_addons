@@ -10,7 +10,7 @@ from odoo.exceptions import ValidationError
 from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 from twilio.twiml.voice_response import Client, Dial, VoiceResponse
-from .settings import format_connect_response, debug, strip_number
+from .settings import format_connect_response, debug, strip_number, TWILIO_EDGES
 from .twiml import pretty_xml
 
 logger = logging.getLogger(__name__)
@@ -68,6 +68,7 @@ class User(models.Model):
     missed_calls_notify = fields.Boolean(default=False, help='Notify user on missed calls.')
     greeting_message = fields.Char()
     summary_prompt = fields.Char()
+    twilio_edge = fields.Selection(selection=TWILIO_EDGES)
 
     _sql_constraints = [
         ('user_uniq', 'UNIQUE("user")', 'This Odoo user account is already defined!'),
@@ -382,7 +383,7 @@ class User(models.Model):
             token.add_grant(voice_grant)
             return {
                 'token': token.to_jwt(),
-                'edge': self.env['connect.settings'].sudo().get_param('twilio_edge'),
+                'edge': user.twilio_edge or self.env['connect.settings'].sudo().get_param('twilio_edge'),
             }
         except Exception as e:
             logger.exception('Error getting Twilio JWT:')
