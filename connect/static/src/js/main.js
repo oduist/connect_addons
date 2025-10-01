@@ -15,11 +15,14 @@ export const phoneService = {
     async start(env, {orm}) {
         const pathname = document.location.pathname
         if (pathname.includes("/odoo")) {
-            const token = await orm.call('connect.user', 'get_client_token')
+            const [token, error] = await orm.call('connect.user', 'get_client_token')
             if (token) {
                 let bus = new EventBus()
                 sysTrayRegistry.add('connectPhoneSysTray', {Component: PhoneSysTray, props: {bus}})
                 mainComponents.add('connectPhone', {Component: Phone, props: {bus, token}})
+            }
+            else if (error) {
+                console.warn(error)
             }
             else {
                 console.log('Twilio Web Phone is not enabled for user.')

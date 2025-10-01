@@ -94,7 +94,7 @@ class Settings(models.Model):
         ('us1', 'US East (Virginia)'),
         ('ie1', 'Ireland (Dublin)'),
         ('au1', 'Australia (Sydney)'),
-    ], default='us1', requied=True)
+    ], default='us1', required=True)
     twilio_edge = fields.Selection([
         ('ashburn', 'US East Coast (Virginia)'),
         ('umatilla', 'US West Coast (Oregon)'),

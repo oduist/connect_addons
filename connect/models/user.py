@@ -355,29 +355,33 @@ class User(models.Model):
 
     @api.model
     def get_client_token(self):
-        has_user_group = self.env.user.has_group('connect.group_connect_user')
-        has_admin_group = self.env.user.has_group('connect.group_connect_admin')
-        if not (has_user_group or has_admin_group):
-            return False
-        user = self.search([('user', '=', self.env.user.id)])
-        if not user:
-            logger.info("User %s not found!", self.env.user.id)
-            return False
-        if not user.client_enabled:
-            logger.info("Client for user %s not enabled!", self.env.user.id)
-            return False
-        account_sid = self.env['connect.settings'].sudo().get_param('account_sid')
-        api_key = self.env['connect.settings'].sudo().get_param('twilio_api_key')
-        api_secret = self.env['connect.settings'].sudo().get_param('twilio_api_secret')
-        identity = user.uri
-        token = AccessToken(account_sid, api_key, api_secret, identity=identity, ttl=3600)
-        voice_grant = VoiceGrant(
-            outgoing_application_sid=user.application.sid or user.domain.application.sid,
-            outgoing_application_params={},
-            incoming_allow=True,
-        )
-        token.add_grant(voice_grant)
-        return token.to_jwt()
+        try:
+            has_user_group = self.env.user.has_group('connect.group_connect_user')
+            has_admin_group = self.env.user.has_group('connect.group_connect_admin')
+            if not (has_user_group or has_admin_group):
+                return [False, '']
+            user = self.search([('user', '=', self.env.user.id)])
+            if not user:
+                logger.info("User %s not found!", self.env.user.id)
+                return [False, '']
+            if not user.client_enabled:
+                logger.info("Client for user %s not enabled!", self.env.user.id)
+                return [False, '']
+            account_sid = self.env['connect.settings'].sudo().get_param('account_sid')
+            api_key = self.env['connect.settings'].sudo().get_param('twilio_api_key')
+            api_secret = self.env['connect.settings'].sudo().get_param('twilio_api_secret')
+            identity = user.uri
+            token = AccessToken(account_sid, api_key, api_secret, identity=identity, ttl=3600)
+            voice_grant = VoiceGrant(
+                outgoing_application_sid=user.application.sid or user.domain.application.sid,
+                outgoing_application_params={},
+                incoming_allow=True,
+            )
+            token.add_grant(voice_grant)
+            return [token.to_jwt(), '']
+        except Exception as e:
+            logger.exception('Error getting Twilio JWT:')
+            return [False, str(e)]
 
     @api.model
     def get_user_by_exten_number(self, search_query):
