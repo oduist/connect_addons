@@ -96,7 +96,6 @@ class Number(models.Model):
         # We sync numbers Twilio -> Odoo.
         numbers = client.incoming_phone_numbers.list()
         for number in numbers:
-            print(11, number)
             rec = self.search([('sid', '=', number.sid)])
             if not rec:
                 # Create number in Odoo:

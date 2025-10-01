@@ -105,11 +105,11 @@ class Settings(models.Model):
     name = fields.Char(compute="_get_name")
     debug_mode = fields.Boolean()
     twilio_region = fields.Selection([
-        ('us1', 'US East (Virginia)'),
-        ('ie1', 'Ireland (Dublin)'),
-        ('au1', 'Australia (Sydney)'),
+        ('us1', 'USA'),
+        ('ie1', 'Europe'),
+        ('au1', 'Australia'),
     ], default='us1', required=True)
-    twilio_edge = fields.Selection(selection=TWILIO_EDGES, default='roaming')
+    twilio_edge = fields.Selection(selection=TWILIO_EDGES, default='roaming', required=True)
     account_sid = fields.Char(string="Account SID")
     auth_token = fields.Char(
         groups="base.group_erp_manager,connect.group_connect_webhook"
