@@ -72,7 +72,7 @@
                                            invisible="sip_enabled == False"
                                            required="sip_enabled == True"/>
                                     <field name="twilio_edge"/>
-                                    <field name='connect_uri'
+                                    <field name='connect_uri' string="SIP URI"
                                            invisible="sip_enabled == False"/>
                                 </group>
                                 <group string="WEB Phone">
