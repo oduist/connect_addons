@@ -137,7 +137,6 @@ class Settings(models.Model):
     twilio_verify_requests = fields.Boolean(
         default=True, string="Verify Twilio Requests"
     )
-    media_url = fields.Char()
     # Registration fields
     customer_code = fields.Char()
     registration_number = fields.Char(compute="_get_instance_data")
