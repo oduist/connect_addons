@@ -120,11 +120,12 @@ class TwiML(models.Model):
     def _get_twilio_urls(self):
         api_url = self.env['connect.settings'].get_param('api_url')
         fallback_url = self.env['connect.settings'].get_param('api_fallback_url')
+        edge = self.env['connect.settings'].get_param('twilio_edge')
         for rec in self:
-            rec.voice_status_url = urljoin(api_url, 'twilio/webhook/callstatus')
-            rec.voice_url = urljoin(api_url, 'twilio/webhook/twiml/{}'.format(rec.id))
+            rec.voice_status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
+            rec.voice_url = urljoin(api_url, 'twilio/webhook/twiml/{}#e={}'.format(rec.id, edge))
             if fallback_url:
-                rec.voice_fallback_url = urljoin(fallback_url, 'twilio/webhook/twiml')
+                rec.voice_fallback_url = urljoin(fallback_url, 'twilio/webhook/twiml#e={}'.format(edge))
             else:
                 rec.voice_fallback_url = ''
 
@@ -141,8 +142,9 @@ class TwiML(models.Model):
             return '<Response><Say>{}</Say></Response>'.format(api_url_check)
         self.ensure_one()
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        recording_voice_status_url = urljoin(api_url, 'app/connect/webhook/recordingstatus')
-        call_voice_status_url = urljoin(api_url, 'app/connect/webhook/callstatus')
+        edge = self.twilio_edge or self.env['connect.settings'].sudo().get_param('twilio_edge')
+        recording_voice_status_url = urljoin(api_url, 'app/connect/webhook/recordingstatus#e={}'.format(edge))
+        call_voice_status_url = urljoin(api_url, 'app/connect/webhook/callstatus#e={}'.format(edge))
         params.update({
             'recording_voice_status_url': recording_voice_status_url,
             'call_voice_status_url': call_voice_status_url,

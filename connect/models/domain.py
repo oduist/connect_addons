@@ -237,6 +237,14 @@ class Domain(models.Model):
                     credential_list_sid
                 ).credentials.list()
                 for cred in creds:
+                    # Check if user is already defined in Odoo (region migration).
+                    user = self.env["connect.user"].search([('username', '=', cred.username)])
+                    if user:
+                        # Update user's SID
+                        user.write({
+                            "sid": cred.sid,
+                            "sip_enabled": True,
+                        })
                     self.env["connect.user"].with_context(no_twilio_create=True).create(
                         {
                             "sid": cred.sid,
@@ -346,8 +354,9 @@ class Domain(models.Model):
             return "<Response><Say>You must select a default number for caller ID!</Say></Response>"
         response = VoiceResponse()
         api_url = self.env["connect.settings"].get_param("api_url")
-        status_url = urljoin(api_url, "twilio/webhook/callstatus")
-        record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus")
+        edge = self.env['connect.settings'].get_param('twilio_edge')
+        status_url = urljoin(api_url, "twilio/webhook/callstatus#e={}".format(edge))
+        record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus#e={}".format(edge))
         if user.record_calls:
             dial = Dial(
                 timeout=60,

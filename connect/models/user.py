@@ -16,6 +16,9 @@ from .twiml import pretty_xml
 logger = logging.getLogger(__name__)
 
 
+SIP_TWILIO_EDGES = TWILIO_EDGES.copy()
+SIP_TWILIO_EDGES.insert(0, ['roaming', 'Global Low-latency Roaming'])
+
 class UserCallflowCall(models.Model):
     _name = 'connect.user_callflow_call'
     _log_access = False
@@ -55,7 +58,8 @@ class User(models.Model):
                             default=lambda x: x.env['connect.domain'].search([('subdomain', 'not like', 'byoc')], limit=1))
     username = fields.Char(required=True)
     password = fields.Char(groups="connect.group_connect_admin,connect.group_connect_user")
-    uri = fields.Char('SIP URI', compute='_get_sip_uri', store=True)
+    uri = fields.Char('SIP URI', compute='_get_sip_uri')
+    connect_uri = fields.Char('SIP Connect URI', compute='_get_sip_uri')
     record_calls = fields.Boolean(default=True)
     voicemail_enabled = fields.Boolean()
     voicemail_prompt = fields.Text(default="Hello, this is {{user.name}}. I'm unable to take your call right now. Please leave a message after the tone.")
@@ -68,17 +72,24 @@ class User(models.Model):
     missed_calls_notify = fields.Boolean(default=False, help='Notify user on missed calls.')
     greeting_message = fields.Char()
     summary_prompt = fields.Char()
-    twilio_edge = fields.Selection(selection=TWILIO_EDGES)
+    twilio_edge = fields.Selection(selection=SIP_TWILIO_EDGES, required=True, default='roaming')
 
     _sql_constraints = [
         ('user_uniq', 'UNIQUE("user")', 'This Odoo user account is already defined!'),
         ('username_uniq', 'UNIQUE(username)', 'This PBX username is already defined!'),
     ]
 
-    @api.depends('username', 'domain', 'domain.domain_name', 'domain.subdomain')
+    @api.depends('username', 'domain', 'twilio_edge')
     def _get_sip_uri(self):
+        edge = self.twilio_edge or self.env['connect.settings'].get_param('twilio_edge')
         for rec in self:
+            # Render URI is always global
             rec.uri = '{}@{}'.format(rec.username, rec.domain.domain_name)
+            if edge == 'roaming':
+                rec.connect_uri = '{}@{}'.format(rec.username, rec.domain.domain_name)
+            else:
+                rec.connect_uri = '{}@{}.sip.{}.twilio.com'.format(
+                    rec.username, rec.domain.subdomain, edge)
 
     def _create_sip_account(self, username, password, client=None):
         self.ensure_one()
@@ -244,9 +255,10 @@ class User(models.Model):
         caller_name = self._get_caller_name(request, params)
         callerId = self._get_caller_id(request, params)
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus')
-        status_url = urljoin(api_url, 'twilio/webhook/callstatus')
-        dial_action_url = urljoin(api_url, 'twilio/webhook/connect.user/call_action/{}'.format(self.id))
+        edge = self.twilio_edge or self.env['connect.settings'].sudo().get_param('twilio_edge')
+        record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus#e={}'.format(edge))
+        status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
+        dial_action_url = urljoin(api_url, 'twilio/webhook/connect.user/call_action/{}#e={}'.format(self.id, edge))
         dial_client_kwargs = {'timeout': self.client_ring_timeout, 'callerId': callerId}
         # Check for action callback URL.
         if params.get('dial_action_url'):
@@ -262,7 +274,7 @@ class User(models.Model):
         client = Client(
             statusCallbackEvent='initiated answered completed',
             statusCallback=status_url)
-        client.identity(self.uri)
+        client.identity(self.get_client_identity())
         if caller_name:
             client.parameter(name='CallerName', value=caller_name)
         channel = self.env['connect.channel'].search([('sid', '=', request.get('CallSid'))])
@@ -284,9 +296,10 @@ class User(models.Model):
     def render_sip(self, response, request, params):
         callerId = self._get_caller_id(request, params)
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        dial_action_url = urljoin(api_url, 'twilio/webhook/connect.user/call_action/{}'.format(self.id))
-        record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus')
-        status_url = urljoin(api_url, 'twilio/webhook/callstatus')
+        edge = self.twilio_edge or self.env['connect.settings'].get_param('twilio_edge')
+        dial_action_url = urljoin(api_url, 'twilio/webhook/connect.user/call_action/{}#e={}'.format(self.id, edge))
+        record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus#e={}'.format(edge))
+        status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
         dial_sip_kwargs = {'timeout': self.sip_ring_timeout, 'callerId': callerId}
         # Check for action callback URL.
         if params.get('dial_action_url'):
@@ -308,7 +321,8 @@ class User(models.Model):
 
     def render_voicemail(self, response, request, params):
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        voicemail_record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus')
+        edge = self.twilio_edge or self.env['connect.settings'].sudo().get_param('twilio_edge')
+        voicemail_record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
         self.get_voicemail_prompt(response)
         response.record(
             maxLength=120,
@@ -354,6 +368,10 @@ class User(models.Model):
                 getattr(self, flow.method)(response, request, params)
             return response.to_xml()
 
+    def get_client_identity(self):
+        # Clients always user global domain.
+        return '{}@{}'.format(self.username, self.domain.domain_name)
+
     @api.model
     def get_client_token(self):
         try:
@@ -371,7 +389,7 @@ class User(models.Model):
             account_sid = self.env['connect.settings'].sudo().get_param('account_sid')
             api_key = self.env['connect.settings'].sudo().get_param('twilio_api_key')
             api_secret = self.env['connect.settings'].sudo().get_param('twilio_api_secret')
-            identity = user.uri
+            identity = user.get_client_identity()
             token = AccessToken(account_sid, api_key, api_secret, identity=identity, ttl=3600,
                 region=self.env['connect.settings'].sudo().get_param('twilio_region'),
             )
@@ -401,16 +419,15 @@ class User(models.Model):
         return user[0] if user else False
 
     @api.model
-    # @tools.ormcache('userinfo') - psycopg2.InterfaceError: Cursor already closed
     def get_user_by_uri(self, userinfo):
         if not userinfo:
             # Return empty set.
             return self.env['connect.user']
-        re_call_uri = re.compile(r'^(?:sip|client):([^\s@]+@[^\s;]+)(?:;[^&\s]+(?:&[^&\s]+)*)?')
-        found_uri = re_call_uri.search(userinfo)
-        if found_uri:
+        re_call_uri = re.compile(r'^(?:sip|client):([^@]+)@')
+        found_username = re_call_uri.search(userinfo)
+        if found_username:
             user = self.env['connect.user'].search([
-                ('uri', '=', found_uri.group(1))])
+                ('username', '=', found_username.group(1))])
             debug(self, 'Found user: {} by {}.'.format(user.username, userinfo))
             return user
         # Return empty set.

@@ -103,7 +103,8 @@ class OutgoingCallerID(models.Model):
         if self.sid:
             raise ValidationError('Outgoing callerid is already validated!')
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        status_url = urljoin(api_url, 'twilio/webhook/outgoing_callerid')
+        edge = self.twilio_edge or self.env['connect.settings'].get_param('twilio_edge')
+        status_url = urljoin(api_url, 'twilio/webhook/outgoing_callerid#e={}'.format(edge))
         client = self.env['connect.settings'].get_client()
         try:
             validation_request = client.validation_requests.create(

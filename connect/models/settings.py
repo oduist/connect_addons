@@ -30,7 +30,6 @@ PROTECTED_FIELDS = [
 ]
 
 TWILIO_EDGES = [
-    ('roaming', 'Global Low Latency routing'),
     ('ashburn', 'US East Coast (Virginia)'),
     ('umatilla', 'US West Coast (Oregon)'),
     ('sydney', 'Australia'),
@@ -109,7 +108,7 @@ class Settings(models.Model):
         ('ie1', 'Ireland (Dublin)'),
         ('au1', 'Australia (Sydney)'),
     ], default='us1', required=True)
-    twilio_edge = fields.Selection(selection=TWILIO_EDGES, default='roaming')
+    twilio_edge = fields.Selection(selection=TWILIO_EDGES, default='roaming', required=True)
     account_sid = fields.Char(string="Account SID")
     auth_token = fields.Char(
         groups="base.group_erp_manager,connect.group_connect_webhook"
@@ -679,14 +678,15 @@ class Settings(models.Model):
             callerId = default_number.number
         api_url = self.sudo().get_param("api_url")
         instance_uid = self.sudo().get_param("instance_uid", "")
-        status_url = urljoin(api_url, "twilio/webhook/callstatus")
+        edge = self.twilio_edge or self.env['connect.settings'].get_param('twilio_edge')
+        status_url = urljoin(api_url, "twilio/webhook/callstatus#e={}".format(edge))
         if exten:
             # Internal call to an extension.
             twiml = exten.render()
         else:
             twiml = self.get_external_call_route(number, callerId, status_url)
         record = self.env.user.connect_user.record_calls
-        record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus")
+        record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus#e={}".format(edge))
         channel = client.calls.create(
             twiml=twiml,
             to=to,
