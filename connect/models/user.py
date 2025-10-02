@@ -143,7 +143,7 @@ class User(models.Model):
     def unlink(self):
         for rec in self:
             rec.delete_sip_account()
-        self.manage_group('remove')
+            rec.manage_group('remove')
         res = super().unlink()
         if res and not self.env.context.get('no_clear_cache'):
             if release.version_info[0] >= 17:
