@@ -58,6 +58,8 @@ class Partner(models.Model):
                                     index=True, store=True,
                                     string='E.164 mobile')
     connect_user = fields.Many2one('connect.user', compute='_get_connect_user')
+    if release.version_info[0] >= 19:
+        mobile = fields.Char()
 
 
     def _get_connect_user(self):
