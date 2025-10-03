@@ -76,10 +76,15 @@ class TwiML(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
+        # Check if twilio_auto_sync is disabled
+        if not self.env["connect.settings"].get_param("twilio_auto_sync"):
+            return res
+        
         client = self.env['connect.settings'].get_client()
         for rec in self:
             if rec.sid:
                 rec.update_twilio_app(client)
+        return res
 
     def update_twilio_app(self, client):
         self.ensure_one()
@@ -99,6 +104,10 @@ class TwiML(models.Model):
                 raise
 
     def unlink(self):
+        # Check if twilio_auto_sync is disabled
+        if not self.env["connect.settings"].get_param("twilio_auto_sync"):
+            return super().unlink()
+        
         client = self.env['connect.settings'].get_client()
         for rec in self:
             if rec.sid:

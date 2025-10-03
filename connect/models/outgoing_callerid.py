@@ -139,6 +139,10 @@ class OutgoingCallerID(models.Model):
         if vals.get('number'):
             raise ValidationError('Number cannot be modified!')
         if 'friendly_name' in vals:
+            # Check if twilio_auto_sync is disabled
+            if not self.env["connect.settings"].get_param("twilio_auto_sync"):
+                return super().write(vals)
+            
             client = self.env['connect.settings'].get_client()
             for rec in self:
                 if rec.callerid_type == 'outgoing_callerid':
@@ -158,6 +162,10 @@ class OutgoingCallerID(models.Model):
             if rec.sid:
                 sids[rec.sid] = rec.number
         res = super().unlink()
+        # Check if twilio_auto_sync is disabled
+        if not self.env["connect.settings"].get_param("twilio_auto_sync"):
+            return res
+        
         client = self.env['connect.settings'].get_client()
         for sid in sids.keys():
             try:

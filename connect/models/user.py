@@ -154,7 +154,9 @@ class User(models.Model):
 
     def unlink(self):
         for rec in self:
-            rec.delete_sip_account()
+            # Check if twilio_auto_sync is disabled
+            if self.env["connect.settings"].get_param("twilio_auto_sync"):
+                rec.delete_sip_account()
         self.manage_group('remove')
         res = super().unlink()
         if res and not self.env.context.get('no_clear_cache'):
@@ -208,13 +210,17 @@ class User(models.Model):
             raise ValidationError('Username cannot be changed!')
         for rec in self:
             if vals.get('password'):
-                if rec.sid:
-                    rec._update_sip_password(vals['password'])
+                # Check if twilio_auto_sync is disabled
+                if not self.env["connect.settings"].get_param("twilio_auto_sync"):
+                    vals['password'] = '*' * len(vals['password'])
                 else:
-                    # SIP was enabled, create SIP user account.
-                    vals['sid'] = self._create_sip_account(rec.username, vals['password'])
-                # Don't keep SIP password in Odoo.
-                vals['password'] = '*' * len(vals['password'])
+                    if rec.sid:
+                        rec._update_sip_password(vals['password'])
+                    else:
+                        # SIP was enabled, create SIP user account.
+                        vals['sid'] = self._create_sip_account(rec.username, vals['password'])
+                    # Don't keep SIP password in Odoo.
+                    vals['password'] = '*' * len(vals['password'])
         res = super().write(vals)
         self.manage_group()
         if res and not self.env.context.get('no_clear_cache'):

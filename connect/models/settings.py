@@ -103,6 +103,7 @@ class Settings(models.Model):
 
     name = fields.Char(compute="_get_name")
     debug_mode = fields.Boolean()
+    twilio_auto_sync = fields.Boolean()
     twilio_region = fields.Selection([
         ('us1', 'US East (Virginia)'),
         ('ie1', 'Ireland (Dublin)'),
@@ -113,7 +114,6 @@ class Settings(models.Model):
     auth_token = fields.Char(
         groups="base.group_erp_manager,connect.group_connect_webhook"
     )
-    twilio_region_is_set = fields.Boolean()
     display_auth_token = fields.Char()
     twilio_api_key = fields.Char()
     twilio_api_secret = fields.Char(groups="base.group_erp_manager")
@@ -605,8 +605,6 @@ class Settings(models.Model):
         self.env["connect.domain"].sync()
         self.env["connect.number"].sync()
         self.env["connect.outgoing_callerid"].sync()
-        if not self.get_param('twilio_region_is_set'):
-            self.set_param('twilio_region_is_set', True)
         self.connect_notify("Sync complete.")
 
     # Called from the settings.

@@ -85,6 +85,10 @@ class Number(models.Model):
                 if field != vals['destination']:
                     vals.update({field: None})
         res = super().write(vals)
+        # Check if twilio_auto_sync is disabled
+        if not self.env["connect.settings"].get_param("twilio_auto_sync"):
+            return res
+        
         client = self.env['connect.settings'].get_client()
         for rec in self:
             if not self.env.context.get('skip_twilio_sync'):

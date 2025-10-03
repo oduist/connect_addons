@@ -128,6 +128,10 @@ class Domain(models.Model):
         for rec in self:
             if rec.delete_protection and not self.env.context.get('force_delete'):
                 raise ValidationError("Remove delete protection to delete the domain!")
+        # Check if twilio_auto_sync is disabled
+        if not self.env["connect.settings"].get_param("twilio_auto_sync"):
+            return super().unlink()
+        
         client = self.env["connect.settings"].get_client()
         for rec in self:
             try:
@@ -176,6 +180,10 @@ class Domain(models.Model):
                 raise
 
     def write(self, vals):
+        # Check if twilio_auto_sync is disabled
+        if not self.env["connect.settings"].get_param("twilio_auto_sync"):
+            return super().write(vals)
+        
         client = self.env["connect.settings"].get_client()
         # Update only Twilio fields.
         if not (
@@ -189,6 +197,7 @@ class Domain(models.Model):
                 rec.update_twilio_domain(client)
         except Exception as e:
             raise ValidationError(format_connect_response(e))
+        return res
 
     @api.model
     def sync(self):
