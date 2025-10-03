@@ -2,18 +2,19 @@
 from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 
-from odoo import http
+from odoo import http, release
 from odoo.http import request
 
+route_type = "json" if release.version_info[0] < 19.0 else 'jsonrpc'
 
 class APIConnectWidget(http.Controller):
-    @http.route('/get_connect_website_config', type='json', auth='public', sitemap=False)
+    @http.route('/get_connect_website_config', type=route_type, auth='public', sitemap=False)
     def get_connect_website_config(self):
         enabled = request.env['connect.settings'].sudo().get_param('connect_website_enable')
         number = request.env['connect.settings'].sudo().get_param('connect_website_connect_extension').number
         return {'enabled': enabled, 'number': number}
 
-    @http.route('/get_connect_website_button_token', type='json', auth='public', sitemap=False)
+    @http.route('/get_connect_website_button_token', type=route_type, auth='public', sitemap=False)
     def get_connect_website_button_token(self, identity):
         account_sid = request.env['connect.settings'].sudo().get_param('account_sid')
         api_key = request.env['connect.settings'].sudo().get_param('twilio_api_key')
