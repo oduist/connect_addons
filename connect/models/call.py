@@ -3,10 +3,9 @@
 import json
 import logging
 import re
-from urllib.parse import urljoin
 import uuid
-from odoo import fields, models, api, release, SUPERUSER_ID, tools
-from odoo.exceptions import ValidationError
+from odoo import fields, models, api, release, tools
+from odoo.api import SUPERUSER_ID
 from twilio.twiml.voice_response import VoiceResponse, Say, Dial, Conference, Client, Number, Sip
 from .settings import debug
 

@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*
 import logging
-from phonenumbers import phonenumberutil
-import phonenumbers
-from odoo import api, models, tools, fields, release
-from odoo.exceptions import ValidationError, UserError
-from odoo.addons.connect.models.settings import debug, MAX_EXTEN_LEN
-from odoo.addons.connect.models.res_partner import strip_number
+
 from odoo.addons.connect.models.res_partner import format_number
+from odoo.addons.connect.models.res_partner import strip_number
+from odoo.addons.connect.models.settings import debug, MAX_EXTEN_LEN
+
+from odoo import api, models, fields, release
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +14,8 @@ class Lead(models.Model):
     _inherit = 'crm.lead'
 
     connect_calls = fields.One2many('connect.call', 'lead')
+    if release.version_info[0] >= 19:
+        mobile = fields.Char()
     connect_calls_count = fields.Integer(
         compute='_get_connect_calls_count', string='Calls', store=True)
     phone_normalized = fields.Char(compute='_get_phone_normalized',

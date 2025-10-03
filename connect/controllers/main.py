@@ -1,23 +1,22 @@
 # -*- coding: utf-8 -*
 
 import json
-import hmac
-from hashlib import sha256
 import logging
-import requests
-import time
-from odoo import http, release
-from werkzeug.exceptions import BadRequest, NotFound
 
-from odoo.exceptions import UserError
+import requests
+from werkzeug.exceptions import NotFound
+
+from odoo import http, release
 from odoo.api import SUPERUSER_ID
+from odoo.exceptions import UserError
 
 logger = logging.getLogger(__name__)
 
+route_type = "json" if release.version_info[0] < 19.0 else 'jsonrpc'
 
-class ConnectPlusController(http.Controller):
+class ConnectController(http.Controller):
 
-    @http.route('/connect/transcript/<int:rec_id>', methods=['POST'], type='json',
+    @http.route('/connect/transcript/<int:rec_id>', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
     def upload_transcript(self, rec_id):
         # Public method protected by the one-time transcription token.

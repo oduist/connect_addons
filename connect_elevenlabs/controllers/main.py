@@ -7,9 +7,9 @@ import time
 from hashlib import sha256
 
 import requests
-from odoo import http, SUPERUSER_ID, registry, release
-from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
-from odoo.exceptions import UserError
+from werkzeug.exceptions import Unauthorized
+
+from odoo import http
 
 logger = logging.getLogger(__name__)
 
