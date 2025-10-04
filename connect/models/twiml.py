@@ -31,6 +31,7 @@ class TwiML(models.Model):
     _order = 'name'
 
     sid = fields.Char('SID', readonly=True)
+    old_sid = fields.Char('Old SID', readonly=True, help="Previous SID value, used during region migration to reuse existing apps")
     name = fields.Char(required=True)
     description = fields.Text()
     code_type = fields.Selection([
@@ -51,15 +52,48 @@ class TwiML(models.Model):
     exten_number = fields.Char(related='exten.number')
 
 
+    def _find_twilio_app_by_old_sid(self, client):
+        """Find existing Twilio app by old_sid for region migration.
+        
+        Returns:
+            Twilio Application object if found by old_sid, None otherwise
+        """
+        self.ensure_one()
+        if not self.old_sid:
+            return None
+            
+        try:
+            # Try to get the app by old_sid
+            application = client.applications(self.old_sid).fetch()
+            debug(self, 'Found existing TwiML app {} by old_sid {} during region migration.'.format(
+                application.friendly_name, self.old_sid))
+            return application
+        except Exception as e:
+            if 'not found' in str(e):
+                debug(self, 'No existing TwiML app found by old_sid {} during region migration.'.format(self.old_sid))
+                return None
+            else:
+                # Re-raise unexpected errors
+                raise
+
     def create_twilio_app(self, client):
         self.ensure_one()
+        # Store current sid as old_sid before creating new app
+        old_sid_to_store = self.sid
+        
         application = client.applications.create(
             voice_url=self.voice_url,
             voice_fallback_url=self.voice_fallback_url,
             friendly_name=self.name,
             status_callback=self.voice_status_url,
         )
-        self.sid = application.sid
+        
+        # Update sids: new sid from Twilio, old_sid from previous value
+        self.write({
+            'sid': application.sid,
+            'old_sid': old_sid_to_store
+        })
+        
         debug(self, 'Created TwiML app {} in Twilio.'.format(self.name))
         return application
 
@@ -79,7 +113,7 @@ class TwiML(models.Model):
         # Check if twilio_auto_sync is disabled
         if not self.env["connect.settings"].get_param("twilio_auto_sync"):
             return res
-        
+
         client = self.env['connect.settings'].get_client()
         for rec in self:
             if rec.sid:
@@ -88,26 +122,64 @@ class TwiML(models.Model):
 
     def update_twilio_app(self, client):
         self.ensure_one()
-        try:
-            application = client.applications(self.sid).update(
-                voice_url=self.voice_url,
-                voice_fallback_url=self.voice_fallback_url,
-                friendly_name=self.name,
-                status_callback=self.voice_status_url,
-            )
-            debug(self, 'TwiML app {} updated.'.format(self.name))
-            return application
-        except Exception as e:
-            if 'not found' in str(e):
-                return self.create_twilio_app(client)
-            else:
-                raise
+        
+        # First, try to update the app using current sid
+        if self.sid:
+            try:
+                application = client.applications(self.sid).update(
+                    voice_url=self.voice_url,
+                    voice_fallback_url=self.voice_fallback_url,
+                    friendly_name=self.name,
+                    status_callback=self.voice_status_url,
+                )
+                debug(self, 'TwiML app {} updated.'.format(self.name))
+                return application
+            except Exception as e:
+                if 'not found' in str(e):
+                    debug(self, 'TwiML app {} not found by current sid {}, checking for region migration.'.format(
+                        self.name, self.sid))
+                    # App not found by current sid, try to find by old_sid for region migration
+                    existing_app = self._find_twilio_app_by_old_sid(client)
+                    if existing_app:
+                        # Found existing app by old_sid, update it and swap sids
+                        debug(self, 'Reusing existing TwiML app {} during region migration.'.format(
+                            existing_app.friendly_name))
+                        
+                        # Update the existing app with current configuration
+                        application = client.applications(existing_app.sid).update(
+                            voice_url=self.voice_url,
+                            voice_fallback_url=self.voice_fallback_url,
+                            friendly_name=self.name,
+                            status_callback=self.voice_status_url,
+                        )
+                        
+                        # Swap sids: current sid becomes old_sid, existing app sid becomes current sid
+                        old_current_sid = self.sid
+                        self.write({
+                            'sid': existing_app.sid,
+                            'old_sid': old_current_sid
+                        })
+                        
+                        debug(self, 'TwiML app {} updated during region migration. SID: {} -> {}'.format(
+                            self.name, old_current_sid, existing_app.sid))
+                        return application
+                    else:
+                        # No existing app found by old_sid, create a new one
+                        debug(self, 'No existing TwiML app found for region migration, creating new app.')
+                        return self.create_twilio_app(client)
+                else:
+                    # Re-raise unexpected errors
+                    raise
+        else:
+            # No current sid, create new app
+            debug(self, 'No current SID for TwiML app {}, creating new app.'.format(self.name))
+            return self.create_twilio_app(client)
 
     def unlink(self):
         # Check if twilio_auto_sync is disabled
         if not self.env["connect.settings"].get_param("twilio_auto_sync"):
             return super().unlink()
-        
+
         client = self.env['connect.settings'].get_client()
         for rec in self:
             if rec.sid:
