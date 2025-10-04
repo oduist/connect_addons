@@ -602,10 +602,10 @@ class Settings(models.Model):
             raise ValidationError(api_url_check)
         try:
             #self.env["connect.twiml"].sync()
-            self.env["connect.domain"].sync()
+            #self.env["connect.domain"].sync()
             #self.env["connect.number"].sync()
-            #self.env["connect.outgoing_callerid"].sync()
-            #self.connect_notify("Sync complete.")
+            self.env["connect.outgoing_callerid"].sync()
+            self.connect_notify("Sync complete.")
         except Exception as e:
             if 'errors/20003' in str(e):
                 raise ValidationError('Error authenticating requests to the Twilio API! Check your Auth Key!')

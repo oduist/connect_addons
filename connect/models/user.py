@@ -43,7 +43,7 @@ class UserCallflow(models.Model):
 class User(models.Model):
     _name = 'connect.user'
     _rec_name = 'username'
-    _description = 'Twilio User'
+    _description = 'Connect User'
     _order = 'username'
 
     sid = fields.Char('SID', readonly=True)
@@ -206,7 +206,7 @@ class User(models.Model):
             if self.env["connect.settings"].get_param("twilio_auto_sync"):
                 rec.delete_sip_account()
             rec.manage_group('remove')
-        res = super().unlink()
+        res = super(User, self).unlink()
         if res and not self.env.context.get('no_clear_cache'):
             if release.version_info[0] >= 17:
                 self.env.registry.clear_cache()

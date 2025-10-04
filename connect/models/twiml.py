@@ -54,14 +54,14 @@ class TwiML(models.Model):
 
     def _find_twilio_app_by_old_sid(self, client):
         """Find existing Twilio app by old_sid for region migration.
-        
+
         Returns:
             Twilio Application object if found by old_sid, None otherwise
         """
         self.ensure_one()
         if not self.old_sid:
             return None
-            
+
         try:
             # Try to get the app by old_sid
             application = client.applications(self.old_sid).fetch()
@@ -80,20 +80,20 @@ class TwiML(models.Model):
         self.ensure_one()
         # Store current sid as old_sid before creating new app
         old_sid_to_store = self.sid
-        
+
         application = client.applications.create(
             voice_url=self.voice_url,
             voice_fallback_url=self.voice_fallback_url,
             friendly_name=self.name,
             status_callback=self.voice_status_url,
         )
-        
+
         # Update sids: new sid from Twilio, old_sid from previous value
         self.write({
             'sid': application.sid,
             'old_sid': old_sid_to_store
         })
-        
+
         debug(self, 'Created TwiML app {} in Twilio.'.format(self.name))
         return application
 
@@ -122,7 +122,7 @@ class TwiML(models.Model):
 
     def update_twilio_app(self, client):
         self.ensure_one()
-        
+
         # First, try to update the app using current sid
         if self.sid:
             try:
@@ -144,7 +144,7 @@ class TwiML(models.Model):
                         # Found existing app by old_sid, update it and swap sids
                         debug(self, 'Reusing existing TwiML app {} during region migration.'.format(
                             existing_app.friendly_name))
-                        
+
                         # Update the existing app with current configuration
                         application = client.applications(existing_app.sid).update(
                             voice_url=self.voice_url,
@@ -152,14 +152,14 @@ class TwiML(models.Model):
                             friendly_name=self.name,
                             status_callback=self.voice_status_url,
                         )
-                        
+
                         # Swap sids: current sid becomes old_sid, existing app sid becomes current sid
                         old_current_sid = self.sid
                         self.write({
                             'sid': existing_app.sid,
                             'old_sid': old_current_sid
                         })
-                        
+
                         debug(self, 'TwiML app {} updated during region migration. SID: {} -> {}'.format(
                             self.name, old_current_sid, existing_app.sid))
                         return application
@@ -223,7 +223,7 @@ class TwiML(models.Model):
             return '<Response><Say>{}</Say></Response>'.format(api_url_check)
         self.ensure_one()
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        edge = self.twilio_edge or self.env['connect.settings'].sudo().get_param('twilio_edge')
+        edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
         recording_voice_status_url = urljoin(api_url, 'app/connect/webhook/recordingstatus#e={}'.format(edge))
         call_voice_status_url = urljoin(api_url, 'app/connect/webhook/callstatus#e={}'.format(edge))
         params.update({

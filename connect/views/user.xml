@@ -59,6 +59,8 @@
                                            readonly="id != False"/>
                                 </group>
                                 <group>
+                                    <field name="twilio_edge"
+                                        help="Choose the closest Twilio Edge or use Global Low-latency routing."/>
                                     <field name="exten_number" widget="phone"/>
                                 </group>
                             </group>
@@ -71,8 +73,6 @@
                                     <field name="sip_ring_timeout" string="Ring Timeout"
                                            invisible="sip_enabled == False"
                                            required="sip_enabled == True"/>
-                                    <field name="twilio_edge"
-                                        help="Choose the closest Twilio Edge or use Global Low-latency routing."/>
                                     <field name='connect_uri' string="SIP URI"
                                            invisible="sip_enabled == False"/>
                                 </group>

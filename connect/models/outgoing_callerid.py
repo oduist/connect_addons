@@ -38,29 +38,36 @@ class OutgoingCallerID(models.Model):
         client = self.env['connect.settings'].get_client()
         if callerid_type == 'outgoing_callerid':
             numbers = client.outgoing_caller_ids.list()
-        else:
+        elif callerid_type == 'number':
             numbers = client.incoming_phone_numbers.list()
+        else:
+            numbers = []
         # First get numbers from Twilio.
         for number in numbers:
             existing_number = self.env['connect.outgoing_callerid'].search([
                 ('sid', '=', number.sid)])
             if not existing_number:
-                # New number added, create record in Odoo.
-                data = {
+                existing_number = self.env['connect.outgoing_callerid'].search([
+                    ('number', '=', number.phone_number)])
+            data = {
                     'sid': number.sid,
                     'callerid_type': callerid_type,
                     'number': number.phone_number,
                     'friendly_name': number.friendly_name,
-                }
-                callerid_count = self.search_count([])
-                if callerid_count == 0:
-                    data['is_default'] = True
-                if callerid_type == 'outgoing_callerid':
-                    data['status'] = 'validated'
+            }
+            callerid_count = self.search_count([])
+            if callerid_count == 0:
+                data['is_default'] = True
+            if callerid_type == 'outgoing_callerid':
+                data['status'] = 'validated'
+            if not existing_number:
+                # New number added, create record in Odoo.
                 self.with_context(skip_validation=True).create(data)
                 debug(self, 'CallerID {} ({}) created in Odoo from {}'.format(
                     number.phone_number, number.friendly_name, callerid_type))
             else:
+                # CallerID exists, update it's type.
+                existing_number.with_context(skip_number_check=True).write(data)
                 # CallerID exists, update friendly name to Twilio
                 if number.friendly_name != existing_number.friendly_name:
                     debug(self, 'Update CallerID {} friendly name.'.format(existing_number.number))
@@ -103,7 +110,7 @@ class OutgoingCallerID(models.Model):
         if self.sid:
             raise ValidationError('Outgoing callerid is already validated!')
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        edge = self.twilio_edge or self.env['connect.settings'].get_param('twilio_edge')
+        edge = self.env['connect.settings'].get_param('twilio_edge')
         status_url = urljoin(api_url, 'twilio/webhook/outgoing_callerid#e={}'.format(edge))
         client = self.env['connect.settings'].get_client()
         try:
@@ -136,36 +143,39 @@ class OutgoingCallerID(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
-        if vals.get('number'):
-            raise ValidationError('Number cannot be modified!')
-        if 'friendly_name' in vals:
-            # Check if twilio_auto_sync is disabled
-            if not self.env["connect.settings"].get_param("twilio_auto_sync"):
-                return super().write(vals)
-            
-            client = self.env['connect.settings'].get_client()
-            for rec in self:
-                if rec.callerid_type == 'outgoing_callerid':
-                    client.outgoing_caller_ids(rec.sid).update(friendly_name=vals['friendly_name'])
         return super().write(vals)
+
+    @api.constrains('number')
+    def _check_number_change(self):
+        if self.env.context.get('skip_number_check'):
+            return
+        for rec in self:
+            if rec.callerid_type in ['number', 'outgoing_callerid']:
+                raise ValidationError('Twilio number / outgoing callerid cannot be changed here!')
 
     @api.constrains('friendly_name')
     def _change_number_friendly_name(self):
         for rec in self:
-            if rec.callerid_type == 'number':
+            if rec.sid and rec.callerid_type == 'outgoing_callerid':
+                # Check if twilio_auto_sync is disabled
+                if self.env["connect.settings"].get_param("twilio_auto_sync"):
+                    client = self.env['connect.settings'].get_client()
+                    client.outgoing_caller_ids(rec.sid).update(friendly_name=self.friendly_name)
+            elif rec.sid and rec.callerid_type == 'number':
+                # Sync number friendly name.
                 number = self.env['connect.number'].search([('phone_number', '=', rec.number)])
                 number.friendly_name = rec.friendly_name
 
     def unlink(self):
+        if not self.env["connect.settings"].get_param("twilio_auto_sync"):
+            return super().unlink()
         sids = {}
         for rec in self:
-            if rec.sid:
+            if rec.callerid_type == 'number':
+                raise ValidationError('You cannot remove Twilio numbers!')
+            if rec.sid and rec.callerid_type == 'outgoing_callerid':
                 sids[rec.sid] = rec.number
         res = super().unlink()
-        # Check if twilio_auto_sync is disabled
-        if not self.env["connect.settings"].get_param("twilio_auto_sync"):
-            return res
-        
         client = self.env['connect.settings'].get_client()
         for sid in sids.keys():
             try:
