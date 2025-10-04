@@ -100,7 +100,56 @@ class Domain(models.Model):
             }
         )
         debug(self, "Domain {} was created".format(self.friendly_name))
+        
+        # Create SIP credentials for existing users in this domain
+        self._create_user_credentials_for_domain(client)
+        
         return domain
+        
+    def _create_user_credentials_for_domain(self, client=None):
+        """Create SIP credentials in Twilio for all connect.user records related to this domain."""
+        self.ensure_one()
+        if not self.sid or not self.cred_list_sid:
+            debug(self, "Cannot create user credentials: domain not properly created in Twilio")
+            return
+            
+        client = client or self.env["connect.settings"].get_client()
+        
+        # Find all users related to this domain that have SIP enabled
+        domain_users = self.env['connect.user'].search([
+            ('domain', '=', self.id), 
+            ('sip_enabled', '=', True)
+        ])
+        
+        debug(self, "Found {} SIP-enabled users for domain {}".format(len(domain_users), self.friendly_name))
+        
+        for user in domain_users:
+            if not user.sid:  # Only create credentials for users without existing SID
+                try:
+                    # Generate a new password for the user
+                    password = self.env['connect.user'].generate_twilio_password()
+                    
+                    debug(self, "Creating SIP credential for user {} in domain {}".format(user.username, self.friendly_name))
+                    credential = client.sip.credential_lists(
+                        self.cred_list_sid
+                    ).credentials.create(
+                        username=user.username, 
+                        password=password
+                    )
+                    
+                    # Update user with new SID and masked password
+                    user.with_context(skip_sync=True).write({
+                        'sid': credential.sid,
+                        'password': '*' * len(password)
+                    })
+                    
+                    debug(self, "Created SIP credential for user {}".format(user.username))
+                    
+                except Exception as e:
+                    debug(self, "Error creating SIP credential for user {}: {}".format(
+                        user.username, str(e)), level="error")
+            else:
+                debug(self, "User {} already has SID - skipping credential creation".format(user.username))
 
     def create_domain(self, client):
         self.ensure_one()
@@ -131,7 +180,7 @@ class Domain(models.Model):
         # Check if twilio_auto_sync is disabled
         if not self.env["connect.settings"].get_param("twilio_auto_sync"):
             return super().unlink()
-        
+
         client = self.env["connect.settings"].get_client()
         for rec in self:
             try:
@@ -183,7 +232,7 @@ class Domain(models.Model):
         # Check if twilio_auto_sync is disabled
         if not self.env["connect.settings"].get_param("twilio_auto_sync"):
             return super().write(vals)
-        
+
         client = self.env["connect.settings"].get_client()
         # Update only Twilio fields.
         if not (
@@ -201,107 +250,59 @@ class Domain(models.Model):
 
     @api.model
     def sync(self):
+        """Sync domains between Odoo and Twilio.
+
+        Rules:
+        1. Do NOT import records that exist only in Twilio
+        2. Create in Twilio what exists only in Odoo (handles account migration)
+        3. Update what exists in both
+        """
         client = self.env["connect.settings"].get_client()
         # Twilio records
         twilio_records = client.sip.domains.list()
         twilio_sids = set([k.sid for k in twilio_records])
         # Odoo records
-        odoo_sids = set(self.search([]).mapped("sid"))
+        odoo_records = self.search([])
+        odoo_sids = set(odoo_records.mapped("sid"))
+
+        # Remove empty SIDs from Odoo records (should not happen but just in case)
+        odoo_sids = {sid for sid in odoo_sids if sid}
+
         # Sets
         only_in_twilio = twilio_sids - odoo_sids
-        debug(self, "Only in Twilio domain SIDs: {}".format(only_in_twilio))
+        debug(self, "Only in Twilio domain SIDs (ignoring): {}".format(only_in_twilio))
         only_in_odoo = odoo_sids - twilio_sids
         debug(self, "Only in Odoo domain SIDs: {}".format(only_in_odoo))
         common_recs = odoo_sids & twilio_sids
         debug(self, "Common domain SIDs: {}".format(common_recs))
-        # Create in Odoo what is in only in Twilio
-        for sid in only_in_twilio:
-            domain = client.sip.domains(sid).fetch()
-            credential_list_mappings = client.sip.domains(
-                sid
-            ).auth.registrations.credential_list_mappings.list()
-            if len(credential_list_mappings) > 1:
-                logger.warning(
-                    "SIP Domain %s has more credential list. This is not supported."
-                )
-                raise ValidationError(
-                    "Can only import Twilio domains with one credential list!"
-                )
-            elif len(credential_list_mappings) == 1:
-                credential_list_sid = credential_list_mappings[0].sid
-                odoo_domain = self.with_context(no_twilio_create=True).create(
-                    {
-                        "sid": domain.sid,
-                        "friendly_name": domain.friendly_name,
-                        "subdomain": domain.domain_name.split(".")[0],
-                        "sip_registration": True,
-                        "cred_list_sid": credential_list_sid,
-                    }
-                )
-                odoo_domain.application = self.get_domain_app()
-                # Push back voice urls.
-                odoo_domain.update_twilio_domain(client)
-                # Create SIP users
-                creds = client.sip.credential_lists(
-                    credential_list_sid
-                ).credentials.list()
-                for cred in creds:
-                    # Check if user is already defined in Odoo (region migration).
-                    user = self.env["connect.user"].search([('username', '=', cred.username)])
-                    if user:
-                        # Update user's SID
-                        user.write({
-                            "sid": cred.sid,
-                            "sip_enabled": True,
-                        })
-                    self.env["connect.user"].with_context(no_twilio_create=True).create(
-                        {
-                            "sid": cred.sid,
-                            "username": cred.username,
-                            "sip_enabled": True,
-                        }
-                    )
-                    debug(self, "Created Odoo SIP username {}".format(cred.username))
-            else:
-                credential_list = client.sip.credential_lists.create(
-                    friendly_name=domain.sid
-                )
-                debug(
-                    self,
-                    "Credential list for domain {} created.".format(domain.domain_name),
-                )
-                # Assotiate cred list with REGISTER.
-                auth_registrations_credential_list_mapping = client.sip.domains(
-                    domain.sid
-                ).auth.registrations.credential_list_mappings.create(
-                    credential_list_sid=credential_list.sid
-                )
-                # Assotiate cred list with INVITE.
-                auth_registrations_credential_list_mapping = client.sip.domains(
-                    domain.sid
-                ).auth.calls.credential_list_mappings.create(
-                    credential_list_sid=credential_list.sid
-                )
-                odoo_domain = self.with_context(no_twilio_create=True).create(
-                    {
-                        "sid": domain.sid,
-                        "cred_list_sid": credential_list.sid,
-                        "friendly_name": domain.friendly_name,
-                        "subdomain": domain.domain_name.split(".")[0],
-                        "sip_registration": True,
-                    }
-                )
-                odoo_domain.application = self.get_domain_app()
-                # Push back voice urls.
-                odoo_domain.update_twilio_domain(client)
-        # Create in Twilio what is only in Odoo.
+
+        # Rule 4: Do NOT import records that exist only in Twilio
+        debug(self, "Skipping import of {} domains that exist only in Twilio".format(len(only_in_twilio)))
+
+        # Rule 5: Handle Twilio account migration - create in Twilio what exists only in Odoo
         for sid in only_in_odoo:
             odoo_domain = self.search([("sid", "=", sid)])
-            odoo_domain.create_domain(client)
-        # Update what exists in both.
+            if odoo_domain:
+                debug(self, "Creating domain {} in new Twilio account (account migration)".format(odoo_domain.friendly_name))
+                try:
+                    # Store old SID for logging
+                    old_sid = sid
+                    # This will create in Twilio and update the SID in Odoo
+                    odoo_domain.create_twilio_sip_domain(client)
+                    debug(self, "Domain {} migrated: old SID {}, new SID {}".format(
+                        odoo_domain.friendly_name, old_sid, odoo_domain.sid))
+                except Exception as e:
+                    debug(self, "Error creating domain {} in Twilio: {}".format(
+                        odoo_domain.friendly_name, str(e)), level="error")
+
+        # Update what exists in both
         for sid in common_recs:
             odoo_domain = self.search([("sid", "=", sid)])
-            odoo_domain.update_twilio_domain(client)
+            if odoo_domain:
+                try:
+                    odoo_domain.update_twilio_domain(client)
+                except Exception as e:
+                    debug(self, "Error updating domain {}: {}".format(sid, str(e)), level="error")
 
     @api.model
     def route_call(self, request, params={}):

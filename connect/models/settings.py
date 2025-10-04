@@ -109,7 +109,7 @@ class Settings(models.Model):
         ('ie1', 'Ireland (Dublin)'),
         ('au1', 'Australia (Sydney)'),
     ], default='us1', required=True)
-    twilio_edge = fields.Selection(selection=TWILIO_EDGES, default='roaming', required=True)
+    twilio_edge = fields.Selection(selection=TWILIO_EDGES)
     account_sid = fields.Char(string="Account SID")
     auth_token = fields.Char(
         groups="base.group_erp_manager,connect.group_connect_webhook"
