@@ -601,9 +601,9 @@ class Settings(models.Model):
         if api_url_check:
             raise ValidationError(api_url_check)
         try:
-            #self.env["connect.twiml"].sync()
-            #self.env["connect.domain"].sync()
-            #self.env["connect.number"].sync()
+            self.env["connect.twiml"].sync()
+            self.env["connect.domain"].sync()
+            self.env["connect.number"].sync()
             self.env["connect.outgoing_callerid"].sync()
             self.connect_notify("Sync complete.")
         except Exception as e:
