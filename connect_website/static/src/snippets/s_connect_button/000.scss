@@ -9,7 +9,9 @@ $color-white: #ffffff;
   padding-top: 14px !important;
 
   &:before {
-    content: "\f095"
+    content: "\f095";
+    display: inline-block;
+    rotate: 133deg;
   }
 }
 
@@ -34,10 +36,6 @@ $color-white: #ffffff;
 
     &:hover {
       cursor: pointer;
-    }
-
-    i {
-      rotate: 133deg;
     }
   }
 
