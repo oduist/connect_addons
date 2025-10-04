@@ -113,28 +113,28 @@ class User(models.Model):
                 return self._import_existing_sip_credential(username, client)
             else:
                 raise ValidationError(format_connect_response(e))
-                
+
     def _import_existing_sip_credential(self, username, client=None):
         """Import existing SIP credential from Twilio by username.
-        
+
         This is called when trying to create a credential that already exists.
         """
         self.ensure_one()
         client = client or self.env['connect.settings'].get_client()
-        
+
         try:
             # Get all credentials from the domain's credential list
             credentials = client.sip.credential_lists(
                 self.domain.cred_list_sid
             ).credentials.list()
-            
+
             # Find the credential with matching username
             matching_credential = None
             for credential in credentials:
                 if credential.username == username:
                     matching_credential = credential
                     break
-            
+
             if matching_credential:
                 debug(self, 'Found existing SIP credential for {} with SID {}'.format(
                     username, matching_credential.sid))
@@ -146,7 +146,7 @@ class User(models.Model):
                 raise ValidationError(
                     'SIP credential "{}" already exists but could not be found in credential list'.format(username)
                 )
-                
+
         except Exception as e:
             debug(self, 'Error importing existing SIP credential for {}: {}'.format(
                 username, str(e)), level='error')
@@ -205,7 +205,7 @@ class User(models.Model):
             # Check if twilio_auto_sync is disabled
             if self.env["connect.settings"].get_param("twilio_auto_sync"):
                 rec.delete_sip_account()
-        self.manage_group('remove')
+            rec.manage_group('remove')
         res = super().unlink()
         if res and not self.env.context.get('no_clear_cache'):
             if release.version_info[0] >= 17:

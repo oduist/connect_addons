@@ -6,10 +6,11 @@ from hashlib import sha256
 import logging
 import requests
 import time
-from odoo import http, SUPERUSER_ID, registry, release
+from odoo import http, release
 from werkzeug.exceptions import BadRequest, NotFound
 
 from odoo.exceptions import UserError
+from odoo.api import SUPERUSER_ID
 
 logger = logging.getLogger(__name__)
 

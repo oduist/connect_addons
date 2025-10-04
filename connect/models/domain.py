@@ -42,9 +42,10 @@ class Domain(models.Model):
         edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
         edges = [v[0] for v in TWILIO_EDGES if v[0] != 'roaming']
         for rec in self:
-            rec.domain_name = rec.subdomain + ".sip.twilio.com"
-            rec.edge_domains = '\n'.join(['{}.sip.{}.twilio.com'.format(
-                rec.subdomain, edge) for edge in edges])
+            if rec.subdomain:
+                rec.domain_name = rec.subdomain + ".sip.twilio.com"
+                rec.edge_domains = '\n'.join(['{}.sip.{}.twilio.com'.format(
+                    rec.subdomain, edge) for edge in edges])
 
     def get_domain_app(self):
         # Domain must be created.
@@ -243,35 +244,35 @@ class Domain(models.Model):
 
     def _import_sip_credentials_from_twilio(self, client, cred_list_sid):
         """Import SIP credentials from Twilio and sync with Odoo users (bidirectional).
-        
+
         1. Import Twilio credentials and update/create Odoo users
         2. Create missing Twilio credentials for existing Odoo users
         """
         self.ensure_one()
-        
+
         try:
             # Step 1: Get all credentials from Twilio credential list
             twilio_credentials = client.sip.credential_lists(cred_list_sid).credentials.list()
-            
+
             debug(self, "Found {} SIP credentials in Twilio for domain {}".format(
                 len(twilio_credentials), self.friendly_name))
-            
+
             # Get all users for this domain
             domain_users = self.env['connect.user'].search([('domain', '=', self.id)])
             sip_enabled_users = domain_users.filtered(lambda u: u.sip_enabled)
-            
+
             debug(self, "Found {} users in Odoo for domain {}, {} with SIP enabled".format(
                 len(domain_users), self.friendly_name, len(sip_enabled_users)))
-            
+
             # Create sets for comparison
             twilio_usernames = {cred.username for cred in twilio_credentials}
             odoo_usernames = {user.username for user in sip_enabled_users}
-            
+
             # Step 2: Process Twilio credentials -> Odoo users
             for credential in twilio_credentials:
                 # Find matching user in Odoo by username
                 matching_user = domain_users.filtered(lambda u: u.username == credential.username)
-                
+
                 if matching_user:
                     # Update existing user with Twilio SID
                     old_sid = matching_user.sid
@@ -295,47 +296,47 @@ class Domain(models.Model):
                     })
                     debug(self, "Created new user {} from Twilio credential".format(
                         new_user.username))
-            
+
             # Step 3: Create missing Twilio credentials for Odoo users
             missing_in_twilio = odoo_usernames - twilio_usernames
-            
+
             if missing_in_twilio:
                 debug(self, "Found {} SIP-enabled Odoo users missing in Twilio: {}".format(
                     len(missing_in_twilio), list(missing_in_twilio)))
-                
+
                 for username in missing_in_twilio:
                     odoo_user = sip_enabled_users.filtered(lambda u: u.username == username)
                     if odoo_user:
                         try:
                             # Generate password for new Twilio credential
                             password = self.env['connect.user'].generate_twilio_password()
-                            
+
                             debug(self, "Creating missing Twilio credential for user {}".format(username))
                             credential = client.sip.credential_lists(cred_list_sid).credentials.create(
                                 username=username,
                                 password=password
                             )
-                            
+
                             # Update Odoo user with new SID
                             old_sid = odoo_user.sid
                             odoo_user.with_context(skip_sync=True).write({
                                 'sid': credential.sid,
                                 'password': '*' * len(password)  # Mask password
                             })
-                            
+
                             debug(self, "Created Twilio credential for user {} - SID: {} -> {}".format(
                                 username, old_sid, credential.sid))
-                                
+
                         except Exception as e:
                             debug(self, "Error creating Twilio credential for user {}: {}".format(
                                 username, str(e)), level="error")
             else:
                 debug(self, "All SIP-enabled Odoo users already have Twilio credentials")
-                        
+
         except Exception as e:
             debug(self, "Error importing SIP credentials: {}".format(str(e)), level="error")
             # Don't fail the whole process if credential import fails
-            logger.warning("Failed to import SIP credentials for domain %s: %s", 
+            logger.warning("Failed to import SIP credentials for domain %s: %s",
                          self.friendly_name, str(e))
 
     def create_domain(self, client):

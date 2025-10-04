@@ -30,6 +30,7 @@
         "security/webhook.xml",
         "security/user.xml",
         "security/user_record_rules.xml",
+        "security/admin_record_rules.xml",
         # Views
         "views/menu.xml",
         "views/settings.xml",
