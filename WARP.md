@@ -113,6 +113,7 @@ from odoo.addons.connect.models.settings import debug
 
 debug(self, "Debug message", level="info")
 ```
+Do not use debug when handling errors.
 
 ## External Dependencies Note
 

@@ -107,8 +107,54 @@ class User(models.Model):
             if 'A strong password is required' in str(e):
                 msg = 'A strong password is required. It must have a minimum length of 12, at least one number, uppercase char and lowercase character.'
                 raise ValidationError(msg)
+            elif 'already exists' in str(e):
+                # Credential already exists in Twilio - import the existing SID
+                debug(self, 'SIP credential {} already exists in Twilio - importing existing SID'.format(username))
+                return self._import_existing_sip_credential(username, client)
             else:
                 raise ValidationError(format_connect_response(e))
+                
+    def _import_existing_sip_credential(self, username, client=None):
+        """Import existing SIP credential from Twilio by username.
+        
+        This is called when trying to create a credential that already exists.
+        """
+        self.ensure_one()
+        client = client or self.env['connect.settings'].get_client()
+        
+        try:
+            # Get all credentials from the domain's credential list
+            credentials = client.sip.credential_lists(
+                self.domain.cred_list_sid
+            ).credentials.list()
+            
+            # Find the credential with matching username
+            matching_credential = None
+            for credential in credentials:
+                if credential.username == username:
+                    matching_credential = credential
+                    break
+            
+            if matching_credential:
+                debug(self, 'Found existing SIP credential for {} with SID {}'.format(
+                    username, matching_credential.sid))
+                return matching_credential.sid
+            else:
+                # This shouldn't happen if we got 'already exists' error
+                debug(self, 'Could not find existing credential for {} in credential list'.format(
+                    username), level='error')
+                raise ValidationError(
+                    'SIP credential "{}" already exists but could not be found in credential list'.format(username)
+                )
+                
+        except Exception as e:
+            debug(self, 'Error importing existing SIP credential for {}: {}'.format(
+                username, str(e)), level='error')
+            raise ValidationError(
+                'Failed to import existing SIP credential for "{}": {}'.format(
+                    username, format_connect_response(e)
+                )
+            )
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -183,14 +229,15 @@ class User(models.Model):
                 raise ValidationError(msg)
             elif 'not found' in str(e):
                 # Twilio user is not present, create it.
+                debug(self, 'SIP cred {} SID {} not found in Twilio'.format(self.username, self.sid))
                 self._create_sip_account(self.username, password)
             else:
                 raise ValidationError(format_connect_response(e))
-                
+
     @staticmethod
     def generate_twilio_password():
         """Generate a strong password for Twilio SIP credentials.
-        
+
         Requirements:
         - Minimum 12 characters
         - At least one digit (0-9)
@@ -203,14 +250,14 @@ class User(models.Model):
             random.choice(string.ascii_uppercase),  # At least one uppercase
             random.choice(string.digits),           # At least one digit
         ]
-        
+
         # Fill the rest with random characters from all allowed types
         all_chars = string.ascii_letters + string.digits
         password_chars += random.choices(all_chars, k=12 - len(password_chars))
-        
+
         # Shuffle to avoid predictable patterns
         random.shuffle(password_chars)
-        
+
         return ''.join(password_chars)
 
     def manage_group(self, action='add'):
