@@ -71,18 +71,15 @@
                 <page name="transcription" string="Transcription"
                       invisible="is_registered == False">
                   <group>
-                    <group>
-                      <field name="transcript_calls" string="Transcript Calls"/>
+                    <group name="transcribe_options">
+                      <field name="transcript_calls" string="Transcribe Calls"/>
                       <field name="transcript_provider" string="Transcript Provider"
                              invisible="transcript_calls == False"/>
-                    </group>
-                  </group>
-                  <group string="Summary Prompt"
-                         invisible="transcript_calls == False">
-                    <field name="summary_prompt" nolabel="1" 
-                           placeholder="Summarise this phone call"/>
-                    <field name="register_summary" 
-                           string="Register Summary at Partner Chat"/>
+                    <field name="summary_prompt"
+                          invisible="transcript_calls == False"/>
+                    <field name="register_summary"
+                           invisible="transcript_calls == False"/>
+                   </group>
                   </group>
                 </page>
                 <page string="Development" groups="base.group_no_one"
