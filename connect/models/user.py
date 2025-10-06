@@ -155,7 +155,6 @@ class User(models.Model):
                     username, format_connect_response(e)
                 )
             )
-            )
 
     @staticmethod
     def generate_twilio_password():
