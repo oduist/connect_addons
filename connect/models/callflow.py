@@ -130,7 +130,7 @@ class CallFlow(models.Model):
                         client = Client(
                             statusCallbackEvent='answered completed',
                             statusCallback=status_url)
-                        client.identity(user.uri)
+                        client.identity(user.get_client_identity())
                         client.parameter(name='CallerName', value=callerId)
                         dial.append(client)
             response.append(dial)
