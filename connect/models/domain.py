@@ -6,7 +6,7 @@ from urllib.parse import urljoin
 from odoo import fields, models, api, release
 from odoo.exceptions import ValidationError
 from twilio.twiml.voice_response import Client, Dial, VoiceResponse
-from .settings import format_connect_response, debug
+from .settings import format_connect_response, debug, TWILIO_EDGES
 from .twiml import pretty_xml
 
 
@@ -28,7 +28,8 @@ class Domain(models.Model):
     )
     cred_list_sid = fields.Char("Cred List SID", readonly=True)
     subdomain = fields.Char(required=True)
-    domain_name = fields.Char(compute="_get_domain_name", inverse="_set_domain_name")
+    domain_name = fields.Char(compute="_get_domain_name")
+    edge_domains = fields.Text(compute="_get_domain_name")
     friendly_name = fields.Char(required=True)
     sip_registration = fields.Boolean("SIP Registration", readonly=True, default=True)
     delete_protection = fields.Boolean(default=True)
@@ -38,13 +39,13 @@ class Domain(models.Model):
     ]
 
     def _get_domain_name(self):
+        edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
+        edges = [v[0] for v in TWILIO_EDGES if v[0] != 'roaming']
         for rec in self:
             if rec.subdomain:
-                rec.domain_name = rec.subdomain + "." + "sip.twilio.com"
-
-    def _set_domain_name(self):
-        for rec in self:
-            rec.subdomain = rec.domain_name.split(".")[0]
+                rec.domain_name = rec.subdomain + ".sip.twilio.com"
+                rec.edge_domains = '\n'.join(['{}.sip.{}.twilio.com'.format(
+                    rec.subdomain, edge) for edge in edges])
 
     def get_domain_app(self):
         # Domain must be created.
@@ -346,8 +347,9 @@ class Domain(models.Model):
             return "<Response><Say>You must select a default number for caller ID!</Say></Response>"
         response = VoiceResponse()
         api_url = self.env["connect.settings"].get_param("api_url")
-        status_url = urljoin(api_url, "twilio/webhook/callstatus")
-        record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus")
+        edge = self.env['connect.settings'].get_param('twilio_edge')
+        status_url = urljoin(api_url, "twilio/webhook/callstatus#e={}".format(edge))
+        record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus#e={}".format(edge))
         if user.record_calls:
             dial = Dial(
                 timeout=60,

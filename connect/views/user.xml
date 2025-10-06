@@ -66,12 +66,16 @@
                                 <group string="SIP Phone">
                                     <field name="sip_enabled" string="Enabled"/>
                                     <field name="sip_priority" string="Priority"/>
+                                    <field name="twilio_edge" string="Twilio Edge"
+                                           required="True"/>
                                     <field name="password" password="1"
                                            invisible="sip_enabled == False"/>
                                     <field name="sip_ring_timeout" string="Ring Timeout"
                                            invisible="sip_enabled == False"
                                            required="sip_enabled == True"/>
                                     <field name='uri'
+                                           invisible="sip_enabled == False"/>
+                                    <field name='connect_uri'
                                            invisible="sip_enabled == False"/>
                                 </group>
                                 <group string="WEB Phone">

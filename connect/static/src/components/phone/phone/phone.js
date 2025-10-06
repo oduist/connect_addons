@@ -16,7 +16,7 @@ export class Phone extends Component {
     static template = 'connect.phone'
     static props = {
         bus: Object,
-        token: String
+        token_data: Object
     }
 
     static components = {Calls, Contacts, Favorites}
@@ -24,7 +24,8 @@ export class Phone extends Component {
     constructor() {
         super(...arguments)
         this.bus = this.props.bus
-        this.token = this.props.token
+        this.token = this.props.token_data.token
+        this.edge = this.props.token_data.edge
         this.callStatus = {
             NoAnswer: 'noanswer',
             Busy: 'busy',
@@ -372,8 +373,8 @@ export class Phone extends Component {
     }
 
     async updateToken() {
-        const newToken = await this.orm.call('connect.user', 'get_client_token')
-        if (newToken) this.userAgent.updateToken(newToken)
+        const {token} = await this.orm.call('connect.user', 'get_client_token')
+        if (token) this.userAgent.updateToken(token)
     }
 
     initUserAgent() {
@@ -383,6 +384,7 @@ export class Phone extends Component {
         }
 
         self.userAgent = new Twilio.Device(self.token, {
+            edge: self.edge,
             logLevel: 4,
             codecPreferences: ["opus", "pcmu"]
         })

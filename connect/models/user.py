@@ -3,18 +3,23 @@
 import json
 import jinja2
 import logging
+import random
 import re
+import string
 from urllib.parse import urljoin
 from odoo import fields, models, api, release
 from odoo.exceptions import ValidationError
 from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 from twilio.twiml.voice_response import Client, Dial, VoiceResponse
-from .settings import format_connect_response, debug, strip_number
+from .settings import format_connect_response, debug, strip_number, TWILIO_EDGES
 from .twiml import pretty_xml
 
 logger = logging.getLogger(__name__)
 
+
+SIP_TWILIO_EDGES = TWILIO_EDGES.copy()
+SIP_TWILIO_EDGES.insert(0, ['roaming', 'Global Low-latency Roaming'])
 
 class UserCallflowCall(models.Model):
     _name = 'connect.user_callflow_call'
@@ -38,7 +43,7 @@ class UserCallflow(models.Model):
 class User(models.Model):
     _name = 'connect.user'
     _rec_name = 'username'
-    _description = 'Twilio User'
+    _description = 'Connect User'
     _order = 'username'
 
     sid = fields.Char('SID', readonly=True)
@@ -55,7 +60,8 @@ class User(models.Model):
                             default=lambda x: x.env['connect.domain'].search([('subdomain', 'not like', 'byoc')], limit=1))
     username = fields.Char(required=True)
     password = fields.Char(groups="connect.group_connect_admin,connect.group_connect_user")
-    uri = fields.Char('SIP URI', compute='_get_sip_uri', store=True)
+    uri = fields.Char('SIP URI', compute='_get_sip_uri')
+    connect_uri = fields.Char('SIP Connect URI', compute='_get_sip_uri')
     record_calls = fields.Boolean(default=True)
     voicemail_enabled = fields.Boolean()
     voicemail_prompt = fields.Text(default="Hello, this is {{user.name}}. I'm unable to take your call right now. Please leave a message after the tone.")
@@ -68,16 +74,24 @@ class User(models.Model):
     missed_calls_notify = fields.Boolean(default=False, help='Notify user on missed calls.')
     greeting_message = fields.Char()
     summary_prompt = fields.Char()
+    twilio_edge = fields.Selection(selection=SIP_TWILIO_EDGES, required=True, default='roaming')
 
     _sql_constraints = [
         ('user_uniq', 'UNIQUE("user")', 'This Odoo user account is already defined!'),
         ('username_uniq', 'UNIQUE(username)', 'This PBX username is already defined!'),
     ]
 
-    @api.depends('username', 'domain', 'domain.domain_name', 'domain.subdomain')
+    @api.depends('username', 'domain', 'twilio_edge')
     def _get_sip_uri(self):
+        edge = self.twilio_edge or self.env['connect.settings'].get_param('twilio_edge')
         for rec in self:
+            # Render URI is always global
             rec.uri = '{}@{}'.format(rec.username, rec.domain.domain_name)
+            if edge == 'roaming':
+                rec.connect_uri = '{}@{}'.format(rec.username, rec.domain.domain_name)
+            else:
+                rec.connect_uri = '{}@{}.sip.{}.twilio.com'.format(
+                    rec.username, rec.domain.subdomain, edge)
 
     def _create_sip_account(self, username, password, client=None):
         self.ensure_one()
@@ -93,8 +107,80 @@ class User(models.Model):
             if 'A strong password is required' in str(e):
                 msg = 'A strong password is required. It must have a minimum length of 12, at least one number, uppercase char and lowercase character.'
                 raise ValidationError(msg)
+            elif 'already exists' in str(e):
+                # Credential already exists in Twilio - import the existing SID
+                debug(self, 'SIP credential {} already exists in Twilio - importing existing SID'.format(username))
+                return self._import_existing_sip_credential(username, client)
             else:
                 raise ValidationError(format_connect_response(e))
+
+    def _import_existing_sip_credential(self, username, client=None):
+        """Import existing SIP credential from Twilio by username.
+
+        This is called when trying to create a credential that already exists.
+        """
+        self.ensure_one()
+        client = client or self.env['connect.settings'].get_client()
+
+        try:
+            # Get all credentials from the domain's credential list
+            credentials = client.sip.credential_lists(
+                self.domain.cred_list_sid
+            ).credentials.list()
+
+            # Find the credential with matching username
+            matching_credential = None
+            for credential in credentials:
+                if credential.username == username:
+                    matching_credential = credential
+                    break
+
+            if matching_credential:
+                debug(self, 'Found existing SIP credential for {} with SID {}'.format(
+                    username, matching_credential.sid))
+                return matching_credential.sid
+            else:
+                # This shouldn't happen if we got 'already exists' error
+                debug(self, 'Could not find existing credential for {} in credential list'.format(
+                    username), level='error')
+                raise ValidationError(
+                    'SIP credential "{}" already exists but could not be found in credential list'.format(username)
+                )
+
+        except Exception as e:
+            debug(self, 'Error importing existing SIP credential for {}: {}'.format(
+                username, str(e)), level='error')
+            raise ValidationError(
+                'Failed to import existing SIP credential for "{}": {}'.format(
+                    username, format_connect_response(e)
+                )
+            )
+
+    @staticmethod
+    def generate_twilio_password():
+        """Generate a strong password for Twilio SIP credentials.
+
+        Requirements:
+        - Minimum 12 characters
+        - At least one digit (0-9)
+        - At least one uppercase letter (A-Z)
+        - At least one lowercase letter (a-z)
+        """
+        # Ensure we have at least one of each required character type
+        password_chars = [
+            random.choice(string.ascii_lowercase),  # At least one lowercase
+            random.choice(string.ascii_uppercase),  # At least one uppercase
+            random.choice(string.digits),           # At least one digit
+        ]
+
+        # Fill the rest with random characters from all allowed types
+        all_chars = string.ascii_letters + string.digits
+        password_chars += random.choices(all_chars, k=12 - len(password_chars))
+
+        # Shuffle to avoid predictable patterns
+        random.shuffle(password_chars)
+
+        return ''.join(password_chars)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -142,9 +228,11 @@ class User(models.Model):
 
     def unlink(self):
         for rec in self:
-            rec.delete_sip_account()
+            # Check if twilio_auto_sync is disabled
+            if self.env["connect.settings"].get_param("twilio_auto_sync"):
+                rec.delete_sip_account()
             rec.manage_group('remove')
-        res = super().unlink()
+        res = super(User, self).unlink()
         if res and not self.env.context.get('no_clear_cache'):
             if release.version_info[0] >= 17:
                 self.env.registry.clear_cache()
@@ -167,6 +255,7 @@ class User(models.Model):
                 raise ValidationError(msg)
             elif 'not found' in str(e):
                 # Twilio user is not present, create it.
+                debug(self, 'SIP cred {} SID {} not found in Twilio'.format(self.username, self.sid))
                 self._create_sip_account(self.username, password)
             else:
                 raise ValidationError(format_connect_response(e))
@@ -196,13 +285,17 @@ class User(models.Model):
             raise ValidationError('Username cannot be changed!')
         for rec in self:
             if vals.get('password'):
-                if rec.sid:
-                    rec._update_sip_password(vals['password'])
+                # Check if twilio_auto_sync is disabled
+                if not self.env["connect.settings"].get_param("twilio_auto_sync"):
+                    vals['password'] = '*' * len(vals['password'])
                 else:
-                    # SIP was enabled, create SIP user account.
-                    vals['sid'] = self._create_sip_account(rec.username, vals['password'])
-                # Don't keep SIP password in Odoo.
-                vals['password'] = '*' * len(vals['password'])
+                    if rec.sid:
+                        rec._update_sip_password(vals['password'])
+                    else:
+                        # SIP was enabled, create SIP user account.
+                        vals['sid'] = self._create_sip_account(rec.username, vals['password'])
+                    # Don't keep SIP password in Odoo.
+                    vals['password'] = '*' * len(vals['password'])
         res = super().write(vals)
         self.manage_group()
         if res and not self.env.context.get('no_clear_cache'):
@@ -243,9 +336,10 @@ class User(models.Model):
         caller_name = self._get_caller_name(request, params)
         callerId = self._get_caller_id(request, params)
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus')
-        status_url = urljoin(api_url, 'twilio/webhook/callstatus')
-        dial_action_url = urljoin(api_url, 'twilio/webhook/connect.user/call_action/{}'.format(self.id))
+        edge = self.twilio_edge or self.env['connect.settings'].sudo().get_param('twilio_edge')
+        record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus#e={}'.format(edge))
+        status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
+        dial_action_url = urljoin(api_url, 'twilio/webhook/connect.user/call_action/{}#e={}'.format(self.id, edge))
         dial_client_kwargs = {'timeout': self.client_ring_timeout, 'callerId': callerId}
         # Check for action callback URL.
         if params.get('dial_action_url'):
@@ -261,7 +355,7 @@ class User(models.Model):
         client = Client(
             statusCallbackEvent='initiated answered completed',
             statusCallback=status_url)
-        client.identity(self.uri)
+        client.identity(self.get_client_identity())
         if caller_name:
             client.parameter(name='CallerName', value=caller_name)
         channel = self.env['connect.channel'].search([('sid', '=', request.get('CallSid'))])
@@ -283,9 +377,10 @@ class User(models.Model):
     def render_sip(self, response, request, params):
         callerId = self._get_caller_id(request, params)
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        dial_action_url = urljoin(api_url, 'twilio/webhook/connect.user/call_action/{}'.format(self.id))
-        record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus')
-        status_url = urljoin(api_url, 'twilio/webhook/callstatus')
+        edge = self.twilio_edge or self.env['connect.settings'].get_param('twilio_edge')
+        dial_action_url = urljoin(api_url, 'twilio/webhook/connect.user/call_action/{}#e={}'.format(self.id, edge))
+        record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus#e={}'.format(edge))
+        status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
         dial_sip_kwargs = {'timeout': self.sip_ring_timeout, 'callerId': callerId}
         # Check for action callback URL.
         if params.get('dial_action_url'):
@@ -307,7 +402,8 @@ class User(models.Model):
 
     def render_voicemail(self, response, request, params):
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        voicemail_record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus')
+        edge = self.twilio_edge or self.env['connect.settings'].sudo().get_param('twilio_edge')
+        voicemail_record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
         self.get_voicemail_prompt(response)
         response.record(
             maxLength=120,
@@ -353,31 +449,44 @@ class User(models.Model):
                 getattr(self, flow.method)(response, request, params)
             return response.to_xml()
 
+    def get_client_identity(self):
+        # Clients always user global domain.
+        return '{}@{}'.format(self.username, self.domain.domain_name)
+
     @api.model
     def get_client_token(self):
-        has_user_group = self.env.user.has_group('connect.group_connect_user')
-        has_admin_group = self.env.user.has_group('connect.group_connect_admin')
-        if not (has_user_group or has_admin_group):
-            return False
-        user = self.search([('user', '=', self.env.user.id)])
-        if not user:
-            logger.info("User %s not found!", self.env.user.id)
-            return False
-        if not user.client_enabled:
-            logger.info("Client for user %s not enabled!", self.env.user.id)
-            return False
-        account_sid = self.env['connect.settings'].sudo().get_param('account_sid')
-        api_key = self.env['connect.settings'].sudo().get_param('twilio_api_key')
-        api_secret = self.env['connect.settings'].sudo().get_param('twilio_api_secret')
-        identity = user.uri
-        token = AccessToken(account_sid, api_key, api_secret, identity=identity, ttl=3600)
-        voice_grant = VoiceGrant(
-            outgoing_application_sid=user.application.sid or user.domain.application.sid,
-            outgoing_application_params={},
-            incoming_allow=True,
-        )
-        token.add_grant(voice_grant)
-        return token.to_jwt()
+        try:
+            has_user_group = self.env.user.has_group('connect.group_connect_user')
+            has_admin_group = self.env.user.has_group('connect.group_connect_admin')
+            if not (has_user_group or has_admin_group):
+                return {'token': False}
+            user = self.search([('user', '=', self.env.user.id)])
+            if not user:
+                logger.info("User %s not found!", self.env.user.id)
+                return {'token': False}
+            if not user.client_enabled:
+                logger.info("Client for user %s not enabled!", self.env.user.id)
+                return {'token': False}
+            account_sid = self.env['connect.settings'].sudo().get_param('account_sid')
+            api_key = self.env['connect.settings'].sudo().get_param('twilio_api_key')
+            api_secret = self.env['connect.settings'].sudo().get_param('twilio_api_secret')
+            identity = user.get_client_identity()
+            token = AccessToken(account_sid, api_key, api_secret, identity=identity, ttl=3600,
+                region=self.env['connect.settings'].sudo().get_param('twilio_region'),
+            )
+            voice_grant = VoiceGrant(
+                outgoing_application_sid=user.application.sid or user.domain.application.sid,
+                outgoing_application_params={},
+                incoming_allow=True,
+            )
+            token.add_grant(voice_grant)
+            return {
+                'token': token.to_jwt(),
+                'edge': user.twilio_edge or self.env['connect.settings'].sudo().get_param('twilio_edge'),
+            }
+        except Exception as e:
+            logger.exception('Error getting Twilio JWT:')
+            return {'error': str(e)}
 
     @api.model
     def get_user_by_exten_number(self, search_query):
@@ -391,16 +500,15 @@ class User(models.Model):
         return user[0] if user else False
 
     @api.model
-    # @tools.ormcache('userinfo') - psycopg2.InterfaceError: Cursor already closed
     def get_user_by_uri(self, userinfo):
         if not userinfo:
             # Return empty set.
             return self.env['connect.user']
-        re_call_uri = re.compile(r'^(?:sip|client):([^\s@]+@[^\s;]+)(?:;[^&\s]+(?:&[^&\s]+)*)?')
-        found_uri = re_call_uri.search(userinfo)
-        if found_uri:
+        re_call_uri = re.compile(r'^(?:sip|client):([^@]+)@')
+        found_username = re_call_uri.search(userinfo)
+        if found_username:
             user = self.env['connect.user'].search([
-                ('uri', '=', found_uri.group(1))])
+                ('username', '=', found_username.group(1))])
             debug(self, 'Found user: {} by {}.'.format(user.username, userinfo))
             return user
         # Return empty set.
