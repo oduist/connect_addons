@@ -5,7 +5,7 @@ import re
 from urllib.parse import urljoin
 from odoo import fields, models, api, release
 from odoo.exceptions import ValidationError
-from .settings import debug
+from .settings import debug, format_connect_response
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class OutgoingCallerID(models.Model):
     status = fields.Char(readonly=True)
     validation_code = fields.Char(readonly=True)
     callerid_type = fields.Selection([('outgoing_callerid', 'CallerID'), ('number', 'DID Number')],
-                                     required=True, readonly=True, default='outgoing_callerid')
+                                     required=True, default='outgoing_callerid')
     is_default = fields.Boolean(string='Default')
     callerid_users = fields.One2many(comodel_name='connect.user',
                                      inverse_name='outgoing_callerid', string='callerId Users')
@@ -131,27 +131,16 @@ class OutgoingCallerID(models.Model):
                 }
             else:
                 logger.error('Validate request error: %s', e)
-                raise ValidationError('Validate request error, check Odoo log!')
+                raise ValidationError('Validate request error: {}'.format(format_connect_response(e)))
 
     @api.model_create_multi
     def create(self, vals_list):
         if self.env.context.get('skip_validation'):
             return super().create(vals_list)
         for vals in vals_list:
-            vals['callerid_type'] = 'outgoing_callerid'
-            vals['status'] = 'not validated'
+            if vals['callerid_type'] == 'outgoing_callerid':
+                vals['status'] = 'not validated'
         return super().create(vals_list)
-
-    def write(self, vals):
-        return super().write(vals)
-
-    @api.constrains('number')
-    def _check_number_change(self):
-        if self.env.context.get('skip_number_check'):
-            return
-        for rec in self:
-            if rec.callerid_type in ['number', 'outgoing_callerid']:
-                raise ValidationError('Twilio number / outgoing callerid cannot be changed here!')
 
     @api.constrains('friendly_name')
     def _change_number_friendly_name(self):
@@ -172,7 +161,7 @@ class OutgoingCallerID(models.Model):
         sids = {}
         for rec in self:
             if rec.callerid_type == 'number':
-                raise ValidationError('You cannot remove Twilio numbers!')
+                raise ValidationError('Remove Twilio numbers from Twilio Console and use Twilio Sync button!')
             if rec.sid and rec.callerid_type == 'outgoing_callerid':
                 sids[rec.sid] = rec.number
         res = super().unlink()
