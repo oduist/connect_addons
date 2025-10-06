@@ -6,21 +6,22 @@
         <field name="description">Connect Security</field>
     </record>
 
+    <record model="res.groups" id="group_connect_user">
+        <field name="name">User</field>
+        <field name="category_id" ref="connect.module_connect_category"/>
+    </record>
+
     <record model="res.groups" id="group_connect_admin">
         <field name="name">Admin</field>
         <field name="category_id" ref="connect.module_connect_category"/>
         <field name="users" eval="[(4, ref('base.user_admin'))]"/>
+        <field name="implied_ids" eval="[(4, ref('group_connect_user'))]"/>
     </record>
 
     <record model="res.groups" id="group_connect_webhook">
         <field name="name">Webhook</field>
         <field name="category_id" ref="connect.module_connect_category"/>
         <field name="users" eval="[(4, ref('connect.user_connect_webhook'))]"/>
-    </record>
-
-    <record model="res.groups" id="group_connect_user">
-        <field name="name">User</field>
-        <field name="category_id" ref="connect.module_connect_category"/>
     </record>
 
 </odoo>
