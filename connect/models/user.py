@@ -156,32 +156,6 @@ class User(models.Model):
                 )
             )
 
-    @staticmethod
-    def generate_twilio_password():
-        """Generate a strong password for Twilio SIP credentials.
-
-        Requirements:
-        - Minimum 12 characters
-        - At least one digit (0-9)
-        - At least one uppercase letter (A-Z)
-        - At least one lowercase letter (a-z)
-        """
-        # Ensure we have at least one of each required character type
-        password_chars = [
-            random.choice(string.ascii_lowercase),  # At least one lowercase
-            random.choice(string.ascii_uppercase),  # At least one uppercase
-            random.choice(string.digits),           # At least one digit
-        ]
-
-        # Fill the rest with random characters from all allowed types
-        all_chars = string.ascii_letters + string.digits
-        password_chars += random.choices(all_chars, k=12 - len(password_chars))
-
-        # Shuffle to avoid predictable patterns
-        random.shuffle(password_chars)
-
-        return ''.join(password_chars)
-
     @api.model_create_multi
     def create(self, vals_list):
         recs = super().create(vals_list)
@@ -259,6 +233,32 @@ class User(models.Model):
                 self._create_sip_account(self.username, password)
             else:
                 raise ValidationError(format_connect_response(e))
+
+    @staticmethod
+    def generate_twilio_password():
+        """Generate a strong password for Twilio SIP credentials.
+
+        Requirements:
+        - Minimum 12 characters
+        - At least one digit (0-9)
+        - At least one uppercase letter (A-Z)
+        - At least one lowercase letter (a-z)
+        """
+        # Ensure we have at least one of each required character type
+        password_chars = [
+            random.choice(string.ascii_lowercase),  # At least one lowercase
+            random.choice(string.ascii_uppercase),  # At least one uppercase
+            random.choice(string.digits),           # At least one digit
+        ]
+
+        # Fill the rest with random characters from all allowed types
+        all_chars = string.ascii_letters + string.digits
+        password_chars += random.choices(all_chars, k=12 - len(password_chars))
+
+        # Shuffle to avoid predictable patterns
+        random.shuffle(password_chars)
+
+        return ''.join(password_chars)
 
     def manage_group(self, action='add'):
         if self.user and self.user.has_group('base.group_system') and self.user.has_group('base.group_erp_manager'):

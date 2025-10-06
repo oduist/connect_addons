@@ -133,6 +133,7 @@ class Number(models.Model):
                     # Log warning but continue with other numbers
                     debug(self, 'Warning: Failed to update routing region for number {}: {}'.format(
                         rec.phone_number, str(e)), level="warning")
+
         # Remove numbers that exist only in Odoo (number was removed in Twilio).
         numbers_to_remove = self.search([
             ('sid', 'not in', [k.sid for k in numbers]),
