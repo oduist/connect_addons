@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Inherit the list view to add BYOC field -->
+    <record id="outgoing_callerid_list_byoc" model="ir.ui.view">
+        <field name="name">connect.outgoing_callerid_list_byoc</field>
+        <field name="model">connect.outgoing_callerid</field>
+        <field name="inherit_id" ref="connect.outgoing_callerid_list"/>
+        <field name="arch" type="xml">
+            <field name="callerid_type" position="after">
+                <field name="byoc"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- Inherit the form view to add BYOC field -->
+    <record id="outgoing_callerid_form_byoc" model="ir.ui.view">
+        <field name="name">connect_outgoing_callerid_form_byoc</field>
+        <field name="model">connect.outgoing_callerid</field>
+        <field name="inherit_id" ref="connect.connect_outgoing_callerid_form"/>
+        <field name="arch" type="xml">
+            <!-- Make callerid_type field conditionally editable -->
+            <field name="callerid_type" position="attributes">
+                <attribute name="readonly">0</attribute>
+            </field>
+
+            <!-- Add BYOC field after callerid_type -->
+            <field name="callerid_type" position="after">
+                <field name="byoc"
+                       help="Select BYOC configuration to use your own carrier for this number"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- Inherit the search view to add BYOC filter -->
+    <record id="outgoing_callerid_search_byoc" model="ir.ui.view">
+        <field name="name">connect_outgoing_callerid_search_byoc</field>
+        <field name="model">connect.outgoing_callerid</field>
+        <field name="inherit_id" ref="connect.connect_outgoing_callerid_search"/>
+        <field name="arch" type="xml">
+            <field name="callerid_type" position="after">
+                <field name="byoc"/>
+            </field>
+            <filter name="by_type" position="after">
+                <filter name="byoc_only" string="BYOC Only" domain="[('byoc', '!=', False)]"/>
+                <filter name="twilio_only" string="Twilio Only" domain="[('byoc', '=', False)]"/>
+            </filter>
+        </field>
+    </record>
+
+</odoo>
