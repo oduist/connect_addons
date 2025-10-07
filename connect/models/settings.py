@@ -745,10 +745,10 @@ class Settings(models.Model):
         """Fetch current Twilio account balance"""
         try:
             client = self.get_client()
-            
+
             # Try to fetch balance using the balance resource
             try:
-                balance_item = client.balance.fetch()
+                balance_item = client.api.v2010.account.balance.fetch()
                 currency = getattr(balance_item, 'currency', 'USD')
                 balance_value = getattr(balance_item, 'balance', '0.00')
                 balance = f"${balance_value} {currency}"
@@ -761,7 +761,7 @@ class Settings(models.Model):
                     return balance
                 else:
                     raise balance_error
-            
+
             self.set_param('twilio_balance', balance)
             self.connect_notify(f"Twilio Balance: {balance}", title="Balance Update")
             return balance
