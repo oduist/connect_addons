@@ -72,13 +72,7 @@ class Call(models.Model):
     # Call price fields
     price = fields.Monetary(string='Call Price', readonly=True, currency_field='price_currency')
     price_unit = fields.Char(string='Price Unit', readonly=True, help='The currency unit for call price (e.g., USD)')
-    price_currency = fields.Selection([
-        ('USD', 'US Dollar'),
-        ('EUR', 'Euro'),
-        ('GBP', 'British Pound'),
-        ('AUD', 'Australian Dollar'),
-        ('CAD', 'Canadian Dollar'),
-    ], string='Price Currency', readonly=True, default='USD')
+    price_currency = fields.Char(string='Price Currency', readonly=True, default='USD')
 
     def _get_name(self):
         for rec in self:
@@ -299,20 +293,10 @@ class Call(models.Model):
                     price_value = abs(float(twilio_call.price))
                     price_unit = twilio_call.price_unit or 'USD'
                     
-                    # Map price unit to currency selection
-                    currency_mapping = {
-                        'USD': 'USD',
-                        'EUR': 'EUR', 
-                        'GBP': 'GBP',
-                        'AUD': 'AUD',
-                        'CAD': 'CAD'
-                    }
-                    price_currency = currency_mapping.get(price_unit, 'USD')
-                    
                     call.write({
                         'price': price_value,
                         'price_unit': price_unit,
-                        'price_currency': price_currency,
+                        'price_currency': price_unit,
                     })
                     debug(self, f'Saved call price: ${price_value} {price_unit} for call {call.id}')
                     return True
