@@ -66,12 +66,17 @@
                                 <group string="SIP Phone">
                                     <field name="sip_enabled" string="Enabled"/>
                                     <field name="sip_priority" string="Priority"/>
+                                    <field name="twilio_edge" string="Twilio Edge"
+                                           attrs="{'required': True}"/>
                                     <field name="password" password="1"
                                            attrs="{'invisible': [('sip_enabled', '=', False)]}"/>
                                     <field name="sip_ring_timeout" string="Ring Timeout"
                                            attrs="{'invisible': [('sip_enabled', '=', False)],
                                                    'required': [('sip_enabled', '=', True)]}"/>
-                                    <field name='uri' attrs="{'invisible': [('sip_enabled', '=', False)]}"/>
+                                    <field name='uri'
+                                           attrs="{'invisible': [('sip_enabled', '=', False)]}"/>
+                                    <field name='connect_uri'
+                                           attrs="{'invisible': [('sip_enabled', '=', False)]}"/>
                                 </group>
                                 <group string="WEB Phone">
                                     <field name="client_enabled" string="Enabled"/>

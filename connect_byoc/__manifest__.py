@@ -20,6 +20,7 @@
         "views/domain.xml",
         "views/number.xml",
         "views/outgoing_rule.xml",
+        "views/outgoing_callerid.xml",
         "data/outgoing_rules.xml",
     ],
     "demo": [],

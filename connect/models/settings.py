@@ -29,6 +29,17 @@ PROTECTED_FIELDS = [
     "display_openai_api_key",
 ]
 
+TWILIO_EDGES = [
+    ('ashburn', 'US East Coast (Virginia)'),
+    ('umatilla', 'US West Coast (Oregon)'),
+    ('dublin', 'Ireland'),
+    ('frankfurt', 'Frankfurt'),
+    ('sydney', 'Australia'),
+    ('sao-paulo', 'Brazil'),
+    ('tokyo', 'Japan'),
+    ('singapore', 'Singapore'),
+]
+
 
 def debug(rec, message, level="info"):
     caller_module = inspect.stack()[1][3]
@@ -91,6 +102,13 @@ class Settings(models.Model):
 
     name = fields.Char(compute="_get_name")
     debug_mode = fields.Boolean()
+    twilio_auto_sync = fields.Boolean(default=True)
+    twilio_region = fields.Selection([
+        ('us1', 'US East (Virginia)'),
+        ('ie1', 'Ireland (Dublin)'),
+        ('au1', 'Australia (Sydney)'),
+    ], default='us1', required=True)
+    twilio_edge = fields.Selection(selection=TWILIO_EDGES, required=True, default='ashburn')
     account_sid = fields.Char(string="Account SID")
     auth_token = fields.Char(
         groups="base.group_erp_manager,connect.group_connect_webhook"
@@ -122,7 +140,6 @@ class Settings(models.Model):
     twilio_verify_requests = fields.Boolean(
         default=True, string="Verify Twilio Requests"
     )
-    media_url = fields.Char()
     # Registration fields
     customer_code = fields.Char()
     registration_number = fields.Char(compute="_get_instance_data")
@@ -536,6 +553,12 @@ class Settings(models.Model):
             account_sid = self.sudo().get_param("account_sid")
             auth_token = self.sudo().get_param("auth_token")
             client = Client(account_sid, auth_token)
+            twilio_region = self.sudo().get_param("twilio_region")
+            if twilio_region:
+                client.region = twilio_region
+            twilio_edge = self.sudo().get_param("twilio_edge")
+            if twilio_edge:
+                client.edge = twilio_edge
             client.http_client.logger.setLevel(TWILIO_LOG_LEVEL)
             return client
         except Exception as e:
@@ -577,11 +600,17 @@ class Settings(models.Model):
         api_url_check = self.check_api_url()
         if api_url_check:
             raise ValidationError(api_url_check)
-        self.env["connect.twiml"].sync()
-        self.env["connect.domain"].sync()
-        self.env["connect.number"].sync()
-        self.env["connect.outgoing_callerid"].sync()
-        self.connect_notify("Sync complete.")
+        try:
+            self.env["connect.twiml"].sync()
+            self.env["connect.domain"].sync()
+            self.env["connect.number"].sync()
+            self.env["connect.outgoing_callerid"].sync()
+            self.connect_notify("Sync complete.")
+        except Exception as e:
+            if 'errors/20003' in str(e):
+                raise ValidationError('Error authenticating requests to the Twilio API! Check your Auth Key!')
+            else:
+                raise
 
     # Called from the settings.
     def reformat_numbers_button(self):
@@ -652,14 +681,15 @@ class Settings(models.Model):
             callerId = default_number.number
         api_url = self.sudo().get_param("api_url")
         instance_uid = self.sudo().get_param("instance_uid", "")
-        status_url = urljoin(api_url, "twilio/webhook/callstatus")
+        edge = self.twilio_edge or self.env['connect.settings'].get_param('twilio_edge')
+        status_url = urljoin(api_url, "twilio/webhook/callstatus#e={}".format(edge))
         if exten:
             # Internal call to an extension.
             twiml = exten.render()
         else:
             twiml = self.get_external_call_route(number, callerId, status_url)
         record = self.env.user.connect_user.record_calls
-        record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus")
+        record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus#e={}".format(edge))
         channel = client.calls.create(
             twiml=twiml,
             to=to,
@@ -701,3 +731,12 @@ class Settings(models.Model):
             "target": "current",
             "context": {"search_default_key": "connect.api_url"},
         }
+
+    @api.onchange('twilio_region')
+    def _reset_twilio_edge(self):
+        if self.twilio_region == 'us1':
+            self.twilio_edge = 'ashburn'
+        elif self.twilio_region == 'ie1':
+            self.twilio_edge = 'dublin'
+        elif self.twilio_region == 'au1':
+            self.twilio_edge = 'sydney'
