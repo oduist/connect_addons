@@ -3,23 +3,18 @@
 import json
 import jinja2
 import logging
-import random
 import re
-import string
 from urllib.parse import urljoin
 from odoo import fields, models, api, release
 from odoo.exceptions import ValidationError
 from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 from twilio.twiml.voice_response import Client, Dial, VoiceResponse
-from .settings import format_connect_response, debug, strip_number, TWILIO_EDGES
+from .settings import format_connect_response, debug, strip_number
 from .twiml import pretty_xml
 
 logger = logging.getLogger(__name__)
 
-
-SIP_TWILIO_EDGES = TWILIO_EDGES.copy()
-SIP_TWILIO_EDGES.insert(0, ['roaming', 'Global Low-latency Roaming'])
 
 class UserCallflowCall(models.Model):
     _name = 'connect.user_callflow_call'
@@ -43,7 +38,7 @@ class UserCallflow(models.Model):
 class User(models.Model):
     _name = 'connect.user'
     _rec_name = 'username'
-    _description = 'Connect User'
+    _description = 'Twilio User'
     _order = 'username'
 
     sid = fields.Char('SID', readonly=True)
@@ -60,8 +55,7 @@ class User(models.Model):
                             default=lambda x: x.env['connect.domain'].search([('subdomain', 'not like', 'byoc')], limit=1))
     username = fields.Char(required=True)
     password = fields.Char(groups="connect.group_connect_admin,connect.group_connect_user")
-    uri = fields.Char('SIP URI', compute='_get_sip_uri')
-    connect_uri = fields.Char('SIP Connect URI', compute='_get_sip_uri')
+    uri = fields.Char('SIP URI', compute='_get_sip_uri', store=True)
     record_calls = fields.Boolean(default=True)
     voicemail_enabled = fields.Boolean()
     voicemail_prompt = fields.Text(default="Hello, this is {{user.name}}. I'm unable to take your call right now. Please leave a message after the tone.")
@@ -74,24 +68,16 @@ class User(models.Model):
     missed_calls_notify = fields.Boolean(default=False, help='Notify user on missed calls.')
     greeting_message = fields.Char()
     summary_prompt = fields.Char()
-    twilio_edge = fields.Selection(selection=SIP_TWILIO_EDGES, required=True, default='roaming')
 
     _sql_constraints = [
         ('user_uniq', 'UNIQUE("user")', 'This Odoo user account is already defined!'),
         ('username_uniq', 'UNIQUE(username)', 'This PBX username is already defined!'),
     ]
 
-    @api.depends('username', 'domain', 'twilio_edge')
+    @api.depends('username', 'domain', 'domain.domain_name', 'domain.subdomain')
     def _get_sip_uri(self):
         for rec in self:
-            edge = rec.twilio_edge or self.env['connect.settings'].get_param('twilio_edge')
-            # Render URI is always global
             rec.uri = '{}@{}'.format(rec.username, rec.domain.domain_name)
-            if edge == 'roaming':
-                rec.connect_uri = '{}@{}'.format(rec.username, rec.domain.domain_name)
-            else:
-                rec.connect_uri = '{}@{}.sip.{}.twilio.com'.format(
-                    rec.username, rec.domain.subdomain, edge)
 
     def _create_sip_account(self, username, password, client=None):
         self.ensure_one()
@@ -107,54 +93,8 @@ class User(models.Model):
             if 'A strong password is required' in str(e):
                 msg = 'A strong password is required. It must have a minimum length of 12, at least one number, uppercase char and lowercase character.'
                 raise ValidationError(msg)
-            elif 'already exists' in str(e):
-                # Credential already exists in Twilio - import the existing SID
-                debug(self, 'SIP credential {} already exists in Twilio - importing existing SID'.format(username))
-                return self._import_existing_sip_credential(username, client)
             else:
                 raise ValidationError(format_connect_response(e))
-
-    def _import_existing_sip_credential(self, username, client=None):
-        """Import existing SIP credential from Twilio by username.
-
-        This is called when trying to create a credential that already exists.
-        """
-        self.ensure_one()
-        client = client or self.env['connect.settings'].get_client()
-
-        try:
-            # Get all credentials from the domain's credential list
-            credentials = client.sip.credential_lists(
-                self.domain.cred_list_sid
-            ).credentials.list()
-
-            # Find the credential with matching username
-            matching_credential = None
-            for credential in credentials:
-                if credential.username == username:
-                    matching_credential = credential
-                    break
-
-            if matching_credential:
-                debug(self, 'Found existing SIP credential for {} with SID {}'.format(
-                    username, matching_credential.sid))
-                return matching_credential.sid
-            else:
-                # This shouldn't happen if we got 'already exists' error
-                debug(self, 'Could not find existing credential for {} in credential list'.format(
-                    username), level='error')
-                raise ValidationError(
-                    'SIP credential "{}" already exists but could not be found in credential list'.format(username)
-                )
-
-        except Exception as e:
-            debug(self, 'Error importing existing SIP credential for {}: {}'.format(
-                username, str(e)), level='error')
-            raise ValidationError(
-                'Failed to import existing SIP credential for "{}": {}'.format(
-                    username, format_connect_response(e)
-                )
-            )
 
     @api.model_create_multi
     def create(self, vals_list):

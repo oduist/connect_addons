@@ -57,10 +57,8 @@ class CallFlow(models.Model):
 
     def _get_gather_action_url(self):
         api_url = self.env['connect.settings'].get_param('api_url')
-        edge = self.env['connect.settings'].get_param('twilio_edge')
         for rec in self:
-            rec.gather_action_url = urljoin(api_url,
-                'twilio/webhook/callflow/{}/gather#e={}'.format(rec.id, edge))
+            rec.gather_action_url = urljoin(api_url, 'twilio/webhook/callflow/{}/gather'.format(rec.id))
 
     @api.model
     def gather_action(self, flow_id, request):
@@ -78,12 +76,10 @@ class CallFlow(models.Model):
     def render(self, request={}, params={}):
         self.ensure_one()
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
-        voicemail_record_status_url = urljoin(api_url,
-                                            'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
-        status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
-        action_url = urljoin(api_url, 'twilio/webhook/connect.callflow/call_action/{}#e={}'.format(self.id, edge))
-        record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus#e={}'.format(edge))
+        voicemail_record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus')
+        status_url = urljoin(api_url, 'twilio/webhook/callstatus')
+        action_url = urljoin(api_url, 'twilio/webhook/connect.callflow/call_action/{}'.format(self.id))
+        record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus')
         invalid_input = params.get('invalid_input')
         response = VoiceResponse()
         if invalid_input:
@@ -130,7 +126,7 @@ class CallFlow(models.Model):
                         client = Client(
                             statusCallbackEvent='answered completed',
                             statusCallback=status_url)
-                        client.identity(user.get_client_identity())
+                        client.identity(user.uri)
                         client.parameter(name='CallerName', value=callerId)
                         dial.append(client)
             response.append(dial)
@@ -170,8 +166,7 @@ class CallFlow(models.Model):
             # The call was not connected, point to the voicemail
             if callflow.voicemail_prompt:
                 api_url = self.env['connect.settings'].sudo().get_param('api_url')
-                edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
-                record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
+                record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus')
                 response.pause(length=1)
                 response.say(callflow.voicemail_prompt, language=callflow.language, voice=callflow.voice)
                 response.record(
