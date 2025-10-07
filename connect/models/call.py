@@ -68,6 +68,16 @@ class Call(models.Model):
     has_error = fields.Boolean(index=True)
     error_code = fields.Char(readonly=True)
     error_message = fields.Text(readonly=True)
+    # Call price fields
+    price = fields.Monetary(string='Call Price', readonly=True, currency_field='price_currency')
+    price_unit = fields.Char(string='Price Unit', readonly=True, help='The currency unit for call price (e.g., USD)')
+    price_currency = fields.Selection([
+        ('USD', 'US Dollar'),
+        ('EUR', 'Euro'),
+        ('GBP', 'British Pound'),
+        ('AUD', 'Australian Dollar'),
+        ('CAD', 'Canadian Dollar'),
+    ], string='Price Currency', readonly=True, default='USD')
 
     def _get_name(self):
         for rec in self:
@@ -213,6 +223,8 @@ class Call(models.Model):
         latest_channel = channel.call.channels.sorted(key='id', reverse=True)[0]
         if channel == latest_channel and params.get('CallStatus') in CALL_END_STATUSES:
             self.register_call(channel, params)
+            # Save call price information from Twilio webhook
+            self.save_call_price(channel.call, params)
         # Reload call view
         self.env['connect.settings'].connect_reload_view('connect.call')
         if params.get('ErrorCode') and params.get('ErrorCode') not in IGNORE_ERROR_CODES:
@@ -254,6 +266,42 @@ class Call(models.Model):
     def on_call_action(self, params):
         debug(self, 'On call action: %s' % params)
         return '<Response><Hangup/></Response>'
+
+    def save_call_price(self, call, params):
+        """Save call price information from Twilio webhook params"""
+        try:
+            # Twilio sends price information in webhook for completed calls
+            call_price = params.get('CallPrice')
+            price_unit = params.get('CallPriceUnit')
+            
+            debug(self, f'Call price data: CallPrice={call_price}, CallPriceUnit={price_unit}')
+            
+            if call_price is not None:
+                # Convert price to float
+                try:
+                    price_value = float(call_price)
+                    # Map price unit to currency selection
+                    currency_mapping = {
+                        'USD': 'USD',
+                        'EUR': 'EUR', 
+                        'GBP': 'GBP',
+                        'AUD': 'AUD',
+                        'CAD': 'CAD'
+                    }
+                    price_currency = currency_mapping.get(price_unit, 'USD')
+                    
+                    call.write({
+                        'price': price_value,
+                        'price_unit': price_unit,
+                        'price_currency': price_currency,
+                    })
+                    debug(self, f'Saved call price: ${price_value} {price_unit} for call {call.id}')
+                except ValueError as e:
+                    logger.error(f'Error converting call price {call_price} to float: {e}')
+            else:
+                debug(self, 'No call price data found in webhook params')
+        except Exception as e:
+            logger.error(f'Error saving call price data: {e}')
 
     def register_call(self, channel, params):
         try:
