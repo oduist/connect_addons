@@ -30,6 +30,10 @@
                       <field name="api_fallback_url" string="Fallback URL"/>
                       <field name="debug_mode"/>
                     </group>
+                    <group string="Balance">
+                      <field name="twilio_balance" string="Current Balance" readonly="1"/>
+                      <button class="btn btn-info" colspan="2" name="get_twilio_balance" type="object" string="GET TWILIO BALANCE"/>
+                    </group>
                   </group>
                 </page>
                 <page name="keys" string="API Keys"
@@ -62,6 +66,8 @@
                     <group >
                       <field name="proxy_recordings"/>
                       <small colspan="2">If you disable it remove the HTTP AUTH in Twilio. Read <a target="new" href="https://help.twilio.com/articles/15827821586843">more</a>.</small>
+                      <field name="fetch_call_prices"/>
+                      <small colspan="2">Fetch call prices from Twilio API after call completion. This may add delay to call processing.</small>
                     </group>
                     <group>
                       <button colspan="2" name="reformat_numbers_button" string="FORMAT NUMBERS" type="object"/>
