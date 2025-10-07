@@ -746,7 +746,10 @@ class Settings(models.Model):
         try:
             client = self.get_client()
             account = client.api.accounts(client.account_sid).fetch()
-            balance = f"${account.balance} {account.currency}"
+            # Account balance is typically in USD and only contains the numeric value
+            currency = "USD"  # Default currency for most Twilio accounts
+            balance_value = account.balance or "0.00"
+            balance = f"${balance_value} {currency}"
             self.set_param('twilio_balance', balance)
             self.connect_notify(f"Twilio Balance: {balance}", title="Balance Update")
             return balance
