@@ -5,6 +5,7 @@ import logging
 import re
 from urllib.parse import urljoin
 import uuid
+from datetime import timedelta
 from odoo import fields, models, api, release, SUPERUSER_ID, tools
 from odoo.exceptions import ValidationError
 from twilio.twiml.voice_response import VoiceResponse, Say, Dial, Conference, Client, Number, Sip
@@ -223,8 +224,9 @@ class Call(models.Model):
         latest_channel = channel.call.channels.sorted(key='id', reverse=True)[0]
         if channel == latest_channel and params.get('CallStatus') in CALL_END_STATUSES:
             self.register_call(channel, params)
-            # Save call price information from Twilio webhook
-            self.save_call_price(channel.call, params)
+            # Fetch call price if enabled in settings
+            if self.env['connect.settings'].sudo().get_param('fetch_call_prices'):
+                self.save_call_price(channel.call, params)
         # Reload call view
         self.env['connect.settings'].connect_reload_view('connect.call')
         if params.get('ErrorCode') and params.get('ErrorCode') not in IGNORE_ERROR_CODES:
@@ -268,18 +270,35 @@ class Call(models.Model):
         return '<Response><Hangup/></Response>'
 
     def save_call_price(self, call, params):
-        """Save call price information from Twilio webhook params"""
+        """Fetch and save call price information from Twilio API"""
         try:
-            # Twilio sends price information in webhook for completed calls
-            call_price = params.get('CallPrice')
-            price_unit = params.get('CallPriceUnit')
+            call_sid = params.get('CallSid')
+            if not call_sid:
+                debug(self, 'No CallSid in webhook params, cannot fetch price')
+                return
+                
+            debug(self, f'Fetching call price for CallSid: {call_sid}')
             
-            debug(self, f'Call price data: CallPrice={call_price}, CallPriceUnit={price_unit}')
+            # Try immediate fetch first
+            self._fetch_call_price_from_api(call, call_sid)
             
-            if call_price is not None:
-                # Convert price to float
+        except Exception as e:
+            logger.error(f'Error in save_call_price: {e}')
+    
+    def _fetch_call_price_from_api(self, call, call_sid):
+        """Fetch call price from Twilio REST API"""
+        try:
+            client = self.env['connect.settings'].get_client()
+            twilio_call = client.calls(call_sid).fetch()
+            
+            debug(self, f'Fetched call data: price={twilio_call.price}, price_unit={twilio_call.price_unit}')
+            
+            if twilio_call.price is not None and twilio_call.price != '':
+                # Convert price to positive float (Twilio returns negative values)
                 try:
-                    price_value = float(call_price)
+                    price_value = abs(float(twilio_call.price))
+                    price_unit = twilio_call.price_unit or 'USD'
+                    
                     # Map price unit to currency selection
                     currency_mapping = {
                         'USD': 'USD',
@@ -296,12 +315,18 @@ class Call(models.Model):
                         'price_currency': price_currency,
                     })
                     debug(self, f'Saved call price: ${price_value} {price_unit} for call {call.id}')
+                    return True
+                    
                 except ValueError as e:
-                    logger.error(f'Error converting call price {call_price} to float: {e}')
+                    logger.error(f'Error converting call price {twilio_call.price} to float: {e}')
+                    
             else:
-                debug(self, 'No call price data found in webhook params')
+                debug(self, f'Call price not yet available for {call_sid}, will be available later')
+                
         except Exception as e:
-            logger.error(f'Error saving call price data: {e}')
+            logger.error(f'Error fetching call price from API for {call_sid}: {e}')
+            
+        return False
 
     def register_call(self, channel, params):
         try:

@@ -133,6 +133,11 @@ class Settings(models.Model):
     register_summary = fields.Boolean(
         default=True, help="Register summary at partner of reference chat."
     )
+    fetch_call_prices = fields.Boolean(
+        default=False, 
+        string="Fetch Call Prices", 
+        help="Enable fetching call prices from Twilio API after call completion. May add delay to call processing."
+    )
     ############################################################
     instance_uid = fields.Char("Instance UID", compute="_get_instance_data")
     api_url = fields.Char("API URL", compute="_get_instance_data")
