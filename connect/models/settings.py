@@ -745,11 +745,23 @@ class Settings(models.Model):
         """Fetch current Twilio account balance"""
         try:
             client = self.get_client()
-            account = client.api.accounts(client.account_sid).fetch()
-            # Account balance is typically in USD and only contains the numeric value
-            currency = "USD"  # Default currency for most Twilio accounts
-            balance_value = account.balance or "0.00"
-            balance = f"${balance_value} {currency}"
+            
+            # Try to fetch balance using the balance resource
+            try:
+                balance_item = client.balance.fetch()
+                currency = getattr(balance_item, 'currency', 'USD')
+                balance_value = getattr(balance_item, 'balance', '0.00')
+                balance = f"${balance_value} {currency}"
+            except Exception as balance_error:
+                # If balance API is not available (404 error), show informative message
+                if '20404' in str(balance_error) or 'not found' in str(balance_error).lower():
+                    balance = "Balance API not available for this account"
+                    self.set_param('twilio_balance', balance)
+                    self.connect_notify(f"Twilio Balance: {balance}. The balance endpoint may not be available for your account type or region.", title="Balance Info")
+                    return balance
+                else:
+                    raise balance_error
+            
             self.set_param('twilio_balance', balance)
             self.connect_notify(f"Twilio Balance: {balance}", title="Balance Update")
             return balance
