@@ -6,7 +6,7 @@ from urllib.parse import urljoin
 from odoo import fields, models, api, release
 from odoo.exceptions import ValidationError
 from twilio.twiml.voice_response import Client, Dial, VoiceResponse
-from .settings import format_connect_response, debug
+from .settings import format_connect_response, debug, TWILIO_EDGES
 from .twiml import pretty_xml
 
 
@@ -28,7 +28,8 @@ class Domain(models.Model):
     )
     cred_list_sid = fields.Char("Cred List SID", readonly=True)
     subdomain = fields.Char(required=True)
-    domain_name = fields.Char(compute="_get_domain_name", inverse="_set_domain_name")
+    domain_name = fields.Char(compute="_get_domain_name")
+    edge_domains = fields.Text(compute="_get_domain_name")
     friendly_name = fields.Char(required=True)
     sip_registration = fields.Boolean("SIP Registration", readonly=True, default=True)
     delete_protection = fields.Boolean(default=True)
@@ -38,13 +39,13 @@ class Domain(models.Model):
     ]
 
     def _get_domain_name(self):
+        edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
+        edges = [v[0] for v in TWILIO_EDGES if v[0] != 'roaming']
         for rec in self:
             if rec.subdomain:
-                rec.domain_name = rec.subdomain + "." + "sip.twilio.com"
-
-    def _set_domain_name(self):
-        for rec in self:
-            rec.subdomain = rec.domain_name.split(".")[0]
+                rec.domain_name = rec.subdomain + ".sip.twilio.com"
+                rec.edge_domains = '\n'.join(['{}.sip.{}.twilio.com'.format(
+                    rec.subdomain, edge) for edge in edges])
 
     def get_domain_app(self):
         # Domain must be created.
@@ -71,6 +72,7 @@ class Domain(models.Model):
 
     def create_twilio_sip_domain(self, client):
         self.ensure_one()
+        region = self.env['connect.settings'].get_param('twilio_region')
         domain = client.sip.domains.create(
             friendly_name=self.friendly_name,
             domain_name=self.domain_name,
@@ -79,6 +81,7 @@ class Domain(models.Model):
             sip_registration=True,
             voice_status_callback_url=self.application.voice_status_url,
         )
+        sip_domain = client.routes.v2.sip_domains(self.domain_name).update(voice_region=region)
         # Create cred lists for domain.
         credential_list = client.sip.credential_lists.create(friendly_name=domain.sid)
         # Assotiate cred list with REGISTER.
@@ -100,7 +103,53 @@ class Domain(models.Model):
             }
         )
         debug(self, "Domain {} was created".format(self.friendly_name))
+
+        # Create SIP credentials for existing users in this domain
+        self._create_user_credentials_for_domain(client)
+
         return domain
+
+    def _create_user_credentials_for_domain(self, client=None):
+        """Create SIP credentials in Twilio for all connect.user records related to this domain."""
+        self.ensure_one()
+        if not self.sid or not self.cred_list_sid:
+            debug(self, "Cannot create user credentials: domain not properly created in Twilio")
+            return
+
+        client = client or self.env["connect.settings"].get_client()
+
+        # Find all users related to this domain that have SIP enabled
+        domain_users = self.env['connect.user'].search([
+            ('domain', '=', self.id),
+            ('sip_enabled', '=', True)
+        ])
+
+        debug(self, "Found {} SIP-enabled users for domain {}".format(len(domain_users), self.friendly_name))
+
+        for user in domain_users:
+            try:
+                # Generate a new password for the user
+                password = self.env['connect.user'].generate_twilio_password()
+
+                debug(self, "Creating SIP credential for user {} in domain {}".format(user.username, self.friendly_name))
+                credential = client.sip.credential_lists(
+                    self.cred_list_sid
+                ).credentials.create(
+                    username=user.username,
+                    password=password
+                )
+
+                # Update user with new SID and masked password
+                user.with_context(skip_sync=True).write({
+                    'sid': credential.sid,
+                    'password': '*' * len(password)
+                })
+
+                debug(self, "Created SIP credential for user {}".format(user.username))
+
+            except Exception as e:
+                debug(self, "Error creating SIP credential for user {}: {}".format(
+                    user.username, str(e)), level="error")
 
     def create_domain(self, client):
         self.ensure_one()
