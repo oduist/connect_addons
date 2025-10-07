@@ -740,3 +740,17 @@ class Settings(models.Model):
             self.twilio_edge = 'dublin'
         elif self.twilio_region == 'au1':
             self.twilio_edge = 'sydney'
+
+    def get_twilio_balance(self):
+        """Fetch current Twilio account balance"""
+        try:
+            client = self.get_client()
+            account = client.api.accounts(client.account_sid).fetch()
+            balance = f"${account.balance} {account.currency}"
+            self.set_param('twilio_balance', balance)
+            self.connect_notify(f"Twilio Balance: {balance}", title="Balance Update")
+            return balance
+        except Exception as e:
+            error_msg = f"Failed to fetch Twilio balance: {str(e)}"
+            self.connect_notify(error_msg, title="Balance Error", warning=True)
+            raise ValidationError(error_msg)

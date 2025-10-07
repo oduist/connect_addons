@@ -30,6 +30,10 @@
                       <field name="api_fallback_url" string="Fallback URL"/>
                       <field name="debug_mode"/>
                     </group>
+                    <group string="Balance">
+                      <field name="twilio_balance" string="Current Balance" readonly="1"/>
+                      <button class="btn btn-info" colspan="2" name="get_twilio_balance" type="object" string="GET TWILIO BALANCE"/>
+                    </group>
                   </group>
                 </page>
                 <page name="keys" string="API Keys"
