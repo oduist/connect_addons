@@ -5,6 +5,7 @@ import logging
 import re
 from urllib.parse import urljoin
 import uuid
+from datetime import timedelta
 from odoo import fields, models, api, release, SUPERUSER_ID, tools
 from odoo.exceptions import ValidationError
 from twilio.twiml.voice_response import VoiceResponse, Say, Dial, Conference, Client, Number, Sip
@@ -68,6 +69,12 @@ class Call(models.Model):
     has_error = fields.Boolean(index=True)
     error_code = fields.Char(readonly=True)
     error_message = fields.Text(readonly=True)
+    # Call price fields
+    price = fields.Float(string='Call Price', readonly=True, digits=(10, 3))
+    price_unit = fields.Char(string='Price Unit', readonly=True, help='The currency unit for call price (e.g., USD)')
+    price_currency = fields.Char(string='Price Currency', readonly=True, default='USD')
+    call_sid = fields.Char(string='Twilio Call SID', readonly=True, help='Twilio CallSid for fetching price information')
+    is_price_fetched = fields.Boolean(string='Price Fetched', default=False, readonly=True, help='Indicates if call price has been fetched from Twilio API')
 
     def _get_name(self):
         for rec in self:
@@ -213,6 +220,9 @@ class Call(models.Model):
         latest_channel = channel.call.channels.sorted(key='id', reverse=True)[0]
         if channel == latest_channel and params.get('CallStatus') in CALL_END_STATUSES:
             self.register_call(channel, params)
+            # Fetch call price if enabled in settings
+            if self.env['connect.settings'].sudo().get_param('fetch_call_prices'):
+                self.save_call_price(channel.call, params)
         # Reload call view
         self.env['connect.settings'].connect_reload_view('connect.call')
         if params.get('ErrorCode') and params.get('ErrorCode') not in IGNORE_ERROR_CODES:
@@ -254,6 +264,87 @@ class Call(models.Model):
     def on_call_action(self, params):
         debug(self, 'On call action: %s' % params)
         return '<Response><Hangup/></Response>'
+
+    def save_call_price(self, call, params):
+        """Mark call as needing price fetch (will be processed by cron job)"""
+        try:
+            call_sid = params.get('CallSid')
+            if not call_sid:
+                debug(self, 'No CallSid in webhook params, cannot store for price fetching')
+                return
+                
+            # Store CallSid in call record for later price fetching by cron
+            call.write({
+                'call_sid': call_sid,
+                'is_price_fetched': False,
+            })
+            debug(self, f'Marked call {call.id} (CallSid: {call_sid}) for price fetching by cron job')
+            
+        except Exception as e:
+            logger.error(f'Error in save_call_price: {e}')
+
+    def _fetch_call_price_from_api(self, call, call_sid):
+        """Fetch call price from Twilio REST API"""
+        try:
+            client = self.env['connect.settings'].get_client()
+            twilio_call = client.calls(call_sid).fetch()
+
+            debug(self, f'Fetched call data: price={twilio_call.price}, price_unit={twilio_call.price_unit}')
+
+            if twilio_call.price is not None and twilio_call.price != '':
+                # Convert price to positive float (Twilio returns negative values)
+                try:
+                    price_value = round(abs(float(twilio_call.price)), 3)
+                    price_unit = twilio_call.price_unit or 'USD'
+
+                    call.write({
+                        'price': price_value,
+                        'price_unit': price_unit,
+                        'price_currency': price_unit,
+                    })
+                    debug(self, f'Saved call price: ${price_value:.3f} {price_unit} for call {call.id}')
+                    return True
+
+                except ValueError as e:
+                    logger.error(f'Error converting call price {twilio_call.price} to float: {e}')
+
+            else:
+                debug(self, f'Call price not yet available for {call_sid}, will be available later')
+
+        except Exception as e:
+            logger.error(f'Error fetching call price from API for {call_sid}: {e}')
+
+        return False
+
+    @api.model
+    def fetch_call_prices_batch(self):
+        """Cron job method to fetch prices for calls that don't have them yet"""
+        if not self.env['connect.settings'].sudo().get_param('fetch_call_prices'):
+            debug(self, 'Call price fetching is disabled in settings')
+            return
+            
+        # Find calls that need price fetching (completed calls without price)
+        calls_to_fetch = self.search([
+            ('is_price_fetched', '=', False),
+            ('call_sid', '!=', False),
+            ('status', 'in', CALL_END_STATUSES),
+            ('create_date', '>=', fields.Datetime.now() - timedelta(days=30))  # Only last 30 days
+        ])
+        
+        debug(self, f'Found {len(calls_to_fetch)} calls needing price fetch')
+        
+        for call in calls_to_fetch:
+            try:
+                success = self._fetch_call_price_from_api(call, call.call_sid)
+                if success:
+                    call.write({'is_price_fetched': True})
+                    debug(self, f'Successfully fetched price for call {call.id}')
+                else:
+                    debug(self, f'Price not yet available for call {call.id}, will retry next time')
+            except Exception as e:
+                logger.error(f'Error fetching price for call {call.id}: {e}')
+        
+        debug(self, f'Batch price fetch completed')
 
     def register_call(self, channel, params):
         try:

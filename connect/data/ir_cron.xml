@@ -10,5 +10,15 @@
             <field name="state">code</field>
         </record>
 
+        <record id="fetch_call_prices" model="ir.cron">
+            <field name="name">Fetch Call Prices from Twilio</field>
+            <field name="interval_number">5</field>
+            <field name="interval_type">minutes</field>
+            <field name="model_id" ref="model_connect_call"/>
+            <field name="code">model.fetch_call_prices_batch()</field>
+            <field name="state">code</field>
+            <field name="active">True</field>
+        </record>
+
     </data>
 </odoo>
