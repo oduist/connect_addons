@@ -133,6 +133,11 @@ class Settings(models.Model):
     register_summary = fields.Boolean(
         default=True, help="Register summary at partner of reference chat."
     )
+    fetch_call_prices = fields.Boolean(
+        default=False, 
+        string="Fetch Call Prices", 
+        help="Enable fetching call prices from Twilio API after call completion. May add delay to call processing."
+    )
     ############################################################
     instance_uid = fields.Char("Instance UID", compute="_get_instance_data")
     api_url = fields.Char("API URL", compute="_get_instance_data")
@@ -740,3 +745,32 @@ class Settings(models.Model):
             self.twilio_edge = 'dublin'
         elif self.twilio_region == 'au1':
             self.twilio_edge = 'sydney'
+
+    def get_twilio_balance(self):
+        """Fetch current Twilio account balance"""
+        try:
+            client = self.get_client()
+
+            # Try to fetch balance using the balance resource
+            try:
+                balance_item = client.api.v2010.account.balance.fetch()
+                currency = getattr(balance_item, 'currency', 'USD')
+                balance_value = getattr(balance_item, 'balance', '0.00')
+                balance = f"${balance_value} {currency}"
+            except Exception as balance_error:
+                # If balance API is not available (404 error), show informative message
+                if '20404' in str(balance_error) or 'not found' in str(balance_error).lower():
+                    balance = "Balance API not available for this account"
+                    self.set_param('twilio_balance', balance)
+                    self.connect_notify(f"Twilio Balance: {balance}. The balance endpoint may not be available for your account type or region.", title="Balance Info")
+                    return balance
+                else:
+                    raise balance_error
+
+            self.set_param('twilio_balance', balance)
+            self.connect_notify(f"Twilio Balance: {balance}", title="Balance Update")
+            return balance
+        except Exception as e:
+            error_msg = f"Failed to fetch Twilio balance: {str(e)}"
+            self.connect_notify(error_msg, title="Balance Error", warning=True)
+            raise ValidationError(error_msg)
