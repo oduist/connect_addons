@@ -42,7 +42,7 @@
                 <field name="duration_human" optional="show" sum="1"/>
                 <field name="direction" optional="show"/>
                 <field name="status" optional="show"/>
-                <field name="price" optional="hide" groups="connect.group_connect_admin"/>
+                <field name="price" optional="hide" groups="connect.group_connect_admin" sum="Total Cost"/>
                 <field name="price_unit" optional="hide" groups="connect.group_connect_admin"/>
                 <field name="recording_icon" widget="html" optional="show"/>
                 <field name="voicemail_icon" optional="show"/>

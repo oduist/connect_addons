@@ -70,7 +70,7 @@ class Call(models.Model):
     error_code = fields.Char(readonly=True)
     error_message = fields.Text(readonly=True)
     # Call price fields
-    price = fields.Char(string='Call Price', readonly=True)
+    price = fields.Float(string='Call Price', readonly=True, digits=(10, 3))
     price_unit = fields.Char(string='Price Unit', readonly=True, help='The currency unit for call price (e.g., USD)')
     price_currency = fields.Char(string='Price Currency', readonly=True, default='USD')
     call_sid = fields.Char(string='Twilio Call SID', readonly=True, help='Twilio CallSid for fetching price information')
@@ -294,7 +294,7 @@ class Call(models.Model):
             if twilio_call.price is not None and twilio_call.price != '':
                 # Convert price to positive float (Twilio returns negative values)
                 try:
-                    price_value = abs(float(twilio_call.price))
+                    price_value = round(abs(float(twilio_call.price)), 3)
                     price_unit = twilio_call.price_unit or 'USD'
 
                     call.write({
@@ -302,7 +302,7 @@ class Call(models.Model):
                         'price_unit': price_unit,
                         'price_currency': price_unit,
                     })
-                    debug(self, f'Saved call price: ${price_value} {price_unit} for call {call.id}')
+                    debug(self, f'Saved call price: ${price_value:.3f} {price_unit} for call {call.id}')
                     return True
 
                 except ValueError as e:
