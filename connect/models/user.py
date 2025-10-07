@@ -84,7 +84,7 @@ class User(models.Model):
     @api.depends('username', 'domain', 'twilio_edge')
     def _get_sip_uri(self):
         settings = self.env['connect.settings']
-        default_edge = settings.get_param('twilio_edge')
+        default_edge = settings.get_param('twilio_edge') or 'roaming'
         for rec in self:
             edge = rec.twilio_edge or default_edge
             # Render URI is always global
