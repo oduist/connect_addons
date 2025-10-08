@@ -23,5 +23,9 @@
       groups="base.group_no_one"
       sequence="500" parent="connect_top_menu"/>
 
+  <menuitem id="connect_documentation_menu" name="Documentation"
+      groups="base.group_no_one"
+      sequence="600" parent="connect_top_menu"/>
+
 
 </odoo>

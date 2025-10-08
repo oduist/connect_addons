@@ -209,4 +209,16 @@
     <field name="perm_unlink" eval="1"/>
   </record>
 
+
+  <!-- Documentation access -->
+  <record model="ir.model.access" id="access_connect_documentation">
+      <field name="name">connect.documentation</field>
+      <field name="model_id" ref="model_connect_documentation"/>
+      <field name="perm_read" eval="True"/>
+      <field name="perm_write" eval="False"/>
+      <field name="perm_create" eval="False"/>
+      <field name="perm_unlink" eval="False"/>
+  </record>
+
+
 </odoo>
