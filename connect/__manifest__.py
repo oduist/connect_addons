@@ -31,6 +31,7 @@
         "security/user.xml",
         "security/user_record_rules.xml",
         "security/admin_record_rules.xml",
+        "security/documentation.xml",
         # Views
         "views/menu.xml",
         "views/settings.xml",

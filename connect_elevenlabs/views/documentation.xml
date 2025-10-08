@@ -1,34 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <record id="view_connect_elevenlabs_documentation" model="ir.ui.view">
-        <field name="name">view.connect.elevenlabs.documentation.form</field>
-        <field name="model">ir.ui.view</field>
-        <field name="arch" type="xml">
-            <form string="Connect" create="false" edit="false">
-                <sheet>
-                    <div class="embed-responsive embed-responsive-4by3">
-                        <iframe class="embed-responsive-item"
-                                src="/connect_elevenlabs/static/doc/index.rst"
-                                style="width:100%; height:800px; border:none;"/>
-                    </div>
-                </sheet>
-            </form>
-        </field>
-    </record>
-
+    <!-- Action for Documentation -->
     <record id="action_connect_elevenlabs_documentation" model="ir.actions.act_window">
-        <field name="name">Connect Elevenlabs</field>
-        <field name="res_model">ir.ui.view</field>
+        <field name="name">Connect Documentation</field>
+        <field name="res_model">connect.documentation</field>
+        <field name="res_id">2</field>
         <field name="view_mode">form</field>
         <field name="target">current</field>
-        <field name="view_id" ref="view_connect_elevenlabs_documentation"/>
+        <field name="view_id" ref="connect.view_connect_documentation_form"/>
     </record>
 
+    <!-- Menu item -->
     <menuitem id="connect_elevenlabs_documentation"
-              sequence="80"
+              sequence="110"
               parent="connect.connect_documentation_menu"
               name="Connect Elevenlabs"
-              action="connect_elevenlabs.action_connect_elevenlabs_documentation"/>
+              action="action_connect_elevenlabs_documentation"/>
 
 </odoo>
