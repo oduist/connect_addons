@@ -19,7 +19,7 @@
         <field name="inherit_id" ref="connect.connect_call_form"/>
         <field name="arch" type="xml">
             <page name="recording" position="before">
-                <page name="elevenlabs" string="Agent" invisible="not elevenlabs_transcript">
+                <page name="elevenlabs" string="Agent" attrs="{'invisible': [('elevenlabs_transcript', '=', False)]}">
                     <group>
                         <group>
                             <field name="elevenlabs_recording_widget" widget="html" nolabel="1"/>
@@ -34,7 +34,7 @@
                 </page>
             </page>
             <field name="summary" position="after">
-                <field name="elevenlabs_summary" string="Agent Summary" invisible="not elevenlabs_summary"/>
+                <field name="elevenlabs_summary" string="Agent Summary" attrs="{'invisible': [('elevenlabs_summary', '=', False)]}"/>
             </field>
         </field>
     </record>
