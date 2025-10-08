@@ -387,7 +387,6 @@ class Settings(models.Model):
         if self.get_param("is_registered"):
             raise ValidationError("This instance is already registered!")
         data = self.prepare_registration_data()
-        print(data)
         if not data.get("customer_code"):
             raise ValidationError("Enter your customer code!")
         required_fields = [
@@ -417,6 +416,37 @@ class Settings(models.Model):
             "connect.registration_number", res.get("registration_number")
         )
         self.set_param("is_registered", True)
+        self.connect_notify("Instance registered successfully!", title="Registration")
+
+    def update_instance_registration(self):
+        if not self.env.user.has_group("base.group_system"):
+            raise ValidationError("Only Odoo admin can do it!")
+        if not self.get_param("is_registered"):
+            raise ValidationError("This instance is not registered yet! Please register first.")
+        data = self.prepare_registration_data()
+        required_fields = [
+            "admin_email",
+            "admin_name",
+            "admin_phone",
+            "company_name",
+            "company_country",
+            "installation_date",
+            "module_name",
+            "module_version",
+            "url",
+            "odoo_version",
+        ]
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        if missing_fields:
+            raise ValidationError(
+                f"Please fill in the following fields: {', '.join([k.replace('_', ' ').capitalize() for k in missing_fields])}"
+            )
+        res = self.make_usage_request(
+            "update_registration", requests.post, data=data, raise_on_error=True
+        )
+        # Display the message returned from the API
+        message = res.get("message", "Registration updated successfully!")
+        self.connect_notify(message, title="Registration Update")
 
     def prepare_registration_data(self):
         company_country = self.get_param("company_country")
