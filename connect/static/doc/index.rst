@@ -1,5 +1,11 @@
---------------------------------------------
-Oduist Connect App application documentation
---------------------------------------------
+----------
+Change Log
+----------
 
-https://oduist.com/knowledge/article/32
+1.0.7 (2025-10-01)
+==================
+* Full Twilio Regions and Edges support.
+
+1.0.8 (2025-10-07)
+==================
+* Twilio get balance button added. Call price feature implemented.

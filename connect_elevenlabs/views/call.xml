@@ -18,7 +18,7 @@
         <field name="model">connect.call</field>
         <field name="inherit_id" ref="connect.connect_call_form"/>
         <field name="arch" type="xml">
-            <page name="call" position="after">
+            <page name="recording" position="before">
                 <page name="elevenlabs" string="Agent" invisible="not elevenlabs_transcript">
                     <group>
                         <group>
@@ -33,11 +33,8 @@
                     </group>
                 </page>
             </page>
-            <page name="recording" position="attributes">
-                <attribute name="invisible">elevenlabs_agent != False or recording == False</attribute>
-            </page>
             <field name="summary" position="after">
-                <field name="elevenlabs_summary" string="Agent Summary"/>
+                <field name="elevenlabs_summary" string="Agent Summary" invisible="not elevenlabs_summary"/>
             </field>
         </field>
     </record>
