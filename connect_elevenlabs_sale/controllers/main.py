@@ -44,11 +44,6 @@ class ConnectElevenlabsSaleController(ConnectElevenlabsController):
         self.check_agent_request()
         data = json.loads(http.request.httprequest.get_data(as_text=True))
         logger.info('Agent data: %s', data)
-        call = http.request.env['connect.call'].sudo().browse(int(data['call_id']))
-        if call.direction == 'outgoing':
-            data['partner_phone'] = call.called
-        else:
-            data['partner_phone'] = call.caller
         products = http.request.env['product.template'].sudo().search([])
         res = [{
             'product_id': k.id,
@@ -68,11 +63,6 @@ class ConnectElevenlabsSaleController(ConnectElevenlabsController):
         self.check_agent_request()
         data = json.loads(http.request.httprequest.get_data(as_text=True))
         logger.info('Agent data: %s', data)
-        call = http.request.env['connect.call'].sudo().browse(int(data['call_id']))
-        if call.direction == 'outgoing':
-            data['partner_phone'] = call.called
-        else:
-            data['partner_phone'] = call.caller
         # Create the sale order
         product = http.request.env['product.template'].sudo().search(
             [('id', '=', data.get('product_id'))])
