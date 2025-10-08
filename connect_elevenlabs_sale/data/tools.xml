@@ -4,7 +4,7 @@
         <!-- tool_create_partner -->
         <record id="tool_create_partner" model="connect.elevenlabs_agent_tool">
             <field name="name">create_partner</field>
-            <field name="description">Creates a new partner. Returns partner_id that should be used as Partner ID. You can call this tool only once per session with user. It's not allowed to call this tool if Partner ID is set.</field>
+            <field name="description">Creates a new partner. Returns partner_id that should be used as Partner ID. You can call this tool only once per session with user. It's not allowed to call this tool if Partner ID is set. You are not allowed to call this tool for already registered customers.</field>
             <field name="tool_type">webhook</field>
             <field name="path">/connect_elevenlabs_sale/create_partner</field>
             <field name="method">POST</field>
@@ -148,7 +148,7 @@
         <record id="get_products_param_category_id" model="connect.agent_tool_params">
             <field name="name">category_id</field>
             <field name="data_type">integer</field>
-            <field name="required" eval="True"/>
+            <field name="required" eval="False"/>
             <field name="value_type">description</field>
             <field name="description">Category ID.</field>
             <field name="tool" ref="get_products_tool"/>
