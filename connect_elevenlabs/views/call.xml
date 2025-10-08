@@ -18,9 +18,8 @@
         <field name="model">connect.call</field>
         <field name="inherit_id" ref="connect.connect_call_form"/>
         <field name="arch" type="xml">
-            <page name="call" position="after">
-                <page name="elevenlabs" string="Agent"
-                      attrs="{'invisible': [('elevenlabs_transcript', '=', False)]}">
+            <page name="recording" position="before">
+                <page name="elevenlabs" string="Agent" invisible="not elevenlabs_transcript">
                     <group>
                         <group>
                             <field name="elevenlabs_recording_widget" widget="html" nolabel="1"/>
@@ -34,12 +33,8 @@
                     </group>
                 </page>
             </page>
-            <page name="recording" position="attributes">
-                <attribute name="attrs">{'invisible': ['|', ('elevenlabs_agent', '!=', False), ('recording', '=', False)]}</attribute>
-            </page>
             <field name="summary" position="after">
-                <field name="elevenlabs_summary" string="Agent Summary"/>
-                <field name="elevenlabs_agent" invisible="1"/>
+                <field name="elevenlabs_summary" string="Agent Summary" invisible="not elevenlabs_summary"/>
             </field>
         </field>
     </record>

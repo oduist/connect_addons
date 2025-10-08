@@ -100,10 +100,12 @@ class Call(models.Model):
         for rec in self:
             recording = recordings.filtered(lambda x: x.call.id == rec.id)
             if recording:
-                rec.recording = recording[0]
-                rec.transcript = recording[0].transcript
+                # Make sure we take the last recording (fix for Elevenlabs agent recording)
+                recording = max(recording, key=lambda x: x.id)
+                rec.recording = recording
+                rec.transcript = recording.transcript
                 rec.recording_icon = '<span class="fa fa-file-sound-o"/>'
-                rec.recording_widget = recording[0].recording_widget
+                rec.recording_widget = recording.recording_widget
             else:
                 rec.recording_icon = ''
                 rec.transcript = ''

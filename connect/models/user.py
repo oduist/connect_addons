@@ -338,7 +338,7 @@ class User(models.Model):
         caller_name = self._get_caller_name(request, params)
         callerId = self._get_caller_id(request, params)
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        edge = self.twilio_edge or self.env['connect.settings'].sudo().get_param('twilio_edge')
+        edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
         record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus#e={}'.format(edge))
         status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
         dial_action_url = urljoin(api_url, 'twilio/webhook/connect.user/call_action/{}#e={}'.format(self.id, edge))
@@ -379,7 +379,7 @@ class User(models.Model):
     def render_sip(self, response, request, params):
         callerId = self._get_caller_id(request, params)
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        edge = self.twilio_edge or self.env['connect.settings'].get_param('twilio_edge')
+        edge = self.env['connect.settings'].get_param('twilio_edge')
         dial_action_url = urljoin(api_url, 'twilio/webhook/connect.user/call_action/{}#e={}'.format(self.id, edge))
         record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus#e={}'.format(edge))
         status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
@@ -404,7 +404,7 @@ class User(models.Model):
 
     def render_voicemail(self, response, request, params):
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        edge = self.twilio_edge or self.env['connect.settings'].sudo().get_param('twilio_edge')
+        edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
         voicemail_record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
         self.get_voicemail_prompt(response)
         response.record(
