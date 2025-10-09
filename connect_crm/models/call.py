@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*
 import logging
-
+from odoo import models, fields, api
+from odoo.exceptions import ValidationError
 from odoo.addons.connect.models.settings import debug
 
-from odoo import models, fields, api
 
 logger = logging.getLogger(__name__)
 
