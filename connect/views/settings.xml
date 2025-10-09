@@ -30,6 +30,10 @@
                       <field name="api_fallback_url" string="Fallback URL"/>
                       <field name="debug_mode"/>
                     </group>
+                    <group string="Balance">
+                      <field name="twilio_balance" string="Current Balance" readonly="1"/>
+                      <button class="btn btn-info" colspan="2" name="get_twilio_balance" type="object" string="GET TWILIO BALANCE"/>
+                    </group>
                   </group>
                 </page>
                 <page name="keys" string="API Keys"
@@ -39,10 +43,13 @@
                       <div colspan="2">
                         <small><strong>You can find your Twilio API data in <a href="https://console.twilio.com/" target="_blank">your Twilio Console</a></strong></small>
                       </div>
+                      <field name="twilio_auto_sync" groups="base.group_no_one"/>
                       <field name="account_sid"/>
                       <field name="display_auth_token" string="Auth Token" password="1"/>
                       <field name="twilio_api_key" string="API Key SID"/>
                       <field name="display_twilio_api_secret" string="API Key Secret" password="1"/>
+                      <field name="twilio_region" string="Region"/>
+                      <field name="twilio_edge" string="Edge"/>
                       <button colspan="2" name="sync" type="object" string="SYNC TWILIO ACCOUNT" class="btn btn-primary"/>
                     </group>
                     <group name="openai_api" string="OpenAI">
@@ -59,6 +66,8 @@
                     <group >
                       <field name="proxy_recordings"/>
                       <small colspan="2">If you disable it remove the HTTP AUTH in Twilio. Read <a target="new" href="https://help.twilio.com/articles/15827821586843">more</a>.</small>
+                      <field name="fetch_call_prices"/>
+                      <small colspan="2">Fetch call prices from Twilio API after call completion. This may add delay to call processing.</small>
                     </group>
                     <group>
                       <button colspan="2" name="reformat_numbers_button" string="FORMAT NUMBERS" type="object"/>
@@ -85,7 +94,6 @@
                   <group>
                     <group>
                       <field name="twilio_verify_requests"/>
-                      <field name="media_url"/>
                     </group>
                   </group>
                 </page>
@@ -141,28 +149,28 @@
                         Your privacy is our priority - your registration data remains strictly confidential. We do not sell or misuse your information.<br/>
                         <strong>Thanks a lot for your trust, understanding and support! Welcome to our community!</strong>
                       </p>
-                    </group>
-                    <group string="Technical Support"
+                    <div string="Technical Support"
                            invisible="not is_registered">
                       <p colspan="2" >
                         <a role="button" class="btn btn-primary" href="https://oduist.com/knowledge/article/39" target="_new">DOCUMENTATION</a> |
                         <a role="button" class="btn btn-info" href="https://oduist.com/forum/user-support-portal-1" target="_new">COMMUNITY SUPPORT</a> |
                         <a role="button" class="btn btn-success" href="https://oduist.com/support" target="_new">ENTERPRISE SUPPORT</a>
                       </p>
-                      <img alt="Great support!" colspan="2" src="/connect/static/description/support.jpg" width="100%"/>
+                      <img alt="Great support!" colspan="2" src="/connect/static/description/support.png" width="100%"/>
+                    </div>
                     </group>
-                    <group name="registration_data" string="Registration Data"
-                           invisible="is_registered">
-                      <field name="company_name" required="1"/>
-                      <field name="company_email" required="1"/>
-                      <field name="company_phone" required="1"/>
-                      <field name="company_country" required="1"/>
-                      <field name="company_state_name" string="Company State"/>
-                      <field name="company_city" required="1"/>
-                      <field name="admin_name" required="1"/>
-                      <field name="admin_email" required="1"/>
-                      <field name="admin_phone" required="1"/>
-                      <field name="web_base_url" required="1"/>
+                    <group name="registration_data" string="Registration Data">
+                      <field name="company_name"/>
+                      <field name="company_country"/>
+                      <field name="admin_name"/>
+                      <field name="admin_email"/>
+                      <field name="admin_phone"/>
+                      <field name="web_base_url"
+                             invisible="is_registered"/>
+                      <button class="btn btn-primary" colspan="2" name="action_open_system_parameters" type="object" string="Change Odoo URL"
+                              invisible="is_registered"/>
+                      <button colspan="2" name="update_instance_registration" class="btn btn-primary btn-lg me-1" type="object" string="UPDATE REGISTRATION"
+                              invisible="not is_registered"/>
                     </group>
                   </group>
                 </page>
