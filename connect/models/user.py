@@ -9,6 +9,7 @@ import string
 from urllib.parse import urljoin
 from odoo import fields, models, api, release
 from odoo.exceptions import ValidationError
+from odoo.models import Constraint
 from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 from twilio.twiml.voice_response import Client, Dial, VoiceResponse
@@ -76,10 +77,15 @@ class User(models.Model):
     summary_prompt = fields.Char()
     twilio_edge = fields.Selection(selection=SIP_TWILIO_EDGES, required=True, default='roaming')
 
-    _sql_constraints = [
-        ('user_uniq', 'UNIQUE("user")', 'This Odoo user account is already defined!'),
-        ('username_uniq', 'UNIQUE(username)', 'This PBX username is already defined!'),
-    ]
+    # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
+    if release.version_info[0] >= 19:
+        user_uniq = Constraint('UNIQUE("user")', 'This Odoo user account is already defined!')
+        username_uniq = Constraint('UNIQUE(username)', 'This PBX username is already defined!')
+    else:
+        _sql_constraints = [
+            ('user_uniq', 'UNIQUE("user")', 'This Odoo user account is already defined!'),
+            ('username_uniq', 'UNIQUE(username)', 'This PBX username is already defined!'),
+        ]
 
     @api.depends('username', 'domain', 'twilio_edge')
     def _get_sip_uri(self):

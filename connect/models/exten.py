@@ -2,6 +2,7 @@
 
 import logging
 from odoo import fields, models, api, release
+from odoo.models import Constraint
 from twilio.twiml.voice_response import Gather, VoiceResponse, Say, Hangup
 from .twiml import pretty_xml
 
@@ -30,9 +31,13 @@ class Exten(models.Model):
     dst_name = fields.Char(compute='_get_dst')
     twiml = fields.Text('TwiML', compute='_get_twiml', readonly=True)
 
-    _sql_constraints = [
-        ('number_uniq', 'UNIQUE(number)', 'This extension number is already defined in the domain!')
-    ]
+    # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
+    if release.version_info[0] >= 19:
+        number_uniq = Constraint('UNIQUE(number)', 'This extension number is already defined in the domain!')
+    else:
+        _sql_constraints = [
+            ('number_uniq', 'UNIQUE(number)', 'This extension number is already defined in the domain!')
+        ]
 
     def _get_name(self):
         for rec in self:

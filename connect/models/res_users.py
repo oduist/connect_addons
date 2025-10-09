@@ -3,6 +3,7 @@ import logging
 import random
 import uuid
 from odoo import models, fields, api, tools, release
+from odoo.models import Constraint
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +17,13 @@ class ResUser(models.Model):
     # PIN code to access the system by phone.
     pin_code = fields.Char(string='PIN code')
 
-    _sql_constraints = [
-        ('user_pin_code_unique', 'UNIQUE(pin_code)', 'This PIN code is already used!'),
-    ]
+    # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
+    if release.version_info[0] >= 19:
+        user_pin_code_unique = Constraint('UNIQUE(pin_code)', 'This PIN code is already used!')
+    else:
+        _sql_constraints = [
+            ('user_pin_code_unique', 'UNIQUE(pin_code)', 'This PIN code is already used!'),
+        ]
 
     @api.model_create_multi
     def create(self, vals_list):

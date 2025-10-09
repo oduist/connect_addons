@@ -149,7 +149,7 @@
                         Your privacy is our priority - your registration data remains strictly confidential. We do not sell or misuse your information.<br/>
                         <strong>Thanks a lot for your trust, understanding and support! Welcome to our community!</strong>
                       </p>
-                    <div string="Technical Support"
+                    <div colspan="2" string="Technical Support"
                            invisible="not is_registered">
                       <p colspan="2" >
                         <a role="button" class="btn btn-primary" href="https://oduist.com/knowledge/article/39" target="_new">DOCUMENTATION</a> |
