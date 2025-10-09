@@ -6,8 +6,7 @@ from markupsafe import Markup
 from phonenumbers import parse, format_number, PhoneNumberFormat
 from twilio.twiml.messaging_response import MessagingResponse
 
-from odoo import models, fields, api, release
-from odoo.api import SUPERUSER_ID
+from odoo import models, fields, api, SUPERUSER_ID, release
 from odoo.exceptions import ValidationError
 from odoo.tools import mail
 

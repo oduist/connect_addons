@@ -5,8 +5,7 @@ import logging
 import os
 import requests
 from tempfile import NamedTemporaryFile
-from odoo import fields, models, api, release
-from odoo.api import SUPERUSER_ID
+from odoo import fields, models, api, release, SUPERUSER_ID
 from odoo.exceptions import ValidationError
 from .settings import format_connect_response, debug
 

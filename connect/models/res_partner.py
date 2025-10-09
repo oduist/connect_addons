@@ -45,6 +45,7 @@ def format_number(self, number, country=None, format_type='e164'):
         return res or number
 
 
+
 class Partner(models.Model):
     _inherit = 'res.partner'
 
