@@ -2,7 +2,7 @@
 
 {
     "name": "Connect",
-    "version": "1.0.5",
+    "version": "1.0.8",
     "author": "Oduist",
     "maintainer": "Oduist",
     "live_test_url": "https://connect-demo-18.oduist.com/",
@@ -30,6 +30,7 @@
         "security/webhook.xml",
         "security/user.xml",
         "security/user_record_rules.xml",
+        "security/admin_record_rules.xml",
         # Views
         "views/menu.xml",
         "views/settings.xml",
@@ -49,6 +50,7 @@
         "views/message.xml",
         "views/message_configuration.xml",
         "views/versions.xml",
+        "views/documentation.xml",
         # Wizard
         "wizard/transfer.xml",
         "wizard/sms_composer_views.xml",

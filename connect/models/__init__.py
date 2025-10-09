@@ -17,3 +17,4 @@ from . import settings
 from . import sms_sms
 from . import twiml
 from . import user
+from . import documentation

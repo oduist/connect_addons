@@ -3,7 +3,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 connect/data/dev.xml
-
 # Environments
 .env
 .venv
