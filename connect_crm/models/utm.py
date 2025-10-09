@@ -1,7 +1,8 @@
 import logging
 from odoo import models, fields, api, release
 from odoo.exceptions import ValidationError
-from odoo.models import Constraint
+if release.version_info[0] >= 19:
+    from odoo.models import Constraint
 
 
 logger = logging.getLogger(__name__)

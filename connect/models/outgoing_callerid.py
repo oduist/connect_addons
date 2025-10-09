@@ -4,7 +4,8 @@ import logging
 import re
 from urllib.parse import urljoin
 from odoo import fields, models, api, release
-from odoo.models import Constraint
+if release.version_info[0] >= 19:
+    from odoo.models import Constraint
 from odoo.exceptions import ValidationError
 from .settings import debug, format_connect_response
 

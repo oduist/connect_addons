@@ -9,7 +9,8 @@ import string
 from urllib.parse import urljoin
 from odoo import fields, models, api, release
 from odoo.exceptions import ValidationError
-from odoo.models import Constraint
+if release.version_info[0] >= 19:
+    from odoo.models import Constraint
 from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 from twilio.twiml.voice_response import Client, Dial, VoiceResponse

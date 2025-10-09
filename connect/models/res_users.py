@@ -3,7 +3,8 @@ import logging
 import random
 import uuid
 from odoo import models, fields, api, tools, release
-from odoo.models import Constraint
+if release.version_info[0] >= 19:
+    from odoo.models import Constraint
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,8 @@
 
 import logging
 from odoo import fields, models, api, release
-from odoo.models import Constraint
+if release.version_info[0] >= 19:
+    from odoo.models import Constraint
 from twilio.twiml.voice_response import Gather, VoiceResponse, Say, Hangup
 from .twiml import pretty_xml
 
