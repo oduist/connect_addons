@@ -270,18 +270,19 @@ class User(models.Model):
         return ''.join(password_chars)
 
     def manage_group(self, action='add'):
+        attribute_name = 'user_ids' if release.version_info[0] >= 19 else 'users'
         if self.user and self.user.has_group('base.group_system') and self.user.has_group('base.group_erp_manager'):
             group_connect_admin = self.env.ref('connect.group_connect_admin')
             if action == 'add':
-                group_connect_admin.write({'users': [(4, self.user.id)]})
+                group_connect_admin.write({attribute_name: [(4, self.user.id)]})
             else:
-                group_connect_admin.with_context(install_mode=True).write({'users': [(3, self.user.id)]})
+                group_connect_admin.with_context(install_mode=True).write({attribute_name: [(3, self.user.id)]})
         elif self.user:
             group_connect_user = self.env.ref('connect.group_connect_user')
             if action == 'add':
-                group_connect_user.write({'users': [(4, self.user.id)]})
+                group_connect_user.write({attribute_name: [(4, self.user.id)]})
             else:
-                group_connect_user.with_context(install_mode=True).write({'users': [(3, self.user.id)]})
+                group_connect_user.with_context(install_mode=True).write({attribute_name: [(3, self.user.id)]})
 
     def write(self, vals):
         if 'user' in vals.keys():
