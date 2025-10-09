@@ -4,6 +4,8 @@ import logging
 import re
 from urllib.parse import urljoin
 from odoo import fields, models, api, release
+if release.version_info[0] >= 19:
+    from odoo.models import Constraint
 from odoo.exceptions import ValidationError
 from .settings import debug, format_connect_response
 
@@ -27,7 +29,11 @@ class OutgoingCallerID(models.Model):
     callerid_users = fields.One2many(comodel_name='connect.user',
                                      inverse_name='outgoing_callerid', string='callerId Users')
 
-    _sql_constraints = [('number_uniq', 'UNIQUE(number)', 'This number is already used!')]
+    # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
+    if release.version_info[0] >= 19:
+        _number_uniq = Constraint('UNIQUE(number)', 'This number is already used!')
+    else:
+        _sql_constraints = [('number_uniq', 'UNIQUE(number)', 'This number is already used!')]
 
 
     def _get_name(self):
