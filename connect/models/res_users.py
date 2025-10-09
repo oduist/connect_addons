@@ -19,7 +19,7 @@ class ResUser(models.Model):
 
     # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
     if release.version_info[0] >= 19:
-        user_pin_code_unique = Constraint('UNIQUE(pin_code)', 'This PIN code is already used!')
+        _user_pin_code_unique = Constraint('UNIQUE(pin_code)', 'This PIN code is already used!')
     else:
         _sql_constraints = [
             ('user_pin_code_unique', 'UNIQUE(pin_code)', 'This PIN code is already used!'),

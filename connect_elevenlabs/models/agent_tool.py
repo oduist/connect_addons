@@ -35,7 +35,7 @@ class ElevenlabsAgentTool(models.Model):
 
     # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
     if release.version_info[0] >= 19:
-        name_unique = Constraint('UNIQUE(name)', 'This name is already used!')
+        _name_unique = Constraint('UNIQUE(name)', 'This name is already used!')
     else:
         _sql_constraints = [
             ('name_unique', 'UNIQUE(name)', 'This name is already used!')

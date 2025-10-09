@@ -30,7 +30,7 @@ class OutgoingCallerID(models.Model):
 
     # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
     if release.version_info[0] >= 19:
-        number_uniq = Constraint('UNIQUE(number)', 'This number is already used!')
+        _number_uniq = Constraint('UNIQUE(number)', 'This number is already used!')
     else:
         _sql_constraints = [('number_uniq', 'UNIQUE(number)', 'This number is already used!')]
 

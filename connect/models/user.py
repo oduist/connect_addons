@@ -79,8 +79,8 @@ class User(models.Model):
 
     # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
     if release.version_info[0] >= 19:
-        user_uniq = Constraint('UNIQUE("user")', 'This Odoo user account is already defined!')
-        username_uniq = Constraint('UNIQUE(username)', 'This PBX username is already defined!')
+        _user_uniq = Constraint('UNIQUE("user")', 'This Odoo user account is already defined!')
+        _username_uniq = Constraint('UNIQUE(username)', 'This PBX username is already defined!')
     else:
         _sql_constraints = [
             ('user_uniq', 'UNIQUE("user")', 'This Odoo user account is already defined!'),

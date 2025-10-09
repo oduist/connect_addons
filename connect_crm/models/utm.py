@@ -14,7 +14,7 @@ class CallSource(models.Model):
 
     # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
     if release.version_info[0] >= 19:
-        phone_uniq = Constraint('UNIQUE(phone)', 'This phone number is already used!')
+        _phone_uniq = Constraint('UNIQUE(phone)', 'This phone number is already used!')
     else:
         _sql_constraints = [('phone_uniq', 'UNIQUE(phone)', 'This phone number is already used!')]
 

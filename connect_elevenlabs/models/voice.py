@@ -28,7 +28,7 @@ class ElevenlabsVoice(models.Model):
 
     # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
     if release.version_info[0] >= 19:
-        voice_id_unique = Constraint('UNIQUE(voice_id)', 'This Voice is already added!')
+        _voice_id_unique = Constraint('UNIQUE(voice_id)', 'This Voice is already added!')
     else:
         _sql_constraints = [('voice_id_unique', 'UNIQUE(voice_id)', 'This Voice is already added!')]
 
