@@ -9,6 +9,8 @@ import string
 from urllib.parse import urljoin
 from odoo import fields, models, api, release
 from odoo.exceptions import ValidationError
+if release.version_info[0] >= 19:
+    from odoo.models import Constraint
 from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 from twilio.twiml.voice_response import Client, Dial, VoiceResponse
@@ -76,10 +78,15 @@ class User(models.Model):
     summary_prompt = fields.Char()
     twilio_edge = fields.Selection(selection=SIP_TWILIO_EDGES, required=True, default='roaming')
 
-    _sql_constraints = [
-        ('user_uniq', 'UNIQUE("user")', 'This Odoo user account is already defined!'),
-        ('username_uniq', 'UNIQUE(username)', 'This PBX username is already defined!'),
-    ]
+    # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
+    if release.version_info[0] >= 19:
+        _user_uniq = Constraint('UNIQUE("user")', 'This Odoo user account is already defined!')
+        _username_uniq = Constraint('UNIQUE(username)', 'This PBX username is already defined!')
+    else:
+        _sql_constraints = [
+            ('user_uniq', 'UNIQUE("user")', 'This Odoo user account is already defined!'),
+            ('username_uniq', 'UNIQUE(username)', 'This PBX username is already defined!'),
+        ]
 
     @api.depends('username', 'domain', 'twilio_edge')
     def _get_sip_uri(self):
@@ -263,18 +270,19 @@ class User(models.Model):
         return ''.join(password_chars)
 
     def manage_group(self, action='add'):
+        attribute_name = 'user_ids' if release.version_info[0] >= 19 else 'users'
         if self.user and self.user.has_group('base.group_system') and self.user.has_group('base.group_erp_manager'):
             group_connect_admin = self.env.ref('connect.group_connect_admin')
             if action == 'add':
-                group_connect_admin.write({'users': [(4, self.user.id)]})
+                group_connect_admin.write({attribute_name: [(4, self.user.id)]})
             else:
-                group_connect_admin.with_context(install_mode=True).write({'users': [(3, self.user.id)]})
+                group_connect_admin.with_context(install_mode=True).write({attribute_name: [(3, self.user.id)]})
         elif self.user:
             group_connect_user = self.env.ref('connect.group_connect_user')
             if action == 'add':
-                group_connect_user.write({'users': [(4, self.user.id)]})
+                group_connect_user.write({attribute_name: [(4, self.user.id)]})
             else:
-                group_connect_user.with_context(install_mode=True).write({'users': [(3, self.user.id)]})
+                group_connect_user.with_context(install_mode=True).write({attribute_name: [(3, self.user.id)]})
 
     def write(self, vals):
         if 'user' in vals.keys():
