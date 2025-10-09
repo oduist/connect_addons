@@ -4,8 +4,7 @@ import re
 from odoo import models, fields, api, modules
 
 PAGE_MAP = {
-    1: ['Connect Module Documentation', 'connect'
-],
+    1: ['Connect Module Documentation', 'connect']
 }
 
 

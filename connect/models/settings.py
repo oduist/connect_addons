@@ -158,12 +158,12 @@ class Settings(models.Model):
     odoo_version = fields.Char(compute="_get_instance_data")
     admin_name = fields.Char()
     admin_phone = fields.Char(
-        help="It is required to contact this instance's administrator in case any critical vulnerabilities are found in the application.")
+        help='It is required to contact this instance’s administrator in case any critical vulnerabilities are found in the application.')
     admin_email = fields.Char(
-        help="It is required to contact this instance administrator by email in case any non-critical vulnerabilities are found in the application.")
-    company_name = fields.Char(help="Company name of this instance.")
+        help='It is required to contact this instance administrator by email in case any non-critical vulnerabilities are found in the application.')
+    company_name = fields.Char(help='Company name of this instance.')
     company_country = fields.Many2one('res.country',
-                                      help="We use the company's country information for statistical tracking of our product installations by country.")
+                                      help='We use the company’s country information for statistical tracking of our product installations by country.')
     web_base_url = fields.Char(compute="_get_instance_data", string="Odoo URL")
     latest_versions = fields.Html(readonly=True)
 
@@ -447,6 +447,7 @@ class Settings(models.Model):
         # Display the message returned from the API
         message = res.get("message", "Registration updated successfully!")
         self.connect_notify(message, title="Registration Update")
+
     def prepare_registration_data(self):
         company_country = self.get_param("company_country")
         return {

@@ -46,6 +46,9 @@ class Domain(models.Model):
                 rec.domain_name = rec.subdomain + ".sip.twilio.com"
                 rec.edge_domains = '\n'.join(['{}.sip.{}.twilio.com'.format(
                     rec.subdomain, edge) for edge in edges])
+            else:
+                rec.domain_name = ''
+                rec.edge_domains = ''
 
     def get_domain_app(self):
         # Domain must be created.
