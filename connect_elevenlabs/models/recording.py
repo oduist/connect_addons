@@ -4,7 +4,7 @@ import logging
 
 import requests
 
-from odoo import fields, models, release
+from odoo import api, fields, models, release
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +15,7 @@ class Recording(models.Model):
     elevenlabs_transcript = fields.Text(readonly=True)
     elevenlabs_summary = fields.Text(readonly=True)
     elevenlabs_media_file = fields.Binary()
+    list_summary = fields.Html(compute='_compute_list_summary', string='Summary')
     if release.version_info[0] >= 17.0:
         elevenlabs_recording_widget = fields.Html(compute='_elevenlabs_recording_widget',
                                                   sanitize=False)
@@ -32,6 +33,15 @@ class Recording(models.Model):
                     recording_id=rec.id,
                     filename='elevenlabs_recording.mp3',
                     source='elevenlabs_media_file')
+
+    @api.depends('summary', 'elevenlabs_summary')
+    def _compute_list_summary(self):
+        """Compute list_summary by prioritizing elevenlabs_summary over summary"""
+        for rec in self:
+            if rec.elevenlabs_summary:
+                rec.list_summary = rec.elevenlabs_summary
+            else:
+                rec.list_summary = rec.summary or ''
 
     def _get_list_view_summary(self):
         for rec in self:
