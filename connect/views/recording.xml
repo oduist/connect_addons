@@ -102,6 +102,7 @@
                 <field name="called_user"/>
                 <field name="caller_number"/>
                 <field name="called_number"/>
+                <field name="summary"/>
                 <filter name="partners" string="Partners" domain="[('partner','!=', False)]"/>
                 <filter name="by_partner" string="Partner" context="{'group_by': 'partner'}"/>
                 <filter name="by_caller" string="Caller User" context="{'group_by': 'caller_user'}"/>
