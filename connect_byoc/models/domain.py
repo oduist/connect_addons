@@ -73,15 +73,17 @@ class Domain(models.Model):
         api_url = self.env["connect.settings"].get_param("api_url")
         status_url = urljoin(api_url, "twilio/webhook/callstatus")
         record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus")
+        call_duration_limit = int(self.env['connect.settings'].sudo().get_param('call_duration_limit'))
         if user.record_calls:
             dial = Dial(
                 timeout=60,
                 callerId=callerId,
+                timeLimit=call_duration_limit,
                 record="record-from-answer",
                 recordingStatusCallback=record_status_url,
             )
         else:
-            dial = Dial(timeout=60, callerId=callerId)
+            dial = Dial(timeout=60, callerId=callerId, timeLimit=call_duration_limit)
         if rule.byoc:
             dial.number(
                 number,

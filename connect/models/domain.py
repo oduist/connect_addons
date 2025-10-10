@@ -564,15 +564,17 @@ class Domain(models.Model):
         edge = self.env['connect.settings'].get_param('twilio_edge')
         status_url = urljoin(api_url, "twilio/webhook/callstatus#e={}".format(edge))
         record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus#e={}".format(edge))
+        call_duration_limit = int(self.env['connect.settings'].sudo().get_param('call_duration_limit'))
         if user.record_calls:
             dial = Dial(
                 timeout=60,
                 callerId=callerId,
+                timeLimit=call_duration_limit,
                 record="record-from-answer",
                 recordingStatusCallback=record_status_url,
             )
         else:
-            dial = Dial(timeout=60, callerId=callerId)
+            dial = Dial(timeout=60, callerId=callerId, timeLimit=call_duration_limit)
         dial.number(
             number,
             statusCallback=status_url,
