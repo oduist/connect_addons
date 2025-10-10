@@ -15,7 +15,7 @@ class Recording(models.Model):
     elevenlabs_transcript = fields.Text(readonly=True)
     elevenlabs_summary = fields.Text(readonly=True)
     elevenlabs_media_file = fields.Binary()
-    list_summary = fields.Html(compute='_compute_list_summary', string='Summary')
+    list_summary = fields.Html(compute='_compute_list_summary', string='List Summary')
     if release.version_info[0] >= 17.0:
         elevenlabs_recording_widget = fields.Html(compute='_elevenlabs_recording_widget',
                                                   sanitize=False)
