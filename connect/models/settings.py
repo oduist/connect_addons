@@ -165,6 +165,7 @@ class Settings(models.Model):
     company_country = fields.Many2one('res.country',
                                       help='We use the company’s country information for statistical tracking of our product installations by country.')
     web_base_url = fields.Char(compute="_get_instance_data", string="Odoo URL")
+    call_duration_limit = fields.Integer(compute="_get_instance_data", string="Call Duration Limit (seconds)")
     latest_versions = fields.Html(readonly=True)
 
     def get_module_version(self, module_name):
@@ -251,6 +252,11 @@ class Settings(models.Model):
                 self.env["ir.config_parameter"]
                 .sudo()
                 .get_param("connect.registration_number")
+            )
+            rec.call_duration_limit = int(
+                self.env["ir.config_parameter"]
+                .sudo()
+                .get_param("connect.call_duration_limit", "240")
             )
 
     @api.model
@@ -644,12 +650,13 @@ class Settings(models.Model):
         return "sip:{}".format(self.env.user.connect_user.uri)
 
     def get_external_call_route(self, number, callerId, status_url):
+        call_duration_limit = int(self.sudo().get_param('call_duration_limit'))
         twiml = """
         <Response>
-            <Dial callerId="{}"><Number statusCallback='{}' statusCallbackEvent='initiated answered completed'>{}</Number></Dial>
+            <Dial callerId="{}" timeLimit="{}"><Number statusCallback='{}' statusCallbackEvent='initiated answered completed'>{}</Number></Dial>
         </Response>
         """.format(
-            callerId, status_url, number
+            callerId, call_duration_limit, status_url, number
         )
         return twiml
 
