@@ -229,7 +229,7 @@ class Recording(models.Model):
             'duration': params['RecordingDuration'],
             'status': params['RecordingStatus']
         }
-        channel = self.env['connect.channel'].search([('sid', '=', params['CallSid'])])
+        channel = self.env['connect.channel'].search([('sid', '=', params['CallSid'])], limit=1)
         called_user = channel.search([
             '|', ('sid', '=', params['CallSid']),
             ('parent_channel', '=', channel.id),
