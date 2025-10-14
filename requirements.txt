@@ -2,7 +2,7 @@ phonenumbers
 httpx
 twilio
 openai
-elevenlabs==2.5.0
+elevenlabs==2.7.1
 
 # OpenAI & HTTPX versions mismatch issue. If you get on Transcribe:
 # TypeError: Client.__init__() got an unexpected keyword argument 'proxies'

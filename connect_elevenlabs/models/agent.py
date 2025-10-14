@@ -9,7 +9,7 @@ from twilio.twiml.voice_response import VoiceResponse, Connect
 from odoo.addons.connect.models.settings import debug
 from odoo.addons.connect.models.twiml import pretty_xml
 from odoo.exceptions import ValidationError
-from elevenlabs import ConversationConfig, ToolRequestModel, ToolRequestModelToolConfig_Client
+from elevenlabs import ConversationConfig
 
 # Supress a warning message.
 import warnings
@@ -415,9 +415,9 @@ class ElevenlabsAgent(models.Model):
 
     def print_config(self):
         client = self.env['connect.settings'].get_elevenlabs_client()
-        agents = client.conversational_ai.get_agents().agents
+        agents = client.conversational_ai.agents.list().agents
         for agent in agents:
-            agent = client.conversational_ai.get_agent(agent_id=agent.agent_uid)
+            agent = client.conversational_ai.agents.get(agent_id=agent.agent_id)
             print(json.dumps(str(agent.conversation_config.agent), indent=2))
             # tools = agent.conversation_config.agent.prompt.tools
             # for tool in tools:
