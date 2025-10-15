@@ -200,10 +200,10 @@ class Call(models.Model):
         # Set called from 2nd call leg for click2call external calls.
         if channel.parent_channel.technical_direction == 'outbound-api':
             channel.call.called = channel.called_number
-        # Set called users
-        if channel.called_user:
+        # Set called users (avoid duplicates to prevent serialization errors)
+        if channel.called_user and channel.called_user not in channel.call.called_users:
             channel.call.called_users = [(4, channel.called_user.id)]
-        if channel.called_pbx_user:
+        if channel.called_pbx_user and channel.called_pbx_user not in channel.call.called_pbx_users:
             channel.call.called_pbx_users = [(4, channel.called_pbx_user.id)]
         # Set the answered user
         if channel.call.status == 'completed':
@@ -218,10 +218,17 @@ class Call(models.Model):
                 params.get('To').startswith('sip:')):
             # Desktop notification only for SIP calls.
             channel.connect_notify()
-        # Register call when the last channel closes.
-        latest_channel = channel.call.channels.sorted(key='id', reverse=True)[0]
-        if channel == latest_channel and params.get('CallStatus') in CALL_END_STATUSES:
-            self.register_call(channel, params)
+        # Register call when ALL channels have ended (not just the latest one).
+        # This prevents false "no-answer" notifications when one dial attempt fails
+        # but another is still active.
+        if params.get('CallStatus') in CALL_END_STATUSES:
+            # Check if all channels have ended
+            all_channels_ended = all(
+                ch.status in CALL_END_STATUSES
+                for ch in channel.call.channels
+            )
+            if all_channels_ended:
+                self.register_call(channel, params)
             # Fetch call price if enabled in settings
             if self.env['connect.settings'].sudo().get_param('fetch_call_prices'):
                 self.save_call_price(channel.call, params)
