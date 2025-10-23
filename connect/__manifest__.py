@@ -63,13 +63,16 @@
     'assets': {
         'web.assets_backend': [
             '/connect/static/src/icomoon/style.css',
-            '/connect/static/src/components/phone/*/*',
-            '/connect/static/src/js/main.js',
-            '/connect/static/src/js/utils.js',
-            '/connect/static/src/widgets/phone_field/*',
-            '/connect/static/src/services/actions/*',
-            '/connect/static/src/services/active_calls/*',
-            '/connect/static/src/services/mail/*',
+            # '/connect/static/src/components/phone/*/*',
+            # '/connect/static/src/js/main.js',
+            # '/connect/static/src/js/utils.js',
+            # '/connect/static/src/widgets/phone_field/*',
+            # '/connect/static/src/services/actions/*',
+            # '/connect/static/src/services/active_calls/*',
+            # '/connect/static/src/services/mail/*',
+        ],
+        'web.assets_qweb': [
+            '/connect/static/src/components/phone/*/*.xml',
         ],
     },
 }
