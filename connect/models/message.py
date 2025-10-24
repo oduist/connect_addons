@@ -172,7 +172,6 @@ class ConnectMessage(models.Model):
                         chatter.connect_message = message
 
                         mail_notification_values = [{
-                            'author_id': chatter.author_id.id,
                             'mail_message_id': chatter.id,
                             'res_partner_id': chatter.author_id.id,
                             'sms_number': from_number,
@@ -268,7 +267,6 @@ class ConnectMessage(models.Model):
                 chatter = obj.with_context(mail_create_nosubscribe=False).message_post(**kwargs)
 
                 mail_notification_values = [{
-                    'author_id': chatter.author_id.id,
                     'mail_message_id': chatter.id,
                     'res_partner_id': chatter.author_id.id,
                     'sms_number': sender,

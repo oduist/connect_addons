@@ -1,30 +1,32 @@
 /** @odoo-module **/
 
 import {registry} from "@web/core/registry"
-import {session} from "@web/session"
+import {uid} from "web.session"
 
 const {markup} = owl
 
-var personal_channel = 'connect_actions_' + session.uid
+var personal_channel = 'connect_actions_' + uid
 var common_channel = 'connect_actions'
 
-export const pbxActionService = {
-    dependencies: ["action", "notification", 'bus_service'],
+export const connectActionService = {
+    dependencies: ["action", "notification"],
 
     start(env, {action, notification, bus_service}) {
         this.bus = env.bus
         this.action = action
         this.notification = notification
 
-        bus_service.addChannel(personal_channel)
-        bus_service.addChannel(common_channel)
-        bus_service.addEventListener('notification', (action) => this.on_connect_action(action))
+        const legacyEnv = owl.Component.env
+        legacyEnv.services.bus_service.addChannel(personal_channel)
+        legacyEnv.services.bus_service.addChannel(common_channel)
+        legacyEnv.services.bus_service.onNotification(this, this.on_connect_action)
+        legacyEnv.services.bus_service.startPolling()
     },
 
     on_connect_action: function (action) {
-        for (var i = 0; i < action.detail.length; i++) {
+        for (var i = 0; i < action.length; i++) {
             try {
-                var {type, payload} = action.detail[i]
+                var {type, payload} = action[i]
                 if (typeof payload === 'string')
                     payload = JSON.parse(payload)
                 if (type === 'connect_notify')
@@ -64,10 +66,10 @@ export const pbxActionService = {
 
     connect_handle_notify: function ({title, message, sticky, warning}) {
         if (warning === true)
-            this.notification.add(markup(message), {title, sticky, type: 'danger'})
+            this.notification.add(message, {title, sticky, type: 'danger', messageIsHtml: true})
         else
-            this.notification.add(markup(message), {title, sticky, type: 'info'})
+            this.notification.add(message, {title, sticky, type: 'info', messageIsHtml: true})
     },
 }
 
-registry.category("services").add("connectActionService", pbxActionService)
+registry.category("services").add("connectActionService", connectActionService)
