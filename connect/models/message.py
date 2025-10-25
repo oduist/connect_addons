@@ -120,6 +120,7 @@ class ConnectMessage(models.Model):
 
     @api.model
     def receive(self, params):
+        print(params)
         try:
             if params.get('AccountSid') != self.env['connect.settings'].get_param('account_sid'):
                 logger.warning("Received Twilio SMS webhook with incorrect AccountSid")
@@ -182,23 +183,22 @@ class ConnectMessage(models.Model):
                         }]
                         self.env['mail.notification'].sudo().create(mail_notification_values)
                         self.env['connect.settings'].connect_reload_view(last_message.res_model)
-                # Message Configuration
-                config = self.env['connect.message_configuration'].search([('number.phone_number', '=', to_number)])
-                # TODO: Take the model from the configuration. For now hardcode lead.
-                lead = self.env['crm.lead'].get_lead_by_number(from_number)
-                if not lead and config:
-                    data = {}
+                # Message destination handling
+                config = self.env['connect.message_configuration'].search([('number.phone_number', '=', to_number)], limit=1)
+                dest_model = (config.destination if config and config.destination else 'res.partner')
+                defaults = {}
+                if config and config.default_values:
                     try:
-                        data = dict(ast.literal_eval(config.default_values))
+                        defaults = dict(ast.literal_eval(config.default_values or '{}'))
                     except Exception as e:
-                        logger.error('Invalid default data: {}\n{}'.format(config.default_values, e))
-
-                    data.update({
-                        'name': from_number,
-                        'phone': from_number,
-                    })
-                    logger.info('Create Lead: {}'.format(from_number))
-                    self.env['crm.lead'].create(data)
+                        logger.error('Invalid default data: %s\n%s', config.default_values, e)
+                if dest_model in self.env:
+                    try:
+                        self.env[dest_model].sudo().create_record_from_message(message, default_values=defaults)
+                    except Exception as e:
+                        logger.warning('create_record_from_message failed for %s: %s', dest_model, e)
+                else:
+                    logger.warning('Destination model %s not found', dest_model)
             else:
                 # Update message status
                 logger.info("Received Update Twilio SMS webhook data:\n%s", params)

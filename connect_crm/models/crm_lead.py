@@ -14,6 +14,23 @@ logger = logging.getLogger(__name__)
 class Lead(models.Model):
     _inherit = 'crm.lead'
 
+    @api.model
+    def create_record_from_message(self, message, default_values=None):
+        """Create a CRM Lead from an incoming message if none exists for the number.
+        default_values: dict to include in created lead.
+        """
+        from_number = message.from_number
+        lead = self.get_lead_by_number(from_number)
+        if lead:
+            return lead
+        data = {
+            'name': from_number,
+            'phone': from_number,
+        }
+        if isinstance(default_values, dict):
+            data.update(default_values)
+        return self.create(data)
+
     connect_calls = fields.One2many('connect.call', 'lead')
     connect_calls_count = fields.Integer(
         compute='_get_connect_calls_count', string='Calls', store=True)

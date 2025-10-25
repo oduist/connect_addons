@@ -49,6 +49,23 @@ def format_number(self, number, country=None, format_type='e164'):
 class Partner(models.Model):
     _inherit = 'res.partner'
 
+    @api.model
+    def create_record_from_message(self, message, default_values=None):
+        """Default destination handler: ensure a Partner exists for the message sender.
+        default_values: dict of additional field values to include in creation.
+        """
+        number = message.from_number
+        partner = self.get_partner_by_number(number)
+        if partner:
+            return partner
+        vals = {
+            'name': number,
+            'phone': number,
+        }
+        if isinstance(default_values, dict):
+            vals.update(default_values)
+        return self.create(vals)
+
     connect_calls_count = fields.Integer(compute='_get_connect_calls_count')
     connect_recorded_calls = fields.One2many('connect.recording', 'partner')
     connect_phone_normalized = fields.Char(compute='_get_connect_phone_normalized',
