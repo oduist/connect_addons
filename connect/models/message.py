@@ -184,6 +184,7 @@ class ConnectMessage(models.Model):
                         self.env['connect.settings'].connect_reload_view(last_message.res_model)
                 # Message Configuration
                 config = self.env['connect.message_configuration'].search([('number.phone_number', '=', to_number)])
+                # TODO: Take the model from the configuration. For now hardcode lead.
                 lead = self.env['crm.lead'].get_lead_by_number(from_number)
                 if not lead and config:
                     data = {}

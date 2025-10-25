@@ -48,7 +48,8 @@
         'views/favorite.xml',
         'views/res_partner.xml',
         'views/message.xml',
-        'views/message_configuration.xml',
+'views/message_configuration.xml',
+        'views/whatsapp_sender.xml',
         'views/versions.xml',
         'views/documentation.xml',
         # Wizard
