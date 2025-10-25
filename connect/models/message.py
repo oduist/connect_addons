@@ -50,6 +50,7 @@ class ConnectMessage(models.Model):
     res_id = fields.Integer()
     ref = fields.Reference(selection='_reference_models', compute='_compute_ref', store=True)
     media_url = fields.Char()
+    media_content_type = fields.Char()
     if release.version_info[0] >= 17.0:
         media_widget = fields.Html(compute='_get_media_widget', string='Media', sanitize=False)
     else:
@@ -57,8 +58,19 @@ class ConnectMessage(models.Model):
 
     def _get_media_widget(self):
         for rec in self:
-            rec.media_widget = '<audio id="sound_file" preload="auto" controls="controls"> ' \
-                               '<source src="{}"/></audio>'.format(rec.media_url)
+            html = ''
+            url = rec.media_url or ''
+            ctype = (rec.media_content_type or '').lower()
+            if url:
+                if ctype.startswith('image/'):
+                    html = '<img src="{}" style="max-width:50%;height:auto;"/>'.format(url)
+                elif ctype.startswith('audio/'):
+                    html = '<audio preload="auto" controls="controls"><source src="{}" type="{}"/></audio>'.format(url, ctype or 'audio/mpeg')
+                elif ctype.startswith('video/'):
+                    html = '<video controls style="max-width:50%"><source src="{}" type="{}"/></video>'.format(url, ctype or 'video/mp4')
+                else:
+                    html = '<a href="{}" target="_blank" rel="noopener">Download media</a>'.format(url)
+            rec.media_widget = html
 
     @api.model
     def _reference_models(self):
@@ -116,6 +128,8 @@ class ConnectMessage(models.Model):
             'account_sid': params.get('AccountSid'),
             'messaging_service_sid': params.get('MessagingServiceSid'),
             'status': params.get('SmsStatus'),
+            'media_content_type': params.get('MediaContentType0'),
+            'media_url': params.get('MediaUrl0'),
         }
 
     @api.model
@@ -131,8 +145,15 @@ class ConnectMessage(models.Model):
                 from_number = params.get('From')
                 to_number = params.get('To')
                 values = self.get_receive_message_values(params)
-                if params.get('MessageType') == 'audio':
-                    values.update({'media_url': params.get('MediaUrl0')})
+                # Media handling (image, audio, video)
+                try:
+                    if int(params.get('NumMedia', '0') or 0) > 0:
+                        values.update({
+                            'media_url': params.get('MediaUrl0'),
+                            'media_content_type': params.get('MediaContentType0'),
+                        })
+                except Exception:
+                    pass
                 if 'whatsapp:' in from_number:
                     from_number = from_number.replace('whatsapp:', '')
                     to_number = to_number.replace('whatsapp:', '')
