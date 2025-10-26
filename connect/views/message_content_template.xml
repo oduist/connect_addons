@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_connect_message_content_template" model="ir.actions.act_window">
+        <field name="name">WhatsApp Content Templates</field>
+        <field name="res_model">connect.message_content_template</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="connect_message_content_template_menu"
+              name="WhatsApp Content Templates"
+              action="action_connect_message_content_template"
+              sequence="64"
+              parent="connect.connect_messaging_menu"
+              groups="connect.group_connect_admin"/>
+
+    <record id="view_connect_message_content_template_tree" model="ir.ui.view">
+        <field name="name">connect.message_content_template.tree</field>
+        <field name="model">connect.message_content_template</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="friendly_name"/>
+                <field name="language"/>
+                <field name="content_type"/>
+                <field name="category"/>
+                <field name="status"/>
+                <field name="date_created"/>
+                <field name="date_updated"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_connect_message_content_template_form" model="ir.ui.view">
+        <field name="name">connect.message_content_template.form</field>
+        <field name="model">connect.message_content_template</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_fetch_approval_status" type="object" string="Fetch approval status" class="btn btn-secondary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="friendly_name"/>
+                            <field name="language"/>
+                            <field name="content_type"/>
+                            <field name="category"/>
+                            <field name="variables"/>
+                        </group>
+                        <group>
+                            <field name="status"/>
+                            <field name="rejection_reason"/>
+                            <field name="date_created"/>
+                            <field name="date_updated"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

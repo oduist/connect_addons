@@ -42,13 +42,13 @@
                     <group>
                         <group>
                             <field name="number"/>
+                            <field name="number_id"/>
                             <field name="status"/>
                             <field name="offline_reasons"/>
-                        </group>
-                        <group>
-                            <field name="number_id"/>
                             <field name="quality_rating"/>
                             <field name="messaging_limit"/>
+                        </group>
+                        <group>
                             <field name="profile_name"/>
                             <field name="profile_address"/>
                             <field name="profile_description"/>
