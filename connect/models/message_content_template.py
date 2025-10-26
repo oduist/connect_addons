@@ -49,6 +49,8 @@ class ConnectMessageContentTemplate(models.Model):
     language = fields.Many2one('res.lang', string='Language', required=True)
     variables = fields.Text(string='Variables', help='JSON mapping like {"1":"Owl Air Customer"}')
     content_type = fields.Selection(selection=CONTENT_TYPES, required=True)
+    body = fields.Text(string='Body')
+    actions = fields.Text(string='Actions (JSON)')
 
     # Twilio returned fields
     sid = fields.Char(readonly=True)
@@ -70,6 +72,17 @@ class ConnectMessageContentTemplate(models.Model):
                         raise ValidationError('Variables must be a JSON object, e.g., {"1":"Value"}.')
                 except Exception as e:
                     raise ValidationError('Variables must be valid JSON: {}'.format(e))
+
+    @api.constrains('actions')
+    def _check_actions_json(self):
+        for rec in self:
+            if rec.actions:
+                try:
+                    val = json.loads(rec.actions)
+                    if not isinstance(val, list):
+                        raise ValidationError('Actions must be a JSON list (array) of objects.')
+                except Exception as e:
+                    raise ValidationError('Actions must be valid JSON: {}'.format(e))
 
     def action_fetch_approval_status(self):
         for rec in self:

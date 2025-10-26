@@ -45,6 +45,8 @@
                             <field name="content_type"/>
                             <field name="category"/>
                             <field name="variables"/>
+                            <field name="body"/>
+                            <field name="actions" attrs="{'invisible': [('content_type','!=','twilio/quick-reply')]}"/>
                         </group>
                         <group>
                             <field name="status"/>
