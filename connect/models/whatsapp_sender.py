@@ -22,6 +22,7 @@ class ConnectWhatsappSender(models.Model):
     url = fields.Char(readonly=True)
     offline_reasons = fields.Text(readonly=True)
 
+
     # Convenience fields
     number_id = fields.Many2one('connect.number', string='Linked Number', ondelete='set null',
                                 help='Matched by phone number if available.', readonly=True)
@@ -48,6 +49,9 @@ class ConnectWhatsappSender(models.Model):
     # Properties
     messaging_limit = fields.Char(string='Messaging Limit', readonly=True)
     quality_rating = fields.Char(string='Quality Rating', readonly=True)
+
+    # Local controls
+    no_sync = fields.Boolean(string='Do not sync', default=False)
     _sql_constraints = [
         ('sid_unique', 'UNIQUE(sid)', 'This Sender SID already exists!'),
         ('number_unique', 'UNIQUE(number)', 'This number already exists!'),
@@ -117,6 +121,9 @@ class ConnectWhatsappSender(models.Model):
                 if not rec and vals.get('number'):
                     rec = self.search([('number', '=', vals['number'])])
                 if rec:
+                    # Respect local no_sync flag: skip updating this record from Twilio
+                    if rec.no_sync:
+                        continue
                     rec.write(vals)
                 else:
                     rec = self.create([vals])[0]

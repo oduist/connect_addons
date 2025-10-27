@@ -36,21 +36,23 @@
             <form>
                 <header>
                     <button name="action_fetch_approval_status" type="object" string="Fetch approval status" class="btn btn-secondary"/>
+                    <button name="action_approve" type="object" string="Approve" class="btn btn-primary" invisible="not (status == 'unsubmitted' or status == 'rejected')"/>
                 </header>
                 <sheet>
                     <group>
                         <group>
-                            <field name="friendly_name"/>
-                            <field name="language"/>
-                            <field name="content_type"/>
-                            <field name="category"/>
-                            <field name="variables"/>
-                            <field name="body"/>
-                            <field name="actions" attrs="{'invisible': [('content_type','!=','twilio/quick-reply')]}"/>
+                            <field name="friendly_name" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
+                            <field name="language" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
+                            <field name="content_type" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
+                            <field name="category" readonly="not ((status == 'unsubmitted' or status == 'rejected') or (status == 'approved' and allow_category_change))"/>
+                            <field name="variables" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
+                            <field name="body" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
+                            <field name="actions" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
                         </group>
                         <group>
                             <field name="status"/>
                             <field name="rejection_reason"/>
+                            <field name="allow_category_change"/>
                             <field name="date_created"/>
                             <field name="date_updated"/>
                         </group>
