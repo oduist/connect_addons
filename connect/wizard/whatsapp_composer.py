@@ -62,41 +62,42 @@ class ConnectWhatsappComposer(models.TransientModel):
         return vals
 
     def _extract_template_variables(self, template_body):
+        """Extract numeric placeholders from the template body and return a JSON-ready mapping.
+        Our convention now is numeric variables only, e.g. {{1}}, {{2}}.
+        Auto-filling from a record is not attempted, values default to empty strings.
+        """
         import re
-        names = set(re.findall(r"{{\s*([\w\.]+)\s*}}", template_body or ""))
-        values = {}
-        rec = False
-        if self.res_model and self.res_id and self.res_model in self.env:
-            rec = self.env[self.res_model].browse(self.res_id)
-        for name in names:
-            val = ''
-            if rec:
-                try:
-                    # support simple field or dot path
-                    parts = name.split('.')
-                    cur = rec
-                    for p in parts:
-                        cur = getattr(cur, p)
-                    if hasattr(cur, 'display_name') and getattr(cur, 'id', False):
-                        val = cur.display_name
-                    else:
-                        val = str(cur) if cur is not None else ''
-                except Exception:
-                    val = ''
-            values[name] = val
-        return values
+        indices = re.findall(r"{{\s*(\d+)\s*}}", template_body or "")
+        # Keep order but ensure uniqueness by first occurrence
+        seen = set()
+        ordered_unique = []
+        for idx in indices:
+            if idx not in seen:
+                seen.add(idx)
+                ordered_unique.append(idx)
+        return {i: "" for i in ordered_unique}
 
     @api.onchange('content_template_id')
     def _onchange_content_template(self):
         if self.content_template_id:
-            # prefill variables from current record
-            auto_vals = self._extract_template_variables(self.content_template_id.body)
-            if auto_vals:
+            # Prefer example variables defined on the template; fallback to numeric placeholders
+            tmpl_vars_json = (self.content_template_id.variables or '').strip()
+            parsed = None
+            if tmpl_vars_json:
                 try:
                     import json
-                    self.content_variables = json.dumps(auto_vals)
+                    parsed = json.loads(tmpl_vars_json)
+                    if not isinstance(parsed, dict):
+                        parsed = None
                 except Exception:
-                    self.content_variables = str(auto_vals)
+                    parsed = None
+            if parsed is None:
+                parsed = self._extract_template_variables(self.content_template_id.body)
+            try:
+                import json
+                self.content_variables = json.dumps(parsed) if parsed is not None else False
+            except Exception:
+                self.content_variables = str(parsed)
             # render preview
             self.body = self._render_preview(self.content_template_id.body, self.content_variables)
         else:
@@ -113,14 +114,12 @@ class ConnectWhatsappComposer(models.TransientModel):
             mapping = json.loads(variables_json) if variables_json else {}
         except Exception:
             mapping = {}
-        preview = template_body
-        # simple placeholder replacement for {{var}}
+        # Replace only numeric placeholders {{1}}, {{2}}, ...
         import re
         def repl(match):
             key = match.group(1).strip()
             return str(mapping.get(key, match.group(0)))
-        preview = re.sub(r"{{\s*([\w\.]+)\s*}}", repl, template_body)
-        return preview
+        return re.sub(r"{{\s*(\d+)\s*}}", repl, template_body)
 
     @api.onchange('content_variables')
     def _onchange_content_variables(self):
@@ -141,10 +140,15 @@ class ConnectWhatsappComposer(models.TransientModel):
             # use provided json or build automatically
             json_text = (self.content_variables or '').strip()
             if not json_text:
-                auto_vals = self._extract_template_variables(self.content_template_id.body)
-                if auto_vals:
-                    import json
-                    json_text = json.dumps(auto_vals)
+                # Prefer example variables from template; fallback to numeric placeholders
+                tmpl_vars_json = (self.content_template_id.variables or '').strip()
+                if tmpl_vars_json:
+                    json_text = tmpl_vars_json
+                else:
+                    auto_vals = self._extract_template_variables(self.content_template_id.body)
+                    if auto_vals is not None:
+                        import json
+                        json_text = json.dumps(auto_vals)
             if json_text:
                 kwargs['content_variables'] = json_text
             body_to_send = self._render_preview(self.content_template_id.body, self.content_variables)

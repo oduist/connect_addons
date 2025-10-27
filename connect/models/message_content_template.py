@@ -6,6 +6,8 @@ import requests
 import logging
 from datetime import datetime, timezone
 
+logger = logging.getLogger(__name__)
+
 
 CONTENT_TYPES = [
     ('twilio/text', 'twilio/text'),
@@ -188,46 +190,63 @@ class ConnectMessageContentTemplate(models.Model):
             rec.create_in_twilio()
         return records
 
+    def _twilio_submit_for_approval(self):
+        """Submit current content to Twilio WhatsApp approval API and update fields."""
+        self.ensure_one()
+        if not self.sid:
+            raise ValidationError('Content SID is missing. Save the template first.')
+        account_sid = self.env['connect.settings'].get_param('account_sid')
+        auth_token = self.env['connect.settings'].get_param('auth_token')
+        if not account_sid or not auth_token:
+            raise ValidationError('Twilio credentials are not configured.')
+        # sanitize name and compute category
+        import re
+        name = re.sub(r'[^a-z0-9_]', '_', (self.friendly_name or '').lower())
+        allowed = {'UTILITY', 'MARKETING', 'AUTHENTICATION'}
+        category_send = self.category if self.category in allowed else 'UTILITY'
+        url = self.approval_create_link or f'https://content.twilio.com/v1/Content/{self.sid}/ApprovalRequests/whatsapp'
+        payload = {'name': name, 'category': category_send}
+        try:
+            resp = requests.post(url, auth=(account_sid, auth_token), json=payload, timeout=30)
+            if resp.status_code >= 400:
+                raise ValidationError('Twilio error: {} {}'.format(resp.status_code, resp.text))
+            data = resp.json()
+            updates = {
+                'status': str(data.get('status', 'received')).lower(),
+                'rejection_reason': data.get('rejection_reason') or '',
+            }
+            if data.get('category'):
+                updates['category'] = data.get('category')
+            self.write(updates)
+            return data
+        except Exception as e:
+            raise ValidationError('Failed to submit for approval: {}'.format(e))
+
     def action_approve(self):
         for rec in self:
-            if not rec.sid:
-                raise ValidationError('Content SID is missing. Save the template first.')
+            # If previously rejected: remove in Twilio, recreate, then submit again
+            if rec.status == 'rejected':
+                rec.delete_in_twilio()
+                # clear Twilio-related fields before re-creating
+                rec.write({
+                    'sid': False,
+                    'approval_create_link': False,
+                    'approval_fetch': False,
+                    'date_created': False,
+                    'date_updated': False,
+                    'status': 'unsubmitted',
+                    'rejection_reason': False,
+                })
+                rec.create_in_twilio()
+                rec._twilio_submit_for_approval()
+                continue
+            # Normal path: only allow unsubmitted to be sent
             if rec.status and rec.status != 'unsubmitted':
                 raise ValidationError('This content has already been submitted. Current status: %s' % rec.status)
-            account_sid = rec.env['connect.settings'].get_param('account_sid')
-            auth_token = rec.env['connect.settings'].get_param('auth_token')
-            if not account_sid or not auth_token:
-                raise ValidationError('Twilio credentials are not configured.')
-            name = rec.friendly_name.lower()
-            # sanitize: keep lowercase letters, digits, underscore
-            import re
-            name = re.sub(r'[^a-z0-9_]', '_', name)
-            # category to send (only allowed by API)
-            allowed = {'UTILITY', 'MARKETING', 'AUTHENTICATION'}
-            category_send = rec.category if rec.category in allowed else 'UTILITY'
-            url = rec.approval_create_link or f'https://content.twilio.com/v1/Content/{rec.sid}/ApprovalRequests/whatsapp'
-            payload = {
-                'name': name,
-                'category': category_send,
-            }
-            try:
-                resp = requests.post(url, auth=(account_sid, auth_token), json=payload, timeout=30)
-                if resp.status_code >= 400:
-                    raise ValidationError('Twilio error: {} {}'.format(resp.status_code, resp.text))
-                data = resp.json()
-                updates = {
-                    'status': str(data.get('status', 'received')).lower(),
-                    'rejection_reason': data.get('rejection_reason') or '',
-                }
-                # Twilio might echo or transform category
-                if data.get('category'):
-                    updates['category'] = data.get('category')
-                self.write(updates)
-            except Exception as e:
-                raise ValidationError('Failed to submit for approval: {}'.format(e))
+            rec._twilio_submit_for_approval()
 
-    def unlink(self):
-        logger = logging.getLogger(__name__)
+    def delete_in_twilio(self):
+        """Delete content objects from Twilio Content API (best-effort)."""
         account_sid = self.env['connect.settings'].get_param('account_sid')
         auth_token = self.env['connect.settings'].get_param('auth_token')
         for rec in self:
@@ -240,8 +259,12 @@ class ConnectMessageContentTemplate(models.Model):
                     elif resp.status_code >= 400:
                         raise ValidationError('Twilio delete error for %s: %s %s' % (rec.sid, resp.status_code, resp.text))
             except Exception as e:
-                # Log and continue local unlink
                 logger.warning('Failed to delete content %s in Twilio: %s', rec.sid or '?', e)
+        return True
+
+    def unlink(self):
+        # Remove in Twilio first, then local unlink
+        self.delete_in_twilio()
         return super().unlink()
 
     def write(self, vals):
