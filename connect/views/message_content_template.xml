@@ -7,11 +7,44 @@
     </record>
 
     <menuitem id="connect_message_content_template_menu"
-              name="WhatsApp Templates"
+              name="WhatsApp Content Templates"
               action="action_connect_message_content_template"
               sequence="64"
               parent="connect.connect_messaging_menu"
               groups="connect.group_connect_admin"/>
+
+    <record id="view_connect_message_content_template_search" model="ir.ui.view">
+        <field name="name">connect.message_content_template.search</field>
+        <field name="model">connect.message_content_template</field>
+        <field name="arch" type="xml">
+            <search>
+                <!-- Search fields -->
+                <field name="model_id"/>
+                <field name="friendly_name" string="Name" filter_domain="[('friendly_name', 'ilike', self)]"/>
+                <field name="body" filter_domain="[('body', 'ilike', self)]"/>
+
+                <!-- Status filters -->
+                <separator/>
+                <filter string="Unsubmitted" name="st_unsubmitted" domain="[('status', '=', 'unsubmitted')]"/>
+                <filter string="Received" name="st_received" domain="[('status', '=', 'received')]"/>
+                <filter string="Pending" name="st_pending" domain="[('status', '=', 'pending')]"/>
+                <filter string="Approved" name="st_approved" domain="[('status', '=', 'approved')]"/>
+                <filter string="Rejected" name="st_rejected" domain="[('status', '=', 'rejected')]"/>
+                <filter string="Paused" name="st_paused" domain="[('status', '=', 'paused')]"/>
+                <filter string="Disabled" name="st_disabled" domain="[('status', '=', 'disabled')]"/>
+
+                <!-- Group By -->
+                <group expand="0" string="Group By">
+                    <filter string="Model" name="gb_model" context="{'group_by': 'model_id'}"/>
+                    <filter string="Content Type" name="gb_type" context="{'group_by': 'content_type'}"/>
+                    <filter string="Status" name="gb_status" context="{'group_by': 'status'}"/>
+                    <filter string="Category" name="gb_category" context="{'group_by': 'category'}"/>
+                    <filter string="Date Created" name="gb_date_created" context="{'group_by': 'date_created'}"/>
+                    <filter string="Date Updated" name="gb_date_updated" context="{'group_by': 'date_updated'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
 
     <record id="view_connect_message_content_template_tree" model="ir.ui.view">
         <field name="name">connect.message_content_template.tree</field>
