@@ -20,6 +20,7 @@
             <list>
                 <field name="friendly_name"/>
                 <field name="model_id"/>
+                <field name="sender_id"/>
                 <field name="language"/>
                 <field name="content_type"/>
                 <field name="category"/>
@@ -44,6 +45,7 @@
                         <group>
                             <field name="friendly_name" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
                             <field name="model_id"/>
+                            <field name="sender_id"/>
                             <field name="language" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
                             <field name="content_type" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
                             <field name="category" readonly="not ((status == 'unsubmitted' or status == 'rejected') or (status == 'approved' and allow_category_change))"/>
