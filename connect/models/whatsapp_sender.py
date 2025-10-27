@@ -245,29 +245,32 @@ class ConnectWhatsappSender(models.Model):
 
         # Post to chatter if relevant
         if res_model and res_id:
-            try:
-                mt_note = self.env.ref('mail.mt_note').id
-                obj = self.env[res_model].browse(res_id)
-                if hasattr(obj, 'message_post'):
-                    chatter = obj.with_context(mail_create_nosubscribe=False).message_post(
-                        body=body,
-                        subtype_id=mt_note,
-                        message_type='WhatsApp',
-                        author_id=self.env.user.partner_id.id,
-                    )
-                    self.env['mail.notification'].sudo().create([{
-                        'author_id': chatter.author_id.id,
-                        'mail_message_id': chatter.id,
-                        'res_partner_id': chatter.author_id.id,
-                        'sms_number': self.number,
-                        'notification_type': 'WhatsApp',
-                        'is_read': True,
-                        'notification_status': 'ready',
-                    }])
-                    self.env['connect.settings'].connect_reload_view(res_model)
-            except Exception as e:
-                logger.warning('Failed to post WhatsApp chatter message on %s,%s: %s', res_model, res_id, e)
+            self.chatter_post(res_model, res_id, self.env.user.partner_id.id, body)
         return msg
+
+    def chatter_post(self, res_model, res_id, author, body):
+        try:
+            mt_note = self.env.ref('mail.mt_note').id
+            obj = self.env[res_model].browse(res_id)
+            if hasattr(obj, 'message_post'):
+                chatter = obj.sudo().with_context(mail_create_nosubscribe=False).message_post(
+                    body=body,
+                    subtype_id=mt_note,
+                    message_type='WhatsApp',
+                    author_id=author,
+                )
+                self.env['mail.notification'].sudo().create([{
+                    'author_id': chatter.author_id.id,
+                    'mail_message_id': chatter.id,
+                    'res_partner_id': chatter.author_id.id,
+                    'sms_number': self.number,
+                    'notification_type': 'WhatsApp',
+                    'is_read': True,
+                    'notification_status': 'ready',
+                }])
+                self.env['connect.settings'].connect_reload_view(res_model)
+        except Exception as e:
+            logger.warning('Failed to post WhatsApp chatter message on %s,%s: %s', res_model, res_id, e)
 
     @api.model
     def update_message_status(self, data: dict):
@@ -285,6 +288,8 @@ class ConnectWhatsappSender(models.Model):
                 logger.info('Message not found for SID %s', sid)
                 return True
             vals = {'status': status} if status else {}
+            connect_user = self.env.ref("connect.user_connect_webhook")
+            connect_partner = connect_user.partner_id
             if (status or '').lower() == 'failed':
                 # Some callbacks include error details
                 code = data.get('ErrorCode')
@@ -294,6 +299,12 @@ class ConnectWhatsappSender(models.Model):
                 if msg:
                     vals['error_message'] = msg
                     vals['has_error'] = True
+                if message.res_model and message.res_id:
+                    body = 'Failed to send this Whatsapp message'
+                    self.chatter_post(message.res_model, message.res_id, connect_partner.id, body)
+            elif (status or '').lower() == 'read' and message.res_model and message.res_id:
+                body = 'Whatsapp message read!'
+                self.chatter_post(message.res_model, message.res_id, connect_partner.id, body)
             if vals:
                 message.write(vals)
                 self.env['connect.settings'].connect_reload_view('connect.message')
