@@ -12,6 +12,43 @@
               sequence="60"
               parent="connect.connect_messaging_menu"/>
 
+    <record id="view_connect_message_search" model="ir.ui.view">
+        <field name="name">connect.message.search</field>
+        <field name="model">connect.message</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="from_number" string="From Number" filter_domain="[('from_number', 'ilike', self)]"/>
+                <field name="to_number" string="To Number" filter_domain="[('to_number', 'ilike', self)]"/>
+                <field name="body" string="Message Body" filter_domain="[('body', 'ilike', self)]"/>
+                <field name="partner" string="Partner"/>
+                <field name="message_type" string="Type"/>
+                <field name="direction" string="Direction"/>
+                <separator/>
+                <filter string="Incoming" name="incoming" domain="[('direction', '=', 'incoming')]"/>
+                <filter string="Outgoing" name="outgoing" domain="[('direction', '=', 'outgoing')]"/>
+                <separator/>
+                <filter string="Has Error" name="has_error" domain="[('has_error', '=', True)]"/>
+                <filter string="SMS" name="sms" domain="[('message_type', '=', 'sms')]"/>
+                <filter string="MMS" name="mms" domain="[('message_type', '=', 'mms')]"/>
+                <filter string="WhatsApp" name="whatsapp" domain="[('message_type', '=', 'WhatsApp')]"/>
+                <separator/>
+                <filter string="With Media" name="with_media" domain="[('num_media', '>', 0)]"/>
+                <separator/>
+                <filter string="Today" name="today" domain="[('create_date', '>=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter string="Last 7 Days" name="last_7_days" domain="[('create_date', '>=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Direction" name="group_direction" context="{'group_by': 'direction'}"/>
+                    <filter string="Message Type" name="group_message_type" context="{'group_by': 'message_type'}"/>
+                    <filter string="Partner" name="group_partner" context="{'group_by': 'partner'}"/>
+                    <filter string="Status" name="group_status" context="{'group_by': 'status'}"/>
+                    <filter string="From Number" name="group_from_number" context="{'group_by': 'from_number'}"/>
+                    <filter string="To Number" name="group_to_number" context="{'group_by': 'to_number'}"/>
+                    <filter string="Date" name="group_date" context="{'group_by': 'create_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="view_connect_sms_message_tree" model="ir.ui.view">
         <field name="name">connect.message.tree</field>
         <field name="model">connect.message</field>
@@ -19,14 +56,15 @@
             <list create="false" edit="false"  decoration-danger="has_error">
                 <field name="has_error" invisible="1"/>
                 <field name="create_date"/>
+                <field name="direction_display" widget="html" readonly="1" string="Direction" />
                 <field name="from_number"/>
                 <field name="to_number"/>
                 <field name="body"/>
                 <field name="from_city"/>
                 <field name="from_country"/>
-                <field name="message_type" optional="hide"/>
+                <field name="message_type" optional="show"/>
+                <field name="status" optional="show"/>
                 <field name="num_media" optional="hide"/>
-                <field name="status" optional="hide"/>
             </list>
         </field>
     </record>
@@ -36,13 +74,15 @@
         <field name="model">connect.message</field>
         <field name="arch" type="xml">
             <form create="false" edit="false">
+                <header>
+                    <field name="direction" widget="statusbar" readonly="1"/>
+                </header>
                 <sheet>
                     <group>
                         <group>
                             <field name="from_number" widget="phone"/>
                             <field name="to_number" widget="phone"/>
                             <field name="body"/>
-                            <field name="ref" invisible="ref == False"/>
                             <div class="d-flex flex-row" colspan="2" cols="3">
                                 <div class="d-flex flex-column" calspan="1" style="flex: 1">
                                     <field name="partner"/>
@@ -65,6 +105,10 @@
                             </div>
                         </group>
                         <group>
+                            <field name="ref" invisible="ref == False"/>
+                            <field name="direction" invisible="1"/>
+                            <field name="direction_display" widget="html" string="Direction"/>
+                            <field name="message_type"/>
                             <field name="from_city" string="City"/>
                             <field name="from_state" string="State"/>
                             <field name="from_country" string="Country"/>
@@ -84,7 +128,6 @@
                                     <field name="message_sid"/>
                                     <field name="account_sid"/>
                                     <field name="messaging_service_sid"/>
-                                    <field name="message_type"/>
                                 </group>
                             </group>
                         </page>

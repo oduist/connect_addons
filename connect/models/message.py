@@ -28,6 +28,11 @@ class ConnectMessage(models.Model):
     num_media = fields.Integer('Number of Media Items', default=0)
     message_type = fields.Char(readonly=True)
     status = fields.Char(readonly=True, default='draft')
+    direction = fields.Selection([
+        ('incoming', 'Incoming'),
+        ('outgoing', 'Outgoing'),
+    ], string='Direction', compute='_compute_direction', store=True, readonly=True)
+    direction_display = fields.Html(string='Direction', compute='_compute_direction_display', sanitize=False)
     # Odoo users
     sender_user = fields.Many2one('res.users', string='Sender User', ondelete='set null', readonly=True)
     sender_user_img = fields.Binary(related='sender_user.image_1920')
@@ -86,6 +91,42 @@ class ConnectMessage(models.Model):
                     rec.ref = False
             else:
                 rec.ref = False
+    
+    @api.depends('status', 'sender_user')
+    def _compute_direction(self):
+        """Determine message direction based on status or sender_user.
+        - If sender_user is set, it's outgoing (we sent it)
+        - If status is 'received', it's incoming
+        - Otherwise determine by checking if from_number is ours
+        """
+        for rec in self:
+            if rec.sender_user:
+                rec.direction = 'outgoing'
+            elif rec.status == 'received':
+                rec.direction = 'incoming'
+            else:
+                # Check if from_number matches any of our numbers
+                our_numbers = self.env['connect.number'].search([]).mapped('phone_number')
+                our_whatsapp = self.env['connect.whatsapp_sender'].search([]).mapped('number')
+                all_our_numbers = set(our_numbers) | set(our_whatsapp)
+                
+                if rec.from_number in all_our_numbers:
+                    rec.direction = 'outgoing'
+                else:
+                    rec.direction = 'incoming'
+    
+    @api.depends('direction')
+    def _compute_direction_display(self):
+        """Display direction with appropriate icon."""
+        for rec in self:
+            if rec.direction == 'incoming':
+                # Green arrow pointing down-left (incoming)
+                rec.direction_display = '<span class="badge rounded-pill text-bg-success"><i class="fa fa-arrow-down"/> Incoming</span>'
+            elif rec.direction == 'outgoing':
+                # Blue arrow pointing up-right (outgoing)
+                rec.direction_display = '<span class="badge rounded-pill text-bg-info"><i class="fa fa-arrow-up"/> Outgoing</span>'
+            else:
+                rec.direction_display = ''
 
     @staticmethod
     def _format_phone_number(number):
