@@ -18,7 +18,9 @@
                         <field name="res_id" invisible="1"/>
                         <field name="whatsapp_sender_id" required="1"/>
                         <field name="phone" required="1"/>
-                        <field name="body" widget="text" nolabel="0" placeholder="Type your message..."/>
+                        <field name="content_template_id"/>
+                        <field name="content_variables" placeholder='{"name": "Max"}'/>
+                        <field name="body" widget="text" nolabel="0" placeholder="Type your message..." readonly="content_template_id != False"/>
                     </group>
                 </sheet>
                 <footer>

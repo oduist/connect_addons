@@ -14,6 +14,8 @@ class ConnectWhatsappComposer(models.TransientModel):
     # Inputs
     whatsapp_sender_id = fields.Many2one('connect.whatsapp_sender', string='Sender', required=True)
     phone = fields.Char(string='To', required=True)
+    content_template_id = fields.Many2one('connect.message_content_template', string='Content Template', domain="[('status','=','approved')]")
+    content_variables = fields.Text(string='Content Variables (JSON)')
     body = fields.Text(string='Message', required=True)
 
     @api.model
@@ -53,14 +55,69 @@ class ConnectWhatsappComposer(models.TransientModel):
 
         return vals
 
+    def _extract_template_variables(self, template_body):
+        import re
+        names = set(re.findall(r"{{\s*([\w\.]+)\s*}}", template_body or ""))
+        values = {}
+        rec = False
+        if self.res_model and self.res_id and self.res_model in self.env:
+            rec = self.env[self.res_model].browse(self.res_id)
+        for name in names:
+            val = ''
+            if rec:
+                try:
+                    # support simple field or dot path
+                    parts = name.split('.')
+                    cur = rec
+                    for p in parts:
+                        cur = getattr(cur, p)
+                    if hasattr(cur, 'display_name') and getattr(cur, 'id', False):
+                        val = cur.display_name
+                    else:
+                        val = str(cur) if cur is not None else ''
+                except Exception:
+                    val = ''
+            values[name] = val
+        return values
+
+    @api.onchange('content_template_id')
+    def _onchange_content_template(self):
+        if self.content_template_id:
+            # set body preview from template
+            self.body = self.content_template_id.body or self.body
+            # prefill variables from current record
+            auto_vals = self._extract_template_variables(self.content_template_id.body)
+            if auto_vals:
+                try:
+                    import json
+                    self.content_variables = json.dumps(auto_vals)
+                except Exception:
+                    self.content_variables = str(auto_vals)
+        else:
+            # clear variables when deselecting
+            self.content_variables = False
+
     def action_send_whatsapp(self):
         self.ensure_one()
         if not self.phone:
             raise ValidationError('Recipient number is required')
+        kwargs = {}
+        if self.content_template_id and self.content_template_id.sid:
+            kwargs['content_sid'] = self.content_template_id.sid
+            # use provided json or build automatically
+            json_text = (self.content_variables or '').strip()
+            if not json_text:
+                auto_vals = self._extract_template_variables(self.content_template_id.body)
+                if auto_vals:
+                    import json
+                    json_text = json.dumps(auto_vals)
+            if json_text:
+                kwargs['content_variables'] = json_text
         self.whatsapp_sender_id.send_whatsapp(
             recipient=self.phone,
             body=self.body,
             res_model=self.res_model,
             res_id=self.res_id,
+            **kwargs,
         )
         return {'type': 'ir.actions.act_window_close'}

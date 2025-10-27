@@ -163,7 +163,7 @@ class ConnectWhatsappSender(models.Model):
         self.env['connect.whatsapp_sender'].sync()
         return True
 
-    def send_whatsapp(self, recipient, body, res_model=None, res_id=None, raise_on_error=True):
+    def send_whatsapp(self, recipient, body, res_model=None, res_id=None, raise_on_error=True, content_sid=None, content_variables=None):
         """Send a WhatsApp message using this sender and create connect.message + chatter.
 
         Args:
@@ -189,11 +189,19 @@ class ConnectWhatsappSender(models.Model):
         client = self.env['connect.settings'].get_client()
         message = None
         try:
-            message = client.messages.create(
-                to=f'whatsapp:{recipient}',
-                from_=f'whatsapp:{self.number}',
-                body=body or '',
-            )
+            create_kwargs = {
+                'to': f'whatsapp:{recipient}',
+                'from_': f'whatsapp:{self.number}',
+            }
+            if content_sid:
+                create_kwargs['content_sid'] = content_sid
+                if content_variables:
+                    create_kwargs['content_variables'] = content_variables
+                if body:
+                    create_kwargs['body'] = body
+            else:
+                create_kwargs['body'] = body or ''
+            message = client.messages.create(**create_kwargs)
         except Exception as e:
             if raise_on_error:
                 raise ValidationError('Unable to send WhatsApp message. Please check the number and sender configuration.')
