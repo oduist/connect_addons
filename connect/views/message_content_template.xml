@@ -41,16 +41,20 @@
                     <button name="action_approve" type="object" string="Approve" class="btn btn-primary" invisible="not (status == 'unsubmitted' or status == 'rejected')"/>
                 </header>
                 <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="friendly_name" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
+                        </h1>
+                    </div>
                     <group>
                         <group>
-                            <field name="friendly_name" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
                             <field name="model_id"/>
                             <field name="sender_id"/>
                             <field name="language" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
                             <field name="content_type" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
                             <field name="category" readonly="not ((status == 'unsubmitted' or status == 'rejected') or (status == 'approved' and allow_category_change))"/>
-                            <field name="variables" placeholder="{'name': 'John'}" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
-                            <field name="body" placeholder="Hello {{name}}! Welcome to our community!" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
+                            <field name="variables" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
+                            <field name="body" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
                             <field name="actions" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
                         </group>
                         <group>

@@ -34,9 +34,9 @@ WHATSAPP_STATUSES = [
 ]
 
 WHATSAPP_CATEGORIES = [
-    ('UTILITY', 'UTILITY'),
-    ('AUTHENTICATION', 'AUTHENTICATION'),
-    ('MARKETING', 'MARKETING')
+    ('UTILITY', 'Utility'),
+    ('AUTHENTICATION', 'Authentication'),
+    ('MARKETING', 'Marketing')
 ]
 
 
@@ -50,7 +50,7 @@ class ConnectMessageContentTemplate(models.Model):
     model_id = fields.Many2one('ir.model', string='Related Model', help='Model this template applies to.')
     sender_id = fields.Many2one('connect.whatsapp_sender', string='Sender', help='Limit template to a specific WhatsApp sender (optional).')
 
-    friendly_name = fields.Char(required=True)
+    friendly_name = fields.Char(string='Name', required=True)
     language = fields.Many2one('res.lang', string='Language', required=True)
     variables = fields.Text(string='Variables', help='JSON mapping like {"1":"Owl Air Customer"}')
     content_type = fields.Selection(selection=CONTENT_TYPES, required=True)
