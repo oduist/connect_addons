@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="action_connect_message_content_template" model="ir.actions.act_window">
-        <field name="name">WhatsApp Content Templates</field>
+        <field name="name">WhatsApp Templates</field>
         <field name="res_model">connect.message_content_template</field>
         <field name="view_mode">list,form</field>
     </record>
 
     <menuitem id="connect_message_content_template_menu"
-              name="WhatsApp Content Templates"
+              name="WhatsApp Templates"
               action="action_connect_message_content_template"
               sequence="64"
               parent="connect.connect_messaging_menu"
@@ -24,7 +24,7 @@
                 <field name="language"/>
                 <field name="content_type"/>
                 <field name="category"/>
-                <field name="status"/>
+                <field name="display_status" string="Status"/>
                 <field name="date_created"/>
                 <field name="date_updated"/>
             </list>

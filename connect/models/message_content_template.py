@@ -68,6 +68,8 @@ class ConnectMessageContentTemplate(models.Model):
     rejection_reason = fields.Char(readonly=True)
     allow_category_change = fields.Boolean(readonly=True)
 
+    display_status = fields.Html(string='Status', compute='_compute_display_status', sanitize=False)
+
     @api.constrains('variables')
     def _check_variables_json(self):
         for rec in self:
@@ -89,6 +91,21 @@ class ConnectMessageContentTemplate(models.Model):
                         raise ValidationError('Actions must be a JSON list (array) of objects.')
                 except Exception as e:
                     raise ValidationError('Actions must be valid JSON: {}'.format(e))
+
+    def _compute_display_status(self):
+        icon_map = {
+            'approved': ('fa fa-check-circle text-success', 'Approved'),
+            'pending': ('fa fa-clock-o text-warning', 'Pending'),
+            'received': ('fa fa-clock-o text-warning', 'Received'),
+            'paused': ('fa fa-pause-circle text-warning', 'Paused'),
+            'disabled': ('fa fa-ban text-danger', 'Disabled'),
+            'rejected': ('fa fa-times-circle text-danger', 'Rejected'),
+            'unsubmitted': ('fa fa-circle-o text-muted', 'Unsubmitted'),
+        }
+        for rec in self:
+            st = (rec.status or 'unsubmitted').lower()
+            icon, label = icon_map.get(st, ('fa fa-circle-o text-muted', st.title()))
+            rec.display_status = f"<span><i class='{icon}' style='margin-right:6px;'></i>{label}</span>"
 
     def _normalize_twilio_datetime(self, value):
         if not value:
