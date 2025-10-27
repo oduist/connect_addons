@@ -36,8 +36,7 @@ WHATSAPP_STATUSES = [
 WHATSAPP_CATEGORIES = [
     ('UTILITY', 'UTILITY'),
     ('AUTHENTICATION', 'AUTHENTICATION'),
-    ('MARKETING', 'MARKETING'),
-    ('TRANSPORTATION_UPDATE', 'TRANSPORTATION_UPDATE'),
+    ('MARKETING', 'MARKETING')
 ]
 
 
@@ -46,6 +45,10 @@ class ConnectMessageContentTemplate(models.Model):
     _description = 'WhatsApp Content Template (Twilio Content API)'
     _rec_name = 'friendly_name'
     _order = 'create_date desc'
+
+    # Link template to a specific Odoo model it applies to
+    model_id = fields.Many2one('ir.model', string='Related Model', help='Model this template applies to.')
+    sender_id = fields.Many2one('connect.whatsapp_sender', string='Sender', help='Limit template to a specific WhatsApp sender (optional).')
 
     friendly_name = fields.Char(required=True)
     language = fields.Many2one('res.lang', string='Language', required=True)
@@ -64,6 +67,8 @@ class ConnectMessageContentTemplate(models.Model):
     status = fields.Selection(selection=WHATSAPP_STATUSES, default='unsubmitted', required=True, readonly=True)
     rejection_reason = fields.Char(readonly=True)
     allow_category_change = fields.Boolean(readonly=True)
+
+    display_status = fields.Html(string='Status', compute='_compute_display_status', sanitize=False)
 
     @api.constrains('variables')
     def _check_variables_json(self):
@@ -88,6 +93,21 @@ class ConnectMessageContentTemplate(models.Model):
                         raise ValidationError('Actions must be a JSON list (array) of objects.')
                 except Exception as e:
                     raise ValidationError('Actions must be valid JSON: {}'.format(e))
+
+    def _compute_display_status(self):
+        icon_map = {
+            'approved': ('fa fa-check-circle text-success', 'Approved'),
+            'pending': ('fa fa-clock-o text-warning', 'Pending'),
+            'received': ('fa fa-clock-o text-warning', 'Received'),
+            'paused': ('fa fa-pause-circle text-warning', 'Paused'),
+            'disabled': ('fa fa-ban text-danger', 'Disabled'),
+            'rejected': ('fa fa-times-circle text-danger', 'Rejected'),
+            'unsubmitted': ('fa fa-circle-o text-muted', 'Unsubmitted'),
+        }
+        for rec in self:
+            st = (rec.status or 'unsubmitted').lower()
+            icon, label = icon_map.get(st, ('fa fa-circle-o text-muted', st.title()))
+            rec.display_status = f"<span><i class='{icon}' style='margin-right:6px;'></i>{label}</span>"
 
     def _normalize_twilio_datetime(self, value):
         if not value:
