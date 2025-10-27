@@ -94,9 +94,6 @@ class ElevenlabsAgent(models.Model):
         required=True, default=-1, help='If greater than 0, maximum number of tokens the LLM can predict')
     llm = fields.Selection(selection=llm_list, default='gpt-4o', required=True)
     agent_uid = fields.Char(string="Agent ID")
-    knowledge_base_name = fields.Char()
-    knowledge_base_note = fields.Text()
-    knowledge_base_id = fields.Char()
     use_flash = fields.Boolean(default=True)
     output_audio_format = fields.Selection([
         ('ulaw_8000', 'ulaw 8000'),
@@ -316,11 +313,7 @@ class ElevenlabsAgent(models.Model):
                     'prompt': f'{tools.html2plaintext(self.prompt)}{previous_topics}',
                     'llm': self.llm,
                     'temperature': self.temperature,
-                    'knowledge_base': [{
-                        "type": "text",
-                        "name": self.knowledge_base_name,
-                        "id": self.knowledge_base_id,
-                    }] if self.knowledge_base_note else [],
+                    'knowledge_base': self._compute_knowledge_base_config(),
                     'tools': self.compute_agent_tools() if self.tools and not skip_tools else []
                 }
             },
@@ -338,10 +331,14 @@ class ElevenlabsAgent(models.Model):
                 'stability': self.stability,
                 'voice_id': self.voice.voice_id,
                 'model_id': get_model(),
-            },
+            }
         }
         logger.info('Tools: {}'.format(json.dumps(config, indent=2)))
         return config
+
+    def _compute_knowledge_base_config(self):
+        """Compute knowledge base configuration - can be overridden by connect_elevenlabs_knowledge"""
+        return []
 
     def compute_agent_tools(self):
         tools = []

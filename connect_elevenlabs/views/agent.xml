@@ -8,10 +8,10 @@
     </record>
 
     <menuitem id="connect.elevenlabs_agent_menu"
-        sequence="60"
-        parent="connect.connect_voice_menu"
-        name="Agents"
-        action="connect_elevenlabs.agent_action"/>
+              sequence="60"
+              parent="connect.connect_voice_menu"
+              name="Agents"
+              action="connect_elevenlabs.agent_action"/>
 
     <record id="connect_elevenlabs_agent_list" model="ir.ui.view">
         <field name="name">connect_elevenlabs_agent_list</field>
@@ -84,12 +84,6 @@
                                     <field name="similarity_boost"/>
                                     <field name="use_flash" help="Flash is our new recommended model for low latency use cases. Consider using Turbo for better quality at higher latency. We also recommend using Turbo for non-latin languages."/>
                                 </group>
-                            </group>
-                        </page>
-                        <page name="Knowledge base" string="Knowledge base">
-                            <group>
-                                <field name="knowledge_base_name" required="knowledge_base_note"/>
-                                <field name="knowledge_base_note"/>
                             </group>
                         </page>
                         <page name="dev" string="Development" groups="base.group_no_one">
