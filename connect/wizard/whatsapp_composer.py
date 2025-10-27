@@ -147,8 +147,7 @@ class ConnectWhatsappComposer(models.TransientModel):
                     json_text = json.dumps(auto_vals)
             if json_text:
                 kwargs['content_variables'] = json_text
-            # do not send body when using content template
-            body_to_send = ''
+            body_to_send = self._render_preview(self.content_template_id.body, self.content_variables)
         self.whatsapp_sender_id.send_whatsapp(
             recipient=self.phone,
             body=body_to_send,

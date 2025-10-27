@@ -206,6 +206,7 @@ class ConnectWhatsappSender(models.Model):
                 if content_variables:
                     create_kwargs['content_variables'] = content_variables
                 # Do not send body when using content templates
+                create_kwargs['body'] = body or ''
             else:
                 create_kwargs['body'] = body or ''
             message = client.messages.create(**create_kwargs)

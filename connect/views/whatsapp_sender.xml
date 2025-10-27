@@ -23,7 +23,8 @@
             <list>
                 <field name="number"/>
                 <field name="status"/>
-                <field name="is_default"/>
+                <field name="is_default" string="Default"/>
+                <field name="no_sync" string="Ignore" optional="hide"/>
                 <field name="quality_rating"/>
                 <field name="messaging_limit"/>
             </list>

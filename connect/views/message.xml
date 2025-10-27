@@ -19,7 +19,7 @@
             <search>
                 <field name="from_number" string="From Number" filter_domain="[('from_number', 'ilike', self)]"/>
                 <field name="to_number" string="To Number" filter_domain="[('to_number', 'ilike', self)]"/>
-                <field name="body" string="Message Body" filter_domain="[('body', 'ilike', self)]"/>
+                <field name="body" string="Message" filter_domain="[('body', 'ilike', self)]"/>
                 <field name="partner" string="Partner"/>
                 <field name="message_type" string="Type"/>
                 <field name="direction" string="Direction"/>
