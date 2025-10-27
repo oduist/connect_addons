@@ -13,13 +13,13 @@ class ConnectWhatsappComposer(models.TransientModel):
 
     # Inputs
     whatsapp_sender_id = fields.Many2one(
-        'connect.whatsapp_sender', 
-        string='Sender', 
+        'connect.whatsapp_sender',
+        string='Sender',
         required=True,
-        domain="[('no_sync', '=', True), ('status', '=', 'online')]"
+        domain="[('no_sync', '=', False), ('status', '=', 'ONLINE')]"
     )
     phone = fields.Char(string='To', required=True)
-    content_template_id = fields.Many2one('connect.message_content_template', string='Content Template', domain="[('status','=','approved')]")
+    content_template_id = fields.Many2one('connect.message_content_template', string='Template', domain="[('status','=','approved')]")
     content_variables = fields.Text(string='Content Variables (JSON)')
     body = fields.Text(string='Message')
 
