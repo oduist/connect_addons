@@ -11,7 +11,7 @@ class ConnectMessageConfiguration(models.Model):
     number = fields.Many2one('connect.number', required=True)
     destination = fields.Selection([
         ('res.partner', 'Partner'),
-    ], required=True, default='res.partner', help='Destination model to create records from messages.')
+    ], required=True, default='res.partner', ondelete={'res.partner': 'set default'}, help='Destination model to create records from messages.')
     default_values = fields.Text(default='{}')
 
     @api.constrains('default_values')

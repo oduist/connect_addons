@@ -3,6 +3,7 @@ from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 import json
 import requests
+import logging
 from datetime import datetime, timezone
 
 
@@ -202,6 +203,24 @@ class ConnectMessageContentTemplate(models.Model):
                 self.write(updates)
             except Exception as e:
                 raise ValidationError('Failed to submit for approval: {}'.format(e))
+
+    def unlink(self):
+        logger = logging.getLogger(__name__)
+        account_sid = self.env['connect.settings'].get_param('account_sid')
+        auth_token = self.env['connect.settings'].get_param('auth_token')
+        for rec in self:
+            try:
+                if rec.sid and account_sid and auth_token:
+                    url = f'https://content.twilio.com/v1/Content/{rec.sid}'
+                    resp = requests.delete(url, auth=(account_sid, auth_token), timeout=30)
+                    if resp.status_code == 404:
+                        logger.warning('Content %s not found in Twilio during delete', rec.sid)
+                    elif resp.status_code >= 400:
+                        raise ValidationError('Twilio delete error for %s: %s %s' % (rec.sid, resp.status_code, resp.text))
+            except Exception as e:
+                # Log and continue local unlink
+                logger.warning('Failed to delete content %s in Twilio: %s', rec.sid or '?', e)
+        return super().unlink()
 
     def write(self, vals):
         # Prevent changing content unless status is unsubmitted or rejected.

@@ -114,7 +114,10 @@ class ConnectWhatsappSender(models.Model):
                 raise ValidationError(f"Twilio error: {resp.status_code} {resp.text}")
             data = resp.json()
             items = data.get('senders', [])
+            twilio_sids = set()
             for item in items:
+                if item.get('sid'):
+                    twilio_sids.add(item.get('sid'))
                 vals = self._prepare_vals_from_api(item)
                 # Upsert by sid if present, else by number
                 rec = self.search([('sid', '=', vals.get('sid'))]) if vals.get('sid') else self.browse()
@@ -145,6 +148,11 @@ class ConnectWhatsappSender(models.Model):
                             logger.warning('Failed to update sender %s: %s %s', sid, resp_u.status_code, resp_u.text)
                 except Exception as e:
                     logger.warning('Sender webhook update error: %s', e)
+            # Remove local senders missing in Twilio (by sid)
+            if twilio_sids:
+                missing = self.search([('sid', '!=', False), ('sid', 'not in', list(twilio_sids))])
+                if missing:
+                    missing.unlink()
             settings.connect_notify('WhatsApp Senders synced')
         except Exception as e:
             raise ValidationError(f"Failed to sync WhatsApp Senders: {e}")
