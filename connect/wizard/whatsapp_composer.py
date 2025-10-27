@@ -12,7 +12,12 @@ class ConnectWhatsappComposer(models.TransientModel):
     res_id = fields.Integer('Related Record')
 
     # Inputs
-    whatsapp_sender_id = fields.Many2one('connect.whatsapp_sender', string='Sender', required=True)
+    whatsapp_sender_id = fields.Many2one(
+        'connect.whatsapp_sender', 
+        string='Sender', 
+        required=True,
+        domain="[('no_sync', '=', True), ('status', '=', 'online')]"
+    )
     phone = fields.Char(string='To', required=True)
     content_template_id = fields.Many2one('connect.message_content_template', string='Content Template', domain="[('status','=','approved')]")
     content_variables = fields.Text(string='Content Variables (JSON)')

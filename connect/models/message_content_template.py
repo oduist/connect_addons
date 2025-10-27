@@ -61,7 +61,7 @@ class ConnectMessageContentTemplate(models.Model):
     date_created = fields.Datetime(readonly=True)
     date_updated = fields.Datetime(readonly=True)
     category = fields.Selection(selection=WHATSAPP_CATEGORIES)
-    status = fields.Selection(selection=WHATSAPP_STATUSES, readonly=True)
+    status = fields.Selection(selection=WHATSAPP_STATUSES, default='unsubmitted', required=True, readonly=True)
     rejection_reason = fields.Char(readonly=True)
     allow_category_change = fields.Boolean(readonly=True)
 
@@ -82,6 +82,8 @@ class ConnectMessageContentTemplate(models.Model):
             if rec.actions:
                 try:
                     val = json.loads(rec.actions)
+                    print(rec.actions)
+                    print(type(val), val)
                     if not isinstance(val, list):
                         raise ValidationError('Actions must be a JSON list (array) of objects.')
                 except Exception as e:

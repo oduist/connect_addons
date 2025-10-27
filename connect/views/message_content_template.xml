@@ -45,8 +45,8 @@
                             <field name="language" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
                             <field name="content_type" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
                             <field name="category" readonly="not ((status == 'unsubmitted' or status == 'rejected') or (status == 'approved' and allow_category_change))"/>
-                            <field name="variables" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
-                            <field name="body" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
+                            <field name="variables" placeholder="{'name': 'John'}" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
+                            <field name="body" placeholder="Hello {{name}}! Welcome to our community!" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
                             <field name="actions" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
                         </group>
                         <group>

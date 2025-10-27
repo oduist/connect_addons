@@ -47,7 +47,7 @@
                             <field name="offline_reasons"/>
                             <field name="quality_rating"/>
                             <field name="messaging_limit"/>
-                            <field name="no_sync"/>
+                            <field name="no_sync" string="Ignore"/>
                             <field name="is_default"/>
                         </group>
                         <group>
