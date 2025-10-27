@@ -58,6 +58,14 @@ class ConnectWhatsappSender(models.Model):
         ('number_unique', 'UNIQUE(number)', 'This number already exists!'),
     ]
 
+    @api.constrains('is_default')
+    def _check_single_default(self):
+        for rec in self:
+            if rec.is_default:
+                others = self.search([('is_default', '=', True), ('id', '!=', rec.id)], limit=1)
+                if others:
+                    raise ValidationError('Only one WhatsApp sender can be marked as default.')
+
     @api.onchange('number')
     def _onchange_number(self):
         for rec in self:
