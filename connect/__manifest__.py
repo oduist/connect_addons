@@ -55,7 +55,8 @@
         'views/documentation.xml',
         # Wizard
         'wizard/transfer.xml',
-        'wizard/sms_composer_views.xml',
+'wizard/sms_composer_views.xml',
+        'wizard/whatsapp_composer_views.xml',
     ],
     'demo': [],
     'installable': True,
@@ -63,9 +64,11 @@
     'auto_install': False,
     'images': ['static/description/logo.png'],
     'assets': {
-        'web.assets_backend': [
+'web.assets_backend': [
             '/connect/static/src/icomoon/style.css',
             '/connect/static/src/components/phone/*/*',
+            '/connect/static/src/components/whatsapp_button/*',
+            '/connect/static/src/components/phone_field/*',
             '/connect/static/src/js/main.js',
             '/connect/static/src/js/utils.js',
             '/connect/static/src/widgets/phone_field/*',

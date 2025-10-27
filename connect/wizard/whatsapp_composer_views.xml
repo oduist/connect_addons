@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_connect_whatsapp_composer" model="ir.actions.act_window">
+        <field name="name">Send WhatsApp</field>
+        <field name="res_model">connect.whatsapp_composer</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="view_connect_whatsapp_composer_form" model="ir.ui.view">
+        <field name="name">connect.whatsapp_composer.form</field>
+        <field name="model">connect.whatsapp_composer</field>
+        <field name="arch" type="xml">
+            <form string="Send WhatsApp Message">
+                <sheet>
+                    <group>
+                        <field name="res_model" invisible="1"/>
+                        <field name="res_id" invisible="1"/>
+                        <field name="whatsapp_sender_id" required="1"/>
+                        <field name="phone" required="1"/>
+                        <field name="body" widget="text" nolabel="0" placeholder="Type your message..."/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Send" type="object" name="action_send_whatsapp" class="btn-primary oe_highlight"/>
+                    <button string="Close" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

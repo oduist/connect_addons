@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api
+from odoo import models, fields, api, SUPERUSER_ID
 from odoo.exceptions import ValidationError
 import json
 import requests
@@ -52,6 +52,7 @@ class ConnectWhatsappSender(models.Model):
 
     # Local controls
     no_sync = fields.Boolean(string='Do not sync', default=False)
+    is_default = fields.Boolean(string='Default WhatsApp Sender', help='Used as default when user has no personal sender set.')
     _sql_constraints = [
         ('sid_unique', 'UNIQUE(sid)', 'This Sender SID already exists!'),
         ('number_unique', 'UNIQUE(number)', 'This number already exists!'),
@@ -161,6 +162,96 @@ class ConnectWhatsappSender(models.Model):
         self.ensure_one()
         self.env['connect.whatsapp_sender'].sync()
         return True
+
+    def send_whatsapp(self, recipient, body, res_model=None, res_id=None, raise_on_error=True):
+        """Send a WhatsApp message using this sender and create connect.message + chatter.
+
+        Args:
+            recipient (str): E.164 phone (e.g., +123456789).
+            body (str): Message text.
+            res_model (str): Optional model to post to chatter.
+            res_id (int): Optional record id to post to chatter.
+            raise_on_error (bool): When True raise ValidationError on failures, otherwise log and return False.
+        Returns:
+            connect.message record or False on error when raise_on_error=False
+        """
+        self.ensure_one()
+        if not self.number:
+            raise ValidationError('WhatsApp sender has no number configured.')
+        # Normalize destination number to E.164 if partner API available
+        try:
+            # Try to use partner helper if present in context
+            Partner = self.env['res.partner']
+            if hasattr(Partner, '_phone_format'):
+                recipient = Partner._phone_format(Partner, number=recipient)
+        except Exception:
+            pass
+        client = self.env['connect.settings'].get_client()
+        message = None
+        try:
+            message = client.messages.create(
+                to=f'whatsapp:{recipient}',
+                from_=f'whatsapp:{self.number}',
+                body=body or '',
+            )
+        except Exception as e:
+            if raise_on_error:
+                raise ValidationError('Unable to send WhatsApp message. Please check the number and sender configuration.')
+            logger.error('Unable to send WhatsApp message to %s via %s: %s', recipient, self.number, e)
+            return False
+        if not message:
+            if raise_on_error:
+                raise ValidationError('WhatsApp API did not return a message SID.')
+            logger.error('WhatsApp API did not return a message SID for recipient %s', recipient)
+            return False
+
+        # Create connect.message record mirroring ConnectMessage.send
+        sender_user = self.env.user
+        partner = self.env['res.partner'].get_partner_by_number(recipient)
+        msg_vals = {
+            'message_type': 'WhatsApp',
+            'to_number': recipient,
+            'from_number': self.number,
+            'body': body,
+            'sender_user': sender_user.id,
+            'partner': partner.id if partner else False,
+            'res_model': res_model,
+            'res_id': res_id,
+            'status': 'sent',
+            'account_sid': getattr(message, 'account_sid', False),
+            'messaging_service_sid': getattr(message, 'messaging_service_sid', False),
+            'num_media': getattr(message, 'num_media', 0) or 0,
+            'error_code': getattr(message, 'error_code', False),
+            'error_message': getattr(message, 'error_message', False),
+            'message_sid': message.sid,
+        }
+        msg = self.env['connect.message'].sudo().create(msg_vals)
+
+        # Post to chatter if relevant
+        if res_model and res_id:
+            try:
+                mt_note = self.env.ref('mail.mt_note').id
+                obj = self.env[res_model].browse(res_id)
+                if hasattr(obj, 'message_post'):
+                    chatter = obj.with_context(mail_create_nosubscribe=False).message_post(
+                        body=body,
+                        subtype_id=mt_note,
+                        message_type='WhatsApp',
+                        author_id=self.env.user.partner_id.id,
+                    )
+                    self.env['mail.notification'].sudo().create([{
+                        'author_id': chatter.author_id.id,
+                        'mail_message_id': chatter.id,
+                        'res_partner_id': chatter.author_id.id,
+                        'sms_number': self.number,
+                        'notification_type': 'WhatsApp',
+                        'is_read': True,
+                        'notification_status': 'ready',
+                    }])
+                    self.env['connect.settings'].connect_reload_view(res_model)
+            except Exception as e:
+                logger.warning('Failed to post WhatsApp chatter message on %s,%s: %s', res_model, res_id, e)
+        return msg
 
     @api.model
     def update_message_status(self, data: dict):

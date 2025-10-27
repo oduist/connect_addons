@@ -48,6 +48,7 @@
                             <field name="quality_rating"/>
                             <field name="messaging_limit"/>
                             <field name="no_sync"/>
+                            <field name="is_default"/>
                         </group>
                         <group>
                             <field name="profile_name"/>

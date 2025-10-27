@@ -73,6 +73,7 @@ class User(models.Model):
     callerid_number = fields.Many2one('connect.number', ondelete='restrict') # TODO: Remove after 1.0
     outgoing_callerid = fields.Many2one('connect.outgoing_callerid', ondelete='set null',
         domain=['|',('status', '=', 'validated'),('callerid_type', '=', 'number')])
+    whatsapp_sender_id = fields.Many2one('connect.whatsapp_sender', string='WhatsApp Sender', ondelete='set null')
     missed_calls_notify = fields.Boolean(default=False, help='Notify user on missed calls.')
     greeting_message = fields.Char()
     summary_prompt = fields.Char()
