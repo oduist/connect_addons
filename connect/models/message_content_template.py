@@ -36,8 +36,7 @@ WHATSAPP_STATUSES = [
 WHATSAPP_CATEGORIES = [
     ('UTILITY', 'UTILITY'),
     ('AUTHENTICATION', 'AUTHENTICATION'),
-    ('MARKETING', 'MARKETING'),
-    ('TRANSPORTATION_UPDATE', 'TRANSPORTATION_UPDATE'),
+    ('MARKETING', 'MARKETING')
 ]
 
 
@@ -46,6 +45,9 @@ class ConnectMessageContentTemplate(models.Model):
     _description = 'WhatsApp Content Template (Twilio Content API)'
     _rec_name = 'friendly_name'
     _order = 'create_date desc'
+
+    # Link template to a specific Odoo model it applies to
+    model_id = fields.Many2one('ir.model', string='Related Model', help='Model this template applies to.')
 
     friendly_name = fields.Char(required=True)
     language = fields.Many2one('res.lang', string='Language', required=True)
