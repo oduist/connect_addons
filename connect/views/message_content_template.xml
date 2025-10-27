@@ -7,7 +7,7 @@
     </record>
 
     <menuitem id="connect_message_content_template_menu"
-              name="WhatsApp Content Templates"
+              name="WhatsApp Templates"
               action="action_connect_message_content_template"
               sequence="64"
               parent="connect.connect_messaging_menu"

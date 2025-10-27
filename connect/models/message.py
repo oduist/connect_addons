@@ -53,7 +53,7 @@ class ConnectMessage(models.Model):
     error_message = fields.Char()
     res_model = fields.Char()
     res_id = fields.Integer()
-    ref = fields.Reference(selection='_reference_models', compute='_compute_ref', store=True)
+    ref = fields.Reference(selection='_reference_models', string="Reference", compute='_compute_ref', store=True)
     media_url = fields.Char()
     media_content_type = fields.Char()
     if release.version_info[0] >= 17.0:
@@ -120,9 +120,9 @@ class ConnectMessage(models.Model):
         """Display direction with icon (no colors)."""
         for rec in self:
             if rec.direction == 'incoming':
-                rec.direction_display = '<span><i class="fa fa-arrow-down"/> Incoming</span>'
+                rec.direction_display = '<span class="fa fa-arrow-down"/>'
             elif rec.direction == 'outgoing':
-                rec.direction_display = '<span><i class="fa fa-arrow-up"/> Outgoing</span>'
+                rec.direction_display = '<span class="fa fa-arrow-up"/>'
             else:
                 rec.direction_display = ''
 

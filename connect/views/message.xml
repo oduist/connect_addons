@@ -56,15 +56,17 @@
             <list create="false" edit="false"  decoration-danger="has_error">
                 <field name="has_error" invisible="1" optional="hide"/>
                 <field name="create_date"/>
-                <field name="direction_display" widget="html" readonly="1" string="Direction" />
+                <field name="direction_display" widget="html" readonly="1" string="Direction" optional="show"/>
+                <field name="body"/>
+                <field name="ref" optional="show"/>
+                <field name="sender_user" optional="show"/>
                 <field name="from_number" optional="hide"/>
                 <field name="to_number" optional="hide"/>
-                <field name="body"/>
                 <field name="from_city" optional="hide"/>
                 <field name="from_country" optional="hide"/>
                 <field name="message_type" optional="show"/>
                 <field name="status" optional="show"/>
-                <field name="num_media" optional="hide"/>
+                <field name="error_message" optional="hide"/>
             </list>
         </field>
     </record>
@@ -107,17 +109,14 @@
                         <group>
                             <field name="ref" invisible="ref == False"/>
                             <field name="direction" invisible="1"/>
-                            <field name="direction_display" widget="html" string="Direction"/>
                             <field name="message_type"/>
                             <field name="from_city" string="City"/>
                             <field name="from_state" string="State"/>
                             <field name="from_country" string="Country"/>
                             <field name="from_zip" string="Zip"/>
                             <field name="status"/>
-                            <field name="num_media"/>
                             <field name="media_url" invisible="1"/>
                             <field name="media_widget" widget="html" invisible="media_url == False"/>
-                            <field name="error_code" invisible="not error_code"/>
                             <field name="error_message" invisible="not error_message"/>
                         </group>
                     </group>
@@ -125,9 +124,11 @@
                         <page string="Technical Information" groups="base.group_no_one">
                             <group>
                                 <group>
+                                    <field name="error_code" invisible="not error_code"/>
                                     <field name="message_sid"/>
                                     <field name="account_sid"/>
                                     <field name="messaging_service_sid"/>
+                                    <field name="num_media"/>
                                 </group>
                             </group>
                         </page>
