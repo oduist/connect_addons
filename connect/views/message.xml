@@ -54,14 +54,14 @@
         <field name="model">connect.message</field>
         <field name="arch" type="xml">
             <list create="false" edit="false"  decoration-danger="has_error">
-                <field name="has_error" invisible="1"/>
+                <field name="has_error" invisible="1" optional="hide"/>
                 <field name="create_date"/>
                 <field name="direction_display" widget="html" readonly="1" string="Direction" />
-                <field name="from_number"/>
-                <field name="to_number"/>
+                <field name="from_number" optional="hide"/>
+                <field name="to_number" optional="hide"/>
                 <field name="body"/>
-                <field name="from_city"/>
-                <field name="from_country"/>
+                <field name="from_city" optional="hide"/>
+                <field name="from_country" optional="hide"/>
                 <field name="message_type" optional="show"/>
                 <field name="status" optional="show"/>
                 <field name="num_media" optional="hide"/>

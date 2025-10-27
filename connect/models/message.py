@@ -91,7 +91,7 @@ class ConnectMessage(models.Model):
                     rec.ref = False
             else:
                 rec.ref = False
-    
+
     @api.depends('status', 'sender_user')
     def _compute_direction(self):
         """Determine message direction based on status or sender_user.
@@ -109,22 +109,20 @@ class ConnectMessage(models.Model):
                 our_numbers = self.env['connect.number'].search([]).mapped('phone_number')
                 our_whatsapp = self.env['connect.whatsapp_sender'].search([]).mapped('number')
                 all_our_numbers = set(our_numbers) | set(our_whatsapp)
-                
+
                 if rec.from_number in all_our_numbers:
                     rec.direction = 'outgoing'
                 else:
                     rec.direction = 'incoming'
-    
+
     @api.depends('direction')
     def _compute_direction_display(self):
-        """Display direction with appropriate icon."""
+        """Display direction with icon (no colors)."""
         for rec in self:
             if rec.direction == 'incoming':
-                # Green arrow pointing down-left (incoming)
-                rec.direction_display = '<span class="badge rounded-pill text-bg-success"><i class="fa fa-arrow-down"/> Incoming</span>'
+                rec.direction_display = '<span><i class="fa fa-arrow-down"/> Incoming</span>'
             elif rec.direction == 'outgoing':
-                # Blue arrow pointing up-right (outgoing)
-                rec.direction_display = '<span class="badge rounded-pill text-bg-info"><i class="fa fa-arrow-up"/> Outgoing</span>'
+                rec.direction_display = '<span><i class="fa fa-arrow-up"/> Outgoing</span>'
             else:
                 rec.direction_display = ''
 
@@ -175,7 +173,6 @@ class ConnectMessage(models.Model):
 
     @api.model
     def receive(self, params):
-        print(params)
         try:
             if params.get('AccountSid') != self.env['connect.settings'].get_param('account_sid'):
                 logger.warning("Received Twilio SMS webhook with incorrect AccountSid")
@@ -270,12 +267,11 @@ class ConnectMessage(models.Model):
                     message.update({
                         'error_code': params.get('ErrorCode'),
                         'error_message': params.get('ErrorMessage'),
-                        'has_error': True
+                        'has_error': True,
                     })
         except Exception as e:
             logger.error(f"Error handling incoming SMS: {e}")
-        finally:
-            return str(MessagingResponse())  # Return empty TwiML response, i.e. no reply.
+        return str(MessagingResponse())  # Return empty TwiML response, i.e. no reply.
 
     def send(self, recipient, body, res_id=None, res_model=None, outgoing_callerid=None):
         sender_user = self.env.user
