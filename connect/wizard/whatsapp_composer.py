@@ -19,7 +19,8 @@ class ConnectWhatsappComposer(models.TransientModel):
         domain="[('no_sync', '=', False), ('status', '=', 'ONLINE')]"
     )
     phone = fields.Char(string='To', required=True)
-    content_template_id = fields.Many2one('connect.message_content_template', string='Template', domain="[('status','=','approved')]")
+    content_template_id = fields.Many2one('connect.message_content_template', string='Template',
+                                          domain="[('status','=','Approved')]")
     content_variables = fields.Text(string='Content Variables (JSON)')
     body = fields.Text(string='Message')
 
