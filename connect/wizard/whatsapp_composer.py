@@ -16,7 +16,7 @@ class ConnectWhatsappComposer(models.TransientModel):
     phone = fields.Char(string='To', required=True)
     content_template_id = fields.Many2one('connect.message_content_template', string='Content Template', domain="[('status','=','approved')]")
     content_variables = fields.Text(string='Content Variables (JSON)')
-    body = fields.Text(string='Message', required=True)
+    body = fields.Text(string='Message')
 
     @api.model
     def default_get(self, fields_list):
@@ -83,8 +83,6 @@ class ConnectWhatsappComposer(models.TransientModel):
     @api.onchange('content_template_id')
     def _onchange_content_template(self):
         if self.content_template_id:
-            # set body preview from template
-            self.body = self.content_template_id.body or self.body
             # prefill variables from current record
             auto_vals = self._extract_template_variables(self.content_template_id.body)
             if auto_vals:
@@ -93,15 +91,45 @@ class ConnectWhatsappComposer(models.TransientModel):
                     self.content_variables = json.dumps(auto_vals)
                 except Exception:
                     self.content_variables = str(auto_vals)
+            # render preview
+            self.body = self._render_preview(self.content_template_id.body, self.content_variables)
         else:
-            # clear variables when deselecting
+            # clear variables/body when deselecting
             self.content_variables = False
+            self.body = False
+
+    def _render_preview(self, template_body, variables_json):
+        if not template_body:
+            return False
+        mapping = {}
+        try:
+            import json
+            mapping = json.loads(variables_json) if variables_json else {}
+        except Exception:
+            mapping = {}
+        preview = template_body
+        # simple placeholder replacement for {{var}}
+        import re
+        def repl(match):
+            key = match.group(1).strip()
+            return str(mapping.get(key, match.group(0)))
+        preview = re.sub(r"{{\s*([\w\.]+)\s*}}", repl, template_body)
+        return preview
+
+    @api.onchange('content_variables')
+    def _onchange_content_variables(self):
+        if self.content_template_id:
+            self.body = self._render_preview(self.content_template_id.body, self.content_variables)
 
     def action_send_whatsapp(self):
         self.ensure_one()
         if not self.phone:
             raise ValidationError('Recipient number is required')
+        # validate body if no template
+        if not self.content_template_id and not (self.body and self.body.strip()):
+            raise ValidationError('Message body is required')
         kwargs = {}
+        body_to_send = self.body
         if self.content_template_id and self.content_template_id.sid:
             kwargs['content_sid'] = self.content_template_id.sid
             # use provided json or build automatically
@@ -113,9 +141,11 @@ class ConnectWhatsappComposer(models.TransientModel):
                     json_text = json.dumps(auto_vals)
             if json_text:
                 kwargs['content_variables'] = json_text
+            # do not send body when using content template
+            body_to_send = ''
         self.whatsapp_sender_id.send_whatsapp(
             recipient=self.phone,
-            body=self.body,
+            body=body_to_send,
             res_model=self.res_model,
             res_id=self.res_id,
             **kwargs,

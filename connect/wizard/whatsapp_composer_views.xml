@@ -20,7 +20,7 @@
                         <field name="phone" required="1"/>
                         <field name="content_template_id"/>
                         <field name="content_variables" placeholder='{"name": "Max"}'/>
-                        <field name="body" widget="text" nolabel="0" placeholder="Type your message..." readonly="content_template_id != False"/>
+                        <field name="body" widget="text" nolabel="0" placeholder="Type your message..." readonly="content_template_id != False" required="not content_template_id"/>
                     </group>
                 </sheet>
                 <footer>
