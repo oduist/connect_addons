@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api, SUPERUSER_ID
-from odoo.exceptions import ValidationError
 import json
-import requests
 import logging
+from datetime import datetime, timedelta
 from urllib.parse import urljoin
+
+import requests
 from markupsafe import Markup
+
+from odoo import models, fields, api
+from odoo.exceptions import ValidationError
+
 logger = logging.getLogger(__name__)
 
 
@@ -180,6 +184,8 @@ class ConnectWhatsappSender(models.Model):
             res_model (str): Optional model to post to chatter.
             res_id (int): Optional record id to post to chatter.
             raise_on_error (bool): When True raise ValidationError on failures, otherwise log and return False.
+            content_sid (str): Optional Twilio Content SID for using message templates.
+            content_variables (str): Optional JSON string of template variables.
         Returns:
             connect.message record or False on error when raise_on_error=False
         """
@@ -194,8 +200,31 @@ class ConnectWhatsappSender(models.Model):
                 recipient = Partner._phone_format(Partner, number=recipient)
         except Exception:
             pass
+        
+        # Check 24-hour window for WhatsApp - only if not using a content template
+        if not content_sid:
+            # Find last incoming WhatsApp message from this recipient
+            last_incoming = self.env['connect.message'].search([
+                ('message_type', '=', 'WhatsApp'),
+                ('from_number', '=', recipient),
+                ('direction', '=', 'incoming')
+            ], order='create_date desc', limit=1)
+            
+            if last_incoming:
+                # Check if message is older than 24 hours
+                time_diff = datetime.now() - last_incoming.create_date
+                if time_diff > timedelta(hours=24):
+                    raise ValidationError(
+                        '24 hours contact window has been expired. '
+                        'Please select a message template to initiate a new contact window.'
+                    )
+            else:
+                # No previous incoming message found - must use template
+                raise ValidationError(
+                    '24 hours contact window has been expired. '
+                    'Please select a message template to initiate a new contact window.'
+                )
         client = self.env['connect.settings'].get_client()
-        message = None
         try:
             create_kwargs = {
                 'to': f'whatsapp:{recipient}',
