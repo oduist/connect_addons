@@ -5,7 +5,7 @@ import json
 import requests
 import logging
 from urllib.parse import urljoin
-
+from markupsafe import Markup
 logger = logging.getLogger(__name__)
 
 
@@ -245,7 +245,9 @@ class ConnectWhatsappSender(models.Model):
 
         # Post to chatter if relevant
         if res_model and res_id:
-            self.chatter_post(res_model, res_id, self.env.user.partner_id.id, body)
+            chatter_message = Markup(f"<div class='d-flex flex-row'>{msg.direction_display} "
+                                     f"<p class='px-1'>{body}</p></div>")
+            self.chatter_post(res_model, res_id, self.env.user.partner_id.id, chatter_message)
         return msg
 
     def chatter_post(self, res_model, res_id, author, body):
@@ -300,11 +302,15 @@ class ConnectWhatsappSender(models.Model):
                     vals['error_message'] = msg
                     vals['has_error'] = True
                 if message.res_model and message.res_id:
-                    body = 'Failed to send this Whatsapp message'
-                    self.chatter_post(message.res_model, message.res_id, connect_partner.id, body)
+                    chatter_message = 'Failed to send this Whatsapp message'
+                    self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
             elif (status or '').lower() == 'read' and message.res_model and message.res_id:
-                body = 'Whatsapp message read!'
-                self.chatter_post(message.res_model, message.res_id, connect_partner.id, body)
+                chatter_message = 'Whatsapp message read!'
+                self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
+            elif (status or '').lower() ==  'undelivered' and message.res_model and message.res_id:
+                chatter_message = ('24 hours contact window has been expired. '
+                        'Please select a message template to initiate a new contact window!')
+                self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
             if vals:
                 message.write(vals)
                 self.env['connect.settings'].connect_reload_view('connect.message')

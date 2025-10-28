@@ -216,9 +216,12 @@ class ConnectMessage(models.Model):
                     mt_note = self.env.ref('mail.mt_note').id
                     obj = self.env[last_message.res_model].with_user(SUPERUSER_ID).browse(last_message.res_id)
                     if hasattr(obj, 'message_post'):
-                        body = values.get('body')
+                        body = Markup(f"<div class='d-flex flex-row px-1'>{message.direction_display} "
+                                f"<p class='px-1'>{values.get('body')}</p></div>")
                         if message.media_url:
-                            body = Markup(f"<span>{values.get('body')}</span><br/>{message.media_widget}")
+                            body = Markup(f"<div class='d-flex flex-row'>{message.direction_display} "
+                                          f"<span class='px-1'>{values.get('body')}</span>"
+                                          f"<br/>{message.media_widget}</div>")
                         kwargs = {
                             'body': body,
                             'subtype_id': mt_note,
