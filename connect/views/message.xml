@@ -80,6 +80,8 @@
             <form create="false" edit="false">
                 <header>
                     <field name="direction" widget="statusbar" readonly="1"/>
+                    <button name="action_retry" type="object" string="Retry" class="oe_highlight"
+                            attrs="{'invisible': [('status', '!=', 'failed')]}"/>
                 </header>
                 <sheet>
                     <group>

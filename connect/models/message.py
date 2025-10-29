@@ -245,7 +245,7 @@ class ConnectMessage(models.Model):
                                           f"<span class='px-1'>{values.get('body')}</span>"
                                           f"<br/>{message.media_widget}</div>")
                         # Include link to the message form
-                        link = Markup(f"<br/><small><a href=\"/web#id={message.id}&model=connect.message&view_type=form\">Open message</a></small>")
+                        link = Markup(f"<br/><small><a href=\"/web#id={message.id}&model=connect.message&view_type=form\">Message</a></small>")
                         if message.media_url:
                             body = Markup(str(body) + str(link))
                         else:
@@ -385,3 +385,22 @@ class ConnectMessage(models.Model):
             else:
                 logger.warning('Unable to send WhatsUp message to "{}"!'.format(recipient))
             return False
+
+    def action_retry(self):
+        for rec in self:
+            if rec.status != 'failed':
+                continue
+            try:
+                # Use original sender number if available; send() will use it directly
+                self.env['connect.message'].send(
+                    recipient=rec.to_number,
+                    body=rec.body or '',
+                    res_id=rec.res_id or None,
+                    res_model=rec.res_model or None,
+                    outgoing_callerid=rec.from_number or None,
+                )
+            except ValidationError:
+                raise
+            except Exception as e:
+                logger.exception('Retry send failed for message %s: %s', rec.id, e)
+        return True
