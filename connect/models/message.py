@@ -34,7 +34,7 @@ class ConnectMessage(models.Model):
     ], string='Direction', compute='_compute_direction', store=True, readonly=True)
     direction_display = fields.Html(string='Direction', compute='_compute_direction_display', sanitize=False)
     status = fields.Char(readonly=True, default='draft')
-    status_display = fields.Html(string='Status', compute='_compute_status_display', sanitize=False)
+    status_display = fields.Html(compute='_compute_status_display', sanitize=False)
     # Odoo users
     sender_user = fields.Many2one('res.users', string='Sender User', ondelete='set null', readonly=True)
     sender_user_img = fields.Binary(related='sender_user.image_1920')
@@ -134,18 +134,16 @@ class ConnectMessage(models.Model):
         for rec in self:
             s = (rec.status or '').lower()
             icon = ''
-            if s in ('received',):
-                icon = 'inbox'
-            elif s in ('sent', 'sending'):
+            if s in ('sent', 'sending'):
                 icon = 'paper-plane'
-            elif s in ('delivered', 'read'):
+            elif s in ('delivered', 'read', 'received'):
                 icon = 'check-circle'
             elif s in ('queued', 'deferred'):
                 icon = 'clock-o'
             elif s in ('failed', 'undeliverable', 'error'):
                 icon = 'times-circle'
             elif s in ('draft',):
-                icon = 'pencil'
+                icon = 'pencil-square-o'
             elif not s:
                 icon = ''
             rec.status_display = f'<span class="fa fa-{icon}"/>' if icon else ''

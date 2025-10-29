@@ -58,15 +58,15 @@
                 <field name="has_error" invisible="1" optional="hide"/>
                 <field name="create_date"/>
                 <field name="direction_display" widget="html" readonly="1" string="Direction" optional="show"/>
-                <field name="status_display" widget="html" readonly="1" string="Status" optional="hide"/>
                 <field name="body"/>
                 <field name="ref" optional="show"/>
-                <field name="sender_user" optional="show"/>
+                <field name="sender_user" string="Sender" optional="show"/>
                 <field name="from_number" optional="hide"/>
                 <field name="to_number" optional="hide"/>
                 <field name="from_city" optional="hide"/>
                 <field name="from_country" optional="hide"/>
                 <field name="message_type" optional="show"/>
+                <field name="status_display" widget="html" readonly="1" string="Status" optional="show"/>
                 <field name="status" optional="hide"/>
                 <field name="error_message" optional="hide"/>
             </list>

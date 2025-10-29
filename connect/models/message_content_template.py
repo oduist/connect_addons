@@ -89,8 +89,6 @@ class ConnectMessageContentTemplate(models.Model):
             if rec.actions:
                 try:
                     val = json.loads(rec.actions)
-                    print(rec.actions)
-                    print(type(val), val)
                     if not isinstance(val, list):
                         raise ValidationError('Actions must be a JSON list (array) of objects.')
                 except Exception as e:
@@ -143,7 +141,7 @@ class ConnectMessageContentTemplate(models.Model):
         type_payload = {}
         if self.body:
             type_payload['body'] = self.body
-        if self.content_type == 'twilio/quick-reply' and self.actions:
+        if self.actions:
             actions = json.loads(self.actions)
             if not isinstance(actions, list):
                 raise ValidationError('Actions must be a JSON list.')

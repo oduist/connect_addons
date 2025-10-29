@@ -200,7 +200,7 @@ class ConnectWhatsappSender(models.Model):
                 recipient = Partner._phone_format(Partner, number=recipient)
         except Exception:
             pass
-        
+
         # Check 24-hour window for WhatsApp - only if not using a content template
         if not content_sid:
             # Find last incoming WhatsApp message from this recipient
@@ -209,7 +209,7 @@ class ConnectWhatsappSender(models.Model):
                 ('from_number', '=', recipient),
                 ('direction', '=', 'incoming')
             ], order='create_date desc', limit=1)
-            
+
             if last_incoming:
                 # Check if message is older than 24 hours
                 time_diff = datetime.now() - last_incoming.create_date
@@ -334,7 +334,7 @@ class ConnectWhatsappSender(models.Model):
                     chatter_message = 'Failed to send this Whatsapp message'
                     self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
             elif (status or '').lower() == 'read' and message.res_model and message.res_id:
-                chatter_message = 'Whatsapp message read!'
+                chatter_message = 'Whatsapp message is read.'
                 self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
             elif (status or '').lower() ==  'undelivered' and message.res_model and message.res_id:
                 chatter_message = ('24 hours contact window has been expired. '
