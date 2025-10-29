@@ -37,22 +37,15 @@ class ConnectWhatsappSender(models.Model):
     profile_vertical = fields.Char(string='Vertical', readonly=True)
     profile_address = fields.Char(string='Address', readonly=True)
     profile_description = fields.Text(string='Description', readonly=True)
-
-    # Messaging webhooks (computed)
-    callback_method = fields.Selection([
-        ('GET', 'GET'),
-        ('POST', 'POST'),
-    ], compute='_get_twilio_urls', compute_sudo=True)
     callback_url = fields.Char(compute='_get_twilio_urls', compute_sudo=True)
-    status_callback_method = fields.Selection([
-        ('GET', 'GET'),
-        ('POST', 'POST'),
-    ], compute='_get_twilio_urls', compute_sudo=True)
     status_callback_url = fields.Char(compute='_get_twilio_urls', compute_sudo=True)
 
     # Properties
     messaging_limit = fields.Char(string='Messaging Limit', readonly=True)
     quality_rating = fields.Char(string='Quality Rating', readonly=True)
+
+    # Voice application to use for WhatsApp voice calling integration
+    voice_application = fields.Many2one('connect.twiml', string='Voice Application', ondelete='set null')
 
     # Local controls
     no_sync = fields.Boolean(string='Do not sync', default=False)
@@ -108,8 +101,6 @@ class ConnectWhatsappSender(models.Model):
         api_url = self.env['connect.settings'].get_param('api_url')
         edge = self.env['connect.settings'].get_param('twilio_edge')
         for rec in self:
-            rec.callback_method = 'POST'
-            rec.status_callback_method = 'POST'
             rec.callback_url = urljoin(api_url, f'twilio/webhook/message#e={edge}')
             rec.status_callback_url = urljoin(api_url, f'twilio/webhook/message_status#e={edge}')
 
@@ -150,12 +141,17 @@ class ConnectWhatsappSender(models.Model):
                         update_url = f'https://messaging.twilio.com/v2/Channels/Senders/{sid}'
                         payload = {
                             'webhook': {
-                                'callback_method': rec.callback_method or 'POST',
+                                'callback_method': 'POST',
                                 'callback_url': rec.callback_url,
-                                'status_callback_method': rec.status_callback_method or 'POST',
+                                'status_callback_method': 'POST',
                                 'status_callback_url': rec.status_callback_url,
                             }
                         }
+                        # Pass voice_application_sid when configured
+                        if rec.voice_application and rec.voice_application.sid:
+                            payload['configuration'] = {
+                                'voice_application_sid': rec.voice_application.sid
+                            }
                         resp_u = requests.post(update_url, auth=(account_sid, auth_token), json=payload, timeout=30)
                         if resp_u.status_code >= 400:
                             logger.warning('Failed to update sender %s: %s %s', sid, resp_u.status_code, resp_u.text)

@@ -23,6 +23,7 @@
             <list>
                 <field name="number"/>
                 <field name="status"/>
+                <field name="voice_application"/>
                 <field name="is_default" string="Default"/>
                 <field name="no_sync" string="Ignore" optional="hide"/>
                 <field name="quality_rating"/>
@@ -46,6 +47,7 @@
                             <field name="number"/>
                             <field name="number_id"/>
                             <field name="status"/>
+                            <field name="voice_application"/>
                             <field name="offline_reasons"/>
                             <field name="quality_rating"/>
                             <field name="messaging_limit"/>
