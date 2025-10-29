@@ -123,6 +123,11 @@ class ConnectWhatsappSender(models.Model):
                 if item.get('sid'):
                     twilio_sids.add(item.get('sid'))
                 vals = self._prepare_vals_from_api(item)
+                # Set default voice_application if not already set
+                if 'voice_application' not in vals or not vals.get('voice_application'):
+                    domain_app = self.env['connect.domain'].get_domain_app()
+                    if domain_app:
+                        vals['voice_application'] = domain_app.id
                 # Upsert by sid if present, else by number
                 rec = self.search([('sid', '=', vals.get('sid'))]) if vals.get('sid') else self.browse()
                 if not rec and vals.get('number'):
