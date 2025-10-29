@@ -30,6 +30,10 @@ class Channel(models.Model):
     duration_billing = fields.Integer(string='Bill Minutes', tracking=True)
     duration_human = fields.Char(compute='_get_duration_human', string='Duration', store=True, tracking=True)
     caller = fields.Char(tracking=True)
+    call_type = fields.Selection([
+        ('phone', 'Phone'),
+        ('whatsapp', 'WhatsApp')
+    ], default='phone', index=True, tracking=True)
     # PBX users are Connect SIP or Client users.
     caller_pbx_user = fields.Many2one('connect.user', ondelete='set null', string='Caller PBX User', tracking=True)
     called_pbx_user = fields.Many2one('connect.user', ondelete='set null', string='Called PBX User', tracking=True)
@@ -45,12 +49,16 @@ class Channel(models.Model):
         re_number_domain = re.compile(r'^(sip|client):(.+)@(.+)$')
         re_client_number = re.compile(r'^client:(\d{8})$')
         re_number = re.compile(r'^(\+?[0-9]+)$')
+        re_whatsapp = re.compile(r'^whatsapp:(\+?[0-9]+)$')
 
         def _get_number(callinfo):
             if not isinstance(callinfo, str):
                 return ''
             if re_number.search(callinfo):
                 return callinfo
+            elif re_whatsapp.search(callinfo):
+                # Strip whatsapp: prefix, keep E.164 number
+                return re_whatsapp.search(callinfo).group(1)
             elif re_number_domain.search(callinfo):
                 user_or_number = re_number_domain.search(callinfo).group(2)
                 # Substitute username to his number
@@ -84,16 +92,28 @@ class Channel(models.Model):
     @api.model
     def on_call_status(self, params):
         debug(self, 'On channel status: %s' % json.dumps(params, indent=2))
+        # Pre-process for WhatsApp and E.164 normalization
+        def strip_whatsapp(v):
+            return v.split(':', 1)[1] if isinstance(v, str) and v.startswith('whatsapp:') else v
+        caller_raw = params.get('Caller')
+        called_raw = params.get('Called')
+        to_raw = params.get('To')
+        caller_clean = strip_whatsapp(caller_raw)
+        called_clean = strip_whatsapp(called_raw)
+        to_clean = strip_whatsapp(to_raw)
+        call_type = 'whatsapp' if any(isinstance(x, str) and x.startswith('whatsapp:') for x in [caller_raw, called_raw, to_raw]) else 'phone'
+
         channel = self.search([('sid', '=', params['CallSid'])])
         if channel:
             # Update channel data.
             data = {
-                'called': params.get('Called'),
-                'to': params.get('To'),
+                'called': called_clean,
+                'to': to_clean,
                 'technical_direction': params['Direction'],
                 'status': params['CallStatus'],
                 'duration': int(params.get('CallDuration', 0)),
-                'caller': params.get('Caller'),
+                'caller': caller_clean,
+                'call_type': call_type,
             }
             # Find an existing parent channel.
             if not channel.parent_channel:
@@ -111,12 +131,13 @@ class Channel(models.Model):
         else:
             data = {
                 'sid': params['CallSid'],
-                'called': params.get('Called'),
-                'to': params.get('To'),
+                'called': called_clean,
+                'to': to_clean,
                 'technical_direction': params['Direction'],
                 'status': params['CallStatus'],
                 'duration': int(params.get('CallDuration', 0)),
-                'caller': params.get('Caller'),
+                'caller': caller_clean,
+                'call_type': call_type,
             }
             # Check if channel has parent_sid without channel
             if channel.parent_sid:
@@ -138,23 +159,23 @@ class Channel(models.Model):
                 called_pbx_user = self.env['connect.user'].get_user_by_uri(params['Called'])
                 data['called_pbx_user'] = called_pbx_user.id
                 data['called_user'] = called_pbx_user.user.id
-            # Find the partner
-            if caller_pbx_user and params.get('Called'):
+            # Find the partner (use cleaned numbers)
+            if caller_pbx_user and called_clean:
                 # User makes outgoing call.
-                if params['Called'].startswith('+') or params['Called'].startswith('sip:+'):
-                    data['partner'] = self.env['res.partner'].get_partner_by_number(params['Called']).id
+                if (called_clean or '').startswith('+'):
+                    data['partner'] = self.env['res.partner'].get_partner_by_number(called_clean).id
                     debug(self, 'Setting partner caller user by called.')
-            elif called_pbx_user and params.get('Caller'):
-                if params['Caller'].startswith('+'):
-                    data['partner'] = self.env['res.partner'].get_partner_by_number(params['Caller']).id
+            elif called_pbx_user and caller_clean:
+                if (caller_clean or '').startswith('+'):
+                    data['partner'] = self.env['res.partner'].get_partner_by_number(caller_clean).id
                     debug(self, 'Setting partner called user by caller.')
-            elif params.get('Direction') == 'outbound-dial':
-                    data['partner'] = self.env['res.partner'].get_partner_by_number(params['Called']).id
+            elif params.get('Direction') == 'outbound-dial' and called_clean:
+                    data['partner'] = self.env['res.partner'].get_partner_by_number(called_clean).id
                     debug(self, 'Setting partner for outbound dial by called.')
             elif params.get('Direction') == 'inbound' and \
-                    params['Called'].startswith('+') and params['Caller'].startswith('+'):
-                debug(self, 'Incoming DID call. Get the partner from caller number.')
-                data['partner'] = self.env['res.partner'].get_partner_by_number(params['Caller']).id
+                    (called_clean or '').startswith('+') and (caller_clean or '').startswith('+'):
+                debug(self, 'Incoming DID/WhatsApp call. Get the partner from caller number.')
+                data['partner'] = self.env['res.partner'].get_partner_by_number(caller_clean).id
             else:
                 debug(self, 'Not setting channel partner without channel users.')
             channel = self.with_context(tracking_disable=True).create(data)
