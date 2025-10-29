@@ -222,15 +222,6 @@ class ConnectWhatsappSender(models.Model):
         self.ensure_one()
         if not self.number:
             raise ValidationError('WhatsApp sender has no number configured.')
-        # Normalize destination number to E.164 if partner API available
-        try:
-            # Try to use partner helper if present in context
-            Partner = self.env['res.partner']
-            if hasattr(Partner, '_phone_format'):
-                recipient = Partner._phone_format(Partner, number=recipient)
-        except Exception:
-            pass
-
         # Check 24-hour window for WhatsApp - only if not using a content template
         if not content_sid:
             # Find last incoming WhatsApp message from this recipient
