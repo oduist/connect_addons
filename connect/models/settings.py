@@ -738,7 +738,6 @@ class Settings(models.Model):
                 )
                 response.append(dial)
                 twiml = str(response)
-                print(1111, twiml)
             else:
                 # Regular phone call
                 default_number = self.env["connect.outgoing_callerid"].search(

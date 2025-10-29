@@ -167,8 +167,7 @@ class ConnectWhatsappSender(models.Model):
             raise ValidationError(f"Failed to sync WhatsApp Senders: {e}")
 
     def action_sync(self):
-        self.ensure_one()
-        self.env['connect.whatsapp_sender'].sync()
+        self.sync()
         return True
 
     @api.model

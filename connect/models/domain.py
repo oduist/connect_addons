@@ -509,13 +509,18 @@ class Domain(models.Model):
         to_val = request.get("To") or ''
         # Extract number for SIP or WhatsApp channels
         found = re.search(r"^sip:(.+)@(.+)\\.sip\\.((.+)\\.)?twilio\\.com", to_val)
+        is_whatsapp = False
         if found:
             found_num = found.group(1)
         elif isinstance(to_val, str) and to_val.startswith('whatsapp:'):
             found_num = to_val.split(':', 1)[1]
+            is_whatsapp = True
         else:
             found_num = to_val
         exten = self.env["connect.exten"].sudo().search([("number", "=", found_num)])
+        # Do not let whatsapp calls to go for external calling
+        if not exten and is_whatsapp:
+            return "<Response><Say>Whatsapp Extension not found! Please create an extenstion for this Whatsapp number!</Say></Response>"
         if not exten:
             # Get all extensions and match by pattern.
             # TODO: Handle bad exten numbers like 70[ that cannot be used by re.match.
