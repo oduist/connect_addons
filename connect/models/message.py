@@ -56,6 +56,7 @@ class ConnectMessage(models.Model):
     res_model = fields.Char()
     res_id = fields.Integer()
     ref = fields.Reference(selection='_reference_models', string="Reference", compute='_compute_ref', store=True)
+    parent_message = fields.Many2one('connect.message', string='In Reply To', readonly=True)
     media_url = fields.Char()
     media_content_type = fields.Char()
     if release.version_info[0] >= 17.0:
@@ -229,29 +230,53 @@ class ConnectMessage(models.Model):
                 number = self.env['connect.number'].search([('phone_number', '=', to_number)], limit=1)
                 if number and number.user:
                     values.update({'receiver_user': number.user.user.id})
+
+                # Determine parent and target using OriginalRepliedMessageSid if provided
+                original_sid = (
+                    params.get('OriginalRepliedMessageSid')
+                    or params.get('originalrepliedmessagesid')
+                    or next((params[k] for k in params.keys() if str(k).lower() == 'originalrepliedmessagesid'), None)
+                )
+                parent_msg = False
+                if original_sid:
+                    parent_msg = self.env['connect.message'].search([('message_sid', '=', original_sid)], limit=1)
+                last_message = False
+                if not parent_msg:
+                    last_message = self.env['connect.message'].search([
+                        ('from_number', '=', to_number), ('to_number', '=', from_number)
+                    ], order='create_date desc', limit=1)
+                target_msg = parent_msg or last_message
+                if target_msg and target_msg.res_model and target_msg.res_id:
+                    values.update({
+                        'res_model': target_msg.res_model,
+                        'res_id': target_msg.res_id,
+                    })
+                if parent_msg:
+                    values.update({'parent_message': parent_msg.id})
+
                 message = self.env['connect.message'].sudo().create(values)
-                # Add message to chatter
-                last_message = self.env['connect.message'].search([
-                    ('from_number', '=', to_number), ('to_number', '=', from_number)], limit=1)
-                if last_message and last_message.res_model and last_message.res_id:
-                    message.write({'res_model': last_message.res_model, 'res_id': last_message.res_id})
-                    obj = self.env[last_message.res_model].with_user(SUPERUSER_ID).browse(last_message.res_id)
+
+                # Add message to chatter at the target record when available
+                if target_msg and target_msg.res_model and target_msg.res_id:
+                    mt_note = self.env.ref('mail.mt_note').id
+                    obj = self.env[target_msg.res_model].with_user(SUPERUSER_ID).browse(target_msg.res_id)
                     if hasattr(obj, 'message_post'):
-                        body = Markup(f"<div class='d-flex flex-row px-1'>"
+                        body = Markup(f"<div class='d-flex flex-row px-1'>{message.direction_display} "
                                 f"<span class='px-1'>{values.get('body')}</span></div>")
                         if message.media_url:
-                            body = Markup(f"<div class='d-flex flex-row'>"
+                            body = Markup(f"<div class='d-flex flex-row'>{message.direction_display} "
                                           f"<span class='px-1'>{values.get('body')}</span>"
                                           f"<br/>{message.media_widget}</div>")
                         # Include link to the message form
                         link = Markup(f"<small><a href=\"/web#id={message.id}&model=connect.message&view_type=form\">Message</a></small>")
                         body = Markup(str(body) + str(link))
+
                         # Post as a comment to notify subscribed followers similar to incoming mail
                         mt_comment = self.env.ref('mail.mt_comment').id
                         kwargs = {
                             'body': body,
                             'subtype_id': mt_comment,
-                            'message_type': 'WhatsApp',
+                            'message_type': 'comment',
                         }
                         if partner:
                             kwargs.update({'author_id': partner.id})
@@ -261,8 +286,9 @@ class ConnectMessage(models.Model):
                         chatter.connect_message = message
 
                         # Let Odoo generate notifications for followers automatically (no manual mail.notification)
-                        self.env['connect.settings'].connect_reload_view(last_message.res_model)
-                # Message destination handling
+                        self.env['connect.settings'].connect_reload_view(target_msg.res_model)
+
+                # Message destination handling (restored)
                 config = self.env['connect.message_configuration'].search([('number.phone_number', '=', to_number)], limit=1)
                 dest_model = (config.destination if config and config.destination else 'res.partner')
                 defaults = {}
