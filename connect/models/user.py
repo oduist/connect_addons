@@ -428,7 +428,7 @@ class User(models.Model):
             [('sid', '=', request.get('CallSid'))], order='id desc')
         call = channel.call
         response = VoiceResponse()
-        # Check if this is real call.
+        # Check if this is real a call or dialplan view render.
         if call:
             done_callflow_ids = self.env['connect.user_callflow_call'].sudo().search(
                 [('call', '=', call.id)]).mapped('callflow').mapped('id')

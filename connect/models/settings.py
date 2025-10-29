@@ -717,27 +717,14 @@ class Settings(models.Model):
                     raise ValidationError("You must configure a WhatsApp sender!")
                 callerId = f"whatsapp:{caller_number}"
                 # Build WhatsApp Dial
-                from twilio.twiml.voice_response import Dial, VoiceResponse
-                response = VoiceResponse()
                 call_duration_limit = int(self.sudo().get_param('call_duration_limit'))
-                record_calls = bool(getattr(pbx_user, 'record_calls', False))
-                if record_calls:
-                    dial = Dial(
-                        timeout=60,
-                        callerId=callerId,
-                        timeLimit=call_duration_limit,
-                        record="record-from-answer",
-                        recordingStatusCallback=urljoin(api_url, "twilio/webhook/recordingstatus#e={}".format(edge)),
-                    )
-                else:
-                    dial = Dial(timeout=60, callerId=callerId, timeLimit=call_duration_limit)
-                dial.number(
-                    f"whatsapp:{number}",
-                    statusCallback=status_url,
-                    statusCallbackEvent="initiated answered completed",
-                )
-                response.append(dial)
-                twiml = str(response)
+                record_attrs = 'record=""' if pbx_user.record_calls else ""
+                twiml = """<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Dial callerId="{}">
+        <WhatsApp statusCallback="{}" statusCallbackEvent="ringing,answered,completed">{}</WhatsApp>
+    </Dial>
+</Response>""".format(callerId, status_url, number)
             else:
                 # Regular phone call
                 default_number = self.env["connect.outgoing_callerid"].search(
@@ -750,6 +737,7 @@ class Settings(models.Model):
                 twiml = self.get_external_call_route(number, callerId, status_url)
         record = self.env.user.connect_user.record_calls
         record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus#e={}".format(edge))
+        debug(self, 'Originate destination TwiML: {}'.format(twiml))
         channel = client.calls.create(
             twiml=twiml,
             to=to,
