@@ -179,11 +179,35 @@ class ConnectMessageContentTemplate(models.Model):
         except Exception as e:
             raise ValidationError('Failed to create content in Twilio: {}'.format(e))
 
+    def _find_lang_by_code(self, code):
+        """Find res.lang by ISO code like 'en' or 'en-US'. Returns record or False."""
+        if not code:
+            return False
+        code = str(code)
+        # Exact match
+        lang = self.env['res.lang'].search([('code', '=', code)], limit=1)
+        if lang:
+            return lang
+        # Match prefix e.g. 'en' -> 'en_US'
+        prefix = code.split('-')[0].split('_')[0]
+        if prefix:
+            lang = self.env['res.lang'].search([('code', '=ilike', prefix + '%')], limit=1)
+            if lang:
+                return lang
+        # Fallback to system language
+        try:
+            return self.env.ref('base.lang_en')
+        except Exception:
+            return self.env['res.lang'].search([], limit=1)
+
 
 
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
+        # Allow bypassing remote creation during sync/imports
+        if self.env.context.get('skip_twilio_create'):
+            return records
         for rec in records:
             rec.create_in_twilio()
         return records
@@ -284,6 +308,142 @@ class ConnectMessageContentTemplate(models.Model):
                     raise ValidationError('Category can be modified only when status is Unsubmitted/Rejected or when Approved with Allow Category Change.')
         return super().write(vals)
 
+    @api.model
+    def sync(self):
+        """Fetch all Twilio Content templates and upsert them locally.
+        - Creates new records without posting back to Twilio.
+        - Updates status/links/dates on existing records (does not overwrite content fields).
+        """
+        settings = self.env['connect.settings']
+        account_sid = settings.get_param('account_sid')
+        auth_token = settings.get_param('auth_token')
+        if not account_sid or not auth_token:
+            raise ValidationError('Twilio credentials are not configured.')
+        base = 'https://content.twilio.com'
+        url = base + '/v1/Content'
+        params = {'PageSize': 100}
+        created = 0
+        updated = 0
+        try:
+            while url:
+                resp = requests.get(url, params=params if url.endswith('/Content') else None, auth=(account_sid, auth_token), timeout=30)
+                if resp.status_code >= 400:
+                    raise ValidationError('Twilio error: {} {}'.format(resp.status_code, resp.text))
+                data = resp.json()
+                items = data.get('contents') or data.get('items') or data.get('data') or []
+                next_url = (
+                    (data.get('meta') or {}).get('next_page_url')
+                    or (data.get('next_page_uri'))
+                )
+                if next_url and not next_url.startswith('http'):
+                    next_url = base + next_url
+                # Process items
+                for item in items:
+                    sid = item.get('sid')
+                    if not sid:
+                        continue
+                    # Determine type to store
+                    types = item.get('types') or {}
+                    chosen_type = None
+                    # Prefer whatsapp-specific first
+                    for t in ['whatsapp/authentication', 'whatsapp/card']:
+                        if t in types:
+                            chosen_type = t
+                            break
+                    if not chosen_type:
+                        # Fallback to common types
+                        for t in [
+                            'twilio/text', 'twilio/media', 'twilio/location', 'twilio/list-picker',
+                            'twilio/call-to-action', 'twilio/quick-reply', 'twilio/card',
+                            'twilio/carousel', 'twilio/catalog', 'twilio/pay', 'twilio/flows'
+                        ]:
+                            if t in types:
+                                chosen_type = t
+                                break
+                    # As final fallback pick any
+                    if not chosen_type and types:
+                        chosen_type = list(types.keys())[0]
+                    type_payload = types.get(chosen_type, {}) if chosen_type else {}
+                    # Map language
+                    lang_code = item.get('language')
+                    lang_rec = self._find_lang_by_code(lang_code) if lang_code else False
+                    # Variables/body/actions
+                    variables = item.get('variables') or {}
+                    body = type_payload.get('body') if isinstance(type_payload, dict) else None
+                    actions = type_payload.get('actions') if isinstance(type_payload, dict) else None
+                    links = item.get('links') or {}
+                    date_created = item.get('date_created') or item.get('dateCreated')
+                    date_updated = item.get('date_updated') or item.get('dateUpdated')
+                    # Upsert by SID
+                    rec = self.search([('sid', '=', sid)], limit=1)
+                    # Always gather approval channel details if link is available
+                    status_val = (item.get('status')
+                                   or item.get('whatsapp', {}).get('status')
+                                   or item.get('channels', {}).get('whatsapp', {}).get('status')
+                                   or 'unsubmitted')
+                    rejection_reason = None
+                    allow_category_change = None
+                    category = item.get('category')
+                    fetch_link = links.get('approval_fetch') or links.get('whatsapp_approval_fetch')
+                    if fetch_link:
+                        try:
+                            r2 = requests.get(fetch_link, auth=(account_sid, auth_token), timeout=15)
+                            if r2.status_code < 400:
+                                j2 = r2.json()
+                                status_val = (j2.get('status')
+                                              or j2.get('approval_status')
+                                              or j2.get('whatsapp_status')
+                                              or j2.get('whatsapp', {}).get('status')
+                                              or j2.get('channels', {}).get('whatsapp', {}).get('status')
+                                              or status_val)
+                                rejection_reason = (j2.get('rejection_reason')
+                                                    or j2.get('reason')
+                                                    or (j2.get('whatsapp') or {}).get('rejection_reason')
+                                                    or (j2.get('channels') or {}).get('whatsapp', {}).get('rejection_reason'))
+                                allow_category_change = (j2.get('allow_category_change')
+                                                         or (j2.get('whatsapp') or {}).get('allow_category_change')
+                                                         or (j2.get('channels') or {}).get('whatsapp', {}).get('allow_category_change'))
+                                category = (j2.get('category')
+                                            or (j2.get('whatsapp') or {}).get('category')
+                                            or (j2.get('channels') or {}).get('whatsapp', {}).get('category')
+                                            or category)
+                        except Exception:
+                            pass
+                    common_updates = {
+                        'sid': sid,
+                        'date_created': self._normalize_twilio_datetime(date_created),
+                        'date_updated': self._normalize_twilio_datetime(date_updated),
+                        'approval_create_link': links.get('approval_create') or links.get('whatsapp_approval_create'),
+                        'approval_fetch': fetch_link,
+                        'status': str(status_val).lower() if status_val else 'unsubmitted',
+                        'rejection_reason': rejection_reason or False,
+                        'allow_category_change': bool(allow_category_change) if allow_category_change is not None else False,
+                        'category': category or False,
+                    }
+                    if rec:
+                        # Only update non-content fields to respect edit restrictions
+                        rec.write({k: v for k, v in common_updates.items() if v is not False})
+                        updated += 1
+                    else:
+                        # Ensure language is always set (required field)
+                        lang_final = lang_rec or self._find_lang_by_code('en') or self.env['res.lang'].search([], limit=1)
+                        create_vals = {
+                            'friendly_name': item.get('friendly_name') or 'Untitled',
+                            'language': lang_final.id if lang_final else False,
+                            'variables': json.dumps(variables) if isinstance(variables, dict) else (variables or False),
+                            'content_type': chosen_type or 'twilio/text',
+                            'body': body or False,
+                            'actions': json.dumps(actions) if isinstance(actions, list) else False,
+                        }
+                        create_vals.update(common_updates)
+                        self.with_context(skip_twilio_create=True).create([create_vals])
+                        created += 1
+                url = next_url
+                params = None
+            settings.connect_notify(f'WhatsApp Content Templates synced (created: {created}, updated: {updated})')
+        except Exception as e:
+            raise ValidationError('Failed to sync WhatsApp Content Templates: {}'.format(e))
+
     def action_fetch_approval_status(self):
         for rec in self:
             link = rec.approval_fetch
@@ -313,11 +473,16 @@ class ConnectMessageContentTemplate(models.Model):
                 allow_change = (data.get('allow_category_change')
                                 or data.get('whatsapp', {}).get('allow_category_change')
                                 or data.get('channels', {}).get('whatsapp', {}).get('allow_category_change'))
+                category = (data.get('category')
+                            or data.get('whatsapp', {}).get('category')
+                            or data.get('channels', {}).get('whatsapp', {}).get('category'))
                 updates = {}
                 if status:
                     updates['status'] = str(status).lower()
                 if reason:
                     updates['rejection_reason'] = reason
+                if category:
+                    updates['category'] = category
                 if allow_change is not None:
                     updates['allow_category_change'] = bool(allow_change)
                 # Update dates if present
@@ -327,7 +492,5 @@ class ConnectMessageContentTemplate(models.Model):
                     updates['date_updated'] = rec._normalize_twilio_datetime(date_updated)
                 if updates:
                     rec.write(updates)
-            except Exception as e:
-                raise ValidationError('Failed to fetch approval status: {}'.format(e))
             except Exception as e:
                 raise ValidationError('Failed to fetch approval status: {}'.format(e))

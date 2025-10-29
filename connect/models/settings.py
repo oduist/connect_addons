@@ -634,7 +634,7 @@ class Settings(models.Model):
             self.env["connect.number"].sync()
             self.env["connect.outgoing_callerid"].sync()
             self.env["connect.whatsapp_sender"].sync()
-            self.connect_notify("Sync complete.")
+            self.env["connect.message_content_template"].sync()
         except Exception as e:
             if 'errors/20003' in str(e):
                 raise ValidationError('Error authenticating requests to the Twilio API! Check your Auth Key!')
