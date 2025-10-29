@@ -33,6 +33,8 @@ class ConnectMessage(models.Model):
         ('outgoing', 'Outgoing'),
     ], string='Direction', compute='_compute_direction', store=True, readonly=True)
     direction_display = fields.Html(string='Direction', compute='_compute_direction_display', sanitize=False)
+    status = fields.Char(readonly=True, default='draft')
+    status_display = fields.Html(string='Status', compute='_compute_status_display', sanitize=False)
     # Odoo users
     sender_user = fields.Many2one('res.users', string='Sender User', ondelete='set null', readonly=True)
     sender_user_img = fields.Binary(related='sender_user.image_1920')
@@ -125,6 +127,28 @@ class ConnectMessage(models.Model):
                 rec.direction_display = '<span class="fa fa-arrow-up"/>'
             else:
                 rec.direction_display = ''
+
+    @api.depends('status')
+    def _compute_status_display(self):
+        """Icon for message status (no colors)."""
+        for rec in self:
+            s = (rec.status or '').lower()
+            icon = ''
+            if s in ('received',):
+                icon = 'inbox'
+            elif s in ('sent', 'sending'):
+                icon = 'paper-plane'
+            elif s in ('delivered', 'read'):
+                icon = 'check-circle'
+            elif s in ('queued', 'deferred'):
+                icon = 'clock-o'
+            elif s in ('failed', 'undeliverable', 'error'):
+                icon = 'times-circle'
+            elif s in ('draft',):
+                icon = 'pencil'
+            elif not s:
+                icon = ''
+            rec.status_display = f'<span class="fa fa-{icon}"/>' if icon else ''
 
     @staticmethod
     def _format_phone_number(number):
