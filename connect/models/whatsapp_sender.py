@@ -171,6 +171,36 @@ class ConnectWhatsappSender(models.Model):
         self.env['connect.whatsapp_sender'].sync()
         return True
 
+    @api.model
+    def get_default_sender(self, user=None):
+        """Return the default WhatsApp sender.
+        Preference order:
+        - Given user's connect_user.whatsapp_sender_id
+        - Current env user's connect_user.whatsapp_sender_id
+        - Sender with is_default = True
+        - Any available sender
+        """
+        connect_user = False
+        try:
+            if user and getattr(user, '_name', '') == 'connect.user':
+                connect_user = user
+            elif user and getattr(user, '_name', '') == 'res.users':
+                connect_user = user.connect_user
+            else:
+                connect_user = self.env.user.connect_user
+        except Exception:
+            connect_user = False
+        # 1) User preference
+        if connect_user and connect_user.whatsapp_sender_id:
+            return connect_user.whatsapp_sender_id
+        # 2) Default flag
+        default = self.search([('is_default', '=', True)], limit=1)
+        if default:
+            return default
+        # 3) Any
+        any_sender = self.search([], limit=1)
+        return any_sender
+
     def send_whatsapp(self, recipient, body, res_model=None, res_id=None, raise_on_error=True, content_sid=None, content_variables=None):
         """Send a WhatsApp message using this sender and create connect.message + chatter.
 

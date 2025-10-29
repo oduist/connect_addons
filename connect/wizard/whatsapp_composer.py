@@ -32,15 +32,8 @@ class ConnectWhatsappComposer(models.TransientModel):
         res_id = ctx.get('active_id') or ctx.get('default_res_id')
         vals.update({'res_model': res_model, 'res_id': res_id})
 
-        # Default sender: user preference -> default sender -> any sender
-        sender = False
-        connect_user = self.env.user.connect_user
-        if connect_user and connect_user.whatsapp_sender_id:
-            sender = connect_user.whatsapp_sender_id
-        if not sender:
-            sender = self.env['connect.whatsapp_sender'].search([('is_default', '=', True)], limit=1)
-        if not sender:
-            sender = self.env['connect.whatsapp_sender'].search([], limit=1)
+        # Default sender from model helper
+        sender = self.env['connect.whatsapp_sender'].get_default_sender(self.env.user)
         if sender:
             vals['whatsapp_sender_id'] = sender.id
 
