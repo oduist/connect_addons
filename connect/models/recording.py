@@ -248,7 +248,7 @@ class Recording(models.Model):
             recording = client.recordings(data['sid']).fetch()
             data.update(self.prepare_data(recording))
         except Exception as e:
-            logger.error(format_connect_response(e))
+            logger.exception(format_connect_response(e))
         self.create(data)
         return True
 
