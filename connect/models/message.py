@@ -31,8 +31,8 @@ class ConnectMessage(models.Model):
     direction = fields.Selection([
         ('incoming', 'Incoming'),
         ('outgoing', 'Outgoing'),
-    ], string='Direction', compute='_compute_direction', store=True, readonly=True)
-    direction_display = fields.Html(string='Direction', compute='_compute_direction_display', sanitize=False)
+    ], compute='_compute_direction', store=True, readonly=True)
+    direction_display = fields.Html(compute='_compute_direction_display', sanitize=False)
     status = fields.Char(readonly=True, default='draft')
     status_display = fields.Html(compute='_compute_status_display', sanitize=False)
     # Odoo users

@@ -70,6 +70,7 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <button name="action_submit_missing" type="object" string="Submit" class="btn btn-secondary" invisible="status != 'missing'"/>
                     <button name="action_fetch_approval_status" type="object" string="Fetch approval status" class="btn btn-secondary"/>
                     <button name="action_approve" type="object" string="Approve" class="btn btn-primary" invisible="not (status == 'unsubmitted' or status == 'rejected')"/>
                 </header>

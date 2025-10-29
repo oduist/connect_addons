@@ -26,6 +26,7 @@ CONTENT_TYPES = [
 ]
 
 WHATSAPP_STATUSES = [
+    ('missing', 'Missing'),
     ('unsubmitted', 'Unsubmitted'),
     ('received', 'Received'),
     ('pending', 'Pending'),
@@ -70,7 +71,7 @@ class ConnectMessageContentTemplate(models.Model):
     rejection_reason = fields.Char(readonly=True)
     allow_category_change = fields.Boolean(readonly=True)
 
-    display_status = fields.Html(string='Status', compute='_compute_display_status', sanitize=False)
+    display_status = fields.Html(compute='_compute_display_status', sanitize=False)
 
     @api.constrains('variables')
     def _check_variables_json(self):
@@ -103,6 +104,7 @@ class ConnectMessageContentTemplate(models.Model):
             'disabled': ('fa fa-ban text-danger', 'Disabled'),
             'rejected': ('fa fa-times-circle text-danger', 'Rejected'),
             'unsubmitted': ('fa fa-circle-o text-muted', 'Unsubmitted'),
+            'missing': ('fa fa-question-circle text-muted', 'Missing'),
         }
         for rec in self:
             st = (rec.status or 'unsubmitted').lower()
@@ -200,13 +202,11 @@ class ConnectMessageContentTemplate(models.Model):
         except Exception:
             return self.env['res.lang'].search([], limit=1)
 
-
-
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
-        # Allow bypassing remote creation during sync/imports
-        if self.env.context.get('skip_twilio_create'):
+        # Allow bypassing remote creation during sync/imports and during module installation
+        if self.env.context.get('skip_twilio_create') or self.env.context.get('install_mode'):
             return records
         for rec in records:
             rec.create_in_twilio()
@@ -267,6 +267,14 @@ class ConnectMessageContentTemplate(models.Model):
                 raise ValidationError('This content has already been submitted. Current status: %s' % rec.status)
             rec._twilio_submit_for_approval()
 
+    def action_submit_missing(self):
+        """UI action: create content in Twilio only for Missing templates (no SID)."""
+        for rec in self:
+            if rec.status != 'missing' or rec.sid:
+                raise ValidationError('Submit is available only for Missing templates without SID.')
+            rec.create_in_twilio()
+        return True
+
     def delete_in_twilio(self):
         """Delete content objects from Twilio Content API (best-effort)."""
         account_sid = self.env['connect.settings'].get_param('account_sid')
@@ -290,6 +298,8 @@ class ConnectMessageContentTemplate(models.Model):
         return super().unlink()
 
     def write(self, vals):
+        if self.env.context.get('skip_check'):
+            return super().write(vals)
         # Prevent changing content unless status is unsubmitted or rejected.
         # Exception: allow changing 'category' when status is 'approved' AND allow_category_change is True.
         content_fields = {'friendly_name', 'language', 'variables', 'content_type', 'body', 'actions', 'category'}
@@ -324,6 +334,7 @@ class ConnectMessageContentTemplate(models.Model):
         params = {'PageSize': 100}
         created = 0
         updated = 0
+        twilio_sids = set()
         try:
             while url:
                 resp = requests.get(url, params=params if url.endswith('/Content') else None, auth=(account_sid, auth_token), timeout=30)
@@ -342,6 +353,7 @@ class ConnectMessageContentTemplate(models.Model):
                     sid = item.get('sid')
                     if not sid:
                         continue
+                    twilio_sids.add(sid)
                     # Determine type to store
                     types = item.get('types') or {}
                     chosen_type = None
@@ -440,6 +452,14 @@ class ConnectMessageContentTemplate(models.Model):
                         created += 1
                 url = next_url
                 params = None
+            # Mark local-only templates as missing
+            if twilio_sids:
+                missing_domain = ['|', ('sid', '=', False), ('sid', 'not in', list(twilio_sids))]
+            else:
+                missing_domain = [('sid', '=', False)]
+            missing_recs = self.search(missing_domain)
+            if missing_recs:
+                missing_recs.write({'sid': '', 'status': 'missing'})
             settings.connect_notify(f'WhatsApp Content Templates synced (created: {created}, updated: {updated})')
         except Exception as e:
             raise ValidationError('Failed to sync WhatsApp Content Templates: {}'.format(e))
@@ -491,6 +511,6 @@ class ConnectMessageContentTemplate(models.Model):
                 if date_updated:
                     updates['date_updated'] = rec._normalize_twilio_datetime(date_updated)
                 if updates:
-                    rec.write(updates)
+                    rec.with_context(skip_check=True).write(updates)
             except Exception as e:
                 raise ValidationError('Failed to fetch approval status: {}'.format(e))

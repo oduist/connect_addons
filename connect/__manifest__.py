@@ -17,13 +17,14 @@
     'external_dependencies': {
         'python': ['twilio', 'openai'],
     },
-    'data': [
+'data': [
         'data/res_users.xml',
         'data/data.xml',
         'data/functions.xml',
         'data/ir_cron.xml',
         'data/twiml.xml',
         'data/res_partner.xml',
+        'data/whatsapp_templates.xml',
         # Security
         'security/groups.xml',
         'security/admin.xml',
