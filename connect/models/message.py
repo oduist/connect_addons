@@ -235,28 +235,23 @@ class ConnectMessage(models.Model):
                     ('from_number', '=', to_number), ('to_number', '=', from_number)], limit=1)
                 if last_message and last_message.res_model and last_message.res_id:
                     message.write({'res_model': last_message.res_model, 'res_id': last_message.res_id})
-                    mt_note = self.env.ref('mail.mt_note').id
                     obj = self.env[last_message.res_model].with_user(SUPERUSER_ID).browse(last_message.res_id)
                     if hasattr(obj, 'message_post'):
-                        body = Markup(f"<div class='d-flex flex-row px-1'>{message.direction_display} "
+                        body = Markup(f"<div class='d-flex flex-row px-1'>"
                                 f"<span class='px-1'>{values.get('body')}</span></div>")
                         if message.media_url:
-                            body = Markup(f"<div class='d-flex flex-row'>{message.direction_display} "
+                            body = Markup(f"<div class='d-flex flex-row'>"
                                           f"<span class='px-1'>{values.get('body')}</span>"
                                           f"<br/>{message.media_widget}</div>")
                         # Include link to the message form
                         link = Markup(f"<small><a href=\"/web#id={message.id}&model=connect.message&view_type=form\">Message</a></small>")
-                        if message.media_url:
-                            body = Markup(str(body) + str(link))
-                        else:
-                            body = Markup(str(body) + str(link))
-
+                        body = Markup(str(body) + str(link))
                         # Post as a comment to notify subscribed followers similar to incoming mail
                         mt_comment = self.env.ref('mail.mt_comment').id
                         kwargs = {
                             'body': body,
                             'subtype_id': mt_comment,
-                            'message_type': 'comment',
+                            'message_type': 'WhatsApp',
                         }
                         if partner:
                             kwargs.update({'author_id': partner.id})
@@ -343,8 +338,8 @@ class ConnectMessage(models.Model):
             obj = self.env[res_model].with_user(SUPERUSER_ID).browse(res_id)
             if hasattr(obj, 'message_post'):
                 # Include link to the message form
-                link = Markup(f"<small><a href=\"/web#id={message.id}&model=connect.message&view_type=form\">Open message</a></small>")
-                chat_body = Markup(str(body) + str(link))
+                link = Markup(f"<small><a href=\"/web#id={message.id}&model=connect.message&view_type=form\">Message</a></small>")
+                chat_body = Markup(str(body) + '<br/>' + str(link))
                 kwargs = {
                     'body': chat_body,
                     'subtype_id': mt_note,
@@ -352,7 +347,7 @@ class ConnectMessage(models.Model):
                 }
 
                 kwargs.update({'author_id': sender_user.partner_id.id})
-                chatter = obj.with_context(mail_create_nosubscribe=False).message_post(**kwargs)
+                chatter = obj.with_context(mail_create_nosubscribe=True).message_post(**kwargs)
 
                 mail_notification_values = [{
                     'author_id': chatter.author_id.id,

@@ -304,7 +304,7 @@ class ConnectWhatsappSender(models.Model):
 
         # Post to chatter if relevant
         if res_model and res_id:
-            chatter_message = Markup(f"<div class='d-flex flex-row'>{msg.direction_display} "
+            chatter_message = Markup(f"<div class='d-flex flex-row'>"
                                      f"<p class='px-1'>{body}</p></div>")
             self.chatter_post(res_model, res_id, self.env.user.partner_id.id, chatter_message)
         return msg
