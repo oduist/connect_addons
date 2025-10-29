@@ -244,28 +244,28 @@ class ConnectMessage(models.Model):
                             body = Markup(f"<div class='d-flex flex-row'>{message.direction_display} "
                                           f"<span class='px-1'>{values.get('body')}</span>"
                                           f"<br/>{message.media_widget}</div>")
+                        # Include link to the message form
+                        link = Markup(f"<br/><small><a href=\"/web#id={message.id}&model=connect.message&view_type=form\">Open message</a></small>")
+                        if message.media_url:
+                            body = Markup(str(body) + str(link))
+                        else:
+                            body = Markup(str(body) + str(link))
+
+                        # Post as a comment to notify subscribed followers similar to incoming mail
+                        mt_comment = self.env.ref('mail.mt_comment').id
                         kwargs = {
                             'body': body,
-                            'subtype_id': mt_note,
-                            'message_type': message.message_type
+                            'subtype_id': mt_comment,
+                            'message_type': 'comment',
                         }
                         if partner:
                             kwargs.update({'author_id': partner.id})
                         else:
-                            kwargs.update({'body': 'From: {}. Message: {}'.format(from_number, params.get('Body'))})
+                            kwargs.update({'body': Markup('From: {}. Message: {}{}').format(from_number, params.get('Body'), link)})
                         chatter = obj.with_context(mail_create_nosubscribe=False).message_post(**kwargs)
                         chatter.connect_message = message
 
-                        mail_notification_values = [{
-                            'author_id': chatter.author_id.id,
-                            'mail_message_id': chatter.id,
-                            'res_partner_id': chatter.author_id.id,
-                            'sms_number': from_number,
-                            'notification_type': message.message_type,
-                            'is_read': True,
-                            'notification_status': 'ready',
-                        }]
-                        self.env['mail.notification'].sudo().create(mail_notification_values)
+                        # Let Odoo generate notifications for followers automatically (no manual mail.notification)
                         self.env['connect.settings'].connect_reload_view(last_message.res_model)
                 # Message destination handling
                 config = self.env['connect.message_configuration'].search([('number.phone_number', '=', to_number)], limit=1)
@@ -342,8 +342,11 @@ class ConnectMessage(models.Model):
             mt_note = self.env.ref('mail.mt_note').id
             obj = self.env[res_model].with_user(SUPERUSER_ID).browse(res_id)
             if hasattr(obj, 'message_post'):
+                # Include link to the message form
+                link = Markup(f"<br/><small><a href=\"/web#id={message.id}&model=connect.message&view_type=form\">Open message</a></small>")
+                chat_body = Markup(str(body) + str(link))
                 kwargs = {
-                    'body': body,
+                    'body': chat_body,
                     'subtype_id': mt_note,
                     'message_type': message.message_type
                 }
