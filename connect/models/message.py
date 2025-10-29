@@ -122,9 +122,9 @@ class ConnectMessage(models.Model):
         """Display direction with icon (no colors)."""
         for rec in self:
             if rec.direction == 'incoming':
-                rec.direction_display = '<span class="fa fa-arrow-down"/>'
+                rec.direction_display = '<span class="fa fa-arrow-down p-1"/>'
             elif rec.direction == 'outgoing':
-                rec.direction_display = '<span class="fa fa-arrow-up"/>'
+                rec.direction_display = '<span class="fa fa-arrow-up p-1"/>'
             else:
                 rec.direction_display = ''
 
@@ -239,13 +239,13 @@ class ConnectMessage(models.Model):
                     obj = self.env[last_message.res_model].with_user(SUPERUSER_ID).browse(last_message.res_id)
                     if hasattr(obj, 'message_post'):
                         body = Markup(f"<div class='d-flex flex-row px-1'>{message.direction_display} "
-                                f"<p class='px-1'>{values.get('body')}</p></div>")
+                                f"<span class='px-1'>{values.get('body')}</span></div>")
                         if message.media_url:
                             body = Markup(f"<div class='d-flex flex-row'>{message.direction_display} "
                                           f"<span class='px-1'>{values.get('body')}</span>"
                                           f"<br/>{message.media_widget}</div>")
                         # Include link to the message form
-                        link = Markup(f"<br/><small><a href=\"/web#id={message.id}&model=connect.message&view_type=form\">Message</a></small>")
+                        link = Markup(f"<small><a href=\"/web#id={message.id}&model=connect.message&view_type=form\">Message</a></small>")
                         if message.media_url:
                             body = Markup(str(body) + str(link))
                         else:
@@ -343,7 +343,7 @@ class ConnectMessage(models.Model):
             obj = self.env[res_model].with_user(SUPERUSER_ID).browse(res_id)
             if hasattr(obj, 'message_post'):
                 # Include link to the message form
-                link = Markup(f"<br/><small><a href=\"/web#id={message.id}&model=connect.message&view_type=form\">Open message</a></small>")
+                link = Markup(f"<small><a href=\"/web#id={message.id}&model=connect.message&view_type=form\">Open message</a></small>")
                 chat_body = Markup(str(body) + str(link))
                 kwargs = {
                     'body': chat_body,
