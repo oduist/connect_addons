@@ -13,6 +13,10 @@
                 <i class="fa fa-phone"/>
                 <small class="fw-bold ms-1">Call</small>
             </a>
+            <a t-if="props.record.data[props.name]" href="#" class="o_phone_form_link ms-3 d-inline-flex align-items-center o_field_phone_whatsapp" t-on-click="_onClickWhatsappButton">
+                <i class="fa fa-whatsapp"/>
+                <small class="fw-bold ms-1">WhatsApp</small>
+            </a>
         </xpath>
     </t>
 

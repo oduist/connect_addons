@@ -103,7 +103,7 @@ class Channel(models.Model):
         to_clean = strip_whatsapp(to_raw)
         call_type = 'whatsapp' if any(isinstance(x, str) and x.startswith('whatsapp:') for x in [caller_raw, called_raw, to_raw]) else 'phone'
 
-        channel = self.search([('sid', '=', params['CallSid'])])
+        channel = self.search([('sid', '=', params['CallSid'])], limit=1, order='id asc')
         if channel:
             # Update channel data.
             data = {
