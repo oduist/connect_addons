@@ -13,9 +13,15 @@
                 <i class="fa fa-phone"/>
                 <small class="fw-bold ms-1">Call</small>
             </a>
-            <a t-if="props.record.data[props.name]" href="#" class="o_phone_form_link ms-3 d-inline-flex align-items-center o_field_phone_whatsapp" t-on-click="_onClickWhatsappButton">
+        </xpath>
+        <xpath expr="//div[hasclass('o_phone_content')]" position="inside">
+            <a t-if="props.record.data[props.name]" href="#" class="o_phone_form_link ms-3 d-inline-flex align-items-center o_field_phone_whatsapp" title="WhatsApp Call" t-on-click="_onClickWhatsappCallButton">
                 <i class="fa fa-whatsapp"/>
-                <small class="fw-bold ms-1">WhatsApp</small>
+                <small class="fw-bold ms-1">Call</small>
+            </a>
+            <a t-if="props.record.data[props.name]" href="#" class="o_phone_form_link ms-3 d-inline-flex align-items-center o_field_phone_whatsapp" title="Send WhatsApp Message" t-on-click="_onClickWhatsappMessageButton">
+                <i class="fa fa-whatsapp"/>
+                <small class="fw-bold ms-1">Message</small>
             </a>
         </xpath>
     </t>
