@@ -67,6 +67,7 @@ export class Phone extends Component {
             inCall: false,
             inIncoming: false,
             isContactList: false,
+            isWhatsapp: false,
             phoneNumber: '',
             callPhoneNumber: '',
             contact_search_query: '',
@@ -412,6 +413,10 @@ export class Phone extends Component {
             self.state.isContactList = false
             let phoneNumber = session.customParameters.get('From')
             phoneNumber = phoneNumber ? phoneNumber : session.parameters.From
+            if (phoneNumber.startsWith("whatsapp:")) {
+                phoneNumber = phoneNumber.replace(/^whatsapp:/, "")
+                self.state.isWhatsapp = true
+            }
             const callCallerName = session.customParameters.get('CallerName')
             const callPartnerId = session.customParameters.get('Partner')
             const autoAnswer = session.customParameters.get('autoAnswer')
@@ -600,6 +605,7 @@ export class Phone extends Component {
         this.state.isCallForwarded = false
         this.state.isMicrophoneMute = false
         this.state.isPartner = false
+        this.state.isWhatsapp = false
         this.state.callerId = {}
         this.state.phoneNumber = ''
         this.state.xPhoneInfoDisplay = ''

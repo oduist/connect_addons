@@ -504,17 +504,23 @@ class Domain(models.Model):
     @api.model
     def route_call(self, request, params={}):
         debug(self, "Domain call to %s" % request.get("To"))
-        # Create call
+        # Create call + channel
         self.env["connect.call"].on_call_status(request)
-        # Check if it is a SIP call and extract To from it.
-        found = re.search(
-            r"^sip:(.+)@(.+)\.sip\.((.+)\.)?twilio\.com", request.get("To")
-        )
+        to_val = request.get("To") or ''
+        # Extract number for SIP or WhatsApp channels
+        found = re.search(r"^sip:(.+)@(.+)\\.sip\\.((.+)\\.)?twilio\\.com", to_val)
+        is_whatsapp = False
         if found:
             found_num = found.group(1)
+        elif isinstance(to_val, str) and to_val.startswith('whatsapp:'):
+            found_num = to_val.split(':', 1)[1]
+            is_whatsapp = True
         else:
-            found_num = request.get("To")
+            found_num = to_val
         exten = self.env["connect.exten"].sudo().search([("number", "=", found_num)])
+        # Do not let whatsapp calls to go for external calling
+        if not exten and is_whatsapp:
+            return "<Response><Say>Whatsapp Extension not found! Please create an extenstion for this Whatsapp number!</Say></Response>"
         if not exten:
             # Get all extensions and match by pattern.
             # TODO: Handle bad exten numbers like 70[ that cannot be used by re.match.
@@ -542,7 +548,12 @@ class Domain(models.Model):
             res = exten.render(request=request, params=params)
             return res
         elif isinstance(found_num, str) and found_num.startswith("+"):
-            return self.originate_external_call(found_num, request, params=params)
+            # Decide call type (phone vs WhatsApp)
+            call_type = 'whatsapp' if (isinstance(to_val, str) and to_val.startswith('whatsapp:')) else 'phone'
+            if call_type == 'whatsapp':
+                return self.originate_whatsapp_call(found_num, request, params=params)
+            else:
+                return self.originate_external_call(found_num, request, params=params)
         else:
             return "<Response><Say>Extension not found. Goodbye! </Say></Response>"
 
@@ -553,10 +564,10 @@ class Domain(models.Model):
         )
         # Find the user by caller.
         user = self.env["connect.user"].get_user_by_uri(request.get("Caller"))
-        if user.outgoing_callerid:
+        if user and user.outgoing_callerid:
             callerId = user.outgoing_callerid.number
         else:
-            callerId = default_number.number
+            callerId = default_number.number if default_number else False
         if not callerId:
             return "<Response><Say>You must select a default number for caller ID!</Say></Response>"
         response = VoiceResponse()
@@ -582,4 +593,42 @@ class Domain(models.Model):
         )
         response.append(dial)
         debug(self, "Originate external: %s" % pretty_xml(str(response)))
+        return response
+
+    def originate_whatsapp_call(self, number, request, params={}):
+        """Originate a WhatsApp call using WhatsApp sender as Caller ID.
+        number: E.164 without prefix (e.g., +123...)
+        """
+        debug(self, "Outgoing WhatsApp call to %s" % number)
+        # Resolve caller's preferred WhatsApp sender
+        pbx_user = self.env['connect.user'].get_user_by_uri(request.get('Caller'))
+        sender = self.env['connect.whatsapp_sender'].get_default_sender(pbx_user)
+        caller_number = sender.number if sender else False
+        if not caller_number:
+            return "<Response><Say>You must configure a WhatsApp sender!</Say></Response>"
+        response = VoiceResponse()
+        api_url = self.env["connect.settings"].get_param("api_url")
+        edge = self.env['connect.settings'].get_param('twilio_edge')
+        status_url = urljoin(api_url, "twilio/webhook/callstatus#e={}".format(edge))
+        record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus#e={}".format(edge))
+        call_duration_limit = int(self.env['connect.settings'].sudo().get_param('call_duration_limit'))
+        # Reuse recording preference from user's settings if available
+        record_calls = bool(getattr(pbx_user, 'record_calls', False))
+        if record_calls:
+            dial = Dial(
+                timeout=60,
+                callerId=f"whatsapp:{caller_number}",
+                timeLimit=call_duration_limit,
+                record="record-from-answer",
+                recordingStatusCallback=record_status_url,
+            )
+        else:
+            dial = Dial(timeout=60, callerId=f"whatsapp:{caller_number}", timeLimit=call_duration_limit)
+        dial.number(
+            f"whatsapp:{number}",
+            statusCallback=status_url,
+            statusCallbackEvent="initiated answered completed",
+        )
+        response.append(dial)
+        debug(self, "Originate WhatsApp: %s" % pretty_xml(str(response)))
         return response

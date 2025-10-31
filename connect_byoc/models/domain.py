@@ -98,5 +98,5 @@ class Domain(models.Model):
                 statusCallbackEvent="initiated answered completed",
             )
         response.append(dial)
-        debug(self, "Originate external: %s" % pretty_xml(str(response)))
+        debug(self, "Originate external BYOC: %s" % pretty_xml(str(response)))
         return response
