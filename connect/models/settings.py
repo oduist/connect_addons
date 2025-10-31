@@ -633,7 +633,8 @@ class Settings(models.Model):
             self.env["connect.domain"].sync()
             self.env["connect.number"].sync()
             self.env["connect.outgoing_callerid"].sync()
-            self.connect_notify("Sync complete.")
+            self.env["connect.whatsapp_sender"].sync()
+            self.env["connect.message_content_template"].sync()
         except Exception as e:
             if 'errors/20003' in str(e):
                 raise ValidationError('Error authenticating requests to the Twilio API! Check your Auth Key!')
@@ -661,21 +662,21 @@ class Settings(models.Model):
         return twiml
 
     @api.model
-    def originate_call(self, number, res_model=None, res_id=None, user=None):
+    def originate_call(self, number, res_model=None, res_id=None, user=None, whatsapp_call=False):
         number = strip_number(number)
         if len(number) > MAX_EXTEN_LEN:
             number = "+{}".format(number)
         client = self.get_client()
         partner_id = False
-        obj = self.env[res_model].browse(res_id)
+        obj = self.env[res_model].browse(res_id) if res_model and res_id else False
         caller_name = ""
-        if res_model == "res.partner":
+        if res_model == "res.partner" and obj:
             partner_id = res_id
             caller_name = obj.display_name
-        elif hasattr(obj, "partner_id"):
+        elif obj and hasattr(obj, "partner_id") and obj.partner_id:
             partner_id = obj.partner_id.id
             caller_name = obj.partner_id.display_name
-        elif hasattr(obj, "partner"):
+        elif obj and hasattr(obj, "partner") and obj.partner:
             partner_id = obj.partner.id
             caller_name = obj.partner.display_name
         # If user is not set use current user.
@@ -691,34 +692,52 @@ class Settings(models.Model):
         else:
             to = (
                 "client:{}?autoAnswer=yes&Partner={}&CallerName={}".format(
-                    self.env.user.connect_user.uri, partner_id, caller_name
+                    self.env.user.connect_user.uri, partner_id or '', caller_name or ''
                 )
             )
         if "client:" in to:
             # Strip + before sending as param.
-            to += "&From={}".format(number.replace("+", ""))
+            to += "&From={}".format((number or '').replace("+", ""))
         exten = self.env["connect.exten"].search([("number", "=", number)], limit=1)
-        default_number = self.env["connect.outgoing_callerid"].search(
-            [("is_default", "=", True)], limit=1
-        )
-        if exten:
-            # Set callerID to user's extension.
-            callerId = user.connect_user.exten.number
-        elif user.connect_user.outgoing_callerid:
-            callerId = user.connect_user.outgoing_callerid.number
-        else:
-            callerId = default_number.number
         api_url = self.sudo().get_param("api_url")
-        instance_uid = self.sudo().get_param("instance_uid", "")
         edge = self.twilio_edge or self.env['connect.settings'].get_param('twilio_edge')
         status_url = urljoin(api_url, "twilio/webhook/callstatus#e={}".format(edge))
+        # Resolve callerId
         if exten:
             # Internal call to an extension.
+            callerId = user.connect_user.exten.number
             twiml = exten.render()
         else:
-            twiml = self.get_external_call_route(number, callerId, status_url)
+            if whatsapp_call:
+                # WhatsApp callerId selection akin to domain.originate_whatsapp_call
+                pbx_user = user.connect_user
+                sender = self.env['connect.whatsapp_sender'].get_default_sender(pbx_user)
+                caller_number = sender.number if sender else False
+                if not caller_number:
+                    raise ValidationError("You must configure a WhatsApp sender!")
+                callerId = f"whatsapp:{caller_number}"
+                # Build WhatsApp Dial
+                call_duration_limit = int(self.sudo().get_param('call_duration_limit'))
+                record_attrs = 'record=""' if pbx_user.record_calls else ""
+                twiml = """<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Dial callerId="{}">
+        <WhatsApp statusCallback="{}" statusCallbackEvent="ringing,answered,completed">{}</WhatsApp>
+    </Dial>
+</Response>""".format(callerId, status_url, number)
+            else:
+                # Regular phone call
+                default_number = self.env["connect.outgoing_callerid"].search(
+                    [("is_default", "=", True)], limit=1
+                )
+                if user.connect_user.outgoing_callerid:
+                    callerId = user.connect_user.outgoing_callerid.number
+                else:
+                    callerId = default_number.number
+                twiml = self.get_external_call_route(number, callerId, status_url)
         record = self.env.user.connect_user.record_calls
         record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus#e={}".format(edge))
+        debug(self, 'Originate destination TwiML: {}'.format(twiml))
         channel = client.calls.create(
             twiml=twiml,
             to=to,

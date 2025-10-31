@@ -112,3 +112,10 @@ class ConnectController(Controller):
         message = request.env['connect.message'].with_user(request.env.ref("connect.user_connect_webhook"))
         res = message.receive(kw)
         return f'{res}'
+
+    @route('/twilio/webhook/message_status', methods=['POST'], type='http', auth='public', csrf=False)
+    def message_status_webhook(self, **kw):
+        if not self.check_signature(kw):
+            return False
+        request.env['connect.whatsapp_sender'].with_user(request.env.ref("connect.user_connect_webhook")).update_message_status(kw)
+        return 'OK'

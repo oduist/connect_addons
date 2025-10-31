@@ -40,6 +40,10 @@ class Call(models.Model):
     partner = fields.Many2one('res.partner', ondelete='set null')
     partner_img = fields.Binary(related='partner.image_1920', string='Partner Image')
     direction = fields.Char(index=True, readonly=True)
+    call_type = fields.Selection([
+        ('phone', 'Phone'),
+        ('whatsapp', 'WhatsApp')
+    ], default='phone', index=True)
     status = fields.Char(readonly=True)
     duration = fields.Integer(string='Seconds', readonly=True)
     duration_minutes = fields.Float(string='Minutes', compute='_get_duration_human', store=True)
@@ -184,6 +188,7 @@ class Call(models.Model):
                 'caller_pbx_user': channel.caller_pbx_user.id,
                 'caller_user': channel.caller_user.id,
                 'direction': direction,
+                'call_type': channel.call_type or 'phone',
             })
             channel.call = call
         elif channel.parent_channel and channel.parent_channel.call:

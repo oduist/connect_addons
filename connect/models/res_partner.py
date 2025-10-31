@@ -49,7 +49,25 @@ def format_number(self, number, country=None, format_type='e164'):
 class Partner(models.Model):
     _inherit = 'res.partner'
 
+    @api.model
+    def create_record_from_message(self, message, default_values=None):
+        """Default destination handler: ensure a Partner exists for the message sender.
+        default_values: dict of additional field values to include in creation.
+        """
+        number = message.from_number
+        partner = self.get_partner_by_number(number)
+        if partner:
+            return partner
+        vals = {
+            'name': number,
+            'phone': number,
+        }
+        if isinstance(default_values, dict):
+            vals.update(default_values)
+        return self.create(vals)
+
     connect_calls_count = fields.Integer(compute='_get_connect_calls_count')
+    connect_messages_count = fields.Integer(compute='_get_connect_messages_count')
     connect_recorded_calls = fields.One2many('connect.recording', 'partner')
     connect_phone_normalized = fields.Char(compute='_get_connect_phone_normalized',
                                    index=True, store=True,
@@ -208,6 +226,17 @@ class Partner(models.Model):
                 rec.connect_calls_count = self.env[
                     'connect.call'].sudo().search_count(
                     [('partner', '=', rec.id)])
+
+    def _get_connect_messages_count(self):
+        for rec in self:
+            if rec.is_company:
+                rec.connect_messages_count = self.env['connect.message'].sudo().search_count(
+                    ['|', ('partner', '=', rec.id), ('partner.parent_id', '=', rec.id)]
+                )
+            else:
+                rec.connect_messages_count = self.env['connect.message'].sudo().search_count(
+                    [('partner', '=', rec.id)]
+                )
 
     def _phone_format(self, number=None, country=None, company=None, force_format='E164', **kwargs):
         version_info = release.version_info

@@ -22,6 +22,16 @@
     <field name="perm_unlink" eval="1"/>
   </record>
 
+  <record id="connect_whatsapp_composer_admin" model="ir.model.access">
+    <field name="name">connect_whatsapp_composer_admin</field>
+    <field name="model_id" ref="connect.model_connect_whatsapp_composer"/>
+    <field name="group_id" ref="connect.group_connect_admin"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
+  </record>
+
   <!-- Domains -->
   <record id="connect_domain_admin" model="ir.model.access">
     <field name="name">connect_domain_admin</field>
@@ -208,5 +218,39 @@
     <field name="perm_create" eval="1"/>
     <field name="perm_unlink" eval="1"/>
   </record>
+
+  <!-- Message Content Template -->
+  <record id="connect_message_content_template_admin" model="ir.model.access">
+    <field name="name">connect_message_content_template_admin</field>
+    <field name="model_id" ref="connect.model_connect_message_content_template"/>
+    <field name="group_id" ref="connect.group_connect_admin"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
+  </record>
+
+  <!-- WhatsApp Sender -->
+  <record id="connect_whatsapp_sender_admin" model="ir.model.access">
+    <field name="name">connect_whatsapp_sender_admin</field>
+    <field name="model_id" ref="connect.model_connect_whatsapp_sender"/>
+    <field name="group_id" ref="connect.group_connect_admin"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
+  </record>
+
+
+  <!-- Documentation access -->
+  <record model="ir.model.access" id="access_connect_documentation">
+      <field name="name">connect.documentation</field>
+      <field name="model_id" ref="model_connect_documentation"/>
+      <field name="perm_read" eval="True"/>
+      <field name="perm_write" eval="False"/>
+      <field name="perm_create" eval="False"/>
+      <field name="perm_unlink" eval="False"/>
+  </record>
+
 
 </odoo>

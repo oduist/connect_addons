@@ -28,6 +28,13 @@ class ConnectMessage(models.Model):
     num_media = fields.Integer('Number of Media Items', default=0)
     message_type = fields.Char(readonly=True)
     status = fields.Char(readonly=True, default='draft')
+    direction = fields.Selection([
+        ('incoming', 'Incoming'),
+        ('outgoing', 'Outgoing'),
+    ], compute='_compute_direction', store=True, readonly=True)
+    direction_display = fields.Html(compute='_compute_direction_display', sanitize=False)
+    status = fields.Char(readonly=True, default='draft')
+    status_display = fields.Html(compute='_compute_status_display', sanitize=False)
     # Odoo users
     sender_user = fields.Many2one('res.users', string='Sender User', ondelete='set null', readonly=True)
     sender_user_img = fields.Binary(related='sender_user.image_1920')
@@ -48,8 +55,10 @@ class ConnectMessage(models.Model):
     error_message = fields.Char()
     res_model = fields.Char()
     res_id = fields.Integer()
-    ref = fields.Reference(selection='_reference_models', compute='_compute_ref', store=True)
+    ref = fields.Reference(selection='_reference_models', string="Reference", compute='_compute_ref', store=True)
+    parent_message = fields.Many2one('connect.message', string='In Reply To', readonly=True)
     media_url = fields.Char()
+    media_content_type = fields.Char()
     if release.version_info[0] >= 17.0:
         media_widget = fields.Html(compute='_get_media_widget', string='Media', sanitize=False)
     else:
@@ -57,8 +66,19 @@ class ConnectMessage(models.Model):
 
     def _get_media_widget(self):
         for rec in self:
-            rec.media_widget = '<audio id="sound_file" preload="auto" controls="controls"> ' \
-                               '<source src="{}"/></audio>'.format(rec.media_url)
+            html = ''
+            url = rec.media_url or ''
+            ctype = (rec.media_content_type or '').lower()
+            if url:
+                if ctype.startswith('image/'):
+                    html = '<img src="{}" style="max-width:50%;height:auto;"/>'.format(url)
+                elif ctype.startswith('audio/'):
+                    html = '<audio preload="auto" controls="controls"><source src="{}" type="{}"/></audio>'.format(url, ctype or 'audio/mpeg')
+                elif ctype.startswith('video/'):
+                    html = '<video controls style="max-width:50%"><source src="{}" type="{}"/></video>'.format(url, ctype or 'video/mp4')
+                else:
+                    html = '<a href="{}" target="_blank" rel="noopener">Download media</a>'.format(url)
+            rec.media_widget = html
 
     @api.model
     def _reference_models(self):
@@ -74,6 +94,60 @@ class ConnectMessage(models.Model):
                     rec.ref = False
             else:
                 rec.ref = False
+
+    @api.depends('status', 'sender_user')
+    def _compute_direction(self):
+        """Determine message direction based on status or sender_user.
+        - If sender_user is set, it's outgoing (we sent it)
+        - If status is 'received', it's incoming
+        - Otherwise determine by checking if from_number is ours
+        """
+        for rec in self:
+            if rec.sender_user:
+                rec.direction = 'outgoing'
+            elif rec.status == 'received':
+                rec.direction = 'incoming'
+            else:
+                # Check if from_number matches any of our numbers
+                our_numbers = self.env['connect.number'].search([]).mapped('phone_number')
+                our_whatsapp = self.env['connect.whatsapp_sender'].search([]).mapped('number')
+                all_our_numbers = set(our_numbers) | set(our_whatsapp)
+
+                if rec.from_number in all_our_numbers:
+                    rec.direction = 'outgoing'
+                else:
+                    rec.direction = 'incoming'
+
+    @api.depends('direction')
+    def _compute_direction_display(self):
+        """Display direction with icon (no colors)."""
+        for rec in self:
+            if rec.direction == 'incoming':
+                rec.direction_display = '<span class="fa fa-arrow-down p-1"/>'
+            elif rec.direction == 'outgoing':
+                rec.direction_display = '<span class="fa fa-arrow-up p-1"/>'
+            else:
+                rec.direction_display = ''
+
+    @api.depends('status')
+    def _compute_status_display(self):
+        """Icon for message status (no colors)."""
+        for rec in self:
+            s = (rec.status or '').lower()
+            icon = ''
+            if s in ('sent', 'sending'):
+                icon = 'paper-plane'
+            elif s in ('delivered', 'read', 'received'):
+                icon = 'check-circle'
+            elif s in ('queued', 'deferred'):
+                icon = 'clock-o'
+            elif s in ('failed', 'undeliverable', 'error'):
+                icon = 'times-circle'
+            elif s in ('draft',):
+                icon = 'pencil-square-o'
+            elif not s:
+                icon = ''
+            rec.status_display = f'<span class="fa fa-{icon}"/>' if icon else ''
 
     @staticmethod
     def _format_phone_number(number):
@@ -116,6 +190,8 @@ class ConnectMessage(models.Model):
             'account_sid': params.get('AccountSid'),
             'messaging_service_sid': params.get('MessagingServiceSid'),
             'status': params.get('SmsStatus'),
+            'media_content_type': params.get('MediaContentType0'),
+            'media_url': params.get('MediaUrl0'),
         }
 
     @api.model
@@ -130,8 +206,15 @@ class ConnectMessage(models.Model):
                 from_number = params.get('From')
                 to_number = params.get('To')
                 values = self.get_receive_message_values(params)
-                if params.get('MessageType') == 'audio':
-                    values.update({'media_url': params.get('MediaUrl0')})
+                # Media handling (image, audio, video)
+                try:
+                    if int(params.get('NumMedia', '0') or 0) > 0:
+                        values.update({
+                            'media_url': params.get('MediaUrl0'),
+                            'media_content_type': params.get('MediaContentType0'),
+                        })
+                except Exception:
+                    pass
                 if 'whatsapp:' in from_number:
                     from_number = from_number.replace('whatsapp:', '')
                     to_number = to_number.replace('whatsapp:', '')
@@ -147,57 +230,98 @@ class ConnectMessage(models.Model):
                 number = self.env['connect.number'].search([('phone_number', '=', to_number)], limit=1)
                 if number and number.user:
                     values.update({'receiver_user': number.user.user.id})
+
+                # Determine parent and target using OriginalRepliedMessageSid if provided
+                original_sid = (
+                    params.get('OriginalRepliedMessageSid')
+                    or params.get('originalrepliedmessagesid')
+                    or next((params[k] for k in params.keys() if str(k).lower() == 'originalrepliedmessagesid'), None)
+                )
+                parent_msg = False
+                if original_sid:
+                    parent_msg = self.env['connect.message'].search([('message_sid', '=', original_sid)], limit=1)
+                last_message = False
+                if not parent_msg:
+                    last_message = self.env['connect.message'].search([
+                        ('from_number', '=', to_number), ('to_number', '=', from_number)
+                    ], order='create_date desc', limit=1)
+                print('Parent ', parent_msg)
+                print('Last', last_message)
+                target_msg = parent_msg or last_message
+                print('Traget', target_msg)
+
+                # Validate that the target record still exists; otherwise, skip linking and let destination handler create new
+                valid_target = False
+                if target_msg and target_msg.res_model and target_msg.res_id:
+                    target_rec = self.env[target_msg.res_model].sudo().browse(target_msg.res_id)
+                    if target_rec.exists():
+                        values.update({
+                            'res_model': target_msg.res_model,
+                            'res_id': target_msg.res_id,
+                        })
+                        valid_target = True
+                    else:
+                        logger.warning(
+                            'Target record %s(%s) does not exist anymore; will create a new destination record instead',
+                            target_msg.res_model, target_msg.res_id
+                        )
+                        # Invalidate target to avoid chatter posting on a deleted record
+                        target_msg = False
+
+                if parent_msg:
+                    values.update({'parent_message': parent_msg.id})
+
                 message = self.env['connect.message'].sudo().create(values)
-                # Add message to chatter
-                last_message = self.env['connect.message'].search([
-                    ('from_number', '=', to_number), ('to_number', '=', from_number)], limit=1)
-                if last_message and last_message.res_model and last_message.res_id:
-                    message.write({'res_model': last_message.res_model, 'res_id': last_message.res_id})
+
+                # Add message to chatter at the target record when available and valid
+                if valid_target and target_msg and target_msg.res_model and target_msg.res_id:
                     mt_note = self.env.ref('mail.mt_note').id
-                    obj = self.env[last_message.res_model].with_user(SUPERUSER_ID).browse(last_message.res_id)
-                    if hasattr(obj, 'message_post'):
-                        body = values.get('body')
+                    obj = self.env[target_msg.res_model].with_user(SUPERUSER_ID).browse(target_msg.res_id)
+                    # Double-check existence to be safe in concurrent delete scenarios
+                    if obj.exists() and hasattr(obj, 'message_post'):
+                        body = Markup(f"<div class='d-flex flex-row px-1'>"
+                                f"<span class='px-1'>{values.get('body')}</span></div>")
                         if message.media_url:
-                            body = Markup(f"<span>{values.get('body')}</span><br/>{message.media_widget}")
+                            body = Markup(f"<div class='d-flex flex-row'>"
+                                          f"<span class='px-1'>{values.get('body')}</span>"
+                                          f"<br/>{message.media_widget}</div>")
+                        # Include link to the message form
+                        link = Markup(f"<small><a href=\"/web#id={message.id}&model=connect.message&view_type=form\">Message</a></small>")
+                        body = Markup(str(body) + str(link))
+
+                        # Post as a comment to notify subscribed followers similar to incoming mail
+                        mt_comment = self.env.ref('mail.mt_comment').id
                         kwargs = {
                             'body': body,
-                            'subtype_id': mt_note,
-                            'message_type': message.message_type
+                            'subtype_id': mt_comment,
+                            'message_type': 'comment',
                         }
                         if partner:
                             kwargs.update({'author_id': partner.id})
                         else:
-                            kwargs.update({'body': 'From: {}. Message: {}'.format(from_number, params.get('Body'))})
-                        chatter = obj.with_context(mail_create_nosubscribe=False).message_post(**kwargs)
+                            kwargs.update({'body': Markup('From: {}. Message: {}{}').format(from_number, params.get('Body'), link)})
+                        chatter = obj.with_context(mail_create_nosubscribe=True).message_post(**kwargs)
                         chatter.connect_message = message
 
-                        mail_notification_values = [{
-                            'author_id': chatter.author_id.id,
-                            'mail_message_id': chatter.id,
-                            'res_partner_id': chatter.author_id.id,
-                            'sms_number': from_number,
-                            'notification_type': message.message_type,
-                            'is_read': True,
-                            'notification_status': 'ready',
-                        }]
-                        self.env['mail.notification'].sudo().create(mail_notification_values)
-                        self.env['connect.settings'].connect_reload_view(last_message.res_model)
-                # Message Configuration
-                config = self.env['connect.message_configuration'].search([('number.phone_number', '=', to_number)])
-                lead = self.env['crm.lead'].get_lead_by_number(from_number)
-                if not lead and config:
-                    data = {}
-                    try:
-                        data = dict(ast.literal_eval(config.default_values))
-                    except Exception as e:
-                        logger.error('Invalid default data: {}\n{}'.format(config.default_values, e))
+                        # Let Odoo generate notifications for followers automatically (no manual mail.notification)
+                        self.env['connect.settings'].connect_reload_view(target_msg.res_model)
 
-                    data.update({
-                        'name': from_number,
-                        'phone': from_number,
-                    })
-                    logger.info('Create Lead: {}'.format(from_number))
-                    self.env['crm.lead'].create(data)
+                # Message destination handling (restored)
+                config = self.env['connect.message_configuration'].search([('number.phone_number', '=', to_number)], limit=1)
+                dest_model = (config.destination if config and config.destination else 'res.partner')
+                defaults = {}
+                if config and config.default_values:
+                    try:
+                        defaults = dict(ast.literal_eval(config.default_values or '{}'))
+                    except Exception as e:
+                        logger.error('Invalid default data: %s\n%s', config.default_values, e)
+                if dest_model in self.env:
+                    try:
+                        self.env[dest_model].sudo().create_record_from_message(message, default_values=defaults)
+                    except Exception as e:
+                        logger.warning('create_record_from_message failed for %s: %s', dest_model, e)
+                else:
+                    logger.warning('Destination model %s not found', dest_model)
             else:
                 # Update message status
                 logger.info("Received Update Twilio SMS webhook data:\n%s", params)
@@ -207,12 +331,11 @@ class ConnectMessage(models.Model):
                     message.update({
                         'error_code': params.get('ErrorCode'),
                         'error_message': params.get('ErrorMessage'),
-                        'has_error': True
+                        'has_error': True,
                     })
         except Exception as e:
             logger.error(f"Error handling incoming SMS: {e}")
-        finally:
-            return str(MessagingResponse())  # Return empty TwiML response, i.e. no reply.
+        return str(MessagingResponse())  # Return empty TwiML response, i.e. no reply.
 
     def send(self, recipient, body, res_id=None, res_model=None, outgoing_callerid=None):
         sender_user = self.env.user
@@ -258,14 +381,17 @@ class ConnectMessage(models.Model):
             mt_note = self.env.ref('mail.mt_note').id
             obj = self.env[res_model].with_user(SUPERUSER_ID).browse(res_id)
             if hasattr(obj, 'message_post'):
+                # Include link to the message form
+                link = Markup(f"<small><a href=\"/web#id={message.id}&model=connect.message&view_type=form\">Message</a></small>")
+                chat_body = Markup(str(body) + '<br/>' + str(link))
                 kwargs = {
-                    'body': body,
+                    'body': chat_body,
                     'subtype_id': mt_note,
                     'message_type': message.message_type
                 }
 
                 kwargs.update({'author_id': sender_user.partner_id.id})
-                chatter = obj.with_context(mail_create_nosubscribe=False).message_post(**kwargs)
+                chatter = obj.with_context(mail_create_nosubscribe=True).message_post(**kwargs)
 
                 mail_notification_values = [{
                     'author_id': chatter.author_id.id,
@@ -298,3 +424,22 @@ class ConnectMessage(models.Model):
             else:
                 logger.warning('Unable to send WhatsUp message to "{}"!'.format(recipient))
             return False
+
+    def action_retry(self):
+        for rec in self:
+            if rec.status != 'failed':
+                continue
+            try:
+                # Use original sender number if available; send() will use it directly
+                self.env['connect.message'].send(
+                    recipient=rec.to_number,
+                    body=rec.body or '',
+                    res_id=rec.res_id or None,
+                    res_model=rec.res_model or None,
+                    outgoing_callerid=rec.from_number or None,
+                )
+            except ValidationError:
+                raise
+            except Exception as e:
+                logger.exception('Retry send failed for message %s: %s', rec.id, e)
+        return True
