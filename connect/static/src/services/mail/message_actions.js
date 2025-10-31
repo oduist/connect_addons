@@ -10,7 +10,7 @@ messageActionsRegistry
         condition: (component) =>
             component.message.message_type !== null,
         icon: "fa fa-mail-reply",
-        title: _t("Connect Reply"),
+        title: _t("SMS Reply"),
         onClick: async (component) => {
             const orm = component.message.Model.env.services.orm
             const numbers = await orm.call("mail.message", 'get_message_numbers', [component.message.id])
@@ -41,4 +41,33 @@ messageActionsRegistry
             )
         },
         sequence: 120,
+    })
+    .add("whatsapp-reply", {
+        condition: (component) => component.message.message_type !== null,
+        icon: "fa fa-whatsapp",
+        title: _t("WhatsApp Reply"),
+        onClick: async (component) => {
+            const orm = component.message.Model.env.services.orm;
+            const numbers = await orm.call("mail.message", 'get_message_numbers', [component.message.id]);
+            if (!numbers) {
+                const notification = component.message.Model.env.services.notification;
+                notification.add(_t("You can't reply to this message!"), { type: 'danger' });
+                return;
+            }
+            component.action.doAction(
+                {
+                    type: "ir.actions.act_window",
+                    target: "new",
+                    name: _t("Send WhatsApp Message"),
+                    res_model: "connect.whatsapp_composer",
+                    views: [[false, "form"]],
+                    context: {
+                        default_res_model: component.message.model,
+                        default_res_id: component.message.res_id,
+                        default_phone: numbers.from_number,
+                    },
+                },
+            );
+        },
+        sequence: 121,
     })

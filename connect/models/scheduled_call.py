@@ -16,5 +16,5 @@ class ScheduledCall(models.Model):
 
     partner = fields.Many2one('res.partner')
     calling_user = fields.Many2one('res.users')
-    calling_pbx_user = fields.Manyone('connect.user')
+    calling_pbx_user = fields.Many2one('connect.user')
 
