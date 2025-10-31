@@ -11,6 +11,17 @@
     <field name="perm_unlink" eval="0"/>
   </record>
 
+  <!-- Settings -->
+  <record id="connect_res_partner_webhook" model="ir.model.access">
+    <field name="name">connect_res_partner_webhook</field>
+    <field name="model_id" ref="base.model_res_partner"/>
+    <field name="group_id" ref="connect.group_connect_webhook"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
   <!-- Domain -->
   <record id="connect_domain_webhook" model="ir.model.access">
     <field name="name">connect_domain_webhook</field>

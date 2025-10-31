@@ -2,7 +2,7 @@
 
 {
     'name': 'Connect',
-    'version': '1.0.9',
+    'version': '1.0.10',
     'author': 'Oduist',
     'maintainer': 'Oduist',
     'live_test_url': 'https://connect-demo-18.oduist.com/',
@@ -17,13 +17,14 @@
     'external_dependencies': {
         'python': ['twilio', 'openai'],
     },
-    'data': [
+'data': [
         'data/res_users.xml',
         'data/data.xml',
         'data/functions.xml',
         'data/ir_cron.xml',
         'data/twiml.xml',
         'data/res_partner.xml',
+        'data/whatsapp_templates.xml',
         # Security
         'security/groups.xml',
         'security/admin.xml',
@@ -48,12 +49,15 @@
         'views/favorite.xml',
         'views/res_partner.xml',
         'views/message.xml',
-        'views/message_configuration.xml',
+'views/message_configuration.xml',
+        'views/message_content_template.xml',
+        'views/whatsapp_sender.xml',
         'views/versions.xml',
         'views/documentation.xml',
         # Wizard
         'wizard/transfer.xml',
-        'wizard/sms_composer_views.xml',
+'wizard/sms_composer_views.xml',
+        'wizard/whatsapp_composer_views.xml',
     ],
     'demo': [],
     'installable': True,
@@ -61,7 +65,7 @@
     'auto_install': False,
     'images': ['static/description/logo.png'],
     'assets': {
-        'web.assets_backend': [
+'web.assets_backend': [
             '/connect/static/src/icomoon/style.css',
             # '/connect/static/src/components/phone/*/*',
             # '/connect/static/src/js/main.js',

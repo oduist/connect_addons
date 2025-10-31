@@ -19,7 +19,7 @@
         <field name="arch" type="xml">
             <tree>
                 <field name="number"/>
-                <field name="model"/>
+                <field name="destination"/>
             </tree>
         </field>
     </record>
@@ -33,7 +33,7 @@
                     <group>
                         <group>
                             <field name="number"/>
-                            <field name="model"/>
+                            <field name="destination"/>
                             <field name="default_values"/>
                         </group>
                     </group>

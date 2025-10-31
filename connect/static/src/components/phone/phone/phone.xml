@@ -55,7 +55,7 @@
                         <div class="o_partner_link" t-on-click="() => this._openPartner(state.callerId.partnerId)">
                             <img alt="Avatar" class="o_partner_avatar" t-if="state.callerId.partnerId" t-att-src="state.callerId.partnerIconUrl"/>
                             <span class="o_partner_name"><t t-out="state.callerId.partnerName"/></span>
-                            <span class="o_partner_name"><t t-out="state.callerId.phoneNumber"/></span>
+                            <span class="o_partner_name"><i t-if="state.isWhatsapp" class="fa fa-whatsapp custom-whatsapp"/><t t-out="state.callerId.phoneNumber"/></span>
                             <span class="o_partner_name"><t t-out="state.callDurationTime"/></span>
                         </div>
                         <div t-if="state.isCallForwarded" class="text-center mt-1" title="Cancel Forward">
