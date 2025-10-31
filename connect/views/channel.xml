@@ -23,6 +23,7 @@
                 <field name="parent_channel"/>
                 <field name="call"/>
                 <field name="status"/>
+                <field name="call_type" optional="show"/>
                 <field name="sid" optional="hide"/>                
                 <field name="partner"/>
                 <field name="caller_number"/>
@@ -57,6 +58,7 @@
                             <field name="called_user"/>
                             <field name="partner"/>
                             <field name="status"/>
+                            <field name="call_type"/>
                         </group>
                         <group>
                             <field name="call"/>
@@ -96,6 +98,7 @@
                 <filter name="by_called_user" context="{'group_by': 'called_user'}"/>
                 <filter name="by_direction" context="{'group_by': 'technical_direction'}"/>
                 <filter name="by_status" context="{'group_by': 'status'}"/>
+                <filter name="by_call_type" context="{'group_by': 'call_type'}" string="By Call Type"/>
                 <filter name="by_created" context="{'group_by': 'create_date'}"/>                
             </search>
         </field>
