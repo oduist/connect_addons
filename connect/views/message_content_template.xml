@@ -50,7 +50,7 @@
         <field name="name">connect.message_content_template.tree</field>
         <field name="model">connect.message_content_template</field>
         <field name="arch" type="xml">
-            <list>
+            <tree>
                 <field name="friendly_name"/>
                 <field name="model_id"/>
                 <field name="sender_id"/>
@@ -60,7 +60,7 @@
                 <field name="display_status" string="Status"/>
                 <field name="date_created"/>
                 <field name="date_updated"/>
-            </list>
+            </tree>
         </field>
     </record>
 

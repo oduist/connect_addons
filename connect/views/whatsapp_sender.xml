@@ -20,7 +20,7 @@
         <field name="name">connect.whatsapp.sender.tree</field>
         <field name="model">connect.whatsapp_sender</field>
         <field name="arch" type="xml">
-            <list>
+            <tree>
                 <field name="number"/>
                 <field name="status"/>
                 <field name="voice_application"/>
@@ -28,7 +28,7 @@
                 <field name="no_sync" string="Ignore" optional="hide"/>
                 <field name="quality_rating"/>
                 <field name="messaging_limit"/>
-            </list>
+            </tree>
         </field>
     </record>
 
