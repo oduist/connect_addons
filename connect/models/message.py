@@ -245,26 +245,44 @@ class ConnectMessage(models.Model):
                     last_message = self.env['connect.message'].search([
                         ('from_number', '=', to_number), ('to_number', '=', from_number)
                     ], order='create_date desc', limit=1)
+                print('Parent ', parent_msg)
+                print('Last', last_message)
                 target_msg = parent_msg or last_message
+                print('Traget', target_msg)
+
+                # Validate that the target record still exists; otherwise, skip linking and let destination handler create new
+                valid_target = False
                 if target_msg and target_msg.res_model and target_msg.res_id:
-                    values.update({
-                        'res_model': target_msg.res_model,
-                        'res_id': target_msg.res_id,
-                    })
+                    target_rec = self.env[target_msg.res_model].sudo().browse(target_msg.res_id)
+                    if target_rec.exists():
+                        values.update({
+                            'res_model': target_msg.res_model,
+                            'res_id': target_msg.res_id,
+                        })
+                        valid_target = True
+                    else:
+                        logger.warning(
+                            'Target record %s(%s) does not exist anymore; will create a new destination record instead',
+                            target_msg.res_model, target_msg.res_id
+                        )
+                        # Invalidate target to avoid chatter posting on a deleted record
+                        target_msg = False
+
                 if parent_msg:
                     values.update({'parent_message': parent_msg.id})
 
                 message = self.env['connect.message'].sudo().create(values)
 
-                # Add message to chatter at the target record when available
-                if target_msg and target_msg.res_model and target_msg.res_id:
+                # Add message to chatter at the target record when available and valid
+                if valid_target and target_msg and target_msg.res_model and target_msg.res_id:
                     mt_note = self.env.ref('mail.mt_note').id
                     obj = self.env[target_msg.res_model].with_user(SUPERUSER_ID).browse(target_msg.res_id)
-                    if hasattr(obj, 'message_post'):
-                        body = Markup(f"<div class='d-flex flex-row px-1'>{message.direction_display} "
+                    # Double-check existence to be safe in concurrent delete scenarios
+                    if obj.exists() and hasattr(obj, 'message_post'):
+                        body = Markup(f"<div class='d-flex flex-row px-1'>"
                                 f"<span class='px-1'>{values.get('body')}</span></div>")
                         if message.media_url:
-                            body = Markup(f"<div class='d-flex flex-row'>{message.direction_display} "
+                            body = Markup(f"<div class='d-flex flex-row'>"
                                           f"<span class='px-1'>{values.get('body')}</span>"
                                           f"<br/>{message.media_widget}</div>")
                         # Include link to the message form
@@ -282,7 +300,7 @@ class ConnectMessage(models.Model):
                             kwargs.update({'author_id': partner.id})
                         else:
                             kwargs.update({'body': Markup('From: {}. Message: {}{}').format(from_number, params.get('Body'), link)})
-                        chatter = obj.with_context(mail_create_nosubscribe=False).message_post(**kwargs)
+                        chatter = obj.with_context(mail_create_nosubscribe=True).message_post(**kwargs)
                         chatter.connect_message = message
 
                         # Let Odoo generate notifications for followers automatically (no manual mail.notification)
