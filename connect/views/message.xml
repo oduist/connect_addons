@@ -37,7 +37,7 @@
                 <separator/>
                 <filter string="Today" name="today" domain="[('create_date', '>=', context_today().strftime('%Y-%m-%d'))]"/>
                 <filter string="Last 7 Days" name="last_7_days" domain="[('create_date', '>=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
-                <group expand="0" string="Group By">
+                <group>
                     <filter string="Direction" name="group_direction" context="{'group_by': 'direction'}"/>
                     <filter string="Message Type" name="group_message_type" context="{'group_by': 'message_type'}"/>
                     <filter string="Partner" name="group_partner" context="{'group_by': 'partner'}"/>

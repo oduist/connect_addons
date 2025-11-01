@@ -34,7 +34,7 @@
                 <filter string="Disabled" name="st_disabled" domain="[('status', '=', 'disabled')]"/>
 
                 <!-- Group By -->
-                <group expand="0" string="Group By">
+                <group>
                     <filter string="Model" name="gb_model" context="{'group_by': 'model_id'}"/>
                     <filter string="Content Type" name="gb_type" context="{'group_by': 'content_type'}"/>
                     <filter string="Status" name="gb_status" context="{'group_by': 'status'}"/>
