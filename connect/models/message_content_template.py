@@ -434,7 +434,7 @@ class ConnectMessageContentTemplate(models.Model):
                     }
                     if rec:
                         # Only update non-content fields to respect edit restrictions
-                        rec.write({k: v for k, v in common_updates.items() if v is not False})
+                        rec.with_context(skip_check=True).write({k: v for k, v in common_updates.items() if v is not False})
                         updated += 1
                     else:
                         # Ensure language is always set (required field)
