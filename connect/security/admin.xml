@@ -241,7 +241,6 @@
     <field name="perm_unlink" eval="1"/>
   </record>
 
-
   <!-- Documentation access -->
   <record model="ir.model.access" id="access_connect_documentation">
       <field name="name">connect.documentation</field>

@@ -520,7 +520,7 @@ class Domain(models.Model):
         exten = self.env["connect.exten"].sudo().search([("number", "=", found_num)])
         # Do not let whatsapp calls to go for external calling
         if not exten and is_whatsapp:
-            return "<Response><Say>Whatsapp Extension not found! Please create an extenstion for this Whatsapp number!</Say></Response>"
+            return "<Response><Say>Oops</Say><Pause length='1'/><Say>Whatsapp Extension not found! Please create an extenstion for this Whatsapp number!</Say></Response>"
         if not exten:
             # Get all extensions and match by pattern.
             # TODO: Handle bad exten numbers like 70[ that cannot be used by re.match.

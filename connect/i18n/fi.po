@@ -223,7 +223,6 @@ msgstr "Vastannut käyttäjä"
 
 #. module: connect
 #: model:ir.model.fields,field_description:connect.field_connect_call__answered_user_img
-#: model:ir.model.fields,field_description:connect.field_connect_message__receiver_user_img
 msgid "Answered User Avatar"
 msgstr "Vastanneen käyttäjän avatar"
 
@@ -2081,7 +2080,6 @@ msgid "Re-stream recordings using Odoo user auth."
 msgstr "Tallenteiden uudelleentoisto Odoo-käyttäjän tunnistautumisen avulla."
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_message__receiver_user
 #: model_terms:ir.ui.view,arch_db:connect.view_connect_sms_message_form
 msgid "Receiver User"
 msgstr "Vastaanottanut käyttäjä"
