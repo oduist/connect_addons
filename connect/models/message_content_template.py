@@ -51,15 +51,14 @@ class ConnectMessageContentTemplate(models.Model):
 
     # Link template to a specific Odoo model it applies to
     model_id = fields.Many2one('ir.model', string='Model', help='Model this template applies to.')
+    model_name = fields.Char(related="model_id.model", related_sudo=True, store=True, readonly=True)
     sender_id = fields.Many2one('connect.whatsapp_sender', string='Sender', help='Limit template to a specific WhatsApp sender (optional).')
-
     friendly_name = fields.Char(string='Name', required=True)
     language = fields.Many2one('res.lang', string='Language', required=True)
     variables = fields.Text(string='Variables', help='JSON mapping like {"1":"Owl Air Customer"}')
     content_type = fields.Selection(selection=CONTENT_TYPES, required=True)
     body = fields.Text(string='Body')
     actions = fields.Text(string='Actions (JSON)')
-
     # Twilio returned fields
     sid = fields.Char(string="SID", readonly=True)
     approval_create_link = fields.Char(readonly=True)
@@ -70,7 +69,6 @@ class ConnectMessageContentTemplate(models.Model):
     status = fields.Selection(selection=WHATSAPP_STATUSES, default='unsubmitted', required=True, readonly=True)
     rejection_reason = fields.Char(readonly=True)
     allow_category_change = fields.Boolean(readonly=True)
-
     display_status = fields.Html(compute='_compute_display_status', sanitize=False)
 
     @api.constrains('variables')
@@ -434,7 +432,7 @@ class ConnectMessageContentTemplate(models.Model):
                     }
                     if rec:
                         # Only update non-content fields to respect edit restrictions
-                        rec.write({k: v for k, v in common_updates.items() if v is not False})
+                        rec.with_context(skip_check=True).write({k: v for k, v in common_updates.items() if v is not False})
                         updated += 1
                     else:
                         # Ensure language is always set (required field)
