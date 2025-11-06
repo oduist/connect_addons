@@ -26,7 +26,7 @@
         <field name="model">connect.call</field>
         <field name="arch" type="xml">
             <list edit="false" create="false" decoration-danger="has_error">
-                <field name="has_error" column_invisible="1"/>
+                <field name="has_error" invisible="1"/>
                 <field name="create_date"/>
                 <field name="summary" optional="hide"/>
                 <field name="caller" optional="hide"/>
@@ -55,7 +55,7 @@
         <field name="name">connect_call_form</field>
         <field name="model">connect.call</field>
         <field name="arch" type="xml">
-            <form create="false">
+            <form create="false" edit="false">
                 <header>
                     <button string="Partner" name="create_partner_button" type="object" class="btn-primary" icon='fa-user'
                             invisible="not partner"/>
@@ -77,21 +77,21 @@
                                 <group>
                                     <field name="called" widget="phone"/>
                                     <field name="caller" widget="phone"/>
-                                    <div class="d-flex flex-row" colspan="2" cols="3">
-                                        <div class="d-flex flex-column" calspan="1" style="flex: 1">
+                                    <div class="d-flex flex-row">
+                                        <div class="d-flex flex-column" style="flex: 1">
                                             <field name="partner"/>
                                             <field name="partner_img" style="float: left" widget="image"  class="oe_avatar"
-                                                   invisible="partner == False"/>
-                                            <div invisible="partner == False">Partner</div>
+                                                   invisible="not partner"/>
+                                            <div invisible="not partner">Partner</div>
                                         </div>
-                                        <div class="d-flex flex-column" calspan="1" style="flex: 1"
-                                             invisible="caller_user == False">
+                                        <div class="d-flex flex-column" style="flex: 1"
+                                             invisible="not caller_user">
                                             <field name="caller_user"/>
                                             <field name="caller_user_img" style="float: left" widget="image" class="oe_avatar"/>
                                             <div>Caller User</div>
                                         </div>
-                                        <div class="d-flex flex-column" calspan="1" style="flex: 1"
-                                             invisible="answered_user == False">
+                                        <div class="d-flex flex-column" style="flex: 1"
+                                             invisible="not answered_user">
                                             <field name="answered_user"/>
                                             <field name="answered_user_img" style="float: left" widget="image" class="oe_avatar"/>
                                             <div>Answered User</div>
@@ -105,7 +105,7 @@
                             </group>
                         </page>
                         <page name="recording" string="Recording"
-                              invisible="recording == False">
+                              invisible="not recording">
                             <group>
                                 <group>
                                     <field name="recording_widget" widget="html" nolabel="1"/>
@@ -163,7 +163,7 @@
                         </page>
                         <field name="has_error"
                                invisible="1"/>
-                        <page name="error" string="Error" invisible="has_error == False">
+                        <page name="error" string="Error" invisible="not has_error">
                             <group>
                                 <field name="error_code"/>
                                 <field name="error_message"/>
