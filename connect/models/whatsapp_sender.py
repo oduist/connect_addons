@@ -9,6 +9,7 @@ from markupsafe import Markup
 
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
+from .settings import debug
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +118,7 @@ class ConnectWhatsappSender(models.Model):
             if resp.status_code >= 400:
                 raise ValidationError(f"Twilio error: {resp.status_code} {resp.text}")
             data = resp.json()
+            debug(self, 'Whatsapp senders data: {}'.format(json.dumps(data, indent=2)))
             items = data.get('senders', [])
             twilio_sids = set()
             for item in items:
@@ -137,12 +139,15 @@ class ConnectWhatsappSender(models.Model):
                     if rec.no_sync:
                         continue
                     rec.write(vals)
+                    debug(self, 'Updated a Whatsapp sender {}'.format(rec.number))
                 else:
                     rec = self.create([vals])[0]
+                    debug(self, 'Created a Whatsapp sender {}'.format(rec.number))
                 # Update sender webhook endpoints in Twilio
                 try:
                     sid = rec.sid or item.get('sid')
                     if sid:
+                        debug(self, 'Update Whatsapp Sender Webhook in Twilio for sid {}'.format(sid))
                         update_url = f'https://messaging.twilio.com/v2/Channels/Senders/{sid}'
                         payload = {
                             'webhook': {
@@ -159,17 +164,24 @@ class ConnectWhatsappSender(models.Model):
                             }
                         resp_u = requests.post(update_url, auth=(account_sid, auth_token), json=payload, timeout=30)
                         if resp_u.status_code >= 400:
+                            debug(self, 'Failed to update sender: {}: {} {}'.format(sid, resp_u.status_code, resp_u.text))
                             logger.warning('Failed to update sender %s: %s %s', sid, resp_u.status_code, resp_u.text)
+                        else:
+                            debug(self, 'Sender webhook updated.')
+                    else:
+                        debug(self, 'Cannot update Twilio Webhooks, no sid for Sender ID {}'.format(rec.id))
                 except Exception as e:
-                    logger.warning('Sender webhook update error: %s', e)
+                    logger.exception('Sender webhook update error: %s', e)
             # Remove local senders missing in Twilio (by sid)
             if twilio_sids:
                 missing = self.search([('sid', '!=', False), ('sid', 'not in', list(twilio_sids))])
                 if missing:
+                    debug(self, 'Removing missing Whatsapp Senders: {}'.format(', '.join(
+                        [k.number for k in missing])))
                     missing.unlink()
             settings.connect_notify('WhatsApp Senders synced')
         except Exception as e:
-            raise ValidationError(f"Failed to sync WhatsApp Senders: {e}")
+            raise ValidationError("Failed to sync WhatsApp Senders: {}".format(e))
 
     def action_sync(self):
         self.sync()
@@ -225,7 +237,7 @@ class ConnectWhatsappSender(models.Model):
         # Check 24-hour window for WhatsApp - only if not using a content template
         if not content_sid:
             # Find last incoming WhatsApp message from this recipient
-            last_incoming = self.env['connect.message'].search([
+            last_incoming = self.env['connect.message'].sudo().search([
                 ('message_type', '=', 'WhatsApp'),
                 ('from_number', '=', recipient),
                 ('direction', '=', 'incoming')
@@ -239,8 +251,10 @@ class ConnectWhatsappSender(models.Model):
                         '24 hours contact window has been expired. '
                         'Please select a message template to initiate a new contact window.'
                     )
+                debug(self, 'Last incoming message received less then 24 hours ago, we can send a message.')
             else:
                 # No previous incoming message found - must use template
+                debug(self, 'No last incoming 24 hours ago message found, refuse to send, use a template')
                 raise ValidationError(
                     '24 hours contact window has been expired. '
                     'Please select a message template to initiate a new contact window.'
@@ -305,7 +319,7 @@ class ConnectWhatsappSender(models.Model):
             mt_note = self.env.ref('mail.mt_note').id
             obj = self.env[res_model].browse(res_id)
             if hasattr(obj, 'message_post'):
-                chatter = obj.sudo().with_context(mail_create_nosubscribe=False).message_post(
+                chatter = obj.sudo().with_context(mail_create_nosubscribe=True).message_post(
                     body=body,
                     subtype_id=mt_note,
                     message_type='WhatsApp',

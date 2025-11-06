@@ -90,7 +90,7 @@
         <field name="name">connect_message_user</field>
         <field name="model_id" ref="connect.model_connect_message"/>
         <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
-        <field name="domain_force">['|', ('sender_user', '=', user.id), ('receiver_user', '=', user.id)]</field>
+        <field name="domain_force">[('sender_user', '=', user.id)]</field>
         <field name="perm_read" eval="1"/>
         <field name="perm_write" eval="1"/>
         <field name="perm_create" eval="1"/>
