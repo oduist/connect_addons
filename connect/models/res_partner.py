@@ -250,8 +250,7 @@ class Partner(models.Model):
         else:
             # Ensure 'fname' and 'raise_exception' are extracted from kwargs or set to defaults
             fname = kwargs.get('fname', False)
-            raise_exception = kwargs.get('raise_exception', False)
-            return super(Partner, self)._phone_format(fname=fname, number=number, country=country, force_format=force_format, raise_exception=raise_exception)
+            return super(Partner, self)._phone_format(fname=fname, number=number, country=country, force_format=force_format)
 
     @api.model
     def api_get_partner(self, number):
