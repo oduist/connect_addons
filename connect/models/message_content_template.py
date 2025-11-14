@@ -246,6 +246,8 @@ class ConnectMessageContentTemplate(models.Model):
 
     def action_approve(self):
         for rec in self:
+            if not rec.sid:
+                rec.create_in_twilio()
             # If previously rejected: remove in Twilio, recreate, then submit again
             if rec.status == 'rejected':
                 rec.delete_in_twilio()
@@ -466,6 +468,8 @@ class ConnectMessageContentTemplate(models.Model):
 
     def action_fetch_approval_status(self):
         for rec in self:
+            if not rec.sid:
+                rec.create_in_twilio()
             link = rec.approval_fetch
             if not link:
                 raise ValidationError('Approval fetch link is not set for this template.')
