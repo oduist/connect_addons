@@ -83,6 +83,8 @@ export class Phone extends Component {
             xTransferTo: '',
             xTransferInfo: '',
             xTransferPartner: false,
+            isTransferInProgress: false,
+            isTransferConnected: false,
             phone_status: this.status.ended,
             calls: [],
         })
@@ -94,6 +96,7 @@ export class Phone extends Component {
         this.sipRegistered = false
         this.lastActiveTab = this.tabs.phone
         this.session = null
+        this.transferSession = null
         this.userAgent = null
         this.call_id = null
         this.call_popup_is_enabled = false
@@ -101,6 +104,7 @@ export class Phone extends Component {
         this.phone_ring_volume = 70
         this.attended_transfer_sequence = '*7'
         this.disconnect_call_sequence = '**'
+        this.transferTimeout = null
         // Move Phone
         this.mousePosition = {}
         this.offset = [0, 0]
@@ -140,6 +144,8 @@ export class Phone extends Component {
 
             // EVENTS
             this.bus.addEventListener('busPhoneMakeCall', ({detail}) => this.prepareCall(detail))
+
+            this.bus.addEventListener('busPhoneMakeTransfer', ({detail}) => this._busPhoneMakeTransfer(detail))
 
             this.bus.addEventListener('busPhoneMakeForward', ({detail}) => this._busPhoneMakeForward(detail))
 
@@ -623,6 +629,16 @@ export class Phone extends Component {
         this.state.xTransferTo = ''
         this.state.xTransferInfo = ''
         this.state.xTransferPartner = false
+        this.state.isTransferInProgress = false
+        this.state.isTransferConnected = false
+        if (this.transferSession) {
+            this.transferSession.disconnect()
+            this.transferSession = null
+        }
+        if (this.transferTimeout) {
+            clearTimeout(this.transferTimeout)
+            this.transferTimeout = null
+        }
     }
 
     _openPartner(id) {
@@ -975,5 +991,153 @@ export class Phone extends Component {
         } else {
             this.bc.postMessage({event: "tbcCancelForward"})
         }
+    }
+
+    async _busPhoneMakeTransfer(phoneNumber) {
+        if (!this.session || this.state.isTransferInProgress) return
+        this.state.isTransfer = false
+        this.state.isContacts = false
+        await this.initiateTransfer(phoneNumber)
+    }
+
+    async initiateTransfer(phoneNumber) {
+        const self = this
+        if (!self.session) {
+            self.notify("No active call to transfer", {sticky: false, type: 'warning'})
+            return
+        }
+
+        self.state.isTransferInProgress = true
+        self.state.xTransferTo = phoneNumber
+        self.state.xTransferInfo = "Calling transfer recipient..."
+
+        try {
+            const transferRecipient = await self.searchPartner(phoneNumber)
+            if (transferRecipient) {
+                self.state.xTransferPartner = self.computePartnerData(transferRecipient, phoneNumber)
+            }
+        } catch (error) {
+            console.error("Failed to search transfer recipient:", error)
+        }
+
+        let transferPhoneNumber = phoneNumber
+        if (transferPhoneNumber.length > 8 && transferPhoneNumber[0] !== '+') {
+            transferPhoneNumber = `+${transferPhoneNumber}`
+        }
+
+        const params = {
+            To: transferPhoneNumber,
+            Called: transferPhoneNumber,
+        }
+
+        try {
+            self.transferSession = await self.userAgent.connect({params})
+
+            self.transferSession.on("accept", async function () {
+                self.state.isTransferConnected = true
+                self.state.xTransferInfo = "Transfer recipient answered - Choose action"
+                self.notify("Transfer recipient answered", {sticky: true, type: 'info'})
+            })
+
+            self.transferSession.on("disconnect", async function () {
+                self.state.isTransferInProgress = false
+                self.state.isTransferConnected = false
+                self.state.xTransferTo = ''
+                self.state.xTransferInfo = ''
+                self.state.xTransferPartner = false
+                if (self.transferTimeout) clearTimeout(self.transferTimeout)
+            })
+
+            self.transferSession.on("cancel", async function () {
+                self.state.isTransferInProgress = false
+                self.state.isTransferConnected = false
+                self.state.xTransferTo = ''
+                self.state.xTransferInfo = 'Transfer rejected by recipient'
+                if (self.transferTimeout) clearTimeout(self.transferTimeout)
+                setTimeout(() => {
+                    self.state.xTransferInfo = ''
+                }, 3000)
+            })
+
+            self.transferTimeout = setTimeout(async () => {
+                if (self.transferSession && !self.state.isTransferConnected) {
+                    self.state.xTransferInfo = "Transfer attempt timed out - returning to original caller"
+                    if (self.transferSession) {
+                        self.transferSession.disconnect()
+                    }
+                }
+            }, 30000)
+        } catch (error) {
+            console.error("Transfer initiation failed:", error)
+            self.state.isTransferInProgress = false
+            self.state.xTransferInfo = 'Transfer failed: ' + error.message
+            setTimeout(() => {
+                self.state.xTransferInfo = ''
+            }, 3000)
+        }
+    }
+
+    async _onClickBridgeTransfer() {
+        if (!this.session || !this.transferSession || !this.state.isTransferConnected) {
+            this.notify("Transfer not ready", {sticky: false, type: 'warning'})
+            return
+        }
+
+        this.state.xTransferInfo = "Bridging calls..."
+        if (this.transferTimeout) clearTimeout(this.transferTimeout)
+
+        try {
+            this.session.disconnect()
+            this.state.isTransferInProgress = false
+            this.state.isTransferConnected = false
+            this.state.xTransferTo = ''
+            this.state.xTransferInfo = 'Transfer completed - calls bridged'
+            setTimeout(() => {
+                this.state.xTransferInfo = ''
+            }, 2000)
+        } catch (error) {
+            console.error("Bridge transfer failed:", error)
+            this.state.xTransferInfo = 'Bridge failed: ' + error.message
+        }
+    }
+
+    async _onClickCancelTransfer() {
+        if (!this.transferSession) {
+            this.notify("No transfer to cancel", {sticky: false, type: 'warning'})
+            return
+        }
+
+        if (this.transferTimeout) clearTimeout(this.transferTimeout)
+        this.transferSession.disconnect()
+        this.transferSession = null
+        this.state.isTransferInProgress = false
+        this.state.isTransferConnected = false
+        this.state.xTransferTo = ''
+        this.state.xTransferInfo = 'Transfer cancelled - back with original caller'
+        setTimeout(() => {
+            this.state.xTransferInfo = ''
+        }, 2000)
+        this.notify("Transfer cancelled", {sticky: false})
+    }
+
+    async _onClickReturnToOriginal() {
+        if (!this.session) {
+            this.notify("Original call not available", {sticky: false, type: 'warning'})
+            return
+        }
+
+        if (this.transferTimeout) clearTimeout(this.transferTimeout)
+        if (this.transferSession) {
+            this.transferSession.disconnect()
+            this.transferSession = null
+        }
+        this.state.isTransferInProgress = false
+        this.state.isTransferConnected = false
+        this.state.xTransferTo = ''
+        this.state.xTransferInfo = 'Returned to original caller'
+        setTimeout(() => {
+            this.state.xTransferInfo = ''
+        }, 1500)
+        this.notify("Returned to original caller", {sticky: false})
     }
 }

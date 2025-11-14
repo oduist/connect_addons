@@ -115,10 +115,19 @@
                     <button t-if="state.phone_status === status.accepted" aria-label="DTMF" t-attf-class="flex-item {{ state.isKeypad ? 'active' : '' }}" title="DTMF" t-on-click="_onClickKeypad">
                         <i class="icon-dialpad fa"/>
                     </button>
-<!--                    <button t-if="state.phone_status === status.accepted" aria-label="Transfer" t-attf-class="flex-item{{ state.isTransfer ? ' active' : '' }} {{ state.phone_status === status.accepted ? '' : 'o_hide' }} " title="Transfer" t-on-click="_onClickTransfer">-->
-<!--                        <i class="fa fa-exchange"/>-->
-<!--                    </button>-->
-                    <button t-if="state.phone_status === status.accepted" aria-label="Forward" t-attf-class="flex-item {{ state.isForward ? 'active' : '' }}" title="Forward" t-on-click="_onClickForward">
+                    <button t-if="state.phone_status === status.accepted and not state.isTransferInProgress" aria-label="Transfer" t-attf-class="flex-item{{ state.isTransfer ? ' active' : '' }}" title="Transfer" t-on-click="_onClickTransfer">
+                        <i class="fa fa-exchange"/>
+                    </button>
+                    <button t-if="state.isTransferInProgress and state.isTransferConnected" aria-label="Bridge" class="flex-item" title="Bridge Transfer" t-on-click="_onClickBridgeTransfer">
+                        <i class="fa fa-link"/>
+                    </button>
+                    <button t-if="state.isTransferInProgress" aria-label="Cancel Transfer" class="flex-item" title="Cancel Transfer" t-on-click="_onClickCancelTransfer">
+                        <i class="fa fa-times"/>
+                    </button>
+                    <button t-if="state.isTransferInProgress and state.isTransferConnected" aria-label="Return" class="flex-item" title="Return to Original Caller" t-on-click="_onClickReturnToOriginal">
+                        <i class="fa fa-undo"/>
+                    </button>
+                    <button t-if="state.phone_status === status.accepted and not state.isTransferInProgress" aria-label="Forward" t-attf-class="flex-item {{ state.isForward ? 'active' : '' }}" title="Forward" t-on-click="_onClickForward">
                         <i class="fa icon-redo2"/>
                     </button>
                     <button t-if="state.phone_status !== status.accepted" aria-label="Mute Sound" class="flex-item" t-attf-title="{{ state.isSoundMute ? 'Unmute Sound' : 'Mute Sound' }}" t-on-click="_onClickSoundMute">
