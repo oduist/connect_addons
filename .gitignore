@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 connect/data/dev.xml
+WARP.md
+GEMINI.md
 # Environments
 .env
 .venv
