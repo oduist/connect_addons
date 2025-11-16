@@ -50,8 +50,8 @@ class ConnectMessageContentTemplate(models.Model):
     _order = 'create_date desc'
 
     # Link template to a specific Odoo model it applies to
-    model_id = fields.Many2one('ir.model', string='Model', help='Model this template applies to.')
-    model_name = fields.Char(related="model_id.model", related_sudo=True, store=True, readonly=True)
+    model_id = fields.Many2one('ir.model', string='Model Template', help='Model this template applies to.')
+    model_name = fields.Char(related="model_id.model", string='Model Template Name', related_sudo=True, store=True, readonly=True)
     sender_id = fields.Many2one('connect.whatsapp_sender', string='Sender', help='Limit template to a specific WhatsApp sender (optional).')
     friendly_name = fields.Char(string='Name', required=True)
     language = fields.Many2one('res.lang', string='Language', required=True)

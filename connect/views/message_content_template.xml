@@ -19,7 +19,7 @@
         <field name="arch" type="xml">
             <search>
                 <!-- Search fields -->
-                <field name="model_id"/>
+                <field name="model_id" string="Model"/>
                 <field name="friendly_name" string="Name" filter_domain="[('friendly_name', 'ilike', self)]"/>
                 <field name="body" filter_domain="[('body', 'ilike', self)]"/>
 
@@ -52,7 +52,7 @@
         <field name="arch" type="xml">
             <list>
                 <field name="friendly_name"/>
-                <field name="model_id"/>
+                <field name="model_id" string="Model"/>
                 <field name="sender_id"/>
                 <field name="language"/>
                 <field name="content_type"/>
@@ -82,7 +82,7 @@
                     </div>
                     <group>
                         <group>
-                            <field name="model_id"/>
+                            <field name="model_id" string="Model"/>
                             <field name="sender_id"/>
                             <field name="language" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
                             <field name="content_type" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
