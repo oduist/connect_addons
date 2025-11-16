@@ -2,8 +2,10 @@
 import re
 import urllib.parse
 
-from odoo import models, fields, api
+from odoo import models, fields, api, release
 from odoo.exceptions import ValidationError
+if release.version_info[0] >= 19:
+    from odoo.models import Constraint
 
 
 class ElevenlabsAgentTool(models.Model):
@@ -32,9 +34,13 @@ class ElevenlabsAgentTool(models.Model):
     client_expects_response = fields.Boolean(string='Expects Response',
                                              help='If true, calling this tool should block the conversation until the client responds with some response which is passed to the llm. If false then we will continue the conversation without waiting for the client to respond, this is useful to show content to a user but not block the conversation')
 
-    _sql_constraints = [
-        ('name_unique', 'UNIQUE(name)', 'This name is already used!')
-    ]
+    # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
+    if release.version_info[0] >= 19:
+        _name_unique = Constraint('UNIQUE(name)', 'This name is already used!')
+    else:
+        _sql_constraints = [
+            ('name_unique', 'UNIQUE(name)', 'This name is already used!')
+        ]
 
     def get_tool_url(self):
         api_url = self.env['ir.config_parameter'].sudo().get_param('connect.api_url')
