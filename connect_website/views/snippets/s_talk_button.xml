@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
 
-    <template id="connect_website.connect_talk_button" name="Connect Talk Button">
-        <div class="s_card card bg-white w-100 " style="border: none;">
-            <div class="s_connect_talk btn btn-primary">
-                <div class="d-flex align-items-center justify-content-center s_talk_button">Let's Talk</div>
-                <div class="s_incoming_call hide">
+    <template id="connect_website.s_connect_button" name="Connect Button">
+        <div class="s_connect_container s_card card bg-white w-100 p-4" style="border: none;">
+            <div class="s_connect_body btn btn-primary">
+                <div class="d-flex align-items-center justify-content-center s_connect_text">Let's Talk</div>
+                <div class="d-flex align-items-center justify-content-center s_incoming_call hide">
                     <button aria-label="Call" class="answer-call" title="Call">
                         <i class="fa fa-phone"/>
                     </button>
@@ -17,24 +17,24 @@
         </div>
     </template>
 
-    <record id="connect_website.s_talk_button_000_js" model="ir.asset">
-        <field name="name">Connect Talk Button 000 JS</field>
+    <record id="connect_website.s_connect_button_000_js" model="ir.asset">
+        <field name="name">Connect Button 000 JS</field>
         <field name="bundle">web.assets_frontend</field>
-        <field name="path">connect_website/static/src/snippets/s_talk_button/000.js</field>
+        <field name="path">connect_website/static/src/snippets/s_connect_button/000.js</field>
         <field name="active" eval="True"/>
     </record>
 
-    <record id="connect_website.s_talk_button_000_xml" model="ir.asset">
-        <field name="name">Connect Talk Button 000 XML</field>
+    <record id="connect_website.s_connect_button_000_xml" model="ir.asset">
+        <field name="name">Connect Button 000 XML</field>
         <field name="bundle">web.assets_frontend</field>
-        <field name="path">connect_website/static/src/snippets/s_talk_button/000.xml</field>
+        <field name="path">connect_website/static/src/snippets/s_connect_button/000.xml</field>
         <field name="active" eval="True"/>
     </record>
 
-    <record id="connect_website.s_talk_button_000_scss" model="ir.asset">
-        <field name="name">Connect Talk Button 000 SCSS</field>
+    <record id="connect_website.s_connect_button_000_scss" model="ir.asset">
+        <field name="name">Connect Button 000 SCSS</field>
         <field name="bundle">web.assets_frontend</field>
-        <field name="path">connect_website/static/src/snippets/s_talk_button/000.scss</field>
+        <field name="path">connect_website/static/src/snippets/s_connect_button/000.scss</field>
         <field name="active" eval="True"/>
     </record>
 </odoo>

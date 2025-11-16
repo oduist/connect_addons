@@ -32,6 +32,8 @@ class Lead(models.Model):
         return self.create(data)
 
     connect_calls = fields.One2many('connect.call', 'lead')
+    if release.version_info[0] >= 19:
+        mobile = fields.Char()
     connect_calls_count = fields.Integer(
         compute='_get_connect_calls_count', string='Calls', store=True)
     phone_normalized = fields.Char(compute='_get_phone_normalized',
