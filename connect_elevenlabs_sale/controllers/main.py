@@ -16,10 +16,15 @@ class ConnectElevenlabsSaleController(ConnectElevenlabsController):
         self.check_agent_request()
         data = json.loads(http.request.httprequest.get_data(as_text=True))
         logger.info('Agent data: %s', data)
+        call = http.request.env['connect.call'].sudo().browse(int(data['call_id']))
+        if call.direction == 'outgoing':
+            data['partner_phone'] = call.called
+        else:
+            data['partner_phone'] = call.caller
         partner = http.request.env['res.partner'].sudo().with_context(
             connect_call_id=int(data['call_id'])).create({
                 'name': data['name'],
-                'phone': data['partner_phone']
+                'phone': data.get('partner_phone')
             })
         logger.info('Partner %s (%s) has been created: ', partner.name, partner.id)
         # Now assign partner to the call.
@@ -60,7 +65,7 @@ class ConnectElevenlabsSaleController(ConnectElevenlabsController):
             [('id', '=', data.get('product_id'))])
         if not product:
             return 'Product not found! Please contact technical support!'
-        order = http.request.env['sale.order'].sudo().create({
+        order_data = {
             'partner_id': data.get('partner_id'),
             'order_line': [
                 (0, 0, {
@@ -69,7 +74,14 @@ class ConnectElevenlabsSaleController(ConnectElevenlabsController):
                     'price_unit': product.list_price,
                 }),
             ]
-        })
+        }
+        # Check for installed sale modules
+        if 'partner_invoice_id' in http.request.env['sale.order']._fields.keys():
+            order_data.update({
+                'partner_invoice_id': order_data['partner_id'],
+                'partner_shipping_id': order_data['partner_id']
+            })
+        order = http.request.env['sale.order'].sudo().create(order_data)
         logger.info('Sale order created: %s (%s)', order.name, order.id)
         return {'order_name': order.name}
 
@@ -80,6 +92,11 @@ class ConnectElevenlabsSaleController(ConnectElevenlabsController):
         self.check_agent_request()
         data = json.loads(http.request.httprequest.get_data(as_text=True))
         logger.info('Agent data: %s', data)
+        call = http.request.env['connect.call'].sudo().browse(int(data['call_id']))
+        if call.direction == 'outgoing':
+            data['partner_phone'] = call.called
+        else:
+            data['partner_phone'] = call.caller
         if not data.get('partner_id'):
             return 'You must provide your partner ID to get your orders!'
         if not data.get('order_name'):
@@ -117,6 +134,11 @@ class ConnectElevenlabsSaleController(ConnectElevenlabsController):
         data = json.loads(http.request.httprequest.get_data(as_text=True))
         self.check_agent_request()
         logger.info('Agent data: %s', data)
+        call = http.request.env['connect.call'].sudo().browse(int(data['call_id']))
+        if call.direction == 'outgoing':
+            data['partner_phone'] = call.called
+        else:
+            data['partner_phone'] = call.caller
         if not data.get('partner_id'):
             return 'You must provide your partner ID to get your orders!'
         search_domain = [
