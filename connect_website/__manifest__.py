@@ -16,7 +16,7 @@
         # Views
         'views/settings.xml',
         # Snippets
-        'views/snippets/s_talk_button.xml',
+        'views/snippets/s_connect_button.xml',
         'views/snippets/snippets.xml',
     ],
     'demo': [],
