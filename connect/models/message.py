@@ -284,7 +284,6 @@ class ConnectMessage(models.Model):
                         logger.warning('Destination model %s not found', dest_model)
                 # Add message to chatter at the target record when available and valid
                 if valid_target and target_msg and target_msg.res_model and target_msg.res_id:
-                    mt_note = self.env.ref('mail.mt_note').id
                     obj = self.env[target_msg.res_model].with_user(SUPERUSER_ID).browse(target_msg.res_id)
                     # Double-check existence to be safe in concurrent delete scenarios
                     if obj.exists() and hasattr(obj, 'message_post'):
@@ -303,7 +302,7 @@ class ConnectMessage(models.Model):
                         kwargs = {
                             'body': body,
                             'subtype_id': mt_comment,
-                            'message_type': 'comment',
+                            'message_type': message.message_type
                         }
                         if partner:
                             kwargs.update({'author_id': partner.id})
