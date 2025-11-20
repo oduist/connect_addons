@@ -46,8 +46,11 @@
                 <span class="o_partner_name"><t t-out="caller"/></span>
                 <span t-if="state.call.duration_human" class="o_partner_name"><t t-out="state.call.duration_human"/></span>
                 <div class="text-center action-container" title="Customer" t-if="!(state.call.called_users.length > 0 and state.call.caller_user)">
-                    <button class="btn  p-3 border rounded-circle" t-on-click="_createOpenPartner">
+                    <button t-if="state.call.partner" class="btn  p-3 border rounded-circle" t-on-click="_openPartner">
                         <i aria-label="Customer" class="fa fa-fw fa-lg fa-user"/>
+                    </button>
+                    <button t-else="" class="btn  p-3 border rounded-circle" t-on-click="_createPartner">
+                        <i aria-label="Create Customer" class="fa fa-fw fa-lg fa-user-plus"/>
                     </button>
                 </div>
                 <div class="text-center action-container" title="Open in History">
