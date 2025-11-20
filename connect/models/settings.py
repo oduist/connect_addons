@@ -722,7 +722,7 @@ class Settings(models.Model):
                 twiml = """<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Dial callerId="{}">
-        <WhatsApp statusCallback="{}" statusCallbackEvent="ringing,answered,completed">{}</WhatsApp>
+        <WhatsApp statusCallback="{}" statusCallbackEvent="ringing answered completed">{}</WhatsApp>
     </Dial>
 </Response>""".format(callerId, status_url, number)
             else:
