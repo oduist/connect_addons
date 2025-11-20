@@ -14,10 +14,10 @@ export class Contacts extends Component {
     static template = 'connect.contacts'
     static props = {
         bus: Object,
-        isTransfer: { type: Boolean, optional: true },
-        isContact: { type: Boolean, optional: true },
-        isForward: { type: Boolean, optional: true },
-        contactSearch: { type: String, optional: true },
+        isTransfer: {type: Boolean, optional: true},
+        isContact: {type: Boolean, optional: true},
+        isForward: {type: Boolean, optional: true},
+        contactSearch: {type: String, optional: true},
     }
 
     constructor() {
@@ -118,13 +118,10 @@ export class Contacts extends Component {
             self.orm.searchRead(
                 "res.partner",
                 [
-                    '|', ['connect_phone_normalized', '=ilike', `%${self.searchQuery}%`],
-                    '|', ['connect_mobile_normalized', '=ilike', `%${self.searchQuery}%`],
+                    ['phone_mobile_search', '=ilike', `%${self.searchQuery}%`],
                     ['name', '=ilike', `%${self.searchQuery}%`],
-                    '|', ['phone', '!=', null],
-                    ['mobile', '!=', null]
                 ],
-                ['id', 'name', 'email', 'connect_phone_normalized', 'connect_mobile_normalized'],
+                ['id', 'name', 'email', 'phone_sanitized'],
                 {order: 'name asc', limit: 10}
             ).then((records) => {
                 self.state.partners = records
