@@ -69,12 +69,6 @@ class Partner(models.Model):
     connect_calls_count = fields.Integer(compute='_get_connect_calls_count')
     connect_messages_count = fields.Integer(compute='_get_connect_messages_count')
     connect_recorded_calls = fields.One2many('connect.recording', 'partner')
-    connect_phone_normalized = fields.Char(compute='_get_connect_phone_normalized',
-                                   index=True, store=True,
-                                   string='E.164 phone')
-    connect_mobile_normalized = fields.Char(compute='_get_connect_phone_normalized',
-                                    index=True, store=True,
-                                    string='E.164 mobile')
     connect_user = fields.Many2one('connect.user', compute='_get_connect_user')
     if release.version_info[0] >= 19:
         mobile = fields.Char()
@@ -121,14 +115,6 @@ class Partner(models.Model):
         return res
 
 
-    @api.depends('phone', 'mobile', 'country_id')
-    def _get_connect_phone_normalized(self):
-        for rec in self:
-            rec.update({
-                'connect_phone_normalized': rec._normalize_phone(rec.phone) if rec.phone else False,
-                'connect_mobile_normalized': rec._normalize_phone(rec.mobile) if rec.mobile else False
-            })
-
     def _normalize_phone(self, number):
         """Keep normalized (E.164) phone numbers in normalized fields.
         """
@@ -159,14 +145,7 @@ class Partner(models.Model):
         a) If partners belong to same company, return company record.
         b) If partners belong to different companies return False.
         """
-        re_uri = re.compile(r'^sip:(\+\d+)@(.+)$')
-        found = re_uri.search(number)
-        if found:
-            number = found.group(1)
-        found = self.sudo().search([
-            '|',
-            ('connect_phone_normalized', '=', number),
-            ('connect_mobile_normalized', '=', number)])
+        found = self.sudo().search([('phone_mobile_search', '=', number)])
         debug(self, '{} belongs to partners: {}'.format(
             number, found.mapped('id')
         ))
