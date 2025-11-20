@@ -42,8 +42,8 @@ class ConnectWhatsappComposer(models.TransientModel):
         try:
             if not phone and res_model and res_id and res_model in self.env:
                 rec = self.env[res_model].browse(res_id)
-                # Prefer normalized fields then mobile then phone
-                phone = rec.connect_mobile_normalized or rec.connect_phone_normalized or rec.mobile or rec.phone
+                # Mobile field is removed from Odoo 18.0.
+                phone = rec.phone_sanitized
             if phone:
                 # Normalize to E.164 using partner helper
                 phone = self.env['res.partner']._phone_format(number=phone)
