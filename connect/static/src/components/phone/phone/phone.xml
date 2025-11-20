@@ -71,7 +71,7 @@
                         <span class="o_partner_name"><t t-out="state.callDurationTime"/></span>
                         <div class="text-center" title="Customer">
                             <button class="btn p-3 border rounded-circle" t-on-click="_createPartner">
-                                <i aria-label="Customer" class="fa fa-fw fa-lg fa-user"/>
+                                <i aria-label="Customer" class="fa fa-fw fa-lg fa-user-plus"/>
                             </button>
                         </div>
                         <div t-if="state.isCallForwarded" class="text-center mt-1" title="Cancel Forward">
