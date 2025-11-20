@@ -435,7 +435,7 @@ export class Phone extends Component {
 
             self.state.callPhoneNumber = phoneNumber
 
-            if (callPartnerId) {
+            if (callPartnerId !== 'false') {
                 self.state.isPartner = true
                 self.state.callerId = {
                     partnerId: parseInt(callPartnerId),
