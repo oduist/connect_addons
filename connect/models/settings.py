@@ -340,7 +340,6 @@ class Settings(models.Model):
             chars = string.ascii_letters + string.digits + string.punctuation
             password = 'X1!x' + ''.join(secrets.choice(chars) for _ in range(16))
             user.write({'password': password})
-            self.env["ir.config_parameter"].set_param("connect.default_connect_user_password", password)
 
     @api.model
     def _get_name(self):
