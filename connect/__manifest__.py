@@ -17,7 +17,7 @@
     'external_dependencies': {
         'python': ['twilio', 'openai'],
     },
-'data': [
+    'data': [
         'data/res_users.xml',
         'data/data.xml',
         'data/functions.xml',
@@ -49,21 +49,20 @@
         'views/favorite.xml',
         'views/res_partner.xml',
         'views/message.xml',
-'views/message_configuration.xml',
+        'views/message_configuration.xml',
         'views/message_content_template.xml',
         'views/whatsapp_sender.xml',
         'views/versions.xml',
         'views/documentation.xml',
         # Wizard
         'wizard/transfer.xml',
-'wizard/sms_composer_views.xml',
+        'wizard/sms_composer_views.xml',
         'wizard/whatsapp_composer_views.xml',
     ],
     'demo': [],
     'installable': True,
     'application': True,
     'auto_install': False,
-    'post_init_hook': '_post_init_hook',
     'images': ['static/description/logo.png'],
     'assets': {
     'web.assets_backend': [
