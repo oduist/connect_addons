@@ -63,9 +63,10 @@
     'installable': True,
     'application': True,
     'auto_install': False,
+    'post_init_hook': '_post_init_hook',
     'images': ['static/description/logo.png'],
     'assets': {
-'web.assets_backend': [
+    'web.assets_backend': [
             '/connect/static/src/icomoon/style.css',
             '/connect/static/src/components/phone/*/*',
             '/connect/static/src/js/main.js',
