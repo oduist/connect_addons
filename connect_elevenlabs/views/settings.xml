@@ -36,6 +36,8 @@
                        required="elevenlabs_enabled"/>
                 <field name="elevenlabs_voice"
                        invisible="not elevenlabs_enabled"/>
+                <field name="elevenlabs_auto_voice_mail"
+                       invisible="not elevenlabs_enabled"/>
                 <div class="d-flex flex-row" colspan="2">
                   <button name="elevenlabs_sync" type="object" string="SYNC" class="btn btn-secondary me-1"
                           invisible="not elevenlabs_enabled"/>

@@ -11,7 +11,7 @@
     'support': 'support@oduist.com',
     'license': 'Other proprietary',
     'category': 'Phone',
-    'summary': 'Connect ElevenLabs integration module',
+    'summary': 'Connect ElevenLabs integration module with auto voice mail',
     'description': "",
     'depends': ['connect', 'calendar'],
     'external_dependencies': {
