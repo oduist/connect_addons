@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="crew_action" model="ir.actions.act_window">
+        <field name="name">CrewAI Crews</field>
+        <field name="res_model">connect.crewai_crew</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="connect_crewai_crew_list" model="ir.ui.view">
+        <field name="name">connect.crewai.crew.list</field>
+        <field name="model">connect.crewai_crew</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="process"/>
+                <field name="execution_count"/>
+                <field name="verbose" widget="boolean_toggle" optional="show"/>
+                <field name="memory" widget="boolean_toggle" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="connect_crewai_crew_form" model="ir.ui.view">
+        <field name="name">connect.crewai.crew.form</field>
+        <field name="model">connect.crewai_crew</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_execute_crew" type="object" string="Execute Crew" class="btn-primary"/>
+                    <button name="action_view_executions" type="object" string="View Executions" class="btn-secondary"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object" class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button" options="{'terminology': 'archive'}"/>
+                        </button>
+                        <button name="action_view_executions" type="object" class="oe_stat_button" icon="fa-tasks">
+                            <field name="execution_count" widget="statinfo" string="Executions"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Crew Name..."/>
+                        </h1>
+                    </div>
+                    <group>
+                        <field name="description" placeholder="Describe the purpose of this crew..."/>
+                    </group>
+                    <notebook>
+                        <page name="agents" string="Agents">
+                            <field name="agent_ids">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="role"/>
+                                    <field name="llm_provider"/>
+                                    <field name="allow_delegation"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page name="tasks" string="Tasks">
+                            <field name="task_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="description"/>
+                                    <field name="expected_output"/>
+                                    <field name="agent_id"/>
+                                    <field name="async_execution"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page name="configuration" string="Configuration">
+                            <group>
+                                <group name="process" string="Process">
+                                    <field name="process"/>
+                                    <field name="manager_llm" invisible="process != 'hierarchical'" required="process == 'hierarchical'"/>
+                                </group>
+                                <group name="options" string="Options">
+                                    <field name="verbose"/>
+                                    <field name="memory"/>
+                                    <field name="cache"/>
+                                    <field name="max_rpm"/>
+                                </group>
+                            </group>
+                            <div class="alert alert-info" role="alert" invisible="process != 'hierarchical'">
+                                <p><strong>Hierarchical Process:</strong></p>
+                                <p>In hierarchical mode, a manager agent will be created to coordinate task execution. You need to specify a Manager LLM model.</p>
+                                <p>Recommended models: gpt-4o, gpt-4-turbo, claude-3-5-sonnet-20241022</p>
+                            </div>
+                            <div class="alert alert-info" role="alert" invisible="process != 'sequential'">
+                                <p><strong>Sequential Process:</strong></p>
+                                <p>Tasks will be executed in the order specified by their sequence number, one after another.</p>
+                            </div>
+                        </page>
+                        <page name="executions" string="Recent Executions">
+                            <field name="execution_ids" readonly="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="state" decoration-success="state == 'done'" decoration-danger="state == 'error'" decoration-info="state == 'running'"/>
+                                    <field name="start_time"/>
+                                    <field name="duration"/>
+                                    <field name="token_usage"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="connect_crewai_crew_search" model="ir.ui.view">
+        <field name="name">connect.crewai.crew.search</field>
+        <field name="model">connect.crewai_crew</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="description"/>
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                <filter string="Sequential" name="sequential" domain="[('process', '=', 'sequential')]"/>
+                <filter string="Hierarchical" name="hierarchical" domain="[('process', '=', 'hierarchical')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Process Type" name="group_process" context="{'group_by': 'process'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+</odoo>

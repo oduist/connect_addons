@@ -3,6 +3,12 @@ httpx
 twilio
 openai
 elevenlabs==1.59.0
+crewai
+crewai-tools
+langchain-openai
+langchain-anthropic
+langchain-google-genai
+langchain-community
 
 # OpenAI & HTTPX versions mismatch issue. If you get on Transcribe:
 # TypeError: Client.__init__() got an unexpected keyword argument 'proxies'

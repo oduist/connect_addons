@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Demo Agent: Research Analyst -->
+        <record id="demo_agent_researcher" model="connect.crewai_agent">
+            <field name="name">Research Analyst Demo</field>
+            <field name="role">Senior Research Analyst</field>
+            <field name="goal">Find and analyze relevant information on any given topic, providing comprehensive research reports with credible sources.</field>
+            <field name="backstory">You are a highly experienced research analyst with a background in data science and information retrieval. You have worked with Fortune 500 companies helping them make data-driven decisions. You are meticulous, thorough, and always cite your sources.</field>
+            <field name="verbose" eval="True"/>
+            <field name="allow_delegation" eval="False"/>
+            <field name="llm_provider">openai</field>
+            <field name="llm_model">gpt-4o-mini</field>
+            <field name="temperature">0.7</field>
+            <field name="max_iter">25</field>
+            <field name="tools">search_tool</field>
+        </record>
+
+        <!-- Demo Agent: Content Writer -->
+        <record id="demo_agent_writer" model="connect.crewai_agent">
+            <field name="name">Content Writer Demo</field>
+            <field name="role">Professional Content Writer</field>
+            <field name="goal">Create engaging, well-structured, and informative content based on research findings.</field>
+            <field name="backstory">You are a professional content writer with 10 years of experience in technical writing, journalism, and content marketing. You excel at transforming complex information into clear, engaging narratives that resonate with diverse audiences.</field>
+            <field name="verbose" eval="True"/>
+            <field name="allow_delegation" eval="False"/>
+            <field name="llm_provider">openai</field>
+            <field name="llm_model">gpt-4o-mini</field>
+            <field name="temperature">0.9</field>
+            <field name="max_iter">20</field>
+        </record>
+
+        <!-- Demo Task: Research -->
+        <record id="demo_task_research" model="connect.crewai_task">
+            <field name="name">Research Task</field>
+            <field name="sequence">10</field>
+            <field name="description">Research the topic thoroughly and gather relevant information from credible sources. Focus on recent developments, key statistics, and expert opinions.</field>
+            <field name="expected_output">A detailed research report with key findings, statistics, and source citations. The report should be well-organized and cover all important aspects of the topic.</field>
+            <field name="agent_id" ref="demo_agent_researcher"/>
+            <field name="async_execution" eval="False"/>
+        </record>
+
+        <!-- Demo Task: Write Content -->
+        <record id="demo_task_write" model="connect.crewai_task">
+            <field name="name">Write Content</field>
+            <field name="sequence">20</field>
+            <field name="description">Based on the research findings, write an engaging and informative article. Make it accessible to a general audience while maintaining accuracy and depth.</field>
+            <field name="expected_output">A well-written article (800-1200 words) with an engaging introduction, structured body paragraphs, and a compelling conclusion. Include relevant examples and actionable insights.</field>
+            <field name="agent_id" ref="demo_agent_writer"/>
+            <field name="async_execution" eval="False"/>
+        </record>
+
+        <!-- Demo Crew: Content Creation Team -->
+        <record id="demo_crew_content" model="connect.crewai_crew">
+            <field name="name">Content Creation Team Demo</field>
+            <field name="description">A collaborative team for researching and creating high-quality content on any topic.</field>
+            <field name="process">sequential</field>
+            <field name="verbose" eval="True"/>
+            <field name="memory" eval="False"/>
+            <field name="cache" eval="True"/>
+        </record>
+
+        <!-- Link agents to crew -->
+        <record id="demo_crew_content_agents" model="connect.crewai_crew">
+            <field name="id" ref="demo_crew_content"/>
+            <field name="agent_ids" eval="[(6, 0, [ref('demo_agent_researcher'), ref('demo_agent_writer')])]"/>
+        </record>
+
+        <!-- Link tasks to crew -->
+        <record id="demo_task_research_crew" model="connect.crewai_task">
+            <field name="id" ref="demo_task_research"/>
+            <field name="crew_id" ref="demo_crew_content"/>
+        </record>
+
+        <record id="demo_task_write_crew" model="connect.crewai_task">
+            <field name="id" ref="demo_task_write"/>
+            <field name="crew_id" ref="demo_crew_content"/>
+        </record>
+
+    </data>
+</odoo>

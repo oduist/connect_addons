@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="agent_action" model="ir.actions.act_window">
+        <field name="name">CrewAI Agents</field>
+        <field name="res_model">connect.crewai_agent</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="connect_crewai_agent_list" model="ir.ui.view">
+        <field name="name">connect.crewai.agent.list</field>
+        <field name="model">connect.crewai_agent</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="role"/>
+                <field name="llm_provider"/>
+                <field name="llm_model"/>
+                <field name="allow_delegation" widget="boolean_toggle"/>
+                <field name="verbose" widget="boolean_toggle" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="connect_crewai_agent_form" model="ir.ui.view">
+        <field name="name">connect.crewai.agent.form</field>
+        <field name="model">connect.crewai_agent</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object" class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button" options="{'terminology': 'archive'}"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Agent Name..."/>
+                        </h1>
+                        <h2>
+                            <field name="role" placeholder="e.g., Senior Research Analyst"/>
+                        </h2>
+                    </div>
+                    <group>
+                        <group name="basic_info" string="Basic Information">
+                            <field name="goal" placeholder="What is this agent trying to achieve?"/>
+                            <field name="backstory" placeholder="Provide context and background for the agent..."/>
+                        </group>
+                        <group name="config" string="Configuration">
+                            <field name="verbose"/>
+                            <field name="allow_delegation"/>
+                            <field name="max_iter"/>
+                            <field name="max_rpm"/>
+                            <field name="max_execution_time"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="llm" string="LLM Configuration">
+                            <group>
+                                <group>
+                                    <field name="llm_provider"/>
+                                    <field name="llm_model"/>
+                                    <field name="temperature"/>
+                                </group>
+                                <group>
+                                    <field name="function_calling_llm_model"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="tools" string="Tools">
+                            <group>
+                                <field name="tools" placeholder="search_tool, file_read_tool, website_search_tool" help="Available tools: search_tool, website_search_tool, file_read_tool, directory_read_tool, code_interpreter_tool"/>
+                            </group>
+                            <div class="alert alert-info" role="alert">
+                                <p><strong>Available Tools:</strong></p>
+                                <ul>
+                                    <li><strong>search_tool</strong> - Search the web using SerperDev API</li>
+                                    <li><strong>website_search_tool</strong> - Search specific websites</li>
+                                    <li><strong>file_read_tool</strong> - Read files from the filesystem</li>
+                                    <li><strong>directory_read_tool</strong> - Read directory contents</li>
+                                    <li><strong>code_interpreter_tool</strong> - Execute Python code</li>
+                                </ul>
+                                <p>Enter tool names separated by commas</p>
+                            </div>
+                        </page>
+                        <page name="crews" string="Crews">
+                            <field name="crew_ids" widget="many2many_tags"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="connect_crewai_agent_search" model="ir.ui.view">
+        <field name="name">connect.crewai.agent.search</field>
+        <field name="model">connect.crewai_agent</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="role"/>
+                <field name="llm_provider"/>
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="LLM Provider" name="group_llm_provider" context="{'group_by': 'llm_provider'}"/>
+                    <filter string="Allow Delegation" name="group_delegation" context="{'group_by': 'allow_delegation'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+</odoo>

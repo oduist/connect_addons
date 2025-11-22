@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="task_action" model="ir.actions.act_window">
+        <field name="name">CrewAI Tasks</field>
+        <field name="res_model">connect.crewai_task</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="connect_crewai_task_list" model="ir.ui.view">
+        <field name="name">connect.crewai.task.list</field>
+        <field name="model">connect.crewai_task</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="agent_id"/>
+                <field name="crew_id"/>
+                <field name="async_execution" widget="boolean_toggle" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="connect_crewai_task_form" model="ir.ui.view">
+        <field name="name">connect.crewai.task.form</field>
+        <field name="model">connect.crewai_task</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object" class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button" options="{'terminology': 'archive'}"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Task Name..."/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group name="basic_info" string="Basic Information">
+                            <field name="sequence"/>
+                            <field name="agent_id"/>
+                            <field name="crew_id"/>
+                        </group>
+                        <group name="config" string="Configuration">
+                            <field name="async_execution"/>
+                            <field name="output_file"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="description" string="Task Description">
+                            <group>
+                                <field name="description" placeholder="Describe what the task entails..." nolabel="1"/>
+                            </group>
+                        </page>
+                        <page name="expected_output" string="Expected Output">
+                            <group>
+                                <field name="expected_output" placeholder="Define the expected output..." nolabel="1"/>
+                            </group>
+                        </page>
+                        <page name="context" string="Context">
+                            <group>
+                                <field name="context" placeholder="Additional context for the task..." nolabel="1"/>
+                            </group>
+                        </page>
+                        <page name="tools" string="Task-Specific Tools">
+                            <group>
+                                <field name="tools" placeholder="search_tool, file_read_tool" help="Tools specific to this task (overrides agent tools)"/>
+                            </group>
+                            <div class="alert alert-info" role="alert">
+                                <p>Task-specific tools will override the agent's default tools for this task only.</p>
+                                <p>Available tools: search_tool, website_search_tool, file_read_tool, directory_read_tool, code_interpreter_tool</p>
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="connect_crewai_task_search" model="ir.ui.view">
+        <field name="name">connect.crewai.task.search</field>
+        <field name="model">connect.crewai_task</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="agent_id"/>
+                <field name="crew_id"/>
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                <filter string="Async Tasks" name="async" domain="[('async_execution', '=', True)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Agent" name="group_agent" context="{'group_by': 'agent_id'}"/>
+                    <filter string="Crew" name="group_crew" context="{'group_by': 'crew_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+</odoo>

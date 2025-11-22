@@ -1,0 +1,47 @@
+<odoo>
+
+  <!-- CrewAI Agent -->
+  <record id="connect_crewai_agent_user" model="ir.model.access">
+    <field name="name">connect_crewai_agent_user</field>
+    <field name="model_id" ref="connect_crewai.model_connect_crewai_agent"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+  <!-- CrewAI Task -->
+  <record id="connect_crewai_task_user" model="ir.model.access">
+    <field name="name">connect_crewai_task_user</field>
+    <field name="model_id" ref="connect_crewai.model_connect_crewai_task"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+  <!-- CrewAI Crew -->
+  <record id="connect_crewai_crew_user" model="ir.model.access">
+    <field name="name">connect_crewai_crew_user</field>
+    <field name="model_id" ref="connect_crewai.model_connect_crewai_crew"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+  <!-- CrewAI Execution -->
+  <record id="connect_crewai_execution_user" model="ir.model.access">
+    <field name="name">connect_crewai_execution_user</field>
+    <field name="model_id" ref="connect_crewai.model_connect_crewai_execution"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+</odoo>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Root Menu -->
+    <menuitem id="crewai_root_menu"
+        name="CrewAI"
+        parent="connect.connect_root_menu"
+        sequence="100"/>
+
+    <!-- Agents Menu -->
+    <menuitem id="crewai_agents_menu"
+        name="Agents"
+        parent="crewai_root_menu"
+        action="connect_crewai.agent_action"
+        sequence="10"/>
+
+    <!-- Tasks Menu -->
+    <menuitem id="crewai_tasks_menu"
+        name="Tasks"
+        parent="crewai_root_menu"
+        action="connect_crewai.task_action"
+        sequence="20"/>
+
+    <!-- Crews Menu -->
+    <menuitem id="crewai_crews_menu"
+        name="Crews"
+        parent="crewai_root_menu"
+        action="connect_crewai.crew_action"
+        sequence="30"/>
+
+    <!-- Executions Menu -->
+    <menuitem id="crewai_executions_menu"
+        name="Executions"
+        parent="crewai_root_menu"
+        action="connect_crewai.execution_action"
+        sequence="40"/>
+
+</odoo>

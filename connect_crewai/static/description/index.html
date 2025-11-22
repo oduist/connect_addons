@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Connect CrewAI - Multi-Agent AI Orchestration for Odoo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #875a7b;
+            border-bottom: 3px solid #875a7b;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #875a7b;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #666;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .feature-list li:before {
+            content: "✓ ";
+            color: #875a7b;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .screenshot {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Connect CrewAI</h1>
+    <p><strong>Multi-Agent AI Orchestration for Odoo</strong></p>
+
+    <h2>Overview</h2>
+    <p>
+        Connect CrewAI integrates the powerful CrewAI framework into Odoo, enabling you to build, manage, and execute 
+        multi-agent AI workflows directly from your Odoo interface. Create teams of AI agents that collaborate to 
+        solve complex tasks, automate research, generate content, and much more.
+    </p>
+
+    <h2>Key Features</h2>
+    <ul class="feature-list">
+        <li><strong>AI Agent Management</strong> - Create and configure AI agents with specific roles, goals, and backstories</li>
+        <li><strong>Task Definition</strong> - Define clear tasks with descriptions and expected outputs</li>
+        <li><strong>Crew Orchestration</strong> - Organize agents into crews for collaborative work</li>
+        <li><strong>Multiple Process Types</strong> - Sequential or hierarchical task execution</li>
+        <li><strong>Multiple LLM Support</strong> - OpenAI, Anthropic Claude, Google Gemini, and local Ollama</li>
+        <li><strong>Tool Integration</strong> - Web search, file operations, code interpretation, and more</li>
+        <li><strong>Execution Tracking</strong> - Monitor crew executions, view results, and track token usage</li>
+        <li><strong>Memory & Cache</strong> - Enable agents to remember past interactions</li>
+    </ul>
+
+    <h2>Installation</h2>
+    
+    <h3>Step 1: Install Python Dependencies</h3>
+    <pre>pip install crewai crewai-tools langchain-openai langchain-anthropic langchain-google-genai langchain-community</pre>
+
+    <h3>Step 2: Install the Module</h3>
+    <ol>
+        <li>Update the Apps List in Odoo</li>
+        <li>Search for "Connect CrewAI"</li>
+        <li>Click Install</li>
+    </ol>
+
+    <h2>Configuration</h2>
+    
+    <h3>API Keys Setup</h3>
+    <p>Configure your LLM provider API keys in Connect Settings:</p>
+    <ul>
+        <li><strong>OpenAI:</strong> Set the <code>openai_key</code> parameter</li>
+        <li><strong>Anthropic:</strong> Set the <code>anthropic_api_key</code> parameter</li>
+        <li><strong>Google:</strong> Set the <code>google_api_key</code> parameter</li>
+        <li><strong>Ollama:</strong> No API key needed (local installation)</li>
+    </ul>
+
+    <div class="info">
+        <strong>Note:</strong> At least one LLM provider must be configured for the module to work properly.
+    </div>
+
+    <h2>Quick Start Guide</h2>
+
+    <h3>1. Create Agents</h3>
+    <p>Navigate to <strong>Connect → CrewAI → Agents</strong> and create your first agent:</p>
+    <ul>
+        <li><strong>Name:</strong> Senior Research Analyst</li>
+        <li><strong>Role:</strong> Research Expert</li>
+        <li><strong>Goal:</strong> Find and analyze relevant information on given topics</li>
+        <li><strong>Backstory:</strong> You are an experienced researcher with expertise in data gathering and analysis</li>
+        <li><strong>LLM Provider:</strong> OpenAI</li>
+        <li><strong>LLM Model:</strong> gpt-4o</li>
+        <li><strong>Tools:</strong> search_tool</li>
+    </ul>
+
+    <h3>2. Define Tasks</h3>
+    <p>Go to <strong>Connect → CrewAI → Tasks</strong> and create tasks:</p>
+    <ul>
+        <li><strong>Name:</strong> Research Topic</li>
+        <li><strong>Description:</strong> Research the given topic and gather relevant information</li>
+        <li><strong>Expected Output:</strong> A comprehensive research report with key findings</li>
+        <li><strong>Agent:</strong> Senior Research Analyst</li>
+    </ul>
+
+    <h3>3. Build a Crew</h3>
+    <p>Navigate to <strong>Connect → CrewAI → Crews</strong> and create a crew:</p>
+    <ul>
+        <li><strong>Name:</strong> Research Team</li>
+        <li><strong>Description:</strong> Team dedicated to research and analysis</li>
+        <li><strong>Agents:</strong> Add your agents</li>
+        <li><strong>Tasks:</strong> Add your tasks</li>
+        <li><strong>Process:</strong> Sequential</li>
+    </ul>
+
+    <h3>4. Execute the Crew</h3>
+    <p>Open your crew and click <strong>Execute Crew</strong>. Optionally provide inputs as JSON:</p>
+    <pre>{
+    "topic": "Artificial Intelligence in Healthcare",
+    "focus_areas": ["diagnostics", "treatment", "patient care"]
+}</pre>
+
+    <h2>Use Cases</h2>
+
+    <h3>Content Creation Pipeline</h3>
+    <ul>
+        <li><strong>Topic Researcher:</strong> Finds trending topics and relevant keywords</li>
+        <li><strong>Content Writer:</strong> Creates engaging blog posts or articles</li>
+        <li><strong>SEO Optimizer:</strong> Optimizes content for search engines</li>
+        <li><strong>Editor:</strong> Reviews and refines the final content</li>
+    </ul>
+
+    <h3>Market Research Team</h3>
+    <ul>
+        <li><strong>Data Collector:</strong> Gathers market data and statistics</li>
+        <li><strong>Competitor Analyst:</strong> Analyzes competitor strategies</li>
+        <li><strong>Trend Analyzer:</strong> Identifies market trends</li>
+        <li><strong>Report Writer:</strong> Compiles findings into actionable reports</li>
+    </ul>
+
+    <h3>Customer Support Automation</h3>
+    <ul>
+        <li><strong>Ticket Analyzer:</strong> Categorizes and prioritizes support requests</li>
+        <li><strong>Solution Finder:</strong> Searches knowledge base for solutions</li>
+        <li><strong>Response Writer:</strong> Drafts personalized responses</li>
+        <li><strong>Quality Checker:</strong> Reviews responses for accuracy</li>
+    </ul>
+
+    <h2>Available Tools</h2>
+    <table border="1" cellpadding="10" cellspacing="0" style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="background-color: #f4f4f4;">
+                <th>Tool Name</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>search_tool</code></td>
+                <td>Web search using SerperDev API</td>
+            </tr>
+            <tr>
+                <td><code>website_search_tool</code></td>
+                <td>Search specific websites</td>
+            </tr>
+            <tr>
+                <td><code>file_read_tool</code></td>
+                <td>Read files from the filesystem</td>
+            </tr>
+            <tr>
+                <td><code>directory_read_tool</code></td>
+                <td>List directory contents</td>
+            </tr>
+            <tr>
+                <td><code>code_interpreter_tool</code></td>
+                <td>Execute Python code safely</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="warning">
+        <strong>Important:</strong> Some tools (like <code>search_tool</code>) require additional API keys. 
+        Check the CrewAI Tools documentation for specific requirements.
+    </div>
+
+    <h2>Process Types</h2>
+
+    <h3>Sequential Process</h3>
+    <p>
+        Tasks are executed one after another in the order specified by their sequence number. 
+        Each task's output can be used as input for subsequent tasks. This is ideal for linear workflows 
+        where each step depends on the previous one.
+    </p>
+
+    <h3>Hierarchical Process</h3>
+    <p>
+        A manager agent (automatically created) coordinates task delegation and execution. 
+        The manager decides which agents work on which tasks and ensures optimal collaboration. 
+        This is ideal for complex workflows requiring intelligent task distribution.
+    </p>
+    <div class="info">
+        <strong>Note:</strong> Hierarchical process requires specifying a Manager LLM model (e.g., gpt-4o, claude-3-5-sonnet-20241022).
+    </div>
+
+    <h2>Advanced Features</h2>
+
+    <h3>Memory</h3>
+    <p>
+        Enable memory for crews to allow agents to remember and learn from past interactions. 
+        This improves performance over time and enables more contextual responses.
+    </p>
+
+    <h3>Async Execution</h3>
+    <p>
+        Mark tasks as async to run them in parallel when possible, significantly speeding up crew execution.
+    </p>
+
+    <h3>Custom Context</h3>
+    <p>
+        Provide additional context to tasks to guide agent behavior and improve output quality.
+    </p>
+
+    <h3>Output Files</h3>
+    <p>
+        Specify output file paths for tasks to automatically save results to the filesystem.
+    </p>
+
+    <h2>Best Practices</h2>
+    <ul>
+        <li><strong>Clear Roles:</strong> Define specific, focused roles for each agent</li>
+        <li><strong>Detailed Goals:</strong> Provide clear, measurable goals for agents</li>
+        <li><strong>Rich Backstories:</strong> Give agents context to improve their understanding</li>
+        <li><strong>Precise Task Descriptions:</strong> Clearly describe what each task should accomplish</li>
+        <li><strong>Define Expected Outputs:</strong> Specify exactly what format and content you expect</li>
+        <li><strong>Start Simple:</strong> Begin with sequential processes before moving to hierarchical</li>
+        <li><strong>Monitor Token Usage:</strong> Keep track of token consumption to manage costs</li>
+        <li><strong>Test Iteratively:</strong> Refine agent configurations based on execution results</li>
+    </ul>
+
+    <h2>Troubleshooting</h2>
+
+    <h3>API Key Errors</h3>
+    <p>Ensure your API keys are correctly configured in Connect Settings.</p>
+
+    <h3>Tool Import Errors</h3>
+    <p>Install the <code>crewai-tools</code> package and its dependencies.</p>
+
+    <h3>LangChain Errors</h3>
+    <p>Verify all LangChain packages are installed: <code>langchain-openai</code>, <code>langchain-anthropic</code>, etc.</p>
+
+    <h3>Execution Timeouts</h3>
+    <p>Increase the <code>max_execution_time</code> for agents or adjust task complexity.</p>
+
+    <h2>Support & Documentation</h2>
+    <p>
+        For issues, questions, or support:
+    </p>
+    <ul>
+        <li><strong>Email:</strong> support@oduist.com</li>
+        <li><strong>Documentation:</strong> <a href="https://docs.crewai.com" target="_blank">CrewAI Official Docs</a></li>
+    </ul>
+
+    <h2>License</h2>
+    <p>
+        This module is licensed under the Business Source License. See the LICENSE file for details.
+    </p>
+
+    <hr>
+    <p style="text-align: center; color: #999; margin-top: 40px;">
+        © 2025 Oduist OÜ - Connect CrewAI v1.0.0
+    </p>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="execution_action" model="ir.actions.act_window">
+        <field name="name">CrewAI Executions</field>
+        <field name="res_model">connect.crewai_execution</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="connect_crewai_execution_list" model="ir.ui.view">
+        <field name="name">connect.crewai.execution.list</field>
+        <field name="model">connect.crewai_execution</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="crew_id"/>
+                <field name="state" decoration-success="state == 'done'" decoration-danger="state == 'error'" decoration-info="state == 'running'" decoration-muted="state == 'draft'"/>
+                <field name="start_time"/>
+                <field name="duration"/>
+                <field name="token_usage" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="connect_crewai_execution_form" model="ir.ui.view">
+        <field name="name">connect.crewai.execution.form</field>
+        <field name="model">connect.crewai_execution</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_execute" type="object" string="Execute" class="btn-primary" invisible="state not in ('draft', 'error')"/>
+                    <button name="action_view_crew" type="object" string="View Crew" class="btn-secondary"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,running,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group name="basic_info" string="Execution Info">
+                            <field name="crew_id"/>
+                            <field name="start_time"/>
+                            <field name="end_time"/>
+                            <field name="duration" widget="float_time"/>
+                        </group>
+                        <group name="stats" string="Statistics">
+                            <field name="token_usage"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="inputs" string="Inputs">
+                            <group>
+                                <field name="inputs" placeholder='{"key": "value"}' nolabel="1" widget="ace" options="{'mode': 'json'}"/>
+                            </group>
+                            <div class="alert alert-info" role="alert">
+                                <p><strong>Input Format:</strong></p>
+                                <p>Provide inputs as JSON. Example:</p>
+                                <pre>{
+    "topic": "AI in healthcare",
+    "industry": "Technology"
+}</pre>
+                            </div>
+                        </page>
+                        <page name="result" string="Result">
+                            <group>
+                                <field name="result" nolabel="1" readonly="1"/>
+                            </group>
+                        </page>
+                        <page name="output" string="Full Output">
+                            <group>
+                                <field name="output" nolabel="1" readonly="1"/>
+                            </group>
+                        </page>
+                        <page name="error" string="Error" invisible="state != 'error'">
+                            <group>
+                                <field name="error_message" nolabel="1" readonly="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="connect_crewai_execution_search" model="ir.ui.view">
+        <field name="name">connect.crewai.execution.search</field>
+        <field name="model">connect.crewai_execution</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="crew_id"/>
+                <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Running" name="running" domain="[('state', '=', 'running')]"/>
+                <filter string="Done" name="done" domain="[('state', '=', 'done')]"/>
+                <filter string="Error" name="error" domain="[('state', '=', 'error')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Crew" name="group_crew" context="{'group_by': 'crew_id'}"/>
+                    <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Start Date" name="group_start_time" context="{'group_by': 'start_time'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+</odoo>
