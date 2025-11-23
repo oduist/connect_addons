@@ -114,7 +114,7 @@ class CrewAIAgent(models.Model):
             raise ValidationError('CrewAI library is not installed. Please install it with: pip install crewai')
 
         llm = self._get_llm()
-        
+
         tools = []
         if self.tools:
             tools = self._parse_tools()
@@ -152,9 +152,9 @@ class CrewAIAgent(models.Model):
             return None
 
         settings = self.env['connect.settings'].sudo()
-        
+
         if self.llm_provider == 'openai':
-            api_key = settings.get_param('openai_key')
+            api_key = settings.get_param('openai_api_key')
             if not api_key:
                 raise ValidationError('OpenAI API key not configured in Connect Settings')
             return ChatOpenAI(
@@ -185,23 +185,23 @@ class CrewAIAgent(models.Model):
                 model=self.llm_model,
                 temperature=self.temperature
             )
-        
+
         return None
 
     def _get_function_calling_llm(self):
         if not self.function_calling_llm_model:
             return None
-        
+
         try:
             from langchain_openai import ChatOpenAI
         except ImportError:
             return None
 
         settings = self.env['connect.settings'].sudo()
-        api_key = settings.get_param('openai_key')
+        api_key = settings.get_param('openai_api_key')
         if not api_key:
             return None
-            
+
         return ChatOpenAI(
             model=self.function_calling_llm_model,
             temperature=self.temperature,
@@ -211,7 +211,7 @@ class CrewAIAgent(models.Model):
     def _parse_tools(self):
         if not self.tools:
             return []
-        
+
         try:
             from crewai_tools import (
                 SerperDevTool,
@@ -234,12 +234,12 @@ class CrewAIAgent(models.Model):
 
         tools = []
         tool_names = [t.strip().lower() for t in self.tools.split(',') if t.strip()]
-        
+
         for tool_name in tool_names:
             if tool_name in tool_mapping:
                 try:
                     tools.append(tool_mapping[tool_name]())
                 except Exception as e:
                     logger.warning(f'Failed to initialize tool {tool_name}: {e}')
-        
+
         return tools

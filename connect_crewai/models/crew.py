@@ -99,7 +99,7 @@ class CrewAICrew(models.Model):
 
     def execute_crew(self, inputs=None):
         self.ensure_one()
-        
+
         if not self.agent_ids:
             raise ValidationError('Crew must have at least one agent')
         if not self.task_ids:
@@ -169,7 +169,7 @@ class CrewAICrew(models.Model):
             crew_config['manager_llm'] = self._get_manager_llm()
 
         crew = Crew(**crew_config)
-        
+
         result = crew.kickoff(inputs=inputs or {})
 
         output_data = {
@@ -183,17 +183,17 @@ class CrewAICrew(models.Model):
     def _get_manager_llm(self):
         if not self.manager_llm:
             return None
-        
+
         try:
             from langchain_openai import ChatOpenAI
         except ImportError:
             return None
 
         settings = self.env['connect.settings'].sudo()
-        api_key = settings.get_param('openai_key')
+        api_key = settings.get_param('openai_api_key')
         if not api_key:
             raise ValidationError('OpenAI API key not configured in Connect Settings')
-            
+
         return ChatOpenAI(
             model=self.manager_llm,
             temperature=0.7,

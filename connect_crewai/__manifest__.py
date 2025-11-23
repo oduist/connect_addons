@@ -14,7 +14,7 @@
     'description': """
         CrewAI Integration for Odoo
         ============================
-        
+
         This module integrates CrewAI multi-agent framework with Odoo, allowing you to:
         - Create and manage AI Agents with specific roles and goals
         - Define Tasks for agents to complete
@@ -33,11 +33,11 @@
         # Data
         'data/process_type.xml',
         # Views
-        'views/menu.xml',
         'views/agent.xml',
         'views/task.xml',
         'views/crew.xml',
         'views/execution.xml',
+        'views/menu.xml',
     ],
     'demo': [
         'data/demo_data.xml',

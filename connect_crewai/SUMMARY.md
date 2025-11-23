@@ -326,7 +326,7 @@ A complete demo dataset is provided in `data/demo_data.xml`:
 
 ### API Keys
 Users must configure API keys in Connect Settings:
-- `openai_key`: For OpenAI models
+- `openai_api_key`: For OpenAI models
 - `anthropic_api_key`: For Anthropic models
 - `google_api_key`: For Google models
 - Ollama: No key needed (local installation)
@@ -447,7 +447,7 @@ Comprehensive documentation has been created:
 
 3. **Configure API keys:**
    - Navigate to Connect → Settings
-   - Set `openai_key` parameter (required for OpenAI models)
+   - Set `openai_api_key` parameter (required for OpenAI models)
    - Optionally set other provider keys
 
 4. **Start using:**

@@ -76,8 +76,8 @@
 
     <h2>Overview</h2>
     <p>
-        Connect CrewAI integrates the powerful CrewAI framework into Odoo, enabling you to build, manage, and execute 
-        multi-agent AI workflows directly from your Odoo interface. Create teams of AI agents that collaborate to 
+        Connect CrewAI integrates the powerful CrewAI framework into Odoo, enabling you to build, manage, and execute
+        multi-agent AI workflows directly from your Odoo interface. Create teams of AI agents that collaborate to
         solve complex tasks, automate research, generate content, and much more.
     </p>
 
@@ -94,7 +94,7 @@
     </ul>
 
     <h2>Installation</h2>
-    
+
     <h3>Step 1: Install Python Dependencies</h3>
     <pre>pip install crewai crewai-tools langchain-openai langchain-anthropic langchain-google-genai langchain-community</pre>
 
@@ -106,11 +106,11 @@
     </ol>
 
     <h2>Configuration</h2>
-    
+
     <h3>API Keys Setup</h3>
     <p>Configure your LLM provider API keys in Connect Settings:</p>
     <ul>
-        <li><strong>OpenAI:</strong> Set the <code>openai_key</code> parameter</li>
+        <li><strong>OpenAI:</strong> Set the <code>openai_api_key</code> parameter</li>
         <li><strong>Anthropic:</strong> Set the <code>anthropic_api_key</code> parameter</li>
         <li><strong>Google:</strong> Set the <code>google_api_key</code> parameter</li>
         <li><strong>Ollama:</strong> No API key needed (local installation)</li>
@@ -219,7 +219,7 @@
     </table>
 
     <div class="warning">
-        <strong>Important:</strong> Some tools (like <code>search_tool</code>) require additional API keys. 
+        <strong>Important:</strong> Some tools (like <code>search_tool</code>) require additional API keys.
         Check the CrewAI Tools documentation for specific requirements.
     </div>
 
@@ -227,15 +227,15 @@
 
     <h3>Sequential Process</h3>
     <p>
-        Tasks are executed one after another in the order specified by their sequence number. 
-        Each task's output can be used as input for subsequent tasks. This is ideal for linear workflows 
+        Tasks are executed one after another in the order specified by their sequence number.
+        Each task's output can be used as input for subsequent tasks. This is ideal for linear workflows
         where each step depends on the previous one.
     </p>
 
     <h3>Hierarchical Process</h3>
     <p>
-        A manager agent (automatically created) coordinates task delegation and execution. 
-        The manager decides which agents work on which tasks and ensures optimal collaboration. 
+        A manager agent (automatically created) coordinates task delegation and execution.
+        The manager decides which agents work on which tasks and ensures optimal collaboration.
         This is ideal for complex workflows requiring intelligent task distribution.
     </p>
     <div class="info">
@@ -246,7 +246,7 @@
 
     <h3>Memory</h3>
     <p>
-        Enable memory for crews to allow agents to remember and learn from past interactions. 
+        Enable memory for crews to allow agents to remember and learn from past interactions.
         This improves performance over time and enables more contextual responses.
     </p>
 

@@ -4,7 +4,7 @@
     <!-- Root Menu -->
     <menuitem id="crewai_root_menu"
         name="CrewAI"
-        parent="connect.connect_root_menu"
+        parent="connect.connect_top_menu"
         sequence="100"/>
 
     <!-- Agents Menu -->

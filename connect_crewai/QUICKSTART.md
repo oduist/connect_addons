@@ -16,7 +16,7 @@ pip install crewai crewai-tools langchain-openai langchain-anthropic langchain-g
 
 ### 3. Configure API Key
 1. Go to **Connect → Settings**
-2. Find or create parameter `openai_key`
+2. Find or create parameter `openai_api_key`
 3. Set your OpenAI API key
 4. Save
 
@@ -96,7 +96,7 @@ If you installed with demo data:
 - **Tools**: Comma-separated: `search_tool, file_read_tool`
 
 ### Crew Settings
-- **Process**: 
+- **Process**:
   - Sequential: Tasks run in order
   - Hierarchical: Manager coordinates (requires Manager LLM)
 - **Memory**: Enable for agents to remember context
@@ -113,7 +113,7 @@ If you installed with demo data:
 
 1. **View All Executions**: Connect → CrewAI → Executions
 2. **View Crew Executions**: Open Crew → Click "View Executions"
-3. **Check Status**: 
+3. **Check Status**:
    - 🟢 Done: Successful
    - 🔴 Error: Failed (check error message)
    - 🔵 Running: In progress
@@ -127,7 +127,7 @@ If you installed with demo data:
 ## ❓ Troubleshooting
 
 ### "OpenAI API key not configured"
-→ Set `openai_key` in Connect Settings
+→ Set `openai_api_key` in Connect Settings
 
 ### "CrewAI library is not installed"
 → Run: `pip install crewai crewai-tools`

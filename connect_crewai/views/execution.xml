@@ -52,7 +52,7 @@
                     <notebook>
                         <page name="inputs" string="Inputs">
                             <group>
-                                <field name="inputs" placeholder='{"key": "value"}' nolabel="1" widget="ace" options="{'mode': 'json'}"/>
+                                <field name="inputs" placeholder='{"key": "value"}' nolabel="1" widget="ace" options="{'language': 'json'}"/>
                             </group>
                             <div class="alert alert-info" role="alert">
                                 <p><strong>Input Format:</strong></p>

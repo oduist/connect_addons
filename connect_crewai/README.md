@@ -29,7 +29,7 @@ pip install crewai crewai-tools langchain-openai langchain-anthropic langchain-g
 ### API Keys
 
 Configure API keys in Connect Settings:
-- OpenAI: Set `openai_key` parameter
+- OpenAI: Set `openai_api_key` parameter
 - Anthropic: Set `anthropic_api_key` parameter
 - Google: Set `google_api_key` parameter
 
