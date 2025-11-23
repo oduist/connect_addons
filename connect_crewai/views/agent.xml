@@ -69,18 +69,21 @@
                         </page>
                         <page name="tools" string="Tools">
                             <group>
-                                <field name="tools" placeholder="search_tool, file_read_tool, website_search_tool" help="Available tools: search_tool, website_search_tool, file_read_tool, directory_read_tool, code_interpreter_tool"/>
+                                <field name="tool_ids" widget="many2many_tags" options="{'no_create': True, 'no_create_edit': True}"/>
+                                <field name="tools" invisible="1"/>
                             </group>
                             <div class="alert alert-info" role="alert">
                                 <p><strong>Available Tools:</strong></p>
                                 <ul>
-                                    <li><strong>search_tool</strong> - Search the web using SerperDev API</li>
-                                    <li><strong>website_search_tool</strong> - Search specific websites</li>
-                                    <li><strong>file_read_tool</strong> - Read files from the filesystem</li>
-                                    <li><strong>directory_read_tool</strong> - Read directory contents</li>
-                                    <li><strong>code_interpreter_tool</strong> - Execute Python code</li>
+                                    <li><strong>Search</strong> (Serper) - search_tool</li>
+                                    <li><strong>Website Search</strong> - website_search_tool</li>
+                                    <li><strong>File Reader</strong> - file_read_tool</li>
+                                    <li><strong>Directory Reader</strong> - directory_read_tool</li>
+                                    <li><strong>Code Interpreter</strong> - code_interpreter_tool</li>
+                                    <li><strong>Odoo Record Context</strong> - odoo_record_context</li>
+                                    <li><strong>Odoo Message Post</strong> - odoo_message_post</li>
                                 </ul>
-                                <p>Enter tool names separated by commas</p>
+                                <p>Select tools using tags. The legacy comma-separated field remains hidden for backward compatibility.</p>
                             </div>
                         </page>
                         <page name="crews" string="Crews">

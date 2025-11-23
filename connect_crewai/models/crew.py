@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 import json
+import numbers
 from datetime import datetime
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError, UserError
@@ -175,10 +176,35 @@ class CrewAICrew(models.Model):
         output_data = {
             'result': str(result),
             'output': str(result),
-            'token_usage': getattr(result, 'token_usage', 0) if hasattr(result, 'token_usage') else 0,
+            'token_usage': self._extract_token_usage(getattr(result, 'token_usage', 0)),
         }
 
         return output_data
+
+    def _extract_token_usage(self, usage):
+        """Normalize token usage to an integer."""
+        if isinstance(usage, numbers.Number):
+            return int(usage)
+
+        # Dataclass-like with common attributes
+        for attr in ('total_tokens', 'total', 'tokens', 'prompt_tokens', 'completion_tokens', 'input_tokens', 'output_tokens'):
+            value = getattr(usage, attr, None)
+            if isinstance(value, numbers.Number):
+                return int(value)
+
+        # Dict-like object
+        if isinstance(usage, dict):
+            # prefer keys in order
+            for key in ('total_tokens', 'total', 'tokens', 'prompt_tokens', 'completion_tokens', 'input_tokens', 'output_tokens'):
+                if key in usage and isinstance(usage[key], numbers.Number):
+                    return int(usage[key])
+            # fallback: sum numeric values
+            numeric_values = [v for v in usage.values() if isinstance(v, numbers.Number)]
+            if numeric_values:
+                return int(sum(numeric_values))
+
+        logger.warning('Unable to parse token usage from %s; defaulting to 0', usage)
+        return 0
 
     def _get_manager_llm(self):
         if not self.manager_llm:

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+import os
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 
@@ -78,8 +79,17 @@ class CrewAIAgent(models.Model):
         help='Maximum execution time in seconds (optional)'
     )
     tools = fields.Text(
+        string='Tools (deprecated)',
+        help='Comma-separated list of tool names the agent can use (legacy support)'
+    )
+    tool_ids = fields.Many2many(
+        'connect.tool',
+        'crewai_agent_tool_rel',
+        'agent_id',
+        'tool_id',
         string='Tools',
-        help='Comma-separated list of tool names the agent can use (e.g., search_tool, file_read_tool)'
+        domain=[('active', '=', True)],
+        help='Tools available to this agent'
     )
     function_calling_llm_model = fields.Char(
         string='Function Calling LLM',
@@ -115,9 +125,7 @@ class CrewAIAgent(models.Model):
 
         llm = self._get_llm()
 
-        tools = []
-        if self.tools:
-            tools = self._parse_tools()
+        tools = self._get_tool_instances()
 
         agent_config = {
             'role': self.role,
@@ -157,6 +165,7 @@ class CrewAIAgent(models.Model):
             api_key = settings.get_param('openai_api_key')
             if not api_key:
                 raise ValidationError('OpenAI API key not configured in Connect Settings')
+            os.environ.setdefault('OPENAI_API_KEY', api_key)
             return ChatOpenAI(
                 model=self.llm_model,
                 temperature=self.temperature,
@@ -166,6 +175,7 @@ class CrewAIAgent(models.Model):
             api_key = settings.get_param('anthropic_api_key')
             if not api_key:
                 raise ValidationError('Anthropic API key not configured')
+            os.environ.setdefault('ANTHROPIC_API_KEY', api_key)
             return ChatAnthropic(
                 model=self.llm_model,
                 temperature=self.temperature,
@@ -175,6 +185,7 @@ class CrewAIAgent(models.Model):
             api_key = settings.get_param('google_api_key')
             if not api_key:
                 raise ValidationError('Google API key not configured')
+            os.environ.setdefault('GOOGLE_API_KEY', api_key)
             return ChatGoogleGenerativeAI(
                 model=self.llm_model,
                 temperature=self.temperature,
@@ -201,6 +212,7 @@ class CrewAIAgent(models.Model):
         api_key = settings.get_param('openai_api_key')
         if not api_key:
             return None
+        os.environ.setdefault('OPENAI_API_KEY', api_key)
 
         return ChatOpenAI(
             model=self.function_calling_llm_model,
@@ -208,37 +220,31 @@ class CrewAIAgent(models.Model):
             api_key=api_key
         )
 
-    def _parse_tools(self):
+    def _get_tool_instances(self):
+        tools = []
+        if self.tool_ids:
+            tools.extend(self.tool_ids.get_crewai_tools())
+        if self.tools:
+            tools.extend(self._parse_tools_from_text())
+        return [tool for tool in tools if tool]
+
+    def _parse_tools_from_text(self):
         if not self.tools:
             return []
 
         try:
-            from crewai_tools import (
-                SerperDevTool,
-                WebsiteSearchTool,
-                FileReadTool,
-                DirectoryReadTool,
-                CodeInterpreterTool,
-            )
-        except ImportError:
-            logger.warning('crewai_tools not installed, tools will not be available')
-            return []
-
-        tool_mapping = {
-            'search_tool': SerperDevTool,
-            'website_search_tool': WebsiteSearchTool,
-            'file_read_tool': FileReadTool,
-            'directory_read_tool': DirectoryReadTool,
-            'code_interpreter_tool': CodeInterpreterTool,
-        }
+            tool_mapping = self.env['connect.tool']._get_tool_factories()
+        except Exception:
+            tool_mapping = {}
 
         tools = []
         tool_names = [t.strip().lower() for t in self.tools.split(',') if t.strip()]
 
         for tool_name in tool_names:
-            if tool_name in tool_mapping:
+            factory = tool_mapping.get(tool_name)
+            if factory:
                 try:
-                    tools.append(tool_mapping[tool_name]())
+                    tools.append(factory(self.env))
                 except Exception as e:
                     logger.warning(f'Failed to initialize tool {tool_name}: {e}')
 

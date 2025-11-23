@@ -54,8 +54,17 @@ class CrewAITask(models.Model):
         help='File path to save the task output (optional)'
     )
     tools = fields.Text(
-        string='Task-Specific Tools',
-        help='Comma-separated list of tool names specific to this task (overrides agent tools)'
+        string='Task-Specific Tools (deprecated)',
+        help='Comma-separated list of tool names specific to this task (legacy support)'
+    )
+    tool_ids = fields.Many2many(
+        'connect.tool',
+        'crewai_task_tool_rel',
+        'task_id',
+        'tool_id',
+        string='Task Tools',
+        domain=[('active', '=', True)],
+        help='Tools specific to this task (overrides agent tools)'
     )
     active = fields.Boolean(default=True)
 
@@ -81,45 +90,38 @@ class CrewAITask(models.Model):
             task_config['async_execution'] = self.async_execution
         if self.output_file:
             task_config['output_file'] = self.output_file
-        if self.tools:
-            tools = self._parse_tools()
-            if tools:
-                task_config['tools'] = tools
+        tools = self._get_tool_instances()
+        if tools:
+            task_config['tools'] = tools
 
         return Task(**task_config)
 
-    def _parse_tools(self):
+    def _get_tool_instances(self):
+        tools = []
+        if self.tool_ids:
+            tools.extend(self.tool_ids.get_crewai_tools())
+        if self.tools:
+            tools.extend(self._parse_tools_from_text())
+        return [tool for tool in tools if tool]
+
+    def _parse_tools_from_text(self):
         if not self.tools:
             return []
-        
-        try:
-            from crewai_tools import (
-                SerperDevTool,
-                WebsiteSearchTool,
-                FileReadTool,
-                DirectoryReadTool,
-                CodeInterpreterTool,
-            )
-        except ImportError:
-            logger.warning('crewai_tools not installed, tools will not be available')
-            return []
 
-        tool_mapping = {
-            'search_tool': SerperDevTool,
-            'website_search_tool': WebsiteSearchTool,
-            'file_read_tool': FileReadTool,
-            'directory_read_tool': DirectoryReadTool,
-            'code_interpreter_tool': CodeInterpreterTool,
-        }
+        try:
+            tool_mapping = self.env['connect.tool']._get_tool_factories()
+        except Exception:
+            tool_mapping = {}
 
         tools = []
         tool_names = [t.strip().lower() for t in self.tools.split(',') if t.strip()]
-        
+
         for tool_name in tool_names:
-            if tool_name in tool_mapping:
+            factory = tool_mapping.get(tool_name)
+            if factory:
                 try:
-                    tools.append(tool_mapping[tool_name]())
+                    tools.append(factory(self.env))
                 except Exception as e:
                     logger.warning(f'Failed to initialize tool {tool_name}: {e}')
-        
+
         return tools

@@ -32,6 +32,7 @@
         'security/user.xml',
         # Data
         'data/process_type.xml',
+        'data/tools.xml',
         # Views
         'views/agent.xml',
         'views/task.xml',

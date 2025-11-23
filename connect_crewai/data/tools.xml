@@ -1,0 +1,45 @@
+<odoo noupdate="1">
+
+  <record id="connect_tool_search" model="connect.tool">
+    <field name="name">Search Tool (Serper)</field>
+    <field name="code">search_tool</field>
+    <field name="description">Search the web using the SerperDev tool.</field>
+  </record>
+
+  <record id="connect_tool_website_search" model="connect.tool">
+    <field name="name">Website Search Tool</field>
+    <field name="code">website_search_tool</field>
+    <field name="description">Search specific websites for information.</field>
+  </record>
+
+  <record id="connect_tool_file_read" model="connect.tool">
+    <field name="name">File Read Tool</field>
+    <field name="code">file_read_tool</field>
+    <field name="description">Read files from the filesystem.</field>
+  </record>
+
+  <record id="connect_tool_directory_read" model="connect.tool">
+    <field name="name">Directory Read Tool</field>
+    <field name="code">directory_read_tool</field>
+    <field name="description">List contents of a directory.</field>
+  </record>
+
+  <record id="connect_tool_code_interpreter" model="connect.tool">
+    <field name="name">Code Interpreter Tool</field>
+    <field name="code">code_interpreter_tool</field>
+    <field name="description">Execute Python code using the code interpreter tool.</field>
+  </record>
+
+  <record id="connect_tool_odoo_record_context" model="connect.tool">
+    <field name="name">Odoo Record Context</field>
+    <field name="code">odoo_record_context</field>
+    <field name="description">Return JSON for a record and its chatter (requires res_model and res_id).</field>
+  </record>
+
+  <record id="connect_tool_odoo_message_post" model="connect.tool">
+    <field name="name">Odoo Message Post</field>
+    <field name="code">odoo_message_post</field>
+    <field name="description">Post a reply/comment to a record (requires res_model, res_id, and message).</field>
+  </record>
+
+</odoo>

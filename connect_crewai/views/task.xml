@@ -66,11 +66,13 @@
                         </page>
                         <page name="tools" string="Task-Specific Tools">
                             <group>
-                                <field name="tools" placeholder="search_tool, file_read_tool" help="Tools specific to this task (overrides agent tools)"/>
+                                <field name="tool_ids" widget="many2many_tags" options="{'no_create': True, 'no_create_edit': True}"/>
+                                <field name="tools" invisible="1"/>
                             </group>
                             <div class="alert alert-info" role="alert">
                                 <p>Task-specific tools will override the agent's default tools for this task only.</p>
-                                <p>Available tools: search_tool, website_search_tool, file_read_tool, directory_read_tool, code_interpreter_tool</p>
+                                <p>Available tools include: search_tool, website_search_tool, file_read_tool, directory_read_tool, code_interpreter_tool, odoo_record_context, odoo_message_post.</p>
+                                <p>The legacy comma-separated field is hidden but still supported for backward compatibility.</p>
                             </div>
                         </page>
                     </notebook>
