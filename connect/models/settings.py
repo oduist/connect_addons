@@ -642,47 +642,64 @@ class Settings(models.Model):
 
     def sync_twilio_api_key(self):
         """Synchronize Twilio API key - create if not exists in Odoo or Twilio"""
-        client = self.get_client()
+        account_sid = self.sudo().get_param("account_sid")
+        auth_token = self.sudo().get_param("auth_token")
         twilio_api_key_sid = self.sudo().get_param("twilio_api_key_sid")
         
         # Check if API key SID is set in Odoo
         if not twilio_api_key_sid:
             # No API key SID in Odoo, create a new one
             debug(self, "No Twilio API key SID found in Odoo. Creating a new API key...")
-            self._create_twilio_api_key(client)
+            self._create_twilio_api_key(account_sid, auth_token)
         else:
             # API key SID exists in Odoo, verify it exists in Twilio
             try:
                 debug(self, f"Verifying Twilio API key with SID: {twilio_api_key_sid}")
-                client.iam.v1.api_key(twilio_api_key_sid).fetch()
-                debug(self, "Twilio API key verified successfully")
-            except Exception as e:
-                # API key doesn't exist in Twilio, create a new one
-                if '20404' in str(e) or 'not found' in str(e).lower():
+                url = f"https://iam.twilio.com/v1/Keys/{twilio_api_key_sid}"
+                response = requests.get(url, auth=(account_sid, auth_token))
+                
+                if response.status_code == 200:
+                    debug(self, "Twilio API key verified successfully")
+                elif response.status_code == 404:
                     debug(self, f"API key {twilio_api_key_sid} not found in Twilio. Creating a new API key...", level="warning")
-                    self._create_twilio_api_key(client)
+                    self._create_twilio_api_key(account_sid, auth_token)
                 else:
-                    raise
+                    raise ValidationError(f"Failed to verify Twilio API key: {response.status_code} {response.text}")
+            except requests.RequestException as e:
+                error_msg = f"Failed to verify Twilio API key: {str(e)}"
+                debug(self, error_msg, level="error")
+                raise ValidationError(error_msg)
 
-    def _create_twilio_api_key(self, client):
+    def _create_twilio_api_key(self, account_sid, auth_token):
         """Create a new Twilio API key and store credentials"""
         try:
-            account_sid = self.sudo().get_param("account_sid")
-            new_api_key = client.iam.v1.new_api_key.create(
-                friendly_name=f"Odoo Connect API Key",
-                account_sid=account_sid,
-            )
+            url = "https://iam.twilio.com/v1/Keys"
+            data = {
+                "FriendlyName": "Oduist Connect API key",
+                "AccountSid": account_sid,
+            }
             
-            # Store the API key SID and secret
-            self.sudo().set_param("twilio_api_key_sid", new_api_key.sid)
-            self.sudo().set_param("twilio_api_secret", new_api_key.secret)
+            response = requests.post(url, data=data, auth=(account_sid, auth_token))
             
-            debug(self, f"Successfully created Twilio API key with SID: {new_api_key.sid}")
-            self.connect_notify(
-                f"Twilio API key created successfully with SID: {new_api_key.sid}",
-                title="API Key Created"
-            )
-        except Exception as e:
+            if response.status_code == 201:
+                result = response.json()
+                new_api_key_sid = result.get("sid")
+                new_api_key_secret = result.get("secret")
+                
+                # Store the API key SID and secret
+                self.sudo().set_param("twilio_api_key_sid", new_api_key_sid)
+                self.sudo().set_param("twilio_api_secret", new_api_key_secret)
+                
+                debug(self, f"Successfully created Twilio API key with SID: {new_api_key_sid}")
+                self.connect_notify(
+                    f"Twilio API key created successfully with SID: {new_api_key_sid}",
+                    title="API Key Created"
+                )
+            else:
+                error_msg = f"Failed to create Twilio API key: {response.status_code} {response.text}"
+                debug(self, error_msg, level="error")
+                raise ValidationError(error_msg)
+        except requests.RequestException as e:
             error_msg = f"Failed to create Twilio API key: {str(e)}"
             debug(self, error_msg, level="error")
             raise ValidationError(error_msg)
