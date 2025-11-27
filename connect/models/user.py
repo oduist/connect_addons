@@ -479,10 +479,10 @@ class User(models.Model):
                 logger.info("Client for user %s not enabled!", self.env.user.id)
                 return {'token': False}
             account_sid = self.env['connect.settings'].sudo().get_param('account_sid')
-            api_key_sid = self.env['connect.settings'].sudo().get_param('twilio_api_key_sid')
+            api_key = self.env['connect.settings'].sudo().get_param('twilio_api_key')
             api_secret = self.env['connect.settings'].sudo().get_param('twilio_api_secret')
             identity = user.get_client_identity()
-            token = AccessToken(account_sid, api_key_sid, api_secret, identity=identity, ttl=3600,
+            token = AccessToken(account_sid, api_key, api_secret, identity=identity, ttl=3600,
                 region=self.env['connect.settings'].sudo().get_param('twilio_region'),
             )
             voice_grant = VoiceGrant(

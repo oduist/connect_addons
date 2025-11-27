@@ -25,6 +25,7 @@ MODULE_NAME = "connect"
 MAX_EXTEN_LEN = 4
 PROTECTED_FIELDS = [
     "display_auth_token",
+    "display_twilio_api_secret",
     "display_openai_api_key",
 ]
 
@@ -113,8 +114,10 @@ class Settings(models.Model):
         groups="base.group_erp_manager,connect.group_connect_webhook"
     )
     display_auth_token = fields.Char()
+    twilio_api_key = fields.Char()
     twilio_api_key_sid = fields.Char(string="Twilio API Key SID")
     twilio_api_secret = fields.Char(groups="base.group_erp_manager")
+    display_twilio_api_secret = fields.Char()
     twilio_balance = fields.Char(readonly=True)
     openai_api_key = fields.Char(groups="base.group_erp_manager")
     display_openai_api_key = fields.Char()
@@ -641,7 +644,24 @@ class Settings(models.Model):
                 raise
 
     def sync_twilio_api_key(self):
-        """Synchronize Twilio API key - create if not exists in Odoo or Twilio"""
+        """Synchronize Twilio API key - create if not exists in Odoo or Twilio
+        
+        For us1 region: automatically create and manage API keys via Twilio API
+        For other regions: use manually entered API key and secret
+        """
+        twilio_region = self.sudo().get_param("twilio_region")
+        twilio_api_key = self.sudo().get_param("twilio_api_key")
+        
+        # For non-us1 regions, skip auto-creation if API key is manually set
+        if twilio_region != 'us1':
+            if twilio_api_key:
+                debug(self, f"Using manually configured API key for region {twilio_region}")
+                return
+            else:
+                debug(self, f"No API key configured for region {twilio_region}", level="warning")
+                return
+        
+        # For us1 region, auto-create and manage API keys
         account_sid = self.sudo().get_param("account_sid")
         auth_token = self.sudo().get_param("auth_token")
         twilio_api_key_sid = self.sudo().get_param("twilio_api_key_sid")
@@ -686,8 +706,9 @@ class Settings(models.Model):
                 new_api_key_sid = result.get("sid")
                 new_api_key_secret = result.get("secret")
                 
-                # Store the API key SID and secret
+                # Store the API key SID (for tracking), the key itself, and secret
                 self.sudo().set_param("twilio_api_key_sid", new_api_key_sid)
+                self.sudo().set_param("twilio_api_key", new_api_key_sid)
                 self.sudo().set_param("twilio_api_secret", new_api_key_secret)
                 
                 debug(self, f"Successfully created Twilio API key with SID: {new_api_key_sid}")
