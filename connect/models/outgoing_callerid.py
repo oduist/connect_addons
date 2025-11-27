@@ -19,7 +19,7 @@ class OutgoingCallerID(models.Model):
 
     name = fields.Char(compute='_get_name')
     sid = fields.Char(readonly=True)
-    friendly_name = fields.Char(required=True)
+    friendly_name = fields.Char()
     number = fields.Char(required=True)
     status = fields.Char(readonly=True)
     validation_code = fields.Char(readonly=True)

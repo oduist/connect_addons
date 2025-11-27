@@ -5,6 +5,7 @@ import json
 import requests
 import logging
 from datetime import datetime, timezone
+from odoo.addons.connect.models.settings import debug
 
 logger = logging.getLogger(__name__)
 
@@ -329,6 +330,10 @@ class ConnectMessageContentTemplate(models.Model):
         auth_token = settings.get_param('auth_token')
         if not account_sid or not auth_token:
             raise ValidationError('Twilio credentials are not configured.')
+        # Skip Whatsapp Templates for non US regions.
+        if settings.get_param('twilio_region') != 'us1':
+            debug(self, 'Skipping WhatsApp Templates sync for not us1 region.')
+            return
         base = 'https://content.twilio.com'
         url = base + '/v1/Content'
         params = {'PageSize': 100}

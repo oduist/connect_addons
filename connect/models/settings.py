@@ -638,6 +638,7 @@ class Settings(models.Model):
             self.env["connect.whatsapp_sender"].sync()
             self.env["connect.message_content_template"].sync()
         except Exception as e:
+            logger.exception('Error authenticating requests to the Twilio API:')
             if 'errors/20003' in str(e):
                 raise ValidationError('Error authenticating requests to the Twilio API! Check your Auth Key!')
             else:
@@ -645,13 +646,13 @@ class Settings(models.Model):
 
     def sync_twilio_api_key(self):
         """Synchronize Twilio API key - create if not exists in Odoo or Twilio
-        
+
         For us1 region: automatically create and manage API keys via Twilio API
         For other regions: use manually entered API key and secret
         """
         twilio_region = self.sudo().get_param("twilio_region")
         twilio_api_key = self.sudo().get_param("twilio_api_key")
-        
+
         # For non-us1 regions, skip auto-creation if API key is manually set
         if twilio_region != 'us1':
             if twilio_api_key:
@@ -660,12 +661,12 @@ class Settings(models.Model):
             else:
                 debug(self, f"No API key configured for region {twilio_region}", level="warning")
                 return
-        
+
         # For us1 region, auto-create and manage API keys
         account_sid = self.sudo().get_param("account_sid")
         auth_token = self.sudo().get_param("auth_token")
         twilio_api_key_sid = self.sudo().get_param("twilio_api_key_sid")
-        
+
         # Check if API key SID is set in Odoo
         if not twilio_api_key_sid:
             # No API key SID in Odoo, create a new one
@@ -677,7 +678,7 @@ class Settings(models.Model):
                 debug(self, f"Verifying Twilio API key with SID: {twilio_api_key_sid}")
                 url = f"https://iam.twilio.com/v1/Keys/{twilio_api_key_sid}"
                 response = requests.get(url, auth=(account_sid, auth_token))
-                
+
                 if response.status_code == 200:
                     debug(self, "Twilio API key verified successfully")
                 elif response.status_code == 404:
@@ -698,19 +699,19 @@ class Settings(models.Model):
                 "FriendlyName": "Oduist Connect API key",
                 "AccountSid": account_sid,
             }
-            
+
             response = requests.post(url, data=data, auth=(account_sid, auth_token))
-            
+
             if response.status_code == 201:
                 result = response.json()
                 new_api_key_sid = result.get("sid")
                 new_api_key_secret = result.get("secret")
-                
+
                 # Store the API key SID (for tracking), the key itself, and secret
                 self.sudo().set_param("twilio_api_key_sid", new_api_key_sid)
                 self.sudo().set_param("twilio_api_key", new_api_key_sid)
                 self.sudo().set_param("twilio_api_secret", new_api_key_secret)
-                
+
                 debug(self, f"Successfully created Twilio API key with SID: {new_api_key_sid}")
                 self.connect_notify(
                     f"Twilio API key created successfully with SID: {new_api_key_sid}",

@@ -112,6 +112,10 @@ class ConnectWhatsappSender(models.Model):
         auth_token = settings.get_param('auth_token')
         if not account_sid or not auth_token:
             raise ValidationError('Twilio credentials are not configured.')
+        # Skip Whatsapp Senders for non US regions.
+        if settings.get_param('twilio_region') != 'us1':
+            debug(self, 'Skipping WhatsApp Sender sync for not us1 region.')
+            return
         url = 'https://messaging.twilio.com/v2/Channels/Senders'
         try:
             resp = requests.get(url, params={'Channel': 'whatsapp'}, auth=(account_sid, auth_token), timeout=30)
