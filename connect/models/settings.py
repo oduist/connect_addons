@@ -25,7 +25,6 @@ MODULE_NAME = "connect"
 MAX_EXTEN_LEN = 4
 PROTECTED_FIELDS = [
     "display_auth_token",
-    "display_twilio_api_secret",
     "display_openai_api_key",
 ]
 
@@ -114,9 +113,8 @@ class Settings(models.Model):
         groups="base.group_erp_manager,connect.group_connect_webhook"
     )
     display_auth_token = fields.Char()
-    twilio_api_key = fields.Char()
+    twilio_api_key_sid = fields.Char(string="Twilio API Key SID")
     twilio_api_secret = fields.Char(groups="base.group_erp_manager")
-    display_twilio_api_secret = fields.Char()
     twilio_balance = fields.Char(readonly=True)
     openai_api_key = fields.Char(groups="base.group_erp_manager")
     display_openai_api_key = fields.Char()
@@ -629,6 +627,7 @@ class Settings(models.Model):
         if api_url_check:
             raise ValidationError(api_url_check)
         try:
+            self.sync_twilio_api_key()
             self.env["connect.twiml"].sync()
             self.env["connect.domain"].sync()
             self.env["connect.number"].sync()
@@ -640,6 +639,53 @@ class Settings(models.Model):
                 raise ValidationError('Error authenticating requests to the Twilio API! Check your Auth Key!')
             else:
                 raise
+
+    def sync_twilio_api_key(self):
+        """Synchronize Twilio API key - create if not exists in Odoo or Twilio"""
+        client = self.get_client()
+        twilio_api_key_sid = self.sudo().get_param("twilio_api_key_sid")
+        
+        # Check if API key SID is set in Odoo
+        if not twilio_api_key_sid:
+            # No API key SID in Odoo, create a new one
+            debug(self, "No Twilio API key SID found in Odoo. Creating a new API key...")
+            self._create_twilio_api_key(client)
+        else:
+            # API key SID exists in Odoo, verify it exists in Twilio
+            try:
+                debug(self, f"Verifying Twilio API key with SID: {twilio_api_key_sid}")
+                client.iam.v1.api_key(twilio_api_key_sid).fetch()
+                debug(self, "Twilio API key verified successfully")
+            except Exception as e:
+                # API key doesn't exist in Twilio, create a new one
+                if '20404' in str(e) or 'not found' in str(e).lower():
+                    debug(self, f"API key {twilio_api_key_sid} not found in Twilio. Creating a new API key...", level="warning")
+                    self._create_twilio_api_key(client)
+                else:
+                    raise
+
+    def _create_twilio_api_key(self, client):
+        """Create a new Twilio API key and store credentials"""
+        try:
+            account_sid = self.sudo().get_param("account_sid")
+            new_api_key = client.iam.v1.new_api_key.create(
+                friendly_name=f"Odoo Connect API Key",
+                account_sid=account_sid,
+            )
+            
+            # Store the API key SID and secret
+            self.sudo().set_param("twilio_api_key_sid", new_api_key.sid)
+            self.sudo().set_param("twilio_api_secret", new_api_key.secret)
+            
+            debug(self, f"Successfully created Twilio API key with SID: {new_api_key.sid}")
+            self.connect_notify(
+                f"Twilio API key created successfully with SID: {new_api_key.sid}",
+                title="API Key Created"
+            )
+        except Exception as e:
+            error_msg = f"Failed to create Twilio API key: {str(e)}"
+            debug(self, error_msg, level="error")
+            raise ValidationError(error_msg)
 
     # Called from the settings.
     def reformat_numbers_button(self):

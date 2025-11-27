@@ -46,8 +46,6 @@
                       <field name="twilio_auto_sync" groups="base.group_no_one"/>
                       <field name="account_sid"/>
                       <field name="display_auth_token" string="Auth Token" password="1"/>
-                      <field name="twilio_api_key" string="API Key SID"/>
-                      <field name="display_twilio_api_secret" string="API Key Secret" password="1"/>
                       <field name="twilio_region" string="Region"/>
                       <field name="twilio_edge" string="Edge"/>
                       <button colspan="2" name="sync" type="object" string="SYNC TWILIO ACCOUNT" class="btn btn-primary"/>

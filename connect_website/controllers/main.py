@@ -17,11 +17,11 @@ class APIConnectWidget(http.Controller):
     @http.route('/get_connect_website_button_token', type=route_type, auth='public', sitemap=False)
     def get_connect_website_button_token(self, identity):
         account_sid = request.env['connect.settings'].sudo().get_param('account_sid')
-        api_key = request.env['connect.settings'].sudo().get_param('twilio_api_key')
+        api_key_sid = request.env['connect.settings'].sudo().get_param('twilio_api_key_sid')
         api_secret = request.env['connect.settings'].sudo().get_param('twilio_api_secret')
         exten = request.env['connect.settings'].sudo().get_param('connect_website_connect_extension')
         domain = request.env['connect.settings'].sudo().get_param('connect_website_connect_domain')
-        token = AccessToken(account_sid, api_key, api_secret, identity=identity, ttl=3600)
+        token = AccessToken(account_sid, api_key_sid, api_secret, identity=identity, ttl=3600)
         voice_grant = VoiceGrant(
             outgoing_application_sid=domain.application.sid,
             outgoing_application_params={'GrantFullAccess': True},
