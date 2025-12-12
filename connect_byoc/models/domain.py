@@ -85,6 +85,14 @@ class Domain(models.Model):
         else:
             dial = Dial(timeout=60, callerId=callerId, timeLimit=call_duration_limit)
         if rule.byoc:
+            # Apply number manipulation
+            if rule.trim_leading_digits and rule.trim_leading_digits > 0:
+                number = number[rule.trim_leading_digits:]
+                debug(self, "Trimmed first %d digits, new number: %s" % (rule.trim_leading_digits, number))
+            if rule.add_prefix:
+                number = rule.add_prefix + number
+                debug(self, "Added prefix '%s', new number: %s" % (rule.add_prefix, number))
+            
             dial.number(
                 number,
                 byoc=rule.byoc.sid,

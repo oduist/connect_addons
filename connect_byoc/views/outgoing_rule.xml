@@ -21,6 +21,8 @@
                 <field name="name"/>
                 <field name="pattern"/>
                 <field name="byoc"/>
+                <field name="add_prefix"/>
+                <field name="trim_leading_digits"/>
                 <field name="is_enabled"/>
             </tree>
         </field>
