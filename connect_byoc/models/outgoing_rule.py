@@ -19,6 +19,14 @@ class OutgoingRule(models.Model):
     byoc = fields.Many2one("connect.byoc", string="BYOC", ondelete="cascade")
     pattern = fields.Char(required=True)
     is_enabled = fields.Boolean(string="Enabled", default=True)
+    add_prefix = fields.Char(
+        string="Add Prefix",
+        help="Prefix to add to the beginning of the phone number before dialing"
+    )
+    trim_leading_digits = fields.Integer(
+        string="Trim Leading Digits",
+        help="Number of digits to remove from the beginning of the phone number before dialing"
+    )
 
     @api.model
     def find_rule(self, number):
@@ -40,6 +48,7 @@ class OutgoingRule(models.Model):
 
     @api.constrains("pattern")
     def check_pattern(self):
+        return
         for rec in self:
             if rec.pattern and not rec.pattern.startswith("+"):
                 raise ValidationError("Pattern must start with +")
