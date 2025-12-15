@@ -56,10 +56,14 @@ export class LicenseBanner extends Component {
         return `${baseClass} ${baseClass}-${this.state.type}`;
     }
 
-    openSettings() {
+    async openSettings() {
+        const [res_id] = await this.orm.search("connect.settings",  [], {limit: 1})
         this.env.services.action.doAction({
-            type: "ir.actions.server",
-            id: "connect.connect_settings_action",
+            type: "ir.actions.act_window",
+            res_model: "connect.settings",
+            res_id: res_id,
+            action_id: "connect.connect_settings_action",
+            views: [[false, "form"]],
         });
     }
 }

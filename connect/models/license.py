@@ -109,7 +109,7 @@ class ConnectLicense(models.AbstractModel):
             # Module not found, consider trial invalid
             return False, 0
 
-        install_date = module.create_date
+        install_date = module.create_date or datetime.now() - timedelta(days=TRIAL_DAYS)
         now = datetime.now()
         days_passed = (now - install_date).days
         days_left = TRIAL_DAYS - days_passed
