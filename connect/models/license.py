@@ -103,7 +103,7 @@ class ConnectLicense(models.AbstractModel):
         Returns:
             tuple: (is_valid: bool, days_left: int)
         """
-        module = self.env['connect.module'].sudo().search([('name', '=', module_name)], limit=1)
+        module = self.env['ir.module.module'].sudo().search([('name', '=', module_name)], limit=1)
 
         if not module:
             # Module not found, consider trial invalid

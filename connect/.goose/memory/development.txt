@@ -1,0 +1,27 @@
+# refactoring connect license module ir.module.module post_init_hook odoo15 odoo16
+Connect Module Refactoring (OPL-1) - removed connect.module model and switched to ir.module.module:
+
+✅ COMPLETED:
+- Removed custom 'connect.module' model (file models/module.py)
+- Updated license.py to use ir.module.module.create_date instead of connect.module
+- Updated post_init_hook for Odoo 15.0+ compatibility (cross-version support)
+- Removed uninstall_hook (no longer needed)
+- Removed connect.module access rights from security/admin.xml
+- Removed module import from models/__init__.py
+- File hooks.py deleted, code moved to __init__.py
+- Uncommented post_init_hook in __manifest__.py
+
+🔧 KEY CHANGES:
+- Method is_trial_valid() now uses: env['ir.module.module'].sudo().search([('name', '=', module_name)])
+- post_init_hook(*) supports Odoo 15 (cr, registry) and Odoo 16+ (env)
+- Installation date updated via: module.sudo().write({'create_date': fields.Datetime.now()})
+
+📁 AFFECTED FILES:
+- models/module.py (deleted)
+- models/license.py (updated)
+- __init__.py (added post_init_hook)
+- __manifest__.py (post_init_hook activated)
+- security/admin.xml (removed rights)
+- models/__init__.py (removed import)
+- hooks.py (deleted, code moved)
+

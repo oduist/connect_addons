@@ -138,6 +138,8 @@
                       </div>
                       <field colspan="2" name="registration_number"
                              invisible="is_registered == False"/>
+                    <field colspan="2" name="license_token" string="LICENSE TOKEN"
+                              invisible="is_registered == False"/>
                       <field colspan="2" name="customer_code" string="CUSTOMER CODE"
                              invisible="is_registered == True"/>
                       <button colspan="2" name="register_instance" class="btn btn-primary btn-lg me-1" type="object" string="SUBMIT REGISTRATION"

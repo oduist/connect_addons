@@ -1,0 +1,26 @@
+# connect project configuration license dependencies architecture
+Connect OPL-1 Module - current project information:
+
+📋 CONFIGURATION:
+- Path: /srv/oduist/connect_addons/18.0/connect/
+- Version: 1.0.12
+- Minimum Odoo version: 15.0
+- License: OPL-1
+- Author: Oduist
+
+🔧 DEPENDENCIES:
+- 'mail', 'contacts', 'sms'
+- Python: 'twilio', 'openai', 'PyJWT'
+
+🔐 LICENSING SYSTEM:
+- JWT tokens with RS256 validation
+- 30-day trial period from create_date
+- Uses ir.module.module.create_date for tracking
+- Public key stored in license.py
+
+🏗️ ARCHITECTURE:
+- Removed connect.module model (previously used for tracking)
+- License system in models/license.py (ConnectLicense abstract model)
+- Settings in views/settings.xml (license_token, registration_number fields)
+- post_init_hook in __init__.py for create_date setup
+

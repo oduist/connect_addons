@@ -1,0 +1,113 @@
+# .goosehints - Repository-wide guidance for goose AI assistant
+
+## Repository Overview
+
+This is the **Oduist Connect** repository - a collection of Odoo addon modules for Twilio telephony and ElevenLabs AI integration with Odoo.
+
+### Module Architecture
+
+**Core Modules:**
+- **connect** - Main Twilio-Odoo integration (voice calls, WhatsApp, SMS)
+- **connect_byoc** - Bring Your Own Carrier functionality (€499)
+- **connect_crm** - CRM integration for lead tracking from calls
+- **connect_elevenlabs** - AI conversational agents using ElevenLabs
+- **connect_elevenlabs_sale** - Sales management extension for AI agents (€999)
+- **connect_helpdesk** - Helpdesk ticket integration
+- **connect_website** - Website snippets for click-to-call
+
+### Key Technical Patterns
+
+#### Module Structure
+Each module follows standard Odoo addon structure:
+- `models/` - Python model definitions
+- `views/` - XML view definitions
+- `security/` - Access rights and groups
+- `data/` - Data files and default records
+- `controllers/` - HTTP routes and web controllers
+- `static/` - Static assets (JS, CSS, images)
+
+#### Core Data Models (from `connect` module)
+**PBX Infrastructure:**
+- `connect.user` - PBX users with SIP/WebRTC credentials
+- `connect.exten` - Extensions (101, 102, etc.)
+- `connect.domain` - Twilio SIP domains
+- `connect.number` - Phone numbers
+- `connect.callflow` - IVR/call routing flows
+- `connect.twiml` - TwiML applications
+
+**Call Tracking:**
+- `connect.call` - High-level call records (user-facing)
+- `connect.channel` - Low-level call leg tracking
+
+**Configuration:**
+- `connect.settings` - Single-record model for all configuration
+
+### Development Guidelines
+
+#### License System (OPL-1)
+- Uses JWT tokens with RS256 validation
+- 30-day trial period from module installation date
+- License validation in `models/license.py` (ConnectLicense abstract model)
+- Uses `ir.module.module.create_date` for trial tracking (NOT custom connect.module model)
+
+#### Cross-Version Compatibility
+- Supports Odoo 15.0+
+- `post_init_hook` works with both Odoo 15 (cr, registry) and Odoo 16+ (env) signatures
+- Use `*args` and detect argument count for compatibility
+
+#### Common Patterns
+- Use `@api.model` for model-level methods
+- Use `.sudo()` for admin operations
+- Single-record settings pattern (get_param/set_param)
+- Reference fields for polymorphic relationships
+
+### File Naming Conventions
+- Model files: `snake_case.py` (e.g., `call.py`, `user.py`)
+- View files: `snake_case.xml` (e.g., `call.xml`, `user.xml`)
+- Classes: `PascalCase` (e.g., `ConnectCall`, `ConnectUser`)
+- Models: `snake_case` with underscore (e.g., `connect.call`, `connect.user`)
+
+### Useful Commands
+
+```bash
+# Find files by name
+rg --files | rg <filename>
+
+# Search for patterns
+rg --files-with-matches 'pattern' 
+grep -r "pattern" --exclude-dir=.git
+
+# Find model definitions
+find . -name "*.py" -exec grep -l "_name.*=.*connect\." {} \;
+
+# Check XML model references
+find . -name "*.xml" -exec grep -l "connect\." {} \;
+```
+
+### Security & Access Control
+- Use `env['res.users'].has_group()` for group-based permissions
+- Follow Odoo's record rules and access rights patterns
+- Use `.sudo()` for administrative operations only when necessary
+
+### Testing & Debugging
+- Use `--dev=all` for auto-reload during development
+- Check logs for proper error handling
+- Verify license validation flows during testing
+- Test with both trial and licensed scenarios
+
+### Integration Points
+- **Twilio**: Webhooks, REST API, real-time communications
+- **ElevenLabs**: AI voice conversations via FastAPI service
+- **Odoo Core**: CRM, Helpdesk, Sales, Website modules
+
+## Memory Storage
+- Project-specific: `.goose/memory/` (in each module)
+- Global: `~/.config/goose/memory/`
+- Store all technical information in English
+- Use structured tags for better retrieval
+
+## Current Working Context
+- Working branch: 18.0 (main development)
+- Target branch: 19.0 (next version)
+- Minimum Odoo version: 15.0
+- License: OPL-1 (Open Power License 1.0)

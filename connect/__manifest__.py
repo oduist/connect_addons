@@ -17,6 +17,7 @@
     'external_dependencies': {
         'python': ['twilio', 'openai', 'PyJWT'],
     },
+    'sequences': True,
 'data': [
         'data/res_users.xml',
         'data/data.xml',
@@ -78,5 +79,4 @@
         ],
     },
     'post_init_hook': 'post_init_hook',
-    'uninstall_hook': 'uninstall_hook',
 }

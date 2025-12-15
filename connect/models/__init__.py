@@ -6,7 +6,6 @@ from . import domain
 from . import exten
 from . import favorite
 from . import license
-from . import module
 from . import mail
 from . import message
 from . import message_configuration
