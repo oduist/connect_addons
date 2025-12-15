@@ -59,6 +59,14 @@
                       <field name="display_openai_api_key" string="OpenAI API Key" password="1"/>
                     </group>
                   </group>
+                  <group>
+                    <group name="license" string="License (OPL-1)">
+                      <div colspan="2">
+                        <small><strong>Enter your license token from <a href="https://oduist.com/my" target="_blank">oduist.com</a>. Leave empty to use 30-day trial.</strong></small>
+                      </div>
+                      <field name="license_token" nolabel="1" placeholder="Paste your JWT license token here..."/>
+                    </group>
+                  </group>
                 </page>
                 <page name="calls" string="Calls"
                       invisible="is_registered == False">

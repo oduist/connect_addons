@@ -120,6 +120,12 @@ class Settings(models.Model):
     twilio_balance = fields.Char(readonly=True)
     openai_api_key = fields.Char(groups="base.group_erp_manager")
     display_openai_api_key = fields.Char()
+    # License token for OPL-1 validation
+    license_token = fields.Text(
+        string="License Token",
+        groups="base.group_erp_manager",
+        help="JWT license token from oduist.com. Leave empty to use 30-day trial."
+    )
     number_search_operation = fields.Selection(
         [("=", "Equal"), ("like", "Like")], default="=", required=True
     )

@@ -9,13 +9,13 @@
     'price': 0,
     'currency': 'EUR',
     'support': 'support@oduist.com',
-    'license': 'Other proprietary',
+    'license': 'OPL-1',
     'category': 'Phone',
     'summary': 'Twilio and Odoo integration application',
     'description': '',
     'depends': ['mail', 'contacts', 'sms'],
     'external_dependencies': {
-        'python': ['twilio', 'openai'],
+        'python': ['twilio', 'openai', 'PyJWT'],
     },
 'data': [
         'data/res_users.xml',
@@ -68,6 +68,7 @@
 'web.assets_backend': [
             '/connect/static/src/icomoon/style.css',
             '/connect/static/src/components/phone/*/*',
+            '/connect/static/src/components/license_banner/*',
             '/connect/static/src/js/main.js',
             '/connect/static/src/js/utils.js',
             '/connect/static/src/widgets/phone_field/*',
@@ -76,4 +77,6 @@
             '/connect/static/src/services/mail/*',
         ],
     },
+    'post_init_hook': 'post_init_hook',
+    'uninstall_hook': 'uninstall_hook',
 }
