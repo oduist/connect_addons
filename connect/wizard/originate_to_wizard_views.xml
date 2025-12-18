@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_connect_originate_to_wizard_form" model="ir.ui.view">
+        <field name="name">connect.originate_to_wizard.form</field>
+        <field name="model">connect.originate_to_wizard</field>
+        <field name="arch" type="xml">
+            <form string="Connect Partner To">
+                <sheet>
+                    <group>
+                        <field name="partner_id" readonly="1" invisible="not partner_id"/>
+                        <field name="number" required="1"/>
+                        <field name="extension_id" options="{'no_create': True}" required="1"/>
+                        <field name="outgoing_callerid_id" options="{'no_create': True}" required="1"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Connect" type="object" name="action_originate" class="btn-primary oe_highlight"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_connect_originate_to_wizard" model="ir.actions.act_window">
+        <field name="name">Connect To</field>
+        <field name="res_model">connect.originate_to_wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="base.model_res_partner"/>
+        <field name="binding_view_types">form</field>
+    </record>
+</odoo>
