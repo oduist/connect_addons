@@ -240,3 +240,72 @@ class Partner(models.Model):
         else:
             return {'id': False, 'name': 'Unknown'}
 
+    @api.model
+    def originate_call_to(self, number, extension_id, callerid, partner_id=False):
+        """Originate a call to partner and connect to an extension.
+
+        Args:
+            number: Phone number to call (partner's phone)
+            extension_id: ID of connect.exten to connect to after partner answers
+            callerid: Caller ID to display
+            partner_id: Optional partner ID for tracking
+
+        Flow:
+            1. Call the partner's number
+            2. When partner answers, execute TwiML from extension.render()
+        """
+        from urllib.parse import urljoin
+
+        settings = self.env['connect.settings'].sudo()
+        client = settings.get_client()
+
+        # Get extension and render its TwiML
+        extension = self.env['connect.exten'].browse(extension_id)
+        if not extension.exists():
+            raise ValueError('Extension not found')
+
+        # Format number
+        number = strip_number(number)
+        if len(number) > 4:
+            number = "+{}".format(number)
+
+        # Get API URL and edge for callbacks
+        api_url = settings.get_param("api_url")
+        edge = settings.get_param('twilio_edge')
+        status_url = urljoin(api_url, "twilio/webhook/callstatus#e={}".format(edge))
+        record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus#e={}".format(edge))
+
+        # Render TwiML from extension destination
+        twiml = str(extension.render())
+
+        # Check if recording is enabled for current user
+        record = False
+        if self.env.user.connect_user:
+            record = self.env.user.connect_user.record_calls
+
+        debug(self, 'Originate call to TwiML: {}'.format(twiml))
+
+        # Create outbound call to partner, execute extension TwiML when answered
+        channel = client.calls.create(
+            twiml=twiml,
+            to=number,
+            from_=callerid,
+            status_callback=status_url,
+            record=record,
+            recording_channels="dual",
+            recording_status_callback=record_status_url,
+            recording_status_callback_event=["completed"],
+            status_callback_event=["initiated", "answered", "completed"],
+        )
+
+        # Create channel record for tracking
+        self.env["connect.channel"].sudo().create({
+            "sid": channel.sid,
+            "technical_direction": "outbound-api",
+            "caller_user": self.env.user.id,
+            "caller_pbx_user": self.env.user.connect_user.id if self.env.user.connect_user else False,
+            "partner": partner_id,
+            "called": number,
+            "caller": callerid,
+        })
+
