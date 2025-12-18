@@ -58,6 +58,7 @@
         'wizard/transfer.xml',
         'wizard/sms_composer_views.xml',
         'wizard/whatsapp_composer_views.xml',
+        'wizard/originate_to_wizard_views.xml',
     ],
     'demo': [],
     'installable': True,
