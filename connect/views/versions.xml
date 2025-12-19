@@ -7,6 +7,7 @@
                         <th scope="col">Module Name</th>
                         <th scope="col">Current Version</th>
                         <th scope="col">Latest</th>
+                        <th scope="col">Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -15,6 +16,11 @@
                             <td><t t-out="module.get('name')"/></td>
                             <td><t t-out="module.get('current_version')"/></td>
                             <td><t t-out="module.get('latest_version')"/></td>
+                            <td>
+                                <span class="badge" t-attf-class="badge-{{ 'success' if module.get('license_status') == 'Licensed' else 'warning' }}">
+                                    <t t-out="module.get('license_status')"/>
+                                </span>
+                            </td>
                         </tr>
                     </t>
                 </tbody>

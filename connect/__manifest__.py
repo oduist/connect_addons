@@ -18,7 +18,7 @@
         'python': ['twilio', 'openai', 'PyJWT'],
     },
     'sequences': True,
-'data': [
+    'data': [
         'data/res_users.xml',
         'data/data.xml',
         'data/functions.xml',
@@ -50,14 +50,14 @@
         'views/favorite.xml',
         'views/res_partner.xml',
         'views/message.xml',
-'views/message_configuration.xml',
+        'views/message_configuration.xml',
         'views/message_content_template.xml',
         'views/whatsapp_sender.xml',
         'views/versions.xml',
         'views/documentation.xml',
         # Wizard
         'wizard/transfer.xml',
-'wizard/sms_composer_views.xml',
+        'wizard/sms_composer_views.xml',
         'wizard/whatsapp_composer_views.xml',
     ],
     'demo': [],
@@ -66,7 +66,7 @@
     'auto_install': False,
     'images': ['static/description/logo.png'],
     'assets': {
-'web.assets_backend': [
+        'web.assets_backend': [
             '/connect/static/src/icomoon/style.css',
             '/connect/static/src/components/phone/*/*',
             '/connect/static/src/components/license_banner/*',

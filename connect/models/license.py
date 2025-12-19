@@ -52,7 +52,6 @@ class ConnectLicense(models.AbstractModel):
         """
         if not token:
             return None
-
         try:
             payload = jwt.decode(
                 token,
@@ -61,23 +60,11 @@ class ConnectLicense(models.AbstractModel):
                 options={'verify_signature': True}
             )
 
-            # Verify issuer
-            if payload.get('issuer') != 'oduist.com':
-                _logger.warning('Invalid token issuer: %s', payload.get('issuer'))
-                return None
-
             # Verify instance UUID
             db_uuid = self._get_database_uuid()
             if payload.get('instance_uid') != db_uuid:
                 _logger.warning('Token instance_uid mismatch. Expected: %s, Got: %s',
-                              db_uuid, payload.get('instance_uid'))
-                return None
-
-            # Verify expiration
-            expire_timestamp = payload.get('expire')
-            if expire_timestamp and datetime.now().timestamp() > expire_timestamp:
-                _logger.warning('Token expired at %s',
-                              datetime.fromtimestamp(expire_timestamp))
+                                db_uuid, payload.get('instance_uid'))
                 return None
 
             return payload
@@ -125,12 +112,7 @@ class ConnectLicense(models.AbstractModel):
 
         Returns:
             dict: {
-                'status': 'trial_active' | 'trial_expired' | 'licensed' | 'invalid_token',
-                'days_left': int (for trial),
-                'expire_date': datetime (for licensed),
                 'modules': list (for licensed),
-                'partner_name': str (for licensed),
-                'message': str (user-friendly message)
             }
         """
         token = self._get_license_token()
@@ -200,7 +182,7 @@ class ConnectLicense(models.AbstractModel):
         return status
 
 
-def _license(module='connect'):
+def _license(module='connect', raise_an_error=False):
     """
     Decorator to check license for specific module before executing method.
 
@@ -221,6 +203,7 @@ def _license(module='connect'):
     Raises:
         UserError: If license is not valid for the specified module
     """
+
     def decorator(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
@@ -230,25 +213,34 @@ def _license(module='connect'):
 
             # Block if trial expired and no valid license
             if status['status'] == 'trial_expired':
-                raise UserError(_(
+                message = _(
                     'License required for module "%s".\n\n'
                     'Your trial period has expired. Please obtain a valid license token '
                     'from oduist.com and enter it in Connect Settings.\n\n'
                     'Status: %s'
-                ) % (module, status['message']))
+                ) % (module, status['message'])
+                _logger.warning(message)
+                if raise_an_error:
+                    raise UserError(message)
+                return None
 
             # If licensed, check if module is in the licensed modules list
-            if status['status'] == 'licensed':
+            elif status['status'] == 'licensed':
                 if module not in status.get('modules', []):
-                    raise UserError(_(
+                    message = _(
                         'License required for module "%s".\n\n'
                         'Your license does not include this module. '
                         'Please upgrade your license at oduist.com.\n\n'
                         'Currently licensed modules: %s'
-                    ) % (module, ', '.join(status.get('modules', []))))
+                    ) % (module, ', '.join(status.get('modules', [])))
+                    _logger.warning(message)
+                    if raise_an_error:
+                        raise UserError(message)
+                    return None
 
             # Execute the original function
             return func(self, *args, **kwargs)
 
         return wrapper
+
     return decorator

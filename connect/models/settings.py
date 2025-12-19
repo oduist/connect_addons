@@ -172,7 +172,7 @@ class Settings(models.Model):
                                       help='We use the company’s country information for statistical tracking of our product installations by country.')
     web_base_url = fields.Char(compute="_get_instance_data", string="Odoo URL")
     call_duration_limit = fields.Integer(compute="_get_instance_data", string="Call Duration Limit (seconds)")
-    latest_versions = fields.Html(readonly=True)
+    latest_versions = fields.Html(readonly=True, compute="_get_latest_versions")
 
     def get_module_version(self, module_name):
         module = (
@@ -186,6 +186,44 @@ class Settings(models.Model):
     @staticmethod
     def get_module_list():
         return ["connect"]
+
+    def _get_latest_versions(self):
+        for rec in self:
+            module_list = self.get_module_list()
+            data = []
+            for module_name in module_list:
+                module = (
+                    self.env["ir.module.module"]
+                    .sudo()
+                    .search([("name", "=", module_name)])
+                )
+                current_version = (
+                    re.sub(r"^(\d+\.\d+\.)", "", module.installed_version)
+                    if module and module.installed_version
+                    else ""
+                )
+                latest_version = (
+                    re.sub(r"^(\d+\.\d+\.)", "", module.latest_version)
+                    if module and module.latest_version
+                    else ""
+                )
+                # Determine license status per module
+                license_status = "Licensed" if rec.license_token else "Trial"
+                
+                data.append(
+                    {
+                        "name": module_name,
+                        "current_version": current_version,
+                        "latest_version": latest_version,
+                        "license_status": license_status,
+                    }
+                )
+
+            html = self.env["ir.ui.view"]._render_template(
+                "connect.module_version_template", {"data": data}
+            )
+            rec.latest_versions = html
+
 
     def check_latest_versions(self):
         module_list = self.get_module_list()
@@ -823,3 +861,9 @@ class Settings(models.Model):
             error_msg = f"Failed to fetch Twilio balance: {str(e)}"
             self.connect_notify(error_msg, title="Balance Error", warning=True)
             raise ValidationError(error_msg)
+
+    def refresh_license(self):
+        pass
+
+    def buy_all_modules(self):
+        pass

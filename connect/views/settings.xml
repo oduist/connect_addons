@@ -21,8 +21,7 @@
         <form create="false" delete="false">
             <sheet>
               <notebook>
-                <page name="general" string="General"
-                      invisible="is_registered == False">
+                <page name="general" string="General">
                   <group>
                     <group>
                       <field name="api_url" string="Odoo URL"/>
@@ -36,8 +35,7 @@
                     </group>
                   </group>
                 </page>
-                <page name="keys" string="API Keys"
-                      invisible="is_registered == False">
+                <page name="keys" string="API Keys">
                   <group>
                     <group string="Twilio" name="twilio_api">
                       <div colspan="2">
@@ -59,17 +57,8 @@
                       <field name="display_openai_api_key" string="OpenAI API Key" password="1"/>
                     </group>
                   </group>
-                  <group>
-                    <group name="license" string="License (OPL-1)">
-                      <div colspan="2">
-                        <small><strong>Enter your license token from <a href="https://oduist.com/my" target="_blank">oduist.com</a>. Leave empty to use 30-day trial.</strong></small>
-                      </div>
-                      <field name="license_token" nolabel="1" placeholder="Paste your JWT license token here..."/>
-                    </group>
-                  </group>
                 </page>
-                <page name="calls" string="Calls"
-                      invisible="is_registered == False">
+                <page name="calls" string="Calls">
                   <group>
                     <group >
                       <field name="proxy_recordings"/>
@@ -82,8 +71,7 @@
                     </group>
                   </group>
                 </page>
-                <page name="transcription" string="Transcription"
-                      invisible="is_registered == False">
+                <page name="transcription" string="Transcription">
                   <group>
                     <group>
                       <field name="transcript_calls"/>
@@ -97,90 +85,31 @@
                     </group>
                   </group>
                 </page>
-                <page string="Development" groups="base.group_no_one"
-                      invisible="is_registered == False">
+                <page string="Development" groups="base.group_no_one">
                   <group>
                     <group>
                       <field name="twilio_verify_requests"/>
                     </group>
                   </group>
                 </page>
-                <page name="versions" string="Versions"
-                      invisible="is_registered == False">
-                  <group>
-                    <button colspan="2" name="check_latest_versions" class="btn btn-info btn-sm me-1" type="object" string="CHECK VERSIONS"/>
-                    <field name="latest_versions" nolabel="1"/>
-                  </group>
-                </page>
                 <!-- REGISTRATION PAGE -->
-                <page name="registration" string="Registration">
-                  <group invisible="is_registered">
-                    <div colspan="2" style="font-size: small;">
-                      <strong >Registration is required to activate and use this product. We use it only for internal sales and support processes. Please read our <a target="_new" href="https://oduist.com/privacy">data privacy policy.</a></strong>
-                    </div>
-                    <div colspan="2" style="font-size: small;">
-                      <field name="i_agree_to_register" nolabel="1"/>
-                      <label for="i_agree_to_register" string="I agree to register my instance on the Oduist Users Portal."/>
-                    </div>
-                    <div colspan="2" style="font-size: small;">
-                    <field name="i_agree_to_receive"/>
-                    <label for="i_agree_to_receive" string="I agree to receive important product notifications, including security advisories, major updates, and critical patches that may affect my installation."/>
-                    </div>
-                    <div colspan="2" style="font-size: small;">
-                      <field name="i_agree_to_contact"/>
-                      <label for="i_agree_to_contact" string="I agree to be contacted by sales representatives who can help me understand additional services and support options available for my installation."/>
-                    </div>
-                  </group>
-                  <group>
-                    <group name="registration" string="Registration">
-                      <div colspan="2" invisible="is_registered == True">
-                        <small><strong>Your customer code is available on <a target="_blank" href="https://oduist.com/my">your Customer Portal</a>.</strong></small>
-                      </div>
-                      <field colspan="2" name="registration_number"
-                             invisible="is_registered == False"/>
-                    <field colspan="2" name="license_token" string="LICENSE TOKEN"
-                              invisible="is_registered == False"/>
-                      <field colspan="2" name="customer_code" string="CUSTOMER CODE"
-                             invisible="is_registered == True"/>
-                      <button colspan="2" name="register_instance" class="btn btn-primary btn-lg me-1" type="object" string="SUBMIT REGISTRATION"
-                              invisible="is_registered or not i_agree_to_register or not i_agree_to_receive or not i_agree_to_contact"/>
-                      <field name="is_registered" invisible="1"/>
-                      <p colspan="2"
-                         invisible="is_registered or (i_agree_to_register and i_agree_to_receive and i_agree_to_contact)">
-                        Our product is <b>open source and free to use</b>, but it's <b>also a commercial solution used in business-critical environments</b>.<br/>
-                        While we're committed to keeping the product open source, <b>we need sustainable ways to support its development and maintenance</b>.<br/>
-                        We want to share why we ask for these permissions:
-                        <ul>
-                        <li><strong>Security First:</strong> We take security very seriously. If a critical bug or vulnerability is discovered, we need to ensure we can reach <strong>every user</strong> to provide an immediate fix.</li>
-                        <li><strong>Ongoing Development:</strong> Even though the core product is free, we still need resources to maintain, improve, and support it. By staying connected, you help us continue innovating.</li>
-                        <li><strong>Value-Added Services:</strong> We offer optional premium services that provide additional benefits, including SLA support, consulting, and advanced features. Having your contact details allows us to inform you about solutions that might help your business grow.</li>
-                        <li><strong>Community and Support</strong>: Registering in our portal gives you access to knowledge bases, user forums, and troubleshooting help from other users and our team.</li>
-                        </ul>
-                        Your privacy is our priority - your registration data remains strictly confidential. We do not sell or misuse your information.<br/>
-                        <strong>Thanks a lot for your trust, understanding and support! Welcome to our community!</strong>
-                      </p>
-                    <div string="Technical Support"
-                           invisible="not is_registered">
-                      <p colspan="2" >
-                        <a role="button" class="btn btn-primary" href="https://oduist.com/knowledge/article/39" target="_new">DOCUMENTATION</a> |
-                        <a role="button" class="btn btn-info" href="https://oduist.com/forum/user-support-portal-1" target="_new">COMMUNITY SUPPORT</a> |
-                        <a role="button" class="btn btn-success" href="https://oduist.com/support" target="_new">ENTERPRISE SUPPORT</a>
-                      </p>
-                      <img alt="Great support!" colspan="2" src="/connect/static/description/support.png" width="100%"/>
-                    </div>
+                <page name="license" string="License">
+                    <group>
+                        <group>
+                            <button name="refresh_license" string="REFRESH LICENSE" type="object" class="btn-primary"/>
+                            <button name="buy_all_modules" string="BUY ALL MODULES" type="object" class="btn-primary"/>
+                            <field name="latest_versions" nolabel="1"/>
+                        </group>
                     </group>
-                    <group name="registration_data" string="Registration Data">
-                      <field name="company_name"/>
-                      <field name="company_country"/>
-                      <field name="admin_name"/>
-                      <field name="admin_email"/>
-                      <field name="admin_phone"/>
-                      <field name="web_base_url"
-                             invisible="is_registered"/>
-                      <button class="btn btn-primary" colspan="2" name="action_open_system_parameters" type="object" string="Change Odoo URL"
-                              invisible="is_registered"/>
-                      <button colspan="2" name="update_instance_registration" class="btn btn-primary btn-lg me-1" type="object" string="UPDATE REGISTRATION"
-                              invisible="not is_registered"/>
+                  <group>
+                      <group>
+                      <div string="Technical Support">
+                        <p colspan="2" >
+                          <a role="button" class="btn btn-primary" href="https://docs.oduist.com" target="_new">DOCUMENTATION</a> |
+                          <a role="button" class="btn btn-info" href="https://oduist.com/forum/user-support-portal-1" target="_new">COMMUNITY SUPPORT</a> |
+                          <a role="button" class="btn btn-success" href="https://oduist.com/support" target="_new">ENTERPRISE SUPPORT</a>
+                        </p>
+                      </div>
                     </group>
                   </group>
                 </page>

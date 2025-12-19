@@ -42,7 +42,7 @@ export class LicenseBanner extends Component {
             } else if (result.status === "trial_expired") {
                 this.state.visible = true;
                 this.state.status = result.status;
-                this.state.message = "Connect Trial Expired - Please Register";
+                this.state.message = "Connect Trial Expired";
                 this.state.type = "danger";
             }
             // Don't show banner for licensed state
