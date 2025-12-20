@@ -110,8 +110,7 @@ def rpc(url: str, request_data: dict) -> dict:
     # Make request
     return requests.post(url, json=payload, timeout=30).json().get('result')
 
-# ir.config_parameter keys
-PUBLIC_KEY_PARAM = 'oduist_license.public_key'
+CONNECT_MODULES = ['connect']
 
 class Settings(models.Model):
     """One record model to keep all settings. The record is created on
@@ -193,95 +192,18 @@ class Settings(models.Model):
                                       help='We use the company’s country information for statistical tracking of our product installations by country.')
     web_base_url = fields.Char(compute="_get_instance_data", string="Odoo URL")
     call_duration_limit = fields.Integer(compute="_get_instance_data", string="Call Duration Limit (seconds)")
-    latest_versions = fields.Html(readonly=True, compute="_get_latest_versions")
+    connect_modules = fields.Many2many(
+        'ir.module.module',
+        string="Connect Modules",
+        compute="_compute_connect_modules",
+    )
 
-    def get_module_version(self, module_name):
-        module = (
-            self.env["ir.module.module"].sudo().search([("name", "=", module_name)])
-        )
-        module_version = (
-            re.sub(r"^(\d+\.\d+\.)", "", module.installed_version) if module else ""
-        )
-        return module_version
-
-    @api.model
-    def get_module_list(self):
-        modules = self.env["ir.module.module"].sudo().search([
-            ("name", "like", "connect"),
-            ("state", "=", "installed")
-        ])
-        return [module.name for module in modules]
-
-    def _get_latest_versions(self):
+    def _compute_connect_modules(self):
         for rec in self:
-            module_list = self.get_module_list()
-            data = []
-            License = self.env['connect.license']
-            token_data = License.validate_token(rec.license_token)
-            for module_name in module_list:
-                module = (
-                    self.env["ir.module.module"]
-                    .sudo()
-                    .search([("name", "=", module_name)])
-                )
-                current_version = (
-                    re.sub(r"^(\d+\.\d+\.)", "", module.installed_version)
-                    if module and module.installed_version
-                    else ""
-                )
-                latest_version = (
-                    re.sub(r"^(\d+\.\d+\.)", "", module.latest_version)
-                    if module and module.latest_version
-                    else ""
-                )
-                # Determine license status per module
-                if token_data and module_name in token_data.get('modules', {}).keys():
-                    license_status = "Licensed" if rec.license_token else "Trial"
-                else:
-                    module_status = License.get_license_status(module_name)
-                    license_status = 'Trial expired' if module_status.get("days_left") == 0 else f'Trial {module_status.get("days_left")} days left'
-                
-                data.append(
-                    {
-                        "name": module_name,
-                        "current_version": current_version,
-                        "latest_version": latest_version,
-                        "license_status": license_status,
-                    }
-                )
-
-            html = self.env["ir.ui.view"]._render_template(
-                "connect.module_version_template", {"data": data}
-            )
-            rec.latest_versions = html
-
-
-    def check_latest_versions(self):
-        module_list = self.get_module_list()
-        request_data = {
-            "instance_uid": self.get_param("instance_uid"),
-            "odoo_version": release.major_version,
-            "module_list": module_list,
-        }
-        response = self.make_usage_request(
-            "check_versions", requests.post, data=request_data, raise_on_error=True
-        )
-        data = []
-        for module in module_list:
-            current_version = self.get_module_version(module)
-            latest_version = response.get(module, "")
-            data.append(
-                {
-                    "name": module,
-                    "current_version": current_version,
-                    "latest_version": latest_version,
-                }
-            )
-
-        html = self.env["ir.ui.view"]._render_template(
-            "connect.module_version_template", {"data": data}
-        )
-        self.set_param("latest_versions", html)
+            modules = self.env['ir.module.module'].sudo().search([
+                ('name', 'in', CONNECT_MODULES)
+            ])
+            rec.connect_modules = modules
 
     def set_default_admin_and_company(self):
         self.company_name = self.env.user.company_id.name
@@ -894,100 +816,9 @@ class Settings(models.Model):
             raise ValidationError(error_msg)
 
     def refresh_license(self):
-        """Check license status with license server"""
-        try:
-            # Get base_url from ir.config_parameter
-            base_url = self.env["ir.config_parameter"].sudo().get_param("oduist_license_server")
-            if not base_url:
-                raise ValidationError("Base URL not configured!")
-            
-            # Get instance_uid from ir.config_parameter
-            instance_uid = self.env["ir.config_parameter"].sudo().get_param("connect.instance_uid")
-            if not instance_uid:
-                raise ValidationError("Instance UID not configured!")
-            
-            # Get installed modules
-            module_list = self.get_module_list()
-            
-            # Prepare request data
-            request_data = {
-                "instance_uid": instance_uid,
-                "modules": module_list,
-            }
-            
-            # Build URL
-            license_check_url = urljoin(base_url, "/license/check")
+        """Check license status with license server."""
+        return self.env['connect.license'].refresh_license()
 
-            # Make request
-            response = rpc(license_check_url, request_data)
-            
-            if response.get('token'):
-                logger.info(f"License check result: {response}")
-                self.connect_notify("License check completed successfully!", title="License Check")
-                self.license_token = response.get('token')
-                self.env['ir.config_parameter'].sudo().set_param(PUBLIC_KEY_PARAM, response.get('public_key'))
-            else:
-                error_msg = f"License check failed: {response}"
-                logger.warning(error_msg)
-                raise ValidationError(error_msg)
-                
-        except requests.exceptions.RequestException as e:
-            error_msg = f"License check request failed: {str(e)}"
-            logger.error(error_msg)
-            raise ValidationError(error_msg)
-
-    def buy_all_modules(self):
-        """
-        Initiates the purchase process for all installed modules.
-
-        This method retrieves the license server URL and instance UID,
-        prepares a request with the list of installed modules, and sends
-        it to the license server. If a payment link is returned, it
-        opens the link in a new tab.
-
-        Raises:
-            ValidationError: If the base URL or instance UID is not configured,
-                          or if the license server returns an error.
-        """
-        try:
-            # Get base_url from ir.config_parameter
-            base_url = self.env["ir.config_parameter"].sudo().get_param("oduist_license_server")
-            if not base_url:
-                raise ValidationError("Base URL not configured!")
-
-            # Get instance_uid from ir.config_parameter
-            instance_uid = self.env["ir.config_parameter"].sudo().get_param("connect.instance_uid")
-            if not instance_uid:
-                raise ValidationError("Instance UID not configured!")
-
-            # Get installed modules
-            module_list = self.get_module_list()
-
-            # Prepare request data
-            request_data = {
-                "instance_uid": instance_uid,
-                "modules": module_list,
-            }
-
-            # Build URL
-            license_buy_url = urljoin(base_url, "/license/buy")
-
-            # Make request
-            response = rpc(license_buy_url, request_data)
-
-            if response.get('payment_link'):
-                logger.info(f"License buy result: {response}")
-                return {
-                    'type': 'ir.actions.act_url',
-                    'url': response['payment_link'],
-                    'target': 'new',
-                }
-            else:
-                error_msg = f"License buy failed: {response}"
-                logger.warning(error_msg)
-                raise ValidationError(error_msg)
-
-        except requests.exceptions.RequestException as e:
-            error_msg = f"License buy request failed: {str(e)}"
-            logger.error(error_msg)
-            raise ValidationError(error_msg)
+    def buy_oduist_licenses(self):
+        """Initiate purchase process for all Connect modules."""
+        return self.env['connect.license'].buy_licenses(CONNECT_MODULES)

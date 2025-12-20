@@ -1,6 +1,9 @@
 from odoo import fields, models, api, release
 from odoo.exceptions import ValidationError, UserError
+from odoo.addons.connect.models.settings import CONNECT_MODULES
 
+
+CONNECT_MODULES.append('connect_byoc')
 
 class Settings(models.Model):
     _inherit = "connect.settings"

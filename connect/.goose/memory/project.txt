@@ -4,7 +4,7 @@ Connect OPL-1 Module - current project information:
 📋 CONFIGURATION:
 - Path: /srv/oduist/connect_addons/18.0/connect/
 - Version: 1.0.12
-- Minimum Odoo version: 15.0
+- Exact Odoo version: 18.0
 - License: OPL-1
 - Author: Oduist
 

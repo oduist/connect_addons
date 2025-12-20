@@ -97,12 +97,18 @@
                     <group>
                         <group>
                             <button name="refresh_license" string="REFRESH LICENSE" type="object" class="btn-primary"/>
-                            <button name="buy_all_modules" string="BUY ALL MODULES" type="object" class="btn-primary"/>
-                            <field name="latest_versions" nolabel="1"/>
+                            <button name="buy_oduist_licenses" string="BUY ALL MODULES" type="object" class="btn-primary"/>
+                            <field name="connect_modules" nolabel="1" colspan="2">
+                                <list create="false" delete="false" editable="bottom">
+                                    <field name="name" string="Module" readonly="1"/>
+                                    <field name="installed_version" string="Installed" readonly="1"/>
+                                    <field name="latest_version" string="Latest" readonly="1"/>
+                                    <field name="oduist_license_status" string="License Status" readonly="1"/>
+                                    <button name="buy_oduist_license" string="Buy" type="object" class="btn-primary btn-sm"/>
+                                </list>
+                            </field>
                         </group>
-                    </group>
-                  <group>
-                      <group>
+                      <group string="Support">
                       <div string="Technical Support">
                         <p colspan="2" >
                           <a role="button" class="btn btn-primary" href="https://docs.oduist.com" target="_new">DOCUMENTATION</a> |
