@@ -6,6 +6,7 @@ from functools import wraps
 
 from odoo import models, api, _
 from odoo.exceptions import UserError
+from odoo.addons.connect.models.settings import PUBLIC_KEY_PARAM
 
 _logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ class ConnectLicense(models.AbstractModel):
     @api.model
     def _get_database_uuid(self):
         """Get database UUID from system parameters."""
-        return self.env['ir.config_parameter'].sudo().get_param('database.uuid', default='')
+        return self.env['ir.config_parameter'].sudo().get_param('connect.instance_uid', default='')
 
     @api.model
     def validate_token(self, token):
@@ -55,7 +56,7 @@ class ConnectLicense(models.AbstractModel):
         try:
             payload = jwt.decode(
                 token,
-                PUBLIC_KEY,
+                self.env['connect.settings'].sudo().get_param('oduist_license.public_key', default=PUBLIC_KEY),
                 algorithms=['RS256'],
                 options={'verify_signature': True}
             )
@@ -95,7 +96,6 @@ class ConnectLicense(models.AbstractModel):
         if not module:
             # Module not found, consider trial invalid
             return False, 0
-
         install_date = module.create_date or datetime.now() - timedelta(days=TRIAL_DAYS)
         now = datetime.now()
         days_passed = (now - install_date).days

@@ -1,3 +1,8 @@
 <odoo>
-  <function model="connect.settings" name="set_instance_uid"/>
+    <function model="connect.settings" name="set_instance_uid"/>
+
+    <record id="oduist_license_server" model="ir.config_parameter">
+        <field name="key">oduist_license_server</field>
+        <field name="value">https://license.oduist.com</field>
+    </record>
 </odoo>

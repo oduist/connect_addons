@@ -1,6 +1,6 @@
 <odoo>
     <template id="module_version_template" name="Module Version Template">
-        <div class="col-6">
+        <div class="col-12">
             <table class="table">
                 <thead>
                     <tr>
@@ -17,7 +17,7 @@
                             <td><t t-out="module.get('current_version')"/></td>
                             <td><t t-out="module.get('latest_version')"/></td>
                             <td>
-                                <span class="badge" t-attf-class="badge-{{ 'success' if module.get('license_status') == 'Licensed' else 'warning' }}">
+                                <span class="badge" t-attf-class="badge btn {{ 'btn-success' if module.get('license_status') == 'Licensed' else '' }}{{ 'btn-danger' if module.get('license_status') == 'Trial expired' else '' }}{{ 'btn-info' if module.get('license_status') != 'Licensed' and module.get('license_status') != 'Trial expired' else '' }}">
                                     <t t-out="module.get('license_status')"/>
                                 </span>
                             </td>

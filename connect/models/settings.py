@@ -83,7 +83,7 @@ def generate_password():
     return "".join(characters)
 
 
-######### COPY FROM SETTINGS TO ELIMINATE CIRULAR IMPORT
+######### COPY FROM SETTINGS TO ELIMINATE CIRCULAR IMPORT
 def strip_number(number):
     """Strip number formating"""
     if not isinstance(number, str):
@@ -91,6 +91,27 @@ def strip_number(number):
     pattern = r"[\s\(\)\-\+]"
     return re.sub(pattern, "", number).lstrip("0")
 
+def rpc(url: str, request_data: dict) -> dict:
+    """
+    Perform a JSON-RPC call to the specified URL.
+
+    Args:
+        url (str): The URL to send the request to.
+        request_data (str): The data to be sent as parameters in the JSON-RPC request.
+
+    Returns:
+        dict: The result of the JSON-RPC call.
+    """
+    payload = {
+        "jsonrpc": "2.0",
+        "method": "call",
+        "params": request_data,
+    }
+    # Make request
+    return requests.post(url, json=payload, timeout=30).json().get('result')
+
+# ir.config_parameter keys
+PUBLIC_KEY_PARAM = 'oduist_license.public_key'
 
 class Settings(models.Model):
     """One record model to keep all settings. The record is created on
@@ -183,14 +204,20 @@ class Settings(models.Model):
         )
         return module_version
 
-    @staticmethod
-    def get_module_list():
-        return ["connect"]
+    @api.model
+    def get_module_list(self):
+        modules = self.env["ir.module.module"].sudo().search([
+            ("name", "like", "connect"),
+            ("state", "=", "installed")
+        ])
+        return [module.name for module in modules]
 
     def _get_latest_versions(self):
         for rec in self:
             module_list = self.get_module_list()
             data = []
+            License = self.env['connect.license']
+            token_data = License.validate_token(rec.license_token)
             for module_name in module_list:
                 module = (
                     self.env["ir.module.module"]
@@ -208,7 +235,11 @@ class Settings(models.Model):
                     else ""
                 )
                 # Determine license status per module
-                license_status = "Licensed" if rec.license_token else "Trial"
+                if token_data and module_name in token_data.get('modules', {}).keys():
+                    license_status = "Licensed" if rec.license_token else "Trial"
+                else:
+                    module_status = License.get_license_status(module_name)
+                    license_status = 'Trial expired' if module_status.get("days_left") == 0 else f'Trial {module_status.get("days_left")} days left'
                 
                 data.append(
                     {
@@ -863,7 +894,100 @@ class Settings(models.Model):
             raise ValidationError(error_msg)
 
     def refresh_license(self):
-        pass
+        """Check license status with license server"""
+        try:
+            # Get base_url from ir.config_parameter
+            base_url = self.env["ir.config_parameter"].sudo().get_param("oduist_license_server")
+            if not base_url:
+                raise ValidationError("Base URL not configured!")
+            
+            # Get instance_uid from ir.config_parameter
+            instance_uid = self.env["ir.config_parameter"].sudo().get_param("connect.instance_uid")
+            if not instance_uid:
+                raise ValidationError("Instance UID not configured!")
+            
+            # Get installed modules
+            module_list = self.get_module_list()
+            
+            # Prepare request data
+            request_data = {
+                "instance_uid": instance_uid,
+                "modules": module_list,
+            }
+            
+            # Build URL
+            license_check_url = urljoin(base_url, "/license/check")
+
+            # Make request
+            response = rpc(license_check_url, request_data)
+            
+            if response.get('token'):
+                logger.info(f"License check result: {response}")
+                self.connect_notify("License check completed successfully!", title="License Check")
+                self.license_token = response.get('token')
+                self.env['ir.config_parameter'].sudo().set_param(PUBLIC_KEY_PARAM, response.get('public_key'))
+            else:
+                error_msg = f"License check failed: {response}"
+                logger.warning(error_msg)
+                raise ValidationError(error_msg)
+                
+        except requests.exceptions.RequestException as e:
+            error_msg = f"License check request failed: {str(e)}"
+            logger.error(error_msg)
+            raise ValidationError(error_msg)
 
     def buy_all_modules(self):
-        pass
+        """
+        Initiates the purchase process for all installed modules.
+
+        This method retrieves the license server URL and instance UID,
+        prepares a request with the list of installed modules, and sends
+        it to the license server. If a payment link is returned, it
+        opens the link in a new tab.
+
+        Raises:
+            ValidationError: If the base URL or instance UID is not configured,
+                          or if the license server returns an error.
+        """
+        try:
+            # Get base_url from ir.config_parameter
+            base_url = self.env["ir.config_parameter"].sudo().get_param("oduist_license_server")
+            if not base_url:
+                raise ValidationError("Base URL not configured!")
+
+            # Get instance_uid from ir.config_parameter
+            instance_uid = self.env["ir.config_parameter"].sudo().get_param("connect.instance_uid")
+            if not instance_uid:
+                raise ValidationError("Instance UID not configured!")
+
+            # Get installed modules
+            module_list = self.get_module_list()
+
+            # Prepare request data
+            request_data = {
+                "instance_uid": instance_uid,
+                "modules": module_list,
+            }
+
+            # Build URL
+            license_buy_url = urljoin(base_url, "/license/buy")
+
+            # Make request
+            response = rpc(license_buy_url, request_data)
+
+            if response.get('payment_link'):
+                logger.info(f"License buy result: {response}")
+                return {
+                    'type': 'ir.actions.act_url',
+                    'url': response['payment_link'],
+                    'target': 'new',
+                }
+            else:
+                error_msg = f"License buy failed: {response}"
+                logger.warning(error_msg)
+                raise ValidationError(error_msg)
+
+        except requests.exceptions.RequestException as e:
+            error_msg = f"License buy request failed: {str(e)}"
+            logger.error(error_msg)
+            raise ValidationError(error_msg)
