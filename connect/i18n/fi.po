@@ -1461,11 +1461,6 @@ msgid "Is Follower"
 msgstr "On seuraaja"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_settings__is_registered
-msgid "Is Registered"
-msgstr "On rekisteröity"
-
-#. module: connect
 #. odoo-javascript
 #: code:addons/connect/static/src/components/phone/phone/phone.xml:0
 #, python-format

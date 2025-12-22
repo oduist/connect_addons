@@ -3,17 +3,17 @@ import inspect
 import json
 import logging
 import os
+import random
+import re
+import string
+import uuid
+from urllib.parse import urljoin
 
 import httpx
 import openai
 import requests
-import random
-import re
-import string
-from urllib.parse import urljoin
-import uuid
-from odoo import fields, models, api, release
-from odoo.exceptions import ValidationError, UserError
+from odoo import api, fields, models, release
+from odoo.exceptions import UserError, ValidationError
 from twilio.rest import Client
 
 logger = logging.getLogger(__name__)
@@ -30,14 +30,14 @@ PROTECTED_FIELDS = [
 ]
 
 TWILIO_EDGES = [
-    ('ashburn', 'US East Coast (Virginia)'),
-    ('umatilla', 'US West Coast (Oregon)'),
-    ('dublin', 'Ireland'),
-    ('frankfurt', 'Frankfurt'),
-    ('sydney', 'Australia'),
-    ('sao-paulo', 'Brazil'),
-    ('tokyo', 'Japan'),
-    ('singapore', 'Singapore'),
+    ("ashburn", "US East Coast (Virginia)"),
+    ("umatilla", "US West Coast (Oregon)"),
+    ("dublin", "Ireland"),
+    ("frankfurt", "Frankfurt"),
+    ("sydney", "Australia"),
+    ("sao-paulo", "Brazil"),
+    ("tokyo", "Japan"),
+    ("singapore", "Singapore"),
 ]
 
 
@@ -91,6 +91,7 @@ def strip_number(number):
     pattern = r"[\s\(\)\-\+]"
     return re.sub(pattern, "", number).lstrip("0")
 
+
 def rpc(url: str, request_data: dict) -> dict:
     """
     Perform a JSON-RPC call to the specified URL.
@@ -108,9 +109,11 @@ def rpc(url: str, request_data: dict) -> dict:
         "params": request_data,
     }
     # Make request
-    return requests.post(url, json=payload, timeout=30).json().get('result')
+    return requests.post(url, json=payload, timeout=30).json().get("result")
 
-CONNECT_MODULES = ['connect']
+
+CONNECT_MODULES = ["connect"]
+
 
 class Settings(models.Model):
     """One record model to keep all settings. The record is created on
@@ -123,12 +126,18 @@ class Settings(models.Model):
     name = fields.Char(compute="_get_name")
     debug_mode = fields.Boolean()
     twilio_auto_sync = fields.Boolean(default=True)
-    twilio_region = fields.Selection([
-        ('us1', 'US East (Virginia)'),
-        ('ie1', 'Ireland (Dublin)'),
-        ('au1', 'Australia (Sydney)'),
-    ], default='us1', required=True)
-    twilio_edge = fields.Selection(selection=TWILIO_EDGES, required=True, default='ashburn')
+    twilio_region = fields.Selection(
+        [
+            ("us1", "US East (Virginia)"),
+            ("ie1", "Ireland (Dublin)"),
+            ("au1", "Australia (Sydney)"),
+        ],
+        default="us1",
+        required=True,
+    )
+    twilio_edge = fields.Selection(
+        selection=TWILIO_EDGES, required=True, default="ashburn"
+    )
     account_sid = fields.Char(string="Account SID")
     auth_token = fields.Char(
         groups="base.group_erp_manager,connect.group_connect_webhook"
@@ -144,7 +153,7 @@ class Settings(models.Model):
     license_token = fields.Text(
         string="License Token",
         groups="base.group_erp_manager",
-        help="JWT license token from oduist.com. Leave empty to use 30-day trial."
+        help="JWT license token from oduist.com. Leave empty to use 30-day trial.",
     )
     number_search_operation = fields.Selection(
         [("=", "Equal"), ("like", "Like")], default="=", required=True
@@ -154,7 +163,9 @@ class Settings(models.Model):
         help="Re-stream recordings using Odoo user auth.", default=True
     )
     transcript_calls = fields.Boolean()
-    transcript_provider = fields.Selection(selection=[('openai', 'Open AI')], default='openai', required=True)
+    transcript_provider = fields.Selection(
+        selection=[("openai", "Open AI")], default="openai", required=True
+    )
     summary_prompt = fields.Text(required=True, default="Summarise this phone call")
     register_summary = fields.Boolean(
         default=True, help="Register summary at partner of reference chat."
@@ -162,7 +173,7 @@ class Settings(models.Model):
     fetch_call_prices = fields.Boolean(
         default=False,
         string="Fetch Call Prices",
-        help="Enable fetching call prices from Twilio API after call completion. May add delay to call processing."
+        help="Enable fetching call prices from Twilio API after call completion. May add delay to call processing.",
     )
     ############################################################
     instance_uid = fields.Char("Instance UID", compute="_get_instance_data")
@@ -172,37 +183,52 @@ class Settings(models.Model):
         default=True, string="Verify Twilio Requests"
     )
     # Registration fields
-    customer_code = fields.Char()
     registration_number = fields.Char(compute="_get_instance_data")
-    registration_key = fields.Char("API Key", compute="_get_instance_data")
-    is_registered = fields.Boolean()
-    i_agree_to_register = fields.Boolean()
-    i_agree_to_contact = fields.Boolean()
-    i_agree_to_receive = fields.Boolean()
+    is_registered = (
+        fields.Boolean()
+    )  # TODO: Remove after upgrades, not needed any more.
+    i_agree_to_contact = fields.Boolean(
+        string="I agree to be contacted",
+        help="Allow Oduist to contact you regarding critical security issues "
+        "or problems with installed Connect modules.",
+    )
+    i_agree_to_receive = fields.Boolean(
+        string="I agree to receive onboarding and updates",
+        help="Subscribe to receive installation assistance (onboarding), "
+        "new version announcements, and product updates.",
+    )
     installation_date = fields.Datetime(compute="_get_instance_data")
     module_version = fields.Char(compute="_get_instance_data")
     odoo_version = fields.Char(compute="_get_instance_data")
     admin_name = fields.Char()
     admin_phone = fields.Char(
-        help='It is required to contact this instance’s administrator in case any critical vulnerabilities are found in the application.')
+        help="It is required to contact this instance’s administrator in case any critical vulnerabilities are found in the application."
+    )
     admin_email = fields.Char(
-        help='It is required to contact this instance administrator by email in case any non-critical vulnerabilities are found in the application.')
-    company_name = fields.Char(help='Company name of this instance.')
-    company_country = fields.Many2one('res.country',
-                                      help='We use the company’s country information for statistical tracking of our product installations by country.')
+        help="It is required to contact this instance administrator by email in case any non-critical vulnerabilities are found in the application."
+    )
+    company_name = fields.Char(help="Company name of this instance.")
+    company_country = fields.Many2one(
+        "res.country",
+        help="We use the company’s country information for statistical tracking of our product installations by country.",
+    )
     web_base_url = fields.Char(compute="_get_instance_data", string="Odoo URL")
-    call_duration_limit = fields.Integer(compute="_get_instance_data", string="Call Duration Limit (seconds)")
+    call_duration_limit = fields.Integer(
+        compute="_get_instance_data", string="Call Duration Limit (seconds)"
+    )
     connect_modules = fields.Many2many(
-        'ir.module.module',
+        "ir.module.module",
         string="Connect Modules",
         compute="_compute_connect_modules",
     )
 
     def _compute_connect_modules(self):
         for rec in self:
-            modules = self.env['ir.module.module'].sudo().search([
-                ('name', 'in', CONNECT_MODULES)
-            ])
+            modules = (
+                self.env["ir.module.module"]
+                .sudo()
+                .search([("name", "in", CONNECT_MODULES)])
+            )
             rec.connect_modules = modules
 
     def set_default_admin_and_company(self):
@@ -212,7 +238,7 @@ class Settings(models.Model):
         self.admin_email = self.env.user.partner_id.email
         self.admin_phone = self.env.user.partner_id.phone
 
-    def read(self, fields_to_read, load='_classic_read'):
+    def read(self, fields_to_read, load="_classic_read"):
         if not self.admin_name:
             self.set_default_admin_and_company()
         res = super(Settings, self).read(fields_to_read, load=load)
@@ -236,11 +262,6 @@ class Settings(models.Model):
             )
             rec.api_url = (
                 self.env["ir.config_parameter"].sudo().get_param("connect.api_url")
-            )
-            rec.registration_key = (
-                self.env["ir.config_parameter"]
-                .sudo()
-                .get_param("connect.registration_key")
             )
             rec.web_base_url = (
                 self.env["ir.config_parameter"].sudo().get_param("web.base.url")
@@ -384,157 +405,6 @@ class Settings(models.Model):
                 "connect.instance_uid", instance_uid
             )
 
-    def register_instance(self):
-        if not self.env.user.has_group("base.group_system"):
-            raise ValidationError("Only Odoo admin can do it!")
-        if self.get_param("is_registered"):
-            raise ValidationError("This instance is already registered!")
-        data = self.prepare_registration_data()
-        if not data.get("customer_code"):
-            raise ValidationError("Enter your customer code!")
-        required_fields = [
-            "admin_email",
-            "admin_name",
-            "admin_phone",
-            "company_name",
-            "company_country",
-            "installation_date",
-            "module_name",
-            "module_version",
-            "url",
-            "odoo_version",
-        ]
-        missing_fields = [field for field in required_fields if not data.get(field)]
-        if missing_fields:
-            raise ValidationError(
-                f"Please fill in the following fields: {', '.join([k.replace('_', ' ').capitalize() for k in missing_fields])}"
-            )
-        res = self.make_usage_request(
-            "registration", requests.post, data=data, raise_on_error=True
-        )
-        self.env["ir.config_parameter"].sudo().set_param(
-            "connect.registration_key", res.get("registration_key")
-        )
-        self.env["ir.config_parameter"].sudo().set_param(
-            "connect.registration_number", res.get("registration_number")
-        )
-        self.set_param("is_registered", True)
-        self.connect_notify("Instance registered successfully!", title="Registration")
-
-    def update_instance_registration(self):
-        if not self.env.user.has_group("base.group_system"):
-            raise ValidationError("Only Odoo admin can do it!")
-        if not self.get_param("is_registered"):
-            raise ValidationError("This instance is not registered yet! Please register first.")
-        data = self.prepare_registration_data()
-        required_fields = [
-            "admin_email",
-            "admin_name",
-            "admin_phone",
-            "company_name",
-            "company_country",
-            "installation_date",
-            "module_name",
-            "module_version",
-            "url",
-            "odoo_version",
-        ]
-        missing_fields = [field for field in required_fields if not data.get(field)]
-        if missing_fields:
-            raise ValidationError(
-                f"Please fill in the following fields: {', '.join([k.replace('_', ' ').capitalize() for k in missing_fields])}"
-            )
-        res = self.make_usage_request(
-            "update_registration", requests.post, data=data, raise_on_error=True
-        )
-        # Display the message returned from the API
-        message = res.get("message", "Registration updated successfully!")
-        self.connect_notify(message, title="Registration Update")
-
-    def prepare_registration_data(self):
-        company_country = self.get_param("company_country")
-        return {
-            "instance_uid": self.get_param("instance_uid"),
-            "company_name": self.get_param("company_name"),
-            "company_country": company_country.name if company_country else False,
-            "company_country_code": company_country.code if company_country else False,
-            "company_country_name": company_country.name if company_country else False,
-            "admin_name": self.get_param("admin_name"),
-            "admin_email": self.get_param("admin_email"),
-            "admin_phone": self.get_param("admin_phone"),
-            "module_version": self.get_param("module_version"),
-            "module_name": MODULE_NAME,
-            "odoo_version": self.get_param("odoo_version"),
-            "odoo_full_version": release.version,
-            "url": self.get_param("web_base_url"),
-            "installation_date": self.get_param("installation_date").strftime(
-                "%Y-%m-%d"
-            ),
-            "customer_code": self.get_param("customer_code"),
-        }
-
-    def get_usage_model_list(self):
-        return [
-            "call",
-            "callflow",
-            "domain",
-            "exten",
-            "message",
-            "number",
-            "outgoing_callerid",
-            "recording",
-            "twiml",
-            "user",
-        ]
-
-    @api.model
-    def update_usage(self):
-        res = {
-            "usage": {},
-            "usage_errors": {},
-        }
-        for model in self.get_usage_model_list():
-            try:
-                res["usage"][model] = {
-                    "count": self.env["connect.{}".format(model)].search_count([]),
-                }
-                if model == "call":
-                    self.env.cr.execute("SELECT SUM(duration)/60 FROM connect_call")
-                    call_minutes = self.env.cr.fetchall()[0][0]
-                    res["usage"][model]["minutes"] = call_minutes
-            except Exception as e:
-                res["errors"][model] = str(e)
-        data = self.prepare_registration_data()
-        data.update(res)
-        try:
-            self.make_usage_request("usage", requests.post, data)
-        except Exception as e:
-            logger.exception("Usage error:")
-
-    def make_usage_request(
-        self, path, method, data={}, headers={}, raise_on_error=False
-    ):
-        url = self.env["ir.config_parameter"].get_param(
-            "connect.registration_url", "https://api1.oduist.com/instance/"
-        )
-        if not url.endswith("/"):
-            url = "{}/".format(url)
-        res = None
-        try:
-            res = method(urljoin(url, path), json=data, headers=headers)
-            if res.status_code == 200:
-                res = res.json()
-                if res.get("error"):
-                    raise ValidationError(res["error"])
-                return res
-            else:
-                raise ValidationError(res.text)
-        except Exception as e:
-            if raise_on_error:
-                raise ValidationError(str(e))
-            else:
-                return {}
-
     @api.model_create_multi
     def create(self, vals_list):
         if release.version_info[0] >= 17:
@@ -594,12 +464,14 @@ class Settings(models.Model):
 
     @api.model
     def get_openai_client(self):
-        api_key = self.sudo().get_param('openai_api_key')
+        api_key = self.sudo().get_param("openai_api_key")
         if not api_key:
             return False
-        if os.environ.get('OPENAI_PROXY'):
+        if os.environ.get("OPENAI_PROXY"):
             client = openai.OpenAI(
-                api_key=api_key, http_client=httpx.Client(proxy=os.environ.get('HTTPS_PROXY')))
+                api_key=api_key,
+                http_client=httpx.Client(proxy=os.environ.get("HTTPS_PROXY")),
+            )
         else:
             client = openai.OpenAI(api_key=api_key)
         return client
@@ -633,8 +505,10 @@ class Settings(models.Model):
             self.env["connect.whatsapp_sender"].sync()
             self.env["connect.message_content_template"].sync()
         except Exception as e:
-            if 'errors/20003' in str(e):
-                raise ValidationError('Error authenticating requests to the Twilio API! Check your Auth Key!')
+            if "errors/20003" in str(e):
+                raise ValidationError(
+                    "Error authenticating requests to the Twilio API! Check your Auth Key!"
+                )
             else:
                 raise
 
@@ -648,18 +522,18 @@ class Settings(models.Model):
         return "sip:{}".format(self.env.user.connect_user.uri)
 
     def get_external_call_route(self, number, callerId, status_url):
-        call_duration_limit = int(self.sudo().get_param('call_duration_limit'))
+        call_duration_limit = int(self.sudo().get_param("call_duration_limit"))
         twiml = """
         <Response>
             <Dial callerId="{}" timeLimit="{}"><Number statusCallback='{}' statusCallbackEvent='initiated answered completed'>{}</Number></Dial>
         </Response>
-        """.format(
-            callerId, call_duration_limit, status_url, number
-        )
+        """.format(callerId, call_duration_limit, status_url, number)
         return twiml
 
     @api.model
-    def originate_call(self, number, res_model=None, res_id=None, user=None, whatsapp_call=False):
+    def originate_call(
+        self, number, res_model=None, res_id=None, user=None, whatsapp_call=False
+    ):
         number = strip_number(number)
         if len(number) > MAX_EXTEN_LEN:
             number = "+{}".format(number)
@@ -682,22 +556,23 @@ class Settings(models.Model):
         if not user.connect_user:
             raise ValidationError("User does not have a SIP username defined!")
         # Get the first ring channel for the user
-        first_flow = self.env['connect.user_callflow'].search([
-            ('user', '=', user.id), ('callflow_type', 'in', ['client', 'sip'])], order='prio', limit=1)
-        if first_flow.callflow_type == 'sip':
+        first_flow = self.env["connect.user_callflow"].search(
+            [("user", "=", user.id), ("callflow_type", "in", ["client", "sip"])],
+            order="prio",
+            limit=1,
+        )
+        if first_flow.callflow_type == "sip":
             to = self.compute_sip_uri(user)
         else:
-            to = (
-                "client:{}?autoAnswer=yes&Partner={}&CallerName={}".format(
-                    self.env.user.connect_user.uri, partner_id or '', caller_name or ''
-                )
+            to = "client:{}?autoAnswer=yes&Partner={}&CallerName={}".format(
+                self.env.user.connect_user.uri, partner_id or "", caller_name or ""
             )
         if "client:" in to:
             # Strip + before sending as param.
-            to += "&From={}".format((number or '').replace("+", ""))
+            to += "&From={}".format((number or "").replace("+", ""))
         exten = self.env["connect.exten"].search([("number", "=", number)], limit=1)
         api_url = self.sudo().get_param("api_url")
-        edge = self.twilio_edge or self.env['connect.settings'].get_param('twilio_edge')
+        edge = self.twilio_edge or self.env["connect.settings"].get_param("twilio_edge")
         status_url = urljoin(api_url, "twilio/webhook/callstatus#e={}".format(edge))
         # Resolve callerId
         if exten:
@@ -708,13 +583,15 @@ class Settings(models.Model):
             if whatsapp_call:
                 # WhatsApp callerId selection akin to domain.originate_whatsapp_call
                 pbx_user = user.connect_user
-                sender = self.env['connect.whatsapp_sender'].get_default_sender(pbx_user)
+                sender = self.env["connect.whatsapp_sender"].get_default_sender(
+                    pbx_user
+                )
                 caller_number = sender.number if sender else False
                 if not caller_number:
                     raise ValidationError("You must configure a WhatsApp sender!")
                 callerId = f"whatsapp:{caller_number}"
                 # Build WhatsApp Dial
-                call_duration_limit = int(self.sudo().get_param('call_duration_limit'))
+                call_duration_limit = int(self.sudo().get_param("call_duration_limit"))
                 record_attrs = 'record=""' if pbx_user.record_calls else ""
                 twiml = """<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -733,8 +610,10 @@ class Settings(models.Model):
                     callerId = default_number.number
                 twiml = self.get_external_call_route(number, callerId, status_url)
         record = self.env.user.connect_user.record_calls
-        record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus#e={}".format(edge))
-        debug(self, 'Originate destination TwiML: {}'.format(twiml))
+        record_status_url = urljoin(
+            api_url, "twilio/webhook/recordingstatus#e={}".format(edge)
+        )
+        debug(self, "Originate destination TwiML: {}".format(twiml))
         channel = client.calls.create(
             twiml=twiml,
             to=to,
@@ -777,14 +656,14 @@ class Settings(models.Model):
             "context": {"search_default_key": "connect.api_url"},
         }
 
-    @api.onchange('twilio_region')
+    @api.onchange("twilio_region")
     def _reset_twilio_edge(self):
-        if self.twilio_region == 'us1':
-            self.twilio_edge = 'ashburn'
-        elif self.twilio_region == 'ie1':
-            self.twilio_edge = 'dublin'
-        elif self.twilio_region == 'au1':
-            self.twilio_edge = 'sydney'
+        if self.twilio_region == "us1":
+            self.twilio_edge = "ashburn"
+        elif self.twilio_region == "ie1":
+            self.twilio_edge = "dublin"
+        elif self.twilio_region == "au1":
+            self.twilio_edge = "sydney"
 
     def get_twilio_balance(self):
         """Fetch current Twilio account balance"""
@@ -794,20 +673,26 @@ class Settings(models.Model):
             # Try to fetch balance using the balance resource
             try:
                 balance_item = client.api.v2010.account.balance.fetch()
-                currency = getattr(balance_item, 'currency', 'USD')
-                balance_value = getattr(balance_item, 'balance', '0.00')
+                currency = getattr(balance_item, "currency", "USD")
+                balance_value = getattr(balance_item, "balance", "0.00")
                 balance = f"${balance_value} {currency}"
             except Exception as balance_error:
                 # If balance API is not available (404 error), show informative message
-                if '20404' in str(balance_error) or 'not found' in str(balance_error).lower():
+                if (
+                    "20404" in str(balance_error)
+                    or "not found" in str(balance_error).lower()
+                ):
                     balance = "Balance API not available for this account"
-                    self.set_param('twilio_balance', balance)
-                    self.connect_notify(f"Twilio Balance: {balance}. The balance endpoint may not be available for your account type or region.", title="Balance Info")
+                    self.set_param("twilio_balance", balance)
+                    self.connect_notify(
+                        f"Twilio Balance: {balance}. The balance endpoint may not be available for your account type or region.",
+                        title="Balance Info",
+                    )
                     return balance
                 else:
                     raise balance_error
 
-            self.set_param('twilio_balance', balance)
+            self.set_param("twilio_balance", balance)
             self.connect_notify(f"Twilio Balance: {balance}", title="Balance Update")
             return balance
         except Exception as e:
@@ -815,10 +700,26 @@ class Settings(models.Model):
             self.connect_notify(error_msg, title="Balance Error", warning=True)
             raise ValidationError(error_msg)
 
-    def refresh_license(self):
+    def update_license_status(self):
         """Check license status with license server."""
-        return self.env['connect.license'].refresh_license()
+        return self.env["connect.license"].update_license_status()
 
     def buy_oduist_licenses(self):
-        """Initiate purchase process for all Connect modules."""
-        return self.env['connect.license'].buy_licenses(CONNECT_MODULES)
+        """Initiate purchase process for all Connect modules (excluding already purchased)."""
+        License = self.env["connect.license"]
+        token = self.sudo().get_param("license_token")
+        if not token:
+            License.update_license_status()
+            token = self.sudo().get_param("license_token")
+
+        token_data = License.validate_token(token) if token else None
+        purchased_modules = (
+            token_data.get("purchased_modules", {}) if token_data else {}
+        )
+
+        modules_to_buy = [m for m in CONNECT_MODULES if m not in purchased_modules]
+        if not modules_to_buy:
+            self.connect_notify("All modules are already purchased!", title="License")
+            return
+
+        return License.buy_licenses(modules_to_buy)

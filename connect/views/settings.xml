@@ -96,24 +96,29 @@
                 <page name="license" string="License">
                     <group>
                         <group>
-                            <button name="refresh_license" string="REFRESH LICENSE" type="object" class="btn-primary"/>
-                            <button name="buy_oduist_licenses" string="BUY ALL MODULES" type="object" class="btn-primary"/>
+                            <field name="i_agree_to_contact"/>
+                            <field name="i_agree_to_receive"/>
+                            <field name="admin_email" invisible="not i_agree_to_contact and not i_agree_to_receive"/>
+                            <div colspan="2">
+                                <button name="update_license_status" string="UPDATE LICENSE STATUS" type="object" class="btn-success me-2"/>
+                                <button name="buy_oduist_licenses" string="BUY ALL MODULES" type="object" class="btn-warning"/>
+                            </div>
                             <field name="connect_modules" nolabel="1" colspan="2">
                                 <list create="false" delete="false" editable="bottom">
                                     <field name="name" string="Module" readonly="1"/>
+                                    <field name="oduist_module_description" string="Description" readonly="1"/>
                                     <field name="installed_version" string="Installed" readonly="1"/>
                                     <field name="latest_version" string="Latest" readonly="1"/>
                                     <field name="oduist_license_status" string="License Status" readonly="1"/>
-                                    <button name="buy_oduist_license" string="Buy" type="object" class="btn-primary btn-sm"/>
+                                    <button name="buy_oduist_license" string="Buy" type="object" class="btn-warning btn-sm" invisible="oduist_module_purchased"/>
                                 </list>
                             </field>
                         </group>
                       <group string="Support">
                       <div string="Technical Support">
                         <p colspan="2" >
-                          <a role="button" class="btn btn-primary" href="https://docs.oduist.com" target="_new">DOCUMENTATION</a> |
-                          <a role="button" class="btn btn-info" href="https://oduist.com/forum/user-support-portal-1" target="_new">COMMUNITY SUPPORT</a> |
-                          <a role="button" class="btn btn-success" href="https://oduist.com/support" target="_new">ENTERPRISE SUPPORT</a>
+                          <a role="button" class="btn btn-info" href="https://docs.oduist.com" target="_new">DOCUMENTATION</a> |
+                          <a role="button" class="btn btn-info" href="https://oduist.com/forum/user-support-portal-1" target="_new">COMMUNITY FORUM</a>
                         </p>
                       </div>
                     </group>
@@ -123,19 +128,6 @@
             </sheet>
         </form>
       </field>
-  </record>
-
-  <record id="update_usage" model="ir.cron">
-      <field name="name">Update</field>
-      <field name="interval_number">1</field>
-      <field name="interval_type">days</field>
-      <field name="model_id" ref="model_connect_settings"/>
-      <field name="code">model.update_usage()</field>
-      <field name="state">code</field>
-  </record>
-
-  <record id="base.ir_cron_act" model="ir.actions.act_window">
-            <field name="domain" eval="[('id','not in', [ref('mail.ir_cron_module_update_notification'), ref('connect.update_usage')])]"/>
   </record>
 
 </odoo>

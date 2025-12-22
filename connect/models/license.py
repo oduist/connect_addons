@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 import logging
-import jwt
-import requests
 from datetime import datetime, timedelta
 from functools import wraps
 from urllib.parse import urljoin
 
-from odoo import models, api, _, release
+import jwt
+import requests
+from odoo import _, api, models, release
 from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
-PUBLIC_KEY_PARAM = 'oduist_license.public_key'
+PUBLIC_KEY_PARAM = "oduist_license.public_key"
 
 TRIAL_DAYS = 30
 
@@ -23,7 +23,7 @@ def rpc(url: str, request_data: dict) -> dict:
         "method": "call",
         "params": request_data,
     }
-    return requests.post(url, json=payload, timeout=30).json().get('result')
+    return requests.post(url, json=payload, timeout=30).json().get("result")
 
 
 class ConnectLicense(models.AbstractModel):
@@ -31,23 +31,34 @@ class ConnectLicense(models.AbstractModel):
     License validation and management for Connect OPL-1 modules.
     Handles JWT token validation and 30-day trial period.
     """
-    _name = 'connect.license'
-    _description = 'Connect License Manager'
+
+    _name = "connect.license"
+    _description = "Connect License Manager"
 
     @api.model
     def _get_license_token(self):
         """Get license token from settings."""
-        return self.env['connect.settings'].sudo().get_param('license_token', default='')
+        return (
+            self.env["connect.settings"].sudo().get_param("license_token", default="")
+        )
 
     @api.model
     def _get_database_uuid(self):
         """Get database UUID from system parameters."""
-        return self.env['ir.config_parameter'].sudo().get_param('connect.instance_uid', default='')
+        return (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param("connect.instance_uid", default="")
+        )
 
     @api.model
     def _get_public_key(self):
         """Get public key from system parameters."""
-        return self.env['ir.config_parameter'].sudo().get_param(PUBLIC_KEY_PARAM, default='')
+        return (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param(PUBLIC_KEY_PARAM, default="")
+        )
 
     @api.model
     def validate_token(self, token):
@@ -63,37 +74,40 @@ class ConnectLicense(models.AbstractModel):
 
         public_key = self._get_public_key()
         if not public_key:
-            _logger.warning('Public key not configured')
+            _logger.warning("Public key not configured")
             return None
 
         try:
             payload = jwt.decode(
                 token,
                 public_key,
-                algorithms=['RS256'],
-                options={'verify_signature': True}
+                algorithms=["RS256"],
+                options={"verify_signature": True},
             )
 
             db_uuid = self._get_database_uuid()
-            if payload.get('instance_uid') != db_uuid:
-                _logger.warning('Token instance_uid mismatch. Expected: %s, Got: %s',
-                                db_uuid, payload.get('instance_uid'))
+            if payload.get("instance_uid") != db_uuid:
+                _logger.warning(
+                    "Token instance_uid mismatch. Expected: %s, Got: %s",
+                    db_uuid,
+                    payload.get("instance_uid"),
+                )
                 return None
 
             return payload
 
         except jwt.ExpiredSignatureError:
-            _logger.warning('Token signature expired')
+            _logger.warning("Token signature expired")
             return None
         except jwt.InvalidTokenError as e:
-            _logger.warning('Invalid token: %s', str(e))
+            _logger.warning("Invalid token: %s", str(e))
             return None
         except Exception as e:
-            _logger.error('Error validating token: %s', str(e))
+            _logger.error("Error validating token: %s", str(e))
             return None
 
     @api.model
-    def is_trial_valid(self, module_name='connect'):
+    def is_trial_valid(self, module_name="connect"):
         """
         Check if trial period is still valid (30 days from installation).
 
@@ -103,7 +117,11 @@ class ConnectLicense(models.AbstractModel):
         Returns:
             tuple: (is_valid: bool, days_left: int)
         """
-        module = self.env['ir.module.module'].sudo().search([('name', '=', module_name)], limit=1)
+        module = (
+            self.env["ir.module.module"]
+            .sudo()
+            .search([("name", "=", module_name)], limit=1)
+        )
 
         if not module:
             return False, 0
@@ -117,48 +135,38 @@ class ConnectLicense(models.AbstractModel):
         return is_valid, max(0, days_left)
 
     @api.model
-    def get_license_status(self, module_name='connect'):
+    def get_license_status(self, module_name="connect"):
         """
         Get comprehensive license status for a module.
 
         Returns:
-            dict: {
-                'modules': list (for licensed),
-            }
+            dict with status info
         """
         token = self._get_license_token()
 
         if token:
             payload = self.validate_token(token)
             if payload:
-                modules = payload.get('modules', [])
-                if module_name in modules:
-                    expire_timestamp = payload.get('expire')
-                    expire_date = datetime.fromtimestamp(expire_timestamp) if expire_timestamp else None
-
+                purchased_modules = payload.get("purchased_modules", {})
+                if module_name in purchased_modules:
+                    module_info = purchased_modules[module_name]
+                    order_id = module_info.get("order_id", "")
                     return {
-                        'status': 'licensed',
-                        'expire_date': expire_date,
-                        'modules': modules,
-                        'partner_name': payload.get('partner_name', ''),
-                        'partner_id': payload.get('partner_id', ''),
-                        'type': payload.get('type', 'production'),
-                        'message': _('Licensed to %s') % payload.get('partner_name', 'Unknown')
+                        "status": "licensed",
+                        "order_id": order_id,
                     }
 
         is_valid, days_left = self.is_trial_valid(module_name)
 
         if is_valid:
             return {
-                'status': 'trial_active',
-                'days_left': days_left,
-                'message': _('Trial: %d days remaining') % days_left
+                "status": "trial_active",
+                "days_left": days_left,
             }
         else:
             return {
-                'status': 'trial_expired',
-                'days_left': 0,
-                'message': _('Trial expired. Please register your copy.')
+                "status": "trial_expired",
+                "days_left": 0,
             }
 
     @api.model
@@ -177,23 +185,42 @@ class ConnectLicense(models.AbstractModel):
         return status
 
     @api.model
-    def refresh_license(self):
+    def update_license_status(self):
         """
         Check license status with license server.
-        Updates license_token and latest_version for modules.
+        Updates license_token, latest_version and description for modules.
         """
-        base_url = self.env["ir.config_parameter"].sudo().get_param("oduist_license_server")
+        base_url = (
+            self.env["ir.config_parameter"].sudo().get_param("oduist_license_server")
+        )
         if not base_url:
             raise ValidationError("License server URL not configured!")
 
-        instance_uid = self.env["ir.config_parameter"].sudo().get_param("connect.instance_uid")
+        instance_uid = (
+            self.env["ir.config_parameter"].sudo().get_param("connect.instance_uid")
+        )
         if not instance_uid:
             raise ValidationError("Instance UID not configured!")
+
+        Settings = self.env["connect.settings"].sudo()
+        ICP = self.env["ir.config_parameter"].sudo()
+
+        i_agree_to_contact = Settings.get_param("i_agree_to_contact", default=False)
+        i_agree_to_receive = Settings.get_param("i_agree_to_receive", default=False)
 
         request_data = {
             "instance_uid": instance_uid,
             "odoo_version": release.version_info[0],
         }
+
+        if i_agree_to_contact:
+            request_data["i_agree_to_contact"] = True
+        if i_agree_to_receive:
+            request_data["i_agree_to_receive"] = True
+        if i_agree_to_contact or i_agree_to_receive:
+            admin_email = Settings.get_param("admin_email", default="")
+            if admin_email:
+                request_data["admin_email"] = admin_email
 
         license_check_url = urljoin(base_url, "/license/check")
 
@@ -205,27 +232,43 @@ class ConnectLicense(models.AbstractModel):
         if not response:
             raise ValidationError("License check failed: empty response")
 
-        if response.get('token'):
+        if response.get("token"):
             _logger.info(f"License check result: {response}")
 
-            Settings = self.env['connect.settings'].sudo()
-            Settings.set_param('license_token', response.get('token'))
-            self.env['ir.config_parameter'].sudo().set_param(
-                PUBLIC_KEY_PARAM, response.get('public_key')
-            )
+            Settings.set_param("license_token", response.get("token"))
+            ICP.set_param(PUBLIC_KEY_PARAM, response.get("public_key"))
 
-            # Update latest_version for installed modules
+            token_data = self.validate_token(response.get("token"))
+            if token_data and token_data.get("registration_number"):
+                ICP.set_param(
+                    "connect.registration_number", token_data.get("registration_number")
+                )
+
             from odoo.addons.connect.models.settings import CONNECT_MODULES
-            modules_data = response.get('modules', {})
+
+            modules_data = response.get("modules", {})
             for module_name, module_info in modules_data.items():
                 if module_name in CONNECT_MODULES:
-                    module = self.env['ir.module.module'].sudo().search(
-                        [('name', '=', module_name), ('state', '=', 'installed')], limit=1
+                    module = (
+                        self.env["ir.module.module"]
+                        .sudo()
+                        .search(
+                            [("name", "=", module_name)],
+                            limit=1,
+                        )
                     )
-                    if module and module_info.get('latest_version'):
-                        module.latest_version = module_info.get('latest_version')
+                    if module:
+                        vals = {}
+                        if module_info.get("latest_version"):
+                            vals["latest_version"] = module_info.get("latest_version")
+                        if module_info.get("description"):
+                            vals["oduist_module_description"] = module_info.get("description")
+                        if vals:
+                            module.write(vals)
 
-            Settings.connect_notify("License refreshed successfully!", title="License")
+            Settings.connect_notify(
+                "License status updated successfully!", title="License", sticky=False
+            )
         else:
             error_msg = f"License check failed: {response}"
             _logger.warning(error_msg)
@@ -242,11 +285,15 @@ class ConnectLicense(models.AbstractModel):
         Returns:
             ir.actions.act_url action to open payment link
         """
-        base_url = self.env["ir.config_parameter"].sudo().get_param("oduist_license_server")
+        base_url = (
+            self.env["ir.config_parameter"].sudo().get_param("oduist_license_server")
+        )
         if not base_url:
             raise ValidationError("License server URL not configured!")
 
-        instance_uid = self.env["ir.config_parameter"].sudo().get_param("connect.instance_uid")
+        instance_uid = (
+            self.env["ir.config_parameter"].sudo().get_param("connect.instance_uid")
+        )
         if not instance_uid:
             raise ValidationError("Instance UID not configured!")
 
@@ -263,12 +310,12 @@ class ConnectLicense(models.AbstractModel):
         except requests.exceptions.RequestException as e:
             raise ValidationError(f"License buy request failed: {str(e)}")
 
-        if response and response.get('payment_link'):
+        if response and response.get("payment_link"):
             _logger.info(f"License buy result: {response}")
             return {
-                'type': 'ir.actions.act_url',
-                'url': response['payment_link'],
-                'target': 'new',
+                "type": "ir.actions.act_url",
+                "url": response["payment_link"],
+                "target": "new",
             }
         else:
             error_msg = f"License buy failed: {response}"
@@ -276,7 +323,7 @@ class ConnectLicense(models.AbstractModel):
             raise ValidationError(error_msg)
 
 
-def _license(module='connect', raise_an_error=False):
+def _license(module="connect", raise_an_error=False):
     """
     Decorator to check license for specific module before executing method.
 
@@ -301,29 +348,29 @@ def _license(module='connect', raise_an_error=False):
     def decorator(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
-            license_manager = self.env['connect.license']
+            license_manager = self.env["connect.license"]
             status = license_manager.get_license_status(module)
 
-            if status['status'] == 'trial_expired':
+            if status["status"] == "trial_expired":
                 message = _(
                     'License required for module "%s".\n\n'
-                    'Your trial period has expired. Please obtain a valid license token '
-                    'from oduist.com and enter it in Connect Settings.\n\n'
-                    'Status: %s'
-                ) % (module, status['message'])
+                    "Your trial period has expired. Please obtain a valid license token "
+                    "from oduist.com and enter it in Connect Settings.\n\n"
+                    "Status: %s"
+                ) % (module, status["message"])
                 _logger.warning(message)
                 if raise_an_error:
                     raise UserError(message)
                 return None
 
-            elif status['status'] == 'licensed':
-                if module not in status.get('modules', []):
+            elif status["status"] == "licensed":
+                if module not in status.get("modules", []):
                     message = _(
                         'License required for module "%s".\n\n'
-                        'Your license does not include this module. '
-                        'Please upgrade your license at oduist.com.\n\n'
-                        'Currently licensed modules: %s'
-                    ) % (module, ', '.join(status.get('modules', [])))
+                        "Your license does not include this module. "
+                        "Please upgrade your license at oduist.com.\n\n"
+                        "Currently licensed modules: %s"
+                    ) % (module, ", ".join(status.get("modules", [])))
                     _logger.warning(message)
                     if raise_an_error:
                         raise UserError(message)
