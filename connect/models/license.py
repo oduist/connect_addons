@@ -265,10 +265,6 @@ class ConnectLicense(models.AbstractModel):
                             vals["oduist_module_description"] = module_info.get("description")
                         if vals:
                             module.write(vals)
-
-            Settings.connect_notify(
-                "License status updated successfully!", title="License", sticky=False
-            )
         else:
             error_msg = f"License check failed: {response}"
             _logger.warning(error_msg)

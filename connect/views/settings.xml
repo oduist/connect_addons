@@ -94,11 +94,20 @@
                 </page>
                 <!-- REGISTRATION PAGE -->
                 <page name="license" string="License">
-                    <group>
-                        <group>
+                    <group col="1">
+                        <div>
+                            <label for="i_agree_to_contact" class="me-2"/>
                             <field name="i_agree_to_contact"/>
+                        </div>
+                        <div>
+                            <label for="i_agree_to_receive" class="me-2"/>
                             <field name="i_agree_to_receive"/>
-                            <field name="admin_email" invisible="not i_agree_to_contact and not i_agree_to_receive"/>
+                        </div>
+                        <div invisible="not i_agree_to_contact and not i_agree_to_receive">
+                            <label for="admin_email" class="me-2"/>
+                            <field name="admin_email"/>
+                        </div>
+                        <group col="2">
                             <div colspan="2">
                                 <button name="update_license_status" string="UPDATE LICENSE STATUS" type="object" class="btn-success me-2"/>
                                 <button name="buy_oduist_licenses" string="BUY ALL MODULES" type="object" class="btn-warning"/>
@@ -114,15 +123,7 @@
                                 </list>
                             </field>
                         </group>
-                      <group string="Support">
-                      <div string="Technical Support">
-                        <p colspan="2" >
-                          <a role="button" class="btn btn-info" href="https://docs.oduist.com" target="_new">DOCUMENTATION</a> |
-                          <a role="button" class="btn btn-info" href="https://oduist.com/forum/user-support-portal-1" target="_new">COMMUNITY FORUM</a>
-                        </p>
-                      </div>
                     </group>
-                  </group>
                 </page>
               </notebook>
             </sheet>
