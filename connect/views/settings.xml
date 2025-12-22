@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-  <record model="ir.actions.server" id="connect_settings_action">
-      <field name="type">ir.actions.server</field>
-      <field name="name">General Settings</field>
-      <field name="state">code</field>
-      <field name="model_id" ref="model_connect_settings"/>
-      <field name="code">action = model.open_settings_form()</field>
-  </record>
+    <record model="ir.actions.server" id="connect_settings_action">
+        <field name="type">ir.actions.server</field>
+        <field name="name">General Settings</field>
+        <field name="state">code</field>
+        <field name="model_id" ref="model_connect_settings"/>
+        <field name="code">action = model.open_settings_form()</field>
+    </record>
 
-  <menuitem id="settings_menu" parent="connect.connect_settings_menu"
-      groups="connect.group_connect_admin"
-      action="connect_settings_action" name="General" sequence="70"/>
+    <menuitem id="settings_menu" parent="connect.connect_settings_menu"
+              groups="connect.group_connect_admin"
+              action="connect_settings_action" name="General" sequence="70"/>
 
   <record id='connect_settings_form' model='ir.ui.view'>
       <field name='name'>connect.settings.form</field>
@@ -95,17 +95,17 @@
                 <!-- REGISTRATION PAGE -->
                 <page name="license" string="License">
                     <group col="1">
-                        <div>
-                            <label for="i_agree_to_contact" class="me-2"/>
-                            <field name="i_agree_to_contact"/>
+                        <div class="d-flex flex-row">
+                            <label for="i_agree_to_contact" class="me-2 w-75 w-sm-50 w-md-50 w-lg-25"/>
+                            <field name="i_agree_to_contact" class="w-25 w-sm-50 w-md-50 w-lg-75"/>
                         </div>
-                        <div>
-                            <label for="i_agree_to_receive" class="me-2"/>
-                            <field name="i_agree_to_receive"/>
+                        <div class="d-flex flex-row">
+                            <label for="i_agree_to_receive" class="me-2 w-75 w-sm-50 w-md-50 w-lg-25"/>
+                            <field name="i_agree_to_receive" class="w-25 w-sm-50 w-md-50 w-lg-75"/>
                         </div>
-                        <div invisible="not i_agree_to_contact and not i_agree_to_receive">
-                            <label for="admin_email" class="me-2"/>
-                            <field name="admin_email"/>
+                        <div class="d-flex flex-row" invisible="not i_agree_to_contact and not i_agree_to_receive">
+                            <label for="admin_email" class="me-2 w-75 w-sm-50 w-md-50 w-lg-25"/>
+                            <field name="admin_email" class="w-25 w-sm-50 w-md-50 w-lg-75"/>
                         </div>
                         <group col="2">
                             <div colspan="2">
