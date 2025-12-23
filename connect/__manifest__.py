@@ -36,6 +36,7 @@
         # Views
         "views/menu.xml",
         "views/settings.xml",
+        "views/license.xml",
         "views/domain.xml",
         "views/user.xml",
         "views/twiml.xml",

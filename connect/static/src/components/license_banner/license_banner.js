@@ -33,16 +33,21 @@ export class LicenseBanner extends Component {
                 return;
             }
 
-            // Show banner for trial and expired states
-            if (result.status === "trial_active") {
+            // Show banner for trial, demo and expired states
+            if (result.status === "demo") {
                 this.state.visible = true;
                 this.state.status = result.status;
-                this.state.message = `Connect Trial: ${result.days_left} days remaining`;
+                this.state.message = "Connect Module Demo";
+                this.state.type = "warning";
+            } else if (result.status === "trial_active") {
+                this.state.visible = true;
+                this.state.status = result.status;
+                this.state.message = `Connect Module Trial: ${result.days_left} days remaining`;
                 this.state.type = result.days_left <= 7 ? "warning" : "info";
             } else if (result.status === "trial_expired") {
                 this.state.visible = true;
                 this.state.status = result.status;
-                this.state.message = "Connect Trial Expired";
+                this.state.message = "Connect Module Trial Expired";
                 this.state.type = "danger";
             }
             // Don't show banner for licensed state

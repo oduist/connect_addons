@@ -92,26 +92,6 @@ def strip_number(number):
     return re.sub(pattern, "", number).lstrip("0")
 
 
-def rpc(url: str, request_data: dict) -> dict:
-    """
-    Perform a JSON-RPC call to the specified URL.
-
-    Args:
-        url (str): The URL to send the request to.
-        request_data (str): The data to be sent as parameters in the JSON-RPC request.
-
-    Returns:
-        dict: The result of the JSON-RPC call.
-    """
-    payload = {
-        "jsonrpc": "2.0",
-        "method": "call",
-        "params": request_data,
-    }
-    # Make request
-    return requests.post(url, json=payload, timeout=30).json().get("result")
-
-
 CONNECT_MODULES = ["connect"]
 
 
@@ -197,17 +177,11 @@ class Settings(models.Model):
         help="Subscribe to receive installation assistance (onboarding), "
         "new version announcements, and product updates.",
     )
-    installation_date = fields.Datetime(compute="_get_instance_data")
     module_version = fields.Char(compute="_get_instance_data")
     odoo_version = fields.Char(compute="_get_instance_data")
-    admin_name = fields.Char()
-    admin_phone = fields.Char(
-        help="It is required to contact this instance’s administrator in case any critical vulnerabilities are found in the application."
-    )
     admin_email = fields.Char(
         help="It is required to contact this instance administrator by email in case any non-critical vulnerabilities are found in the application."
     )
-    company_name = fields.Char(help="Company name of this instance.")
     company_country = fields.Many2one(
         "res.country",
         help="We use the company’s country information for statistical tracking of our product installations by country.",
@@ -221,32 +195,25 @@ class Settings(models.Model):
         string="Connect Modules",
         compute="_compute_connect_modules",
     )
+    all_modules_purchased = fields.Boolean(
+        compute="_compute_connect_modules",
+    )
 
     def _compute_connect_modules(self):
         for rec in self:
             modules = (
                 self.env["ir.module.module"]
                 .sudo()
-                .search([("name", "in", CONNECT_MODULES)])
+                .search([("name", "in", CONNECT_MODULES), ("state", "=", "installed")])
             )
             rec.connect_modules = modules
-
-    def set_default_admin_and_company(self):
-        self.company_name = self.env.user.company_id.name
-        self.company_country = self.env.user.company_id.country_id
-        self.admin_name = self.env.user.partner_id.name
-        self.admin_email = self.env.user.partner_id.email
-        self.admin_phone = self.env.user.partner_id.phone
-
-    def read(self, fields_to_read, load="_classic_read"):
-        if not self.admin_name:
-            self.set_default_admin_and_company()
-        res = super(Settings, self).read(fields_to_read, load=load)
-        return res
+            rec.all_modules_purchased = all(
+                m.oduist_module_purchased for m in modules
+            )
 
     def _get_instance_data(self):
         module = (
-            self.env["ir.module.module"].sudo().search([("name", "=", MODULE_NAME)])
+            self.env["ir.module.module"].sudo().search([("name", "=", MODULE_NAME), ("state", "=", "installed")])
         )
         for rec in self:
             rec.module_version = re.sub(r"^(\d+\.\d+\.)", "", module.installed_version)
@@ -255,11 +222,6 @@ class Settings(models.Model):
                 self.env["ir.config_parameter"].sudo().get_param("connect.instance_uid")
             )
             # Format API URL according to the preferred region or dev URL.
-            rec.installation_date = (
-                self.env["ir.config_parameter"]
-                .sudo()
-                .get_param("connect.installation_date")
-            )
             rec.api_url = (
                 self.env["ir.config_parameter"].sudo().get_param("connect.api_url")
             )
@@ -269,7 +231,7 @@ class Settings(models.Model):
             rec.registration_number = (
                 self.env["ir.config_parameter"]
                 .sudo()
-                .get_param("connect.registration_number")
+                .get_param("connect.registration_number") or 'Unregistered'
             )
             rec.call_duration_limit = int(
                 self.env["ir.config_parameter"]
@@ -336,28 +298,18 @@ class Settings(models.Model):
     @api.model
     def set_defaults(self):
         # Called on installation to set default value
-        api_url = self.get_param("api_url")
+        api_url = self.env["ir.config_parameter"].get_param("connect.api_url")
         if not api_url:
             # Set default value
             web_base_url = (
                 self.env["ir.config_parameter"].sudo().get_param("web.base.url")
             )
             self.env["ir.config_parameter"].set_param("connect.api_url", web_base_url)
-        installation_date = (
-            self.env["ir.config_parameter"]
-            .sudo()
-            .get_param("connect.installation_date")
-        )
-        if not installation_date:
-            installation_date = fields.Datetime.now()
-            self.env["ir.config_parameter"].set_param(
-                "connect.installation_date", installation_date
-            )
 
     @api.model
     def _get_name(self):
         for rec in self:
-            rec.name = "General Settings"
+            rec.name = "Connect Settings"
 
     def open_settings_form(self):
         rec = self.search([])
@@ -372,6 +324,22 @@ class Settings(models.Model):
             "name": "General Settings",
             "view_mode": "form",
             "view_id": self.env.ref("connect.connect_settings_form").id,
+            "target": "current",
+        }
+
+    def open_license_form(self):
+        rec = self.search([])
+        if not rec:
+            rec = self.sudo().with_context(no_constrains=True).create({})
+        else:
+            rec = rec[0]
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": "connect.settings",
+            "res_id": rec.id,
+            "name": "License",
+            "view_mode": "form",
+            "view_id": self.env.ref("connect.connect_license_form").id,
             "target": "current",
         }
 
@@ -431,12 +399,12 @@ class Settings(models.Model):
         if changed_fields:
             # Set keys user super access.
             self.with_context(skip_protected_fields=True).sudo().write(changed_fields)
-        
+
         # Update license status if agreement fields changed
         agreement_fields = {"i_agree_to_contact", "i_agree_to_receive", "admin_email"}
         if any(field in vals for field in agreement_fields):
             self.env["connect.license"].update_license_status()
-        
+
         # Reset cache
         if release.version_info[0] >= 17:
             self.env.registry.clear_cache()

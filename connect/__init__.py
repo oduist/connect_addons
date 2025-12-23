@@ -29,9 +29,6 @@ def post_init_hook(*args):
         
         if module:
             module.sudo().write({'create_date': fields.Datetime.now()})
-            _logger.info('Connect module installation date updated for trial period')
-        else:
-            _logger.warning('Connect module not found in ir.module.module')
         
     except Exception as e:
         _logger.error('Error in post_init_hook: %s', str(e))

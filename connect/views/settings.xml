@@ -92,39 +92,7 @@
                     </group>
                   </group>
                 </page>
-                <!-- REGISTRATION PAGE -->
-                <page name="license" string="License">
-                    <group col="1">
-                        <div class="d-flex flex-row">
-                            <label for="i_agree_to_contact" class="me-2 w-75 w-sm-50 w-md-50 w-lg-25"/>
-                            <field name="i_agree_to_contact" class="w-25 w-sm-50 w-md-50 w-lg-75"/>
-                        </div>
-                        <div class="d-flex flex-row">
-                            <label for="i_agree_to_receive" class="me-2 w-75 w-sm-50 w-md-50 w-lg-25"/>
-                            <field name="i_agree_to_receive" class="w-25 w-sm-50 w-md-50 w-lg-75"/>
-                        </div>
-                        <div class="d-flex flex-row" invisible="not i_agree_to_contact and not i_agree_to_receive">
-                            <label for="admin_email" class="me-2 w-75 w-sm-50 w-md-50 w-lg-25"/>
-                            <field name="admin_email" class="w-25 w-sm-50 w-md-50 w-lg-75"/>
-                        </div>
-                        <group col="2">
-                            <div colspan="2">
-                                <button name="update_license_status" string="UPDATE LICENSE STATUS" type="object" class="btn-success me-2"/>
-                                <button name="buy_oduist_licenses" string="BUY ALL MODULES" type="object" class="btn-warning"/>
-                            </div>
-                            <field name="connect_modules" nolabel="1" colspan="2">
-                                <list create="false" delete="false" editable="bottom">
-                                    <field name="name" string="Module" readonly="1"/>
-                                    <field name="oduist_module_description" string="Description" readonly="1"/>
-                                    <field name="installed_version" string="Installed" readonly="1"/>
-                                    <field name="latest_version" string="Latest" readonly="1"/>
-                                    <field name="oduist_license_status" string="License Status" readonly="1"/>
-                                    <button name="buy_oduist_license" string="Buy" type="object" class="btn-warning btn-sm" invisible="oduist_module_purchased"/>
-                                </list>
-                            </field>
-                        </group>
-                    </group>
-                </page>
+
               </notebook>
             </sheet>
         </form>

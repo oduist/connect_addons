@@ -2,10 +2,12 @@
 import logging
 from urllib.parse import urljoin
 
-from odoo.addons.connect.models.settings import strip_number
+from odoo.addons.connect.models.settings import CONNECT_MODULES, strip_number
 
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
+
+CONNECT_MODULES.append('connect_website')
 
 logger = logging.getLogger(__name__)
 

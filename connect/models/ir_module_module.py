@@ -25,12 +25,6 @@ class IrModuleModule(models.Model):
     oduist_module_description = fields.Char()
 
     def _compute_oduist_license_status(self):
-        """
-        Compute license status for each module:
-        - If token exists and module is purchased: "Order: {order_id}"
-        - If no token or module not purchased: "Trial X days left" or "Trial expired"
-        - Sets oduist_module_purchased to True if module is in purchased_modules list
-        """
         License = self.env["connect.license"]
         token = self.env["connect.settings"].sudo().get_param("license_token")
         token_data = License.validate_token(token) if token else None
@@ -39,7 +33,7 @@ class IrModuleModule(models.Model):
         for rec in self:
             if rec.name in purchased_modules:
                 order_id = purchased_modules[rec.name].get("order_id", "")
-                rec.oduist_license_status = f"Order: {order_id}" if order_id else "Licensed"
+                rec.oduist_license_status = f"Purchase Order: {order_id}" if order_id else "Licensed"
                 rec.oduist_module_purchased = True
             else:
                 install_date = rec.create_date or datetime.now() - timedelta(days=TRIAL_DAYS)

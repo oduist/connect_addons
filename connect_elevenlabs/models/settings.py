@@ -8,8 +8,10 @@ import uuid
 from elevenlabs import ElevenLabs
 
 from odoo import fields, models
-from odoo.addons.connect.models.settings import PROTECTED_FIELDS
+from odoo.addons.connect.models.settings import CONNECT_MODULES, PROTECTED_FIELDS
 from odoo.exceptions import ValidationError
+
+CONNECT_MODULES.append('connect_elevenlabs')
 
 logger = logging.getLogger(__name__)
 
