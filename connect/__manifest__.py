@@ -21,7 +21,6 @@
     "data": [
         "data/res_users.xml",
         "data/data.xml",
-        "data/functions.xml",
         "data/ir_cron.xml",
         "data/twiml.xml",
         "data/res_partner.xml",

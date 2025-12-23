@@ -37,7 +37,7 @@
                         </div>
                         <div class="d-flex flex-row" invisible="not i_agree_to_contact and not i_agree_to_receive">
                             <label for="admin_email" string="Administrator's email" class="me-2 w-75 w-sm-50 w-md-50 w-lg-25"/>
-                            <field name="admin_email" class="w-25 w-sm-50 w-md-50 w-lg-75"/>
+                            <field name="admin_email" class="w-25 w-sm-50 w-md-50 w-lg-75" required="i_agree_to_contact or i_agree_to_receive"/>
                         </div>
                         <group col="2">
                             <div colspan="2">

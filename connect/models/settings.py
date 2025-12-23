@@ -186,7 +186,7 @@ class Settings(models.Model):
         "res.country",
         help="We use the company’s country information for statistical tracking of our product installations by country.",
     )
-    web_base_url = fields.Char(compute="_get_instance_data", string="Odoo URL")
+
     call_duration_limit = fields.Integer(
         compute="_get_instance_data", string="Call Duration Limit (seconds)"
     )
@@ -224,9 +224,6 @@ class Settings(models.Model):
             # Format API URL according to the preferred region or dev URL.
             rec.api_url = (
                 self.env["ir.config_parameter"].sudo().get_param("connect.api_url")
-            )
-            rec.web_base_url = (
-                self.env["ir.config_parameter"].sudo().get_param("web.base.url")
             )
             rec.registration_number = (
                 self.env["ir.config_parameter"]
@@ -305,6 +302,14 @@ class Settings(models.Model):
                 self.env["ir.config_parameter"].sudo().get_param("web.base.url")
             )
             self.env["ir.config_parameter"].set_param("connect.api_url", web_base_url)
+        
+        # Set instance UID if not exists
+        existing_uid = self.env["ir.config_parameter"].get_param("connect.instance_uid")
+        if not existing_uid:
+            instance_uid = str(uuid.uuid4())
+            self.env["ir.config_parameter"].set_param(
+                "connect.instance_uid", instance_uid
+            )
 
     @api.model
     def _get_name(self):
@@ -363,15 +368,7 @@ class Settings(models.Model):
             data = data[0]
         setattr(data, param, value)
 
-    @api.model
-    def set_instance_uid(self, instance_uid=False):
-        existing_uid = self.env["ir.config_parameter"].get_param("connect.instance_uid")
-        if not existing_uid:
-            if not instance_uid:
-                instance_uid = str(uuid.uuid4())
-            self.env["ir.config_parameter"].set_param(
-                "connect.instance_uid", instance_uid
-            )
+
 
     @api.model_create_multi
     def create(self, vals_list):
