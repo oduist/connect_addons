@@ -160,7 +160,6 @@ class ConnectLicense(models.AbstractModel):
                     return {
                         "status": "licensed",
                         "order_id": order_id,
-                        "price": module_info.get("price"),
                         "license_type": module_info.get("license_type"),
                     }
         is_valid, days_left = self.is_trial_valid(module_name)
@@ -269,15 +268,6 @@ class ConnectLicense(models.AbstractModel):
                         vals = {}
                         if module_info.get("latest_version"):
                             vals["latest_version"] = module_info.get("latest_version")
-                        if module_info.get("description"):
-                            vals["oduist_module_description"] = module_info.get("description")
-                        # Set price with priority: purchased_modules > modules
-                        if module_name in purchased_modules:
-                            purchased_info = purchased_modules[module_name]
-                            if purchased_info.get("price"):
-                                vals["oduist_module_price"] = purchased_info.get("price")
-                        elif module_info.get("price"):
-                            vals["oduist_module_price"] = module_info.get("price")
                         if vals:
                             module.write(vals)
         else:

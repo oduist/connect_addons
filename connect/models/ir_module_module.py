@@ -19,14 +19,10 @@ class IrModuleModule(models.Model):
         compute="_compute_oduist_license_status",
     )
 
-    oduist_module_price = fields.Float(string="Module Price")
-
     oduist_module_license_type = fields.Char(
         string="License Type",
         compute="_compute_oduist_license_status",
     )
-
-    oduist_module_description = fields.Char()
 
     def _compute_oduist_license_status(self):
         License = self.env["connect.license"]
