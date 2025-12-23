@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import hashlib
 import logging
 from datetime import datetime, timedelta
 from functools import wraps
@@ -24,14 +23,8 @@ def rpc(url: str, request_data: dict) -> dict:
         "method": "call",
         "params": request_data,
     }
-    res = None
-    try:
-        res = requests.post(url, json=payload, timeout=30)
-        res.raise_for_status()
-        return res.json().get("result")
-    except requests.exceptions.RequestException as e:
-        _logger.exception('License check request failed: %s', res)
-        raise ValidationError(f"License check request failed: {str(e)}")
+    return requests.post(url, json=payload, timeout=30).json().get("result")
+
 
 class ConnectLicense(models.AbstractModel):
     """
@@ -68,11 +61,6 @@ class ConnectLicense(models.AbstractModel):
         )
 
     @api.model
-    def _hash_instance_uid(self, instance_uid: str) -> str:
-        """Generate SHA-256 hash of instance_uid."""
-        return hashlib.sha256(instance_uid.encode()).hexdigest()
-
-    @api.model
     def validate_token(self, token):
         """
         Validate JWT token with RS256 algorithm.
@@ -98,12 +86,11 @@ class ConnectLicense(models.AbstractModel):
             )
 
             db_uuid = self._get_database_uuid()
-            expected_hash = self._hash_instance_uid(db_uuid)
-            if payload.get("instance_hash") != expected_hash:
+            if payload.get("instance_uid") != db_uuid:
                 _logger.warning(
-                    "Token instance hash mismatch. Expected: %s, Got: %s",
-                    expected_hash,
-                    payload.get("instance_hash"),
+                    "Token instance_uid mismatch. Expected: %s, Got: %s",
+                    db_uuid,
+                    payload.get("instance_uid"),
                 )
                 return None
 
@@ -133,7 +120,7 @@ class ConnectLicense(models.AbstractModel):
         module = (
             self.env["ir.module.module"]
             .sudo()
-            .search([("name", "=", module_name), ("state", "=", "installed")], limit=1)
+            .search([("name", "=", module_name)], limit=1)
         )
 
         if not module:
@@ -160,9 +147,6 @@ class ConnectLicense(models.AbstractModel):
         if token:
             payload = self.validate_token(token)
             if payload:
-                if payload.get("license_type") == "demo":
-                    return {"status": "demo"}
-
                 purchased_modules = payload.get("purchased_modules", {})
                 if module_name in purchased_modules:
                     module_info = purchased_modules[module_name]
@@ -225,7 +209,7 @@ class ConnectLicense(models.AbstractModel):
         i_agree_to_receive = Settings.get_param("i_agree_to_receive", default=False)
 
         request_data = {
-            "instance_hash": self._hash_instance_uid(instance_uid),
+            "instance_uid": instance_uid,
             "odoo_version": release.version_info[0],
         }
 
@@ -238,18 +222,19 @@ class ConnectLicense(models.AbstractModel):
             if admin_email:
                 request_data["admin_email"] = admin_email
 
-        license_check_url = urljoin(base_url, "/license/v2/check")
+        license_check_url = urljoin(base_url, "/license/check")
 
         try:
             response = rpc(license_check_url, request_data)
         except requests.exceptions.RequestException as e:
-            _logger.exception('License check request failed')
             raise ValidationError(f"License check request failed: {str(e)}")
 
         if not response:
             raise ValidationError("License check failed: empty response")
 
         if response.get("token"):
+            _logger.info(f"License check result: {response}")
+
             Settings.set_param("license_token", response.get("token"))
             ICP.set_param(PUBLIC_KEY_PARAM, response.get("public_key"))
 
@@ -268,7 +253,7 @@ class ConnectLicense(models.AbstractModel):
                         self.env["ir.module.module"]
                         .sudo()
                         .search(
-                            [("name", "=", module_name), ("state", "=", "installed")],
+                            [("name", "=", module_name)],
                             limit=1,
                         )
                     )
@@ -309,11 +294,12 @@ class ConnectLicense(models.AbstractModel):
             raise ValidationError("Instance UID not configured!")
 
         request_data = {
-            "instance_hash": self._hash_instance_uid(instance_uid),
+            "instance_uid": instance_uid,
+            "odoo_version": release.version_info[0],
             "modules": module_list,
         }
 
-        license_buy_url = urljoin(base_url, "/license/v2/buy")
+        license_buy_url = urljoin(base_url, "/license/buy")
 
         try:
             response = rpc(license_buy_url, request_data)
