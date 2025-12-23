@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+
+import hashlib
 import logging
 from datetime import datetime, timedelta
 from functools import wraps
@@ -13,8 +15,6 @@ _logger = logging.getLogger(__name__)
 
 PUBLIC_KEY_PARAM = "oduist_license.public_key"
 
-TRIAL_DAYS = 30
-
 
 def rpc(url: str, request_data: dict) -> dict:
     """Perform a JSON-RPC call to the specified URL."""
@@ -23,8 +23,13 @@ def rpc(url: str, request_data: dict) -> dict:
         "method": "call",
         "params": request_data,
     }
-    return requests.post(url, json=payload, timeout=30).json().get("result")
-
+    res = None
+    try:
+        res = requests.post(url, json=payload, timeout=30)
+        res.raise_for_status()
+        return res.json().get("result")
+    except requests.exceptions.RequestException as e:
+        raise ValidationError(f"License check request failed: {str(e)}")
 
 class ConnectLicense(models.AbstractModel):
     """
@@ -61,6 +66,11 @@ class ConnectLicense(models.AbstractModel):
         )
 
     @api.model
+    def _hash_instance_uid(self, instance_uid: str) -> str:
+        """Generate SHA-256 hash of instance_uid."""
+        return hashlib.sha256(instance_uid.encode()).hexdigest()
+
+    @api.model
     def validate_token(self, token):
         """
         Validate JWT token with RS256 algorithm.
@@ -86,11 +96,12 @@ class ConnectLicense(models.AbstractModel):
             )
 
             db_uuid = self._get_database_uuid()
-            if payload.get("instance_uid") != db_uuid:
+            expected_hash = self._hash_instance_uid(db_uuid)
+            if payload.get("instance_hash") != expected_hash:
                 _logger.warning(
-                    "Token instance_uid mismatch. Expected: %s, Got: %s",
-                    db_uuid,
-                    payload.get("instance_uid"),
+                    "Token instance hash mismatch. Expected: %s, Got: %s",
+                    expected_hash,
+                    payload.get("instance_hash"),
                 )
                 return None
 
@@ -120,15 +131,15 @@ class ConnectLicense(models.AbstractModel):
         module = (
             self.env["ir.module.module"]
             .sudo()
-            .search([("name", "=", module_name)], limit=1)
+            .search([("name", "=", module_name), ("state", "=", "installed")], limit=1)
         )
 
         if not module:
             return False, 0
-        install_date = module.create_date or datetime.now() - timedelta(days=TRIAL_DAYS)
+        install_date = module.create_date or datetime.now() - timedelta(days=30)
         now = datetime.now()
         days_passed = (now - install_date).days
-        days_left = TRIAL_DAYS - days_passed
+        days_left = 30 - days_passed
 
         is_valid = days_left > 0
 
@@ -136,17 +147,12 @@ class ConnectLicense(models.AbstractModel):
 
     @api.model
     def get_license_status(self, module_name="connect"):
-        """
-        Get comprehensive license status for a module.
-
-        Returns:
-            dict with status info
-        """
         token = self._get_license_token()
-
         if token:
             payload = self.validate_token(token)
             if payload:
+                if payload.get("instance_type") == "demo":
+                    return {"status": "demo"}
                 purchased_modules = payload.get("purchased_modules", {})
                 if module_name in purchased_modules:
                     module_info = purchased_modules[module_name]
@@ -154,10 +160,10 @@ class ConnectLicense(models.AbstractModel):
                     return {
                         "status": "licensed",
                         "order_id": order_id,
+                        "price": module_info.get("price"),
+                        "license_type": module_info.get("license_type"),
                     }
-
         is_valid, days_left = self.is_trial_valid(module_name)
-
         if is_valid:
             return {
                 "status": "trial_active",
@@ -185,7 +191,7 @@ class ConnectLicense(models.AbstractModel):
         return status
 
     @api.model
-    def update_license_status(self):
+    def update_license_status(self, raise_exc=True):
         """
         Check license status with license server.
         Updates license_token, latest_version and description for modules.
@@ -209,7 +215,7 @@ class ConnectLicense(models.AbstractModel):
         i_agree_to_receive = Settings.get_param("i_agree_to_receive", default=False)
 
         request_data = {
-            "instance_uid": instance_uid,
+            "instance_hash": self._hash_instance_uid(instance_uid),
             "odoo_version": release.version_info[0],
         }
 
@@ -222,19 +228,19 @@ class ConnectLicense(models.AbstractModel):
             if admin_email:
                 request_data["admin_email"] = admin_email
 
-        license_check_url = urljoin(base_url, "/license/check")
-
+        license_check_url = urljoin(base_url, "/license/v2/check")
+        response = {}
         try:
             response = rpc(license_check_url, request_data)
         except requests.exceptions.RequestException as e:
-            raise ValidationError(f"License check request failed: {str(e)}")
+            _logger.debug('License check request failed: %s', str(e))
+            if raise_exc:
+                raise ValidationError(f"License check request failed: {str(e)}")
 
-        if not response:
+        if not response and raise_exc:
             raise ValidationError("License check failed: empty response")
 
         if response.get("token"):
-            _logger.info(f"License check result: {response}")
-
             Settings.set_param("license_token", response.get("token"))
             ICP.set_param(PUBLIC_KEY_PARAM, response.get("public_key"))
 
@@ -253,7 +259,7 @@ class ConnectLicense(models.AbstractModel):
                         self.env["ir.module.module"]
                         .sudo()
                         .search(
-                            [("name", "=", module_name)],
+                            [("name", "=", module_name), ("state", "=", "installed")],
                             limit=1,
                         )
                     )
@@ -268,7 +274,8 @@ class ConnectLicense(models.AbstractModel):
         else:
             error_msg = f"License check failed: {response}"
             _logger.warning(error_msg)
-            raise ValidationError(error_msg)
+            if raise_exc:
+                raise ValidationError(error_msg)
 
     @api.model
     def buy_licenses(self, module_list):
@@ -294,12 +301,11 @@ class ConnectLicense(models.AbstractModel):
             raise ValidationError("Instance UID not configured!")
 
         request_data = {
-            "instance_uid": instance_uid,
-            "odoo_version": release.version_info[0],
+            "instance_hash": self._hash_instance_uid(instance_uid),
             "modules": module_list,
         }
 
-        license_buy_url = urljoin(base_url, "/license/buy")
+        license_buy_url = urljoin(base_url, "/license/v2/buy")
 
         try:
             response = rpc(license_buy_url, request_data)

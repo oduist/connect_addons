@@ -51,6 +51,8 @@
                                     <field name="installed_version" string="Installed" readonly="1"/>
                                     <field name="latest_version" string="Latest" readonly="1"/>
                                     <field name="oduist_license_status" string="License Status" readonly="1"/>
+                                    <field name="oduist_module_price" string="Price" readonly="1" optional="show"/>
+                                    <field name="oduist_module_license_type" string="Type" readonly="1" optional="show"/>
                                     <button name="buy_oduist_license" string="Buy Module" type="object" class="btn-warning btn-sm" invisible="oduist_module_purchased"/>
                                 </list>
                             </field>
