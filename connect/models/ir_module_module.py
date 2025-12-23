@@ -19,10 +19,7 @@ class IrModuleModule(models.Model):
         compute="_compute_oduist_license_status",
     )
 
-    oduist_module_price = fields.Float(
-        string="Module Price",
-        compute="_compute_oduist_license_status",
-    )
+    oduist_module_price = fields.Float(string="Module Price")
 
     oduist_module_license_type = fields.Char(
         string="License Type",
@@ -40,22 +37,18 @@ class IrModuleModule(models.Model):
                 order_id = status.get("order_id", "")
                 rec.oduist_license_status = f"Purchase Order: {order_id}" if order_id else "Licensed"
                 rec.oduist_module_purchased = True
-                rec.oduist_module_price = status.get("price", 0.0)
                 rec.oduist_module_license_type = status.get("license_type", "")
             elif status["status"] == "trial_active":
                 rec.oduist_license_status = f"Trial: {status['days_left']} days left"
                 rec.oduist_module_purchased = False
-                rec.oduist_module_price = 0.0
                 rec.oduist_module_license_type = ""
             elif status["status"] == "trial_expired":
                 rec.oduist_license_status = "Trial expired"
                 rec.oduist_module_purchased = False
-                rec.oduist_module_price = 0.0
                 rec.oduist_module_license_type = ""
             elif status["status"] == "demo":
                 rec.oduist_license_status = "Demo"
                 rec.oduist_module_purchased = True
-                rec.oduist_module_price = 0.0
                 rec.oduist_module_license_type = "demo"
 
     def buy_oduist_license(self):

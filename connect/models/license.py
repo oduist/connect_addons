@@ -232,6 +232,7 @@ class ConnectLicense(models.AbstractModel):
         response = {}
         try:
             response = rpc(license_check_url, request_data)
+            print(1111, response)
         except requests.exceptions.RequestException as e:
             _logger.debug('License check request failed: %s', str(e))
             if raise_exc:
@@ -252,6 +253,7 @@ class ConnectLicense(models.AbstractModel):
 
             from odoo.addons.connect.models.settings import CONNECT_MODULES
 
+            purchased_modules = token_data.get("purchased_modules", {}) if token_data else {}
             modules_data = response.get("modules", {})
             for module_name, module_info in modules_data.items():
                 if module_name in CONNECT_MODULES:
@@ -269,6 +271,13 @@ class ConnectLicense(models.AbstractModel):
                             vals["latest_version"] = module_info.get("latest_version")
                         if module_info.get("description"):
                             vals["oduist_module_description"] = module_info.get("description")
+                        # Set price with priority: purchased_modules > modules
+                        if module_name in purchased_modules:
+                            purchased_info = purchased_modules[module_name]
+                            if purchased_info.get("price"):
+                                vals["oduist_module_price"] = purchased_info.get("price")
+                        elif module_info.get("price"):
+                            vals["oduist_module_price"] = module_info.get("price")
                         if vals:
                             module.write(vals)
         else:
