@@ -167,24 +167,26 @@ class Settings(models.Model):
     is_registered = (
         fields.Boolean()
     )  # TODO: Remove after upgrades, not needed any more.
-    i_agree_to_contact = fields.Boolean(
-        string="I agree to be contacted",
-        help="Allow Oduist to contact you regarding critical security issues "
-        "or problems with installed Connect modules.",
+    subscribe_to_security_alerts = fields.Boolean(
+        string="Critical Security Alerts",
+        help="Receive immediate notifications regarding critical security vulnerabilities "
+             "or urgent issues with your installed Connect modules."
     )
-    i_agree_to_receive = fields.Boolean(
-        string="I agree to receive onboarding and updates",
-        help="Subscribe to receive installation assistance (onboarding), "
-        "new version announcements, and product updates.",
+    subscribe_to_onboarding = fields.Boolean(
+        string="Personalized Onboarding Support",
+        help="Receive step-by-step guidance for system setup. Usage data is analyzed "
+            "to provide relevant tips and streamline your configuration process "
+            "based on active features."
     )
+    subscribe_to_updates = fields.Boolean(
+            string="Product News & AI Insights",
+            help="Stay updated on new features, product releases, and the latest AI "
+                 "advancements within the Odoo ecosystem."
+        )
     module_version = fields.Char(compute="_get_instance_data")
     odoo_version = fields.Char(compute="_get_instance_data")
     admin_email = fields.Char(
         help="It is required to contact this instance administrator by email in case any non-critical vulnerabilities are found in the application."
-    )
-    company_country = fields.Many2one(
-        "res.country",
-        help="We use the company’s country information for statistical tracking of our product installations by country.",
     )
 
     call_duration_limit = fields.Integer(
@@ -302,7 +304,7 @@ class Settings(models.Model):
                 self.env["ir.config_parameter"].sudo().get_param("web.base.url")
             )
             self.env["ir.config_parameter"].set_param("connect.api_url", web_base_url)
-        
+
         # Set instance UID if not exists
         existing_uid = self.env["ir.config_parameter"].get_param("connect.instance_uid")
         if not existing_uid:
@@ -398,7 +400,7 @@ class Settings(models.Model):
             self.with_context(skip_protected_fields=True).sudo().write(changed_fields)
 
         # Update license status if agreement fields changed
-        agreement_fields = {"i_agree_to_contact", "i_agree_to_receive", "admin_email"}
+        agreement_fields = {"subscribe_to_security_alerts", "subscribe_to_onboarding", "subscribe_to_updates", "admin_email"}
         if any(field in vals for field in agreement_fields):
             self.env["connect.license"].update_license_status()
 

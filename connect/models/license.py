@@ -210,19 +210,29 @@ class ConnectLicense(models.AbstractModel):
         Settings = self.env["connect.settings"].sudo()
         ICP = self.env["ir.config_parameter"].sudo()
 
-        i_agree_to_contact = Settings.get_param("i_agree_to_contact", default=False)
-        i_agree_to_receive = Settings.get_param("i_agree_to_receive", default=False)
+        subscribe_to_security_alerts = Settings.get_param("subscribe_to_security_alerts", default=False)
+        subscribe_to_onboarding = Settings.get_param("subscribe_to_onboarding", default=False)
+        subscribe_to_updates = Settings.get_param("subscribe_to_updates", default=False)
+
+        # Get main company (first by ID)
+        main_company = self.env["res.company"].search([], order="id", limit=1)
+        country_code = main_company.country_id.code if main_company and main_company.country_id else None
 
         request_data = {
             "instance_hash": self._hash_instance_uid(instance_uid),
             "odoo_version": release.version_info[0],
         }
+        
+        if country_code:
+            request_data["country_code"] = country_code
 
-        if i_agree_to_contact:
-            request_data["i_agree_to_contact"] = True
-        if i_agree_to_receive:
-            request_data["i_agree_to_receive"] = True
-        if i_agree_to_contact or i_agree_to_receive:
+        if subscribe_to_security_alerts:
+            request_data["subscribe_to_security_alerts"] = True
+        if subscribe_to_onboarding:
+            request_data["subscribe_to_onboarding"] = True
+        if subscribe_to_updates:
+            request_data["subscribe_to_updates"] = True
+        if subscribe_to_security_alerts or subscribe_to_onboarding or subscribe_to_updates:
             admin_email = Settings.get_param("admin_email", default="")
             if admin_email:
                 request_data["admin_email"] = admin_email

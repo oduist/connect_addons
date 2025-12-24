@@ -1314,44 +1314,6 @@ msgid "History"
 msgstr "Historia"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_settings__i_agree_to_contact
-msgid "I Agree To Contact"
-msgstr "Hyväksyn yhteydenoton"
-
-#. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_settings__i_agree_to_receive
-msgid "I Agree To Receive"
-msgstr "Suostun vastaanottamaan"
-
-#. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_settings__i_agree_to_register
-msgid "I Agree To Register"
-msgstr "Hyväksyn rekisteröinnin"
-
-#. module: connect
-#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
-msgid ""
-"I agree to be contacted by sales representatives who can help me understand additional services and support options "
-"available for my installation."
-msgstr ""
-"Suostun siihen, että myyntiedustajat ottavat minuun yhteyttä ja auttavat minua ymmärtämään asennukseeni saatavilla olevia "
-"lisäpalveluja ja tukivaihtoehtoja."
-
-#. module: connect
-#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
-msgid "I agree to create an account in the Oduist users portal to receive free technical support from Oduist team."
-msgstr "Suostun luomaan tilin Oduistin käyttäjäportaaliin saadakseni ilmaista teknistä tukea Oduistin tiimiltä."
-
-#. module: connect
-#: model_terms:ir.ui.view,arch_db:connect.connect_settings_form
-msgid ""
-"I agree to receive important product notifications, including security advisories, major updates, and critical patches "
-"that may affect my installation."
-msgstr ""
-"Suostun vastaanottamaan tärkeitä tuoteilmoituksia, mukaan lukien tietoturvaohjeet, suuret päivitykset ja kriittiset "
-"korjaukset, jotka voivat vaikuttaa asennukseeni."
-
-#. module: connect
 #: model:ir.model.fields,field_description:connect.field_connect_call__id
 #: model:ir.model.fields,field_description:connect.field_connect_callflow__id
 #: model:ir.model.fields,field_description:connect.field_connect_callflow_choice__id
