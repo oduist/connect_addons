@@ -181,9 +181,9 @@ msgid "Admin"
 msgstr "Ylläpitäjä"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_settings__admin_email
-msgid "Admin Email"
-msgstr "Ylläpitäjän sähköposti"
+#: model:ir.model.fields,field_description:connect.field_connect_settings__subscribe_email
+msgid "Subscribe Email"
+msgstr "Ilmoitusten sähköposti"
 
 #. module: connect
 #: model:ir.model.fields,field_description:connect.field_connect_settings__admin_name

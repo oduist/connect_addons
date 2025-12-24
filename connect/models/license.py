@@ -233,9 +233,9 @@ class ConnectLicense(models.AbstractModel):
         if subscribe_to_updates:
             request_data["subscribe_to_updates"] = True
         if subscribe_to_security_alerts or subscribe_to_onboarding or subscribe_to_updates:
-            admin_email = Settings.get_param("admin_email", default="")
-            if admin_email:
-                request_data["admin_email"] = admin_email
+            subscribe_email = Settings.get_param("subscribe_email", default="")
+            if subscribe_email:
+                request_data["subscribe_email"] = subscribe_email
 
         license_check_url = urljoin(base_url, "/license/v2/check")
         response = {}

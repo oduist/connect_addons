@@ -167,6 +167,9 @@ class Settings(models.Model):
     is_registered = (
         fields.Boolean()
     )  # TODO: Remove after upgrades, not needed any more.
+    subscribe_email = fields.Char(
+        help="Email to contact."
+    )
     subscribe_to_security_alerts = fields.Boolean(
         string="Critical Security Alerts",
         help="Receive immediate notifications regarding critical security vulnerabilities "
@@ -185,9 +188,6 @@ class Settings(models.Model):
         )
     module_version = fields.Char(compute="_get_instance_data")
     odoo_version = fields.Char(compute="_get_instance_data")
-    admin_email = fields.Char(
-        help="It is required to contact this instance administrator by email in case any non-critical vulnerabilities are found in the application."
-    )
 
     call_duration_limit = fields.Integer(
         compute="_get_instance_data", string="Call Duration Limit (seconds)"
@@ -400,7 +400,7 @@ class Settings(models.Model):
             self.with_context(skip_protected_fields=True).sudo().write(changed_fields)
 
         # Update license status if agreement fields changed
-        agreement_fields = {"subscribe_to_security_alerts", "subscribe_to_onboarding", "subscribe_to_updates", "admin_email"}
+        agreement_fields = {"subscribe_to_security_alerts", "subscribe_to_onboarding", "subscribe_to_updates", "subscribe_email"}
         if any(field in vals for field in agreement_fields):
             self.env["connect.license"].update_license_status()
 
