@@ -1,5 +1,14 @@
 /** @odoo-module **/
 
+/*
+ * ODUIST PROPRIETARY LICENSE
+ * Copyright (c) 2025 Oduist
+ *
+ * This file contains license validation logic.
+ * Modification is prohibited under Oduist Proprietary License.
+ * See LICENSE and COPYRIGHT files for full terms.
+ */
+
 import { Component, onWillStart, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
