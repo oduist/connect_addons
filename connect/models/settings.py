@@ -407,17 +407,16 @@ class Settings(models.Model):
         if changed_fields:
             # Set keys user super access.
             self.with_context(skip_protected_fields=True).sudo().write(changed_fields)
-
         # Update license status if agreement fields changed
         agreement_fields = {"subscribe_to_security_alerts", "subscribe_to_onboarding", "subscribe_to_updates", "subscribe_email"}
         if any(field in vals for field in agreement_fields):
             self.env["connect.license"].update_license_status()
-
         # Reset cache
         if release.version_info[0] >= 17:
             self.env.registry.clear_cache()
         else:
             self.clear_caches()
+        return res
 
     @api.model
     def get_client(self):

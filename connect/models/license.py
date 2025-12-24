@@ -183,19 +183,16 @@ class ConnectLicense(models.AbstractModel):
             }
 
     @api.model
-    def check_license(self, module_name):
-        """
-        Check if user has access to a specific module.
-        Raises UserError if no valid license found.
-
-        Args:
-            module_name: Name of the module to check
-
-        Raises:
-            UserError: If license is invalid or expired
-        """
+    def check_license(self, module_name, silent=True):
         status = self.get_license_status(module_name)
-        return status
+        is_valid = status["status"] != "trial_expired"
+        if not is_valid and not silent:
+            raise ValidationError("Module {} trial period has expired!".format(module_name))
+        elif not is_valid and silent:
+            _logger.warning("Module {} trial period has expired!".format(module_name))
+            return False
+        else:
+            return True
 
     @api.model
     def update_license_status(self, raise_exc=True):
@@ -230,7 +227,7 @@ class ConnectLicense(models.AbstractModel):
             "instance_hash": self._hash_instance_uid(instance_uid),
             "odoo_version": release.version_info[0],
         }
-        
+
         if country_code:
             request_data["country_code"] = country_code
 
@@ -249,7 +246,7 @@ class ConnectLicense(models.AbstractModel):
         response = {}
         try:
             response = rpc(license_check_url, request_data)
-            print(1111, response)
+
         except requests.exceptions.RequestException as e:
             _logger.debug('License check request failed: %s', str(e))
             if raise_exc:
@@ -257,20 +254,15 @@ class ConnectLicense(models.AbstractModel):
 
         if not response and raise_exc:
             raise ValidationError("License check failed: empty response")
-
         if response.get("token"):
             Settings.set_param("license_token", response.get("token"))
             ICP.set_param(PUBLIC_KEY_PARAM, response.get("public_key"))
-
             token_data = self.validate_token(response.get("token"))
             if token_data and token_data.get("registration_number"):
                 ICP.set_param(
                     "connect.registration_number", token_data.get("registration_number")
                 )
-
             from odoo.addons.connect.models.settings import CONNECT_MODULES
-
-            purchased_modules = token_data.get("purchased_modules", {}) if token_data else {}
             modules_data = response.get("modules", {})
             for module_name, module_info in modules_data.items():
                 if module_name in CONNECT_MODULES:
@@ -340,63 +332,3 @@ class ConnectLicense(models.AbstractModel):
             error_msg = f"License buy failed: {response}"
             _logger.warning(error_msg)
             raise ValidationError(error_msg)
-
-
-def _license(module="connect", raise_an_error=False):
-    """
-    Decorator to check license for specific module before executing method.
-
-    Usage:
-        from odoo.addons.connect.models.license import _license
-
-        class MyModel(models.Model):
-            _name = 'my.model'
-
-            @_license(module='connect_crm')
-            def action_call(self):
-                # This method requires connect_crm license
-                pass
-
-    Args:
-        module: Name of the module to check license for
-
-    Raises:
-        UserError: If license is not valid for the specified module
-    """
-
-    def decorator(func):
-        @wraps(func)
-        def wrapper(self, *args, **kwargs):
-            license_manager = self.env["connect.license"]
-            status = license_manager.get_license_status(module)
-
-            if status["status"] == "trial_expired":
-                message = _(
-                    'License required for module "%s".\n\n'
-                    "Your trial period has expired. Please obtain a valid license token "
-                    "from oduist.com and enter it in Connect Settings.\n\n"
-                    "Status: %s"
-                ) % (module, status["message"])
-                _logger.warning(message)
-                if raise_an_error:
-                    raise UserError(message)
-                return None
-
-            elif status["status"] == "licensed":
-                if module not in status.get("modules", []):
-                    message = _(
-                        'License required for module "%s".\n\n'
-                        "Your license does not include this module. "
-                        "Please upgrade your license at oduist.com.\n\n"
-                        "Currently licensed modules: %s"
-                    ) % (module, ", ".join(status.get("modules", [])))
-                    _logger.warning(message)
-                    if raise_an_error:
-                        raise UserError(message)
-                    return None
-
-            return func(self, *args, **kwargs)
-
-        return wrapper
-
-    return decorator
