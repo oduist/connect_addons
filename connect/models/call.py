@@ -163,9 +163,9 @@ class Call(models.Model):
         if not channel:
             logger.error('No channel returned from on_call_status!')
             return False
+        if not self.env['connect.license'].check_license('connect', silent=True):
+            return False
         if not channel.parent_channel and not channel.call:
-            if not self.env['connect.license'].check_license(silent=True):
-                return False
             # Create a new call.
             if channel.technical_direction == 'outbound-api':
                 # Click2call originated call.
@@ -289,14 +289,14 @@ class Call(models.Model):
             if not call_sid:
                 debug(self, 'No CallSid in webhook params, cannot store for price fetching')
                 return
-                
+
             # Store CallSid in call record for later price fetching by cron
             call.write({
                 'call_sid': call_sid,
                 'is_price_fetched': False,
             })
             debug(self, f'Marked call {call.id} (CallSid: {call_sid}) for price fetching by cron job')
-            
+
         except Exception as e:
             logger.error(f'Error in save_call_price: {e}')
 
@@ -339,7 +339,7 @@ class Call(models.Model):
         if not self.env['connect.settings'].sudo().get_param('fetch_call_prices'):
             debug(self, 'Call price fetching is disabled in settings')
             return
-            
+
         # Find calls that need price fetching (completed calls without price)
         calls_to_fetch = self.search([
             ('is_price_fetched', '=', False),
@@ -347,9 +347,9 @@ class Call(models.Model):
             ('status', 'in', CALL_END_STATUSES),
             ('create_date', '>=', fields.Datetime.now() - timedelta(days=30))  # Only last 30 days
         ])
-        
+
         debug(self, f'Found {len(calls_to_fetch)} calls needing price fetch')
-        
+
         for call in calls_to_fetch:
             try:
                 success = self._fetch_call_price_from_api(call, call.call_sid)
@@ -360,7 +360,7 @@ class Call(models.Model):
                     debug(self, f'Price not yet available for call {call.id}, will retry next time')
             except Exception as e:
                 logger.error(f'Error fetching price for call {call.id}: {e}')
-        
+
         debug(self, f'Batch price fetch completed')
 
     def register_call(self, channel, params):
@@ -567,6 +567,7 @@ class Call(models.Model):
             )
         if "client:" in to:
             to += "&From={}".format((number or "").replace("+", ""))
+        self.env["connect.license"].check_license("connect", silent=False)
         exten = self.env["connect.exten"].search([("number", "=", number)], limit=1)
         api_url = self.env['connect.settings'].sudo().get_param("api_url")
         edge = self.env["connect.settings"].get_param("twilio_edge")
@@ -584,8 +585,6 @@ class Call(models.Model):
                 if not caller_number:
                     raise ValidationError("You must configure a WhatsApp sender!")
                 callerId = f"whatsapp:{caller_number}"
-                call_duration_limit = int(self.env['connect.settings'].sudo().get_param("call_duration_limit"))
-                record_attrs = 'record=""' if pbx_user.record_calls else ""
                 twiml = """<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Dial callerId="{}">

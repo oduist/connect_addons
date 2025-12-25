@@ -17,6 +17,10 @@ class ElevenLabsUser(models.Model):
         voicemail_prompt_widget = fields.Char(related='voicemail_prompt_file.preview_audio')
 
     def _get_elevenlabs_enabled(self):
+        if not self.env['connect.license'].check_license('connect_elevenlabs', silent=True):
+            for rec in self:
+                rec.elevenlabs_enabled = False
+            return
         elevenlabs_enabled = self.env['connect.settings'].sudo().get_param('elevenlabs_enabled')
         for rec in self:
             rec.elevenlabs_enabled = elevenlabs_enabled
@@ -33,6 +37,8 @@ class ElevenLabsUser(models.Model):
                     rec.voicemail_prompt_file = self.env['connect.elevenlabs_file'].create({'text': voicemail_prompt})
 
     def get_voicemail_prompt(self, response):
+        if not self.env['connect.license'].check_license('connect_elevenlabs', silent=True):
+            return super().get_voicemail_prompt(response)
         try:
             self = self.sudo()
             if not self.env['connect.settings'].sudo().get_param('elevenlabs_enabled'):

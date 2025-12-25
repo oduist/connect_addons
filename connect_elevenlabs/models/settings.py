@@ -81,6 +81,8 @@ class Elevenlabsettings(models.Model):
 
 
     def elevenlabs_sync(self):
+        if not self.env['connect.license'].check_license('connect_elevenlabs', silent=True):
+            return False
         self.elevenlabs_get_voices()
         self.elevenlabs_reset_token()
         for agent in self.env['connect.elevenlabs_agent'].search([]):

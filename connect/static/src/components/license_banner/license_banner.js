@@ -38,25 +38,21 @@ export class LicenseBanner extends Component {
                 ["connect"]
             );
 
-            if (!result) {
-                return;
-            }
-
             // Show banner for trial, demo and expired states
             if (result.status === "demo") {
                 this.state.visible = true;
                 this.state.status = result.status;
-                this.state.message = "Connect Module Demo";
+                this.state.message = "Oduist Connect: Demo License";
                 this.state.type = "warning";
             } else if (result.status === "trial_active") {
                 this.state.visible = true;
                 this.state.status = result.status;
-                this.state.message = `Connect Module Trial: ${result.days_left} days remaining`;
+                this.state.message = `Oduist Connect Trial: ${result.days_left} days remaining`;
                 this.state.type = result.days_left <= 7 ? "warning" : "info";
             } else if (result.status === "trial_expired") {
                 this.state.visible = true;
                 this.state.status = result.status;
-                this.state.message = "Connect Module Trial Expired";
+                this.state.message = "Oduist Connect: Buy a license to continue";
                 this.state.type = "danger";
             }
             // Don't show banner for licensed state
@@ -76,7 +72,7 @@ export class LicenseBanner extends Component {
             type: "ir.actions.act_window",
             res_model: "connect.settings",
             res_id: res_id,
-            action_id: "connect.connect_settings_action",
+            action_id: "connect.connect_license_action",
             views: [[false, "form"]],
         });
     }

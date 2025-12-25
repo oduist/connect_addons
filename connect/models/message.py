@@ -194,6 +194,8 @@ class ConnectMessage(models.Model):
 
     @api.model
     def receive(self, params):
+        if not self.env['connect.license'].check_license('connect', silent=True):
+            return str(MessagingResponse())
         try:
             if params.get('AccountSid') != self.env['connect.settings'].get_param('account_sid'):
                 logger.warning("Received Twilio SMS webhook with incorrect AccountSid")
@@ -326,6 +328,7 @@ class ConnectMessage(models.Model):
         return str(MessagingResponse())  # Return empty TwiML response, i.e. no reply.
 
     def send(self, recipient, body, res_id=None, res_model=None, outgoing_callerid=None):
+        self.env['connect.license'].check_license('connect', silent=False)
         sender_user = self.env.user
         message_data = {
             'message_type': 'WhatsApp',

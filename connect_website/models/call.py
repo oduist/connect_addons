@@ -12,7 +12,7 @@ class Call(models.Model):
     _inherit = 'connect.call'
 
     @api.model
-    def originate_call(self, number, res_model=None, res_id=None, user=None):
+    def originate_call(self, number, res_model=None, res_id=None, user=None, whatsapp_call=False):
         if len(number) == 8 and '+' not in number:
             number = strip_number(number)
             client = self.env['connect.settings'].get_client()
@@ -20,6 +20,9 @@ class Call(models.Model):
             user = self.env.user
             if not user.connect_user:
                 raise ValidationError('User does not have a SIP username defined!')
+            # check license
+            if not self.env['connect.license'].check_license('connect_website'):
+                raise ValidationError('Connect Website License has expired! Please buy a license.')
             to = 'client:{}?autoAnswer=yes&Partner={}&From={}'.format(
                 user.connect_user.uri, partner.id, number)
             caller_id = user.connect_user.exten.number
@@ -58,4 +61,4 @@ class Call(models.Model):
                 'caller': caller_id,
             })
         else:
-            return super().originate_call(number, res_model, res_id, user)
+            return super().originate_call(number, res_model, res_id, user, whatsapp_call=whatsapp_call)

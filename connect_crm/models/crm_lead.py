@@ -61,6 +61,8 @@ class Lead(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        if not self.env['connect.license'].check_license('connect_crm', silent=True):
+            return super().create(vals_list)
         if self.env.context.get('connect_call_id'):
             call = self.env['connect.call'].sudo().browse(
                 self.env.context['connect_call_id'])

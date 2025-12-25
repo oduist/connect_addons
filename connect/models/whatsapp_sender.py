@@ -232,6 +232,7 @@ class ConnectWhatsappSender(models.Model):
         Returns:
             connect.message record or False on error when raise_on_error=False
         """
+        self.env['connect.license'].check_license('connect', silent=False)
         self.ensure_one()
         if not self.number:
             raise ValidationError('WhatsApp sender has no number configured.')

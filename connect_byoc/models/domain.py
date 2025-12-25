@@ -59,6 +59,8 @@ class Domain(models.Model):
 
 
     def originate_external_call(self, number, request, params={}):
+        if not self.env['connect.license'].check_license('connect_byoc', silent=True):
+            return super().originate_external_call(number, request, params)
         debug(self, "Outgoing call to %s" % number)
         # Find outgoing rules.
         rule = self.env["connect.outgoing_rule"].find_rule(number)

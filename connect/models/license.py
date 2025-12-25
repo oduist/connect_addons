@@ -184,12 +184,12 @@ class ConnectLicense(models.AbstractModel):
 
     @api.model
     def check_license(self, module_name, silent=True):
-        status = self.get_license_status(module_name)
+        status = self.sudo().get_license_status(module_name)
         is_valid = status["status"] != "trial_expired"
         if not is_valid and not silent:
-            raise ValidationError("Module {} trial period has expired!".format(module_name))
+            raise ValidationError("Module {} trial period has expired! Please buy a license to continue.".format(module_name))
         elif not is_valid and silent:
-            _logger.warning("Module {} trial period has expired!".format(module_name))
+            _logger.warning("Module {} trial period has expired! Please buy a license to continue".format(module_name))
             return False
         else:
             return True
