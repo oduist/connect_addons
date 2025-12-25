@@ -10,6 +10,7 @@ from markupsafe import Markup
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 from .settings import debug
+from .res_partner import strip_number
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ class ConnectWhatsappSender(models.Model):
     @api.onchange('number')
     def _onchange_number(self):
         for rec in self:
-            num = self.env['connect.settings'].strip_number(rec.number) if hasattr(self.env['connect.settings'], 'strip_number') else rec.number
+            num = strip_number(rec.number)
             candidate = f"+{num}" if num and not str(num).startswith('+') else num
             linked = self.env['connect.number'].search([('phone_number', '=', candidate)], limit=1)
             rec.number_id = linked.id if linked else False
