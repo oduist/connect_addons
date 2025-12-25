@@ -166,9 +166,8 @@ class ConnectLicense(models.AbstractModel):
                     module_info = purchased_modules[module_name]
                     order_id = module_info.get("order_id", "")
                     return {
-                        "status": "licensed",
+                        "status": module_info.get("license_type"),
                         "order_id": order_id,
-                        "license_type": module_info.get("license_type"),
                     }
         is_valid, days_left = self.is_trial_valid(module_name)
         if is_valid:
