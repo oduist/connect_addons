@@ -221,7 +221,7 @@ class Partner(models.Model):
         version_info = release.version_info
         # For Odoo versions before 16
         if version_info[0] < 16:
-            return super(Partner, self)._phone_format(number, country=country, company=company).replace(' ', '')
+            return super(Partner, self)._phone_format(number, country=country, company=company)
         # For Odoo version 16
         elif version_info[0] == 16:
             return super(Partner, self)._phone_format(number, country=country, company=company, force_format=force_format)
