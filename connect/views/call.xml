@@ -132,7 +132,7 @@
                                     <field name="price_unit" groups="connect.group_connect_admin"/>
                                 </group>
                                 <group>
-                                    <field name="parent_call" ivisible="not parent_call"/>
+                                    <field name="parent_call" invisible="not parent_call"/>
                                     <field name="caller_pbx_user"/>
                                     <field name="called_pbx_users" widget="many2many_tags"/>
                                     <field name="answered_pbx_user"/>
