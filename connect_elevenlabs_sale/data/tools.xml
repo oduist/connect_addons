@@ -148,7 +148,7 @@
         <record id="get_products_param_category_id" model="connect.agent_tool_params">
             <field name="name">category_id</field>
             <field name="data_type">integer</field>
-            <field name="required" eval="True"/>
+            <field name="required" eval="False"/>
             <field name="value_type">description</field>
             <field name="description">Category ID.</field>
             <field name="tool" ref="get_products_tool"/>
