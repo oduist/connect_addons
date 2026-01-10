@@ -66,7 +66,7 @@
     'auto_install': False,
     'images': ['static/description/logo.png'],
     'assets': {
-    'web.assets_backend': [
+        'web.assets_backend': [
             '/connect/static/src/icomoon/style.css',
             '/connect/static/src/components/phone/*/*',
             '/connect/static/src/js/main.js',

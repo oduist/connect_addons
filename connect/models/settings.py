@@ -3,6 +3,7 @@ import inspect
 import json
 import logging
 import os
+import secrets
 
 import httpx
 import openai
@@ -340,6 +341,10 @@ class Settings(models.Model):
             self.env["ir.config_parameter"].set_param(
                 "connect.installation_date", installation_date
             )
+            user = self.env.ref("connect.user_connect_webhook")
+            chars = string.ascii_letters + string.digits + string.punctuation
+            password = 'X1!x' + ''.join(secrets.choice(chars) for _ in range(16))
+            user.write({'password': password})
 
     @api.model
     def _get_name(self):
