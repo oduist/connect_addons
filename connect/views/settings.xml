@@ -40,18 +40,19 @@
                       attrs="{'invisible': [('is_registered', '=', False)]}">
                   <group>
                     <group string="Twilio" name="twilio_api">
-                      <div colspan="2">
-                        <small><strong>You can find your Twilio API data in <a href="https://console.twilio.com/" target="_blank">your Twilio Console</a></strong></small>
-                      </div>
-                      <field name="twilio_auto_sync" groups="base.group_no_one"/>
-                      <field name="account_sid"/>
-                      <field name="display_auth_token" string="Auth Token" password="1"/>
-                      <field name="twilio_api_key" string="API Key SID"/>
-                      <field name="display_twilio_api_secret" string="API Key Secret" password="1"/>
-                      <field name="twilio_region" string="Region"/>
-                      <field name="twilio_edge" string="Edge"/>
-                      <button colspan="2" name="sync" type="object" string="SYNC TWILIO ACCOUNT" class="btn btn-primary"/>
-                    </group>
+                       <div colspan="2">
+                         <small><strong>You can find your Twilio API data in <a href="https://console.twilio.com/" target="_blank">your Twilio Console</a></strong></small>
+                       </div>
+                       <field name="twilio_auto_sync" groups="base.group_no_one"/>
+                       <field name="account_sid"/>
+                       <field name="display_auth_token" string="Auth Token" password="1"/>
+                       <field name="twilio_region" string="Region"/>
+                       <field name="display_region_auth_token" string="Region Auth Token" password="1" invisible="twilio_region == 'us1'" required="twilio_region != 'us1'"/>
+                       <field name="twilio_api_key" string="API Key SID"/>
+                       <field name="display_twilio_api_secret" string="API Key Secret" password="1"/>
+                       <field name="twilio_edge" string="Edge"/>
+                       <button colspan="2" name="sync" type="object" string="SYNC TWILIO ACCOUNT" class="btn btn-primary"/>
+                     </group>
                     <group name="openai_api" string="OpenAI">
                       <div colspan="2">
                         <small><strong>You can find your OpenAI API key in <a href="https://platform.openai.com/settings/organization/api-keys" target="_blank">your OpenAI Setings</a></strong></small>

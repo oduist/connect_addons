@@ -2,7 +2,7 @@
 
 import logging
 
-from odoo.http import request, Controller, route
+from odoo.http import request, Controller, route, Response
 from twilio.request_validator import RequestValidator
 
 logger = logging.getLogger(__name__)
@@ -11,11 +11,15 @@ logger = logging.getLogger(__name__)
 class ConnectController(Controller):
 
     @staticmethod
-    def check_signature(data):
+    def check_signature(data, region=True):
         if not request.env['connect.settings'].sudo().get_param('twilio_verify_requests'):
             return True
-        validator = RequestValidator(request.env['connect.settings'].sudo().get_param('auth_token'))
-        # We don't support HTTP
+        settings = request.env['connect.settings'].sudo()
+        if region:
+            auth_token = settings.get_param('region_auth_token') or settings.get_param('auth_token')
+        else:
+            auth_token = settings.get_param('auth_token')
+        validator = RequestValidator(auth_token)
         url = request.httprequest.url.replace('http:', 'https:')
         signature = request.httprequest.headers.get('X-Twilio-Signature', '')
         request_valid = validator.validate(url, data, signature)
@@ -37,7 +41,7 @@ class ConnectController(Controller):
     @route('/twilio/webhook/callstatus', methods=['POST'], type='http', auth='public', csrf=False)
     def callstatus_webhook(self, **kw):
         if not self.check_signature(kw):
-            return False
+            return Response("Twilio request is not valid!", status=500)
         res = request.env['connect.call'].with_user(request.env.ref("connect.user_connect_webhook")).on_call_status(kw)
         return f'{res}'
 
@@ -51,7 +55,7 @@ class ConnectController(Controller):
     @route('/twilio/webhook/outgoing_callerid', methods=['POST'], type='http', auth='public', csrf=False)
     def outgoing_callerid_webhook(self, **kw):
         if not self.check_signature(kw):
-            return False
+            return Response("Twilio request is not valid!", status=500)
         env = request.env
         outgoing_callerid = env['connect.outgoing_callerid'].with_user(env.ref("connect.user_connect_webhook"))
         res = outgoing_callerid.update_status(kw)
@@ -84,7 +88,7 @@ class ConnectController(Controller):
     @route('/twilio/webhook/recordingstatus', methods=['POST'], type='http', auth='public', csrf=False)
     def recording_status_webhook(self, **kw):
         if not self.check_signature(kw):
-            return False
+            return Response("Twilio request is not valid!", status=500)
         recording = request.env['connect.recording'].with_user(request.env.ref("connect.user_connect_webhook"))
         res = recording.on_recording_status(kw)
         return f'{res}'
@@ -107,7 +111,7 @@ class ConnectController(Controller):
 
     @route('/twilio/webhook/message', methods=['POST'], type='http', auth='public', csrf=False)
     def message_webhook(self, **kw):
-        if not self.check_signature(kw):
+        if not self.check_signature(kw, region=False):
             return '<Response><Say>Invalid Twilio request!</Say></Response>'
         message = request.env['connect.message'].with_user(request.env.ref("connect.user_connect_webhook"))
         res = message.receive(kw)
@@ -115,7 +119,7 @@ class ConnectController(Controller):
 
     @route('/twilio/webhook/message_status', methods=['POST'], type='http', auth='public', csrf=False)
     def message_status_webhook(self, **kw):
-        if not self.check_signature(kw):
-            return False
+        if not self.check_signature(kw, region=False):
+            return Response("Twilio request is not valid!", status=500)
         request.env['connect.whatsapp_sender'].with_user(request.env.ref("connect.user_connect_webhook")).update_message_status(kw)
         return 'OK'

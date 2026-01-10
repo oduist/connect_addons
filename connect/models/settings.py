@@ -26,6 +26,7 @@ MODULE_NAME = "connect"
 MAX_EXTEN_LEN = 4
 PROTECTED_FIELDS = [
     "display_auth_token",
+    "display_region_auth_token",
     "display_twilio_api_secret",
     "display_openai_api_key",
 ]
@@ -115,6 +116,10 @@ class Settings(models.Model):
         groups="base.group_erp_manager,connect.group_connect_webhook"
     )
     display_auth_token = fields.Char()
+    region_auth_token = fields.Char(
+        groups="base.group_erp_manager,connect.group_connect_webhook"
+    )
+    display_region_auth_token = fields.Char()
     twilio_api_key = fields.Char()
     twilio_api_secret = fields.Char(groups="base.group_erp_manager")
     display_twilio_api_secret = fields.Char()
@@ -576,7 +581,7 @@ class Settings(models.Model):
             self.clear_caches()
 
     @api.model
-    def get_client(self):
+    def get_client(self, region=True):
         try:
             (
                 self.check_access_rule("read")
@@ -586,12 +591,16 @@ class Settings(models.Model):
             account_sid = self.sudo().get_param("account_sid")
             auth_token = self.sudo().get_param("auth_token")
             client = Client(account_sid, auth_token)
-            twilio_region = self.sudo().get_param("twilio_region")
-            if twilio_region:
-                client.region = twilio_region
-            twilio_edge = self.sudo().get_param("twilio_edge")
-            if twilio_edge:
-                client.edge = twilio_edge
+            if region:
+                region_auth_token = self.sudo().get_param("region_auth_token")
+                token_to_use = region_auth_token if region_auth_token else auth_token
+                client = Client(account_sid, token_to_use)
+                twilio_region = self.sudo().get_param("twilio_region")
+                if twilio_region:
+                    client.region = twilio_region
+                twilio_edge = self.sudo().get_param("twilio_edge")
+                if twilio_edge:
+                    client.edge = twilio_edge
             client.http_client.logger.setLevel(TWILIO_LOG_LEVEL)
             return client
         except Exception as e:
