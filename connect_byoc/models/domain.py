@@ -57,6 +57,7 @@ class Domain(models.Model):
                 return self.env["connect.outgoing_callerid"].search(
                     [("is_default", "=", True)], limit=1).number
 
+
     def originate_external_call(self, number, request, params={}):
         debug(self, "Outgoing call to %s" % number)
         # Find outgoing rules.
