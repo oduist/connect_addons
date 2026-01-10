@@ -251,7 +251,7 @@ class ConnectWhatsappSender(models.Model):
                     '24 hours contact window has been expired. '
                     'Please select a message template to initiate a new contact window.'
                 )
-        client = self.env['connect.settings'].get_client()
+        client = self.env['connect.settings'].get_client(region=False)
         try:
             create_kwargs = {
                 'to': f'whatsapp:{recipient}',
