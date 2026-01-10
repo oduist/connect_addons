@@ -47,7 +47,7 @@
                        <field name="account_sid"/>
                        <field name="display_auth_token" string="Auth Token" password="1"/>
                        <field name="twilio_region" string="Region"/>
-                       <field name="display_region_auth_token" string="Region Auth Token" password="1" invisible="twilio_region == 'us1'" required="twilio_region != 'us1'"/>
+                       <field name="display_region_auth_token" string="Region Auth Token" password="1" attrs="{'invisible': [('twilio_region', '=', 'us1')], 'required': [('twilio_region', '!=', 'us1')]}"/>
                        <field name="twilio_api_key" string="API Key SID"/>
                        <field name="display_twilio_api_secret" string="API Key Secret" password="1"/>
                        <field name="twilio_edge" string="Edge"/>
