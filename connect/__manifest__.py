@@ -17,7 +17,7 @@
     'external_dependencies': {
         'python': ['twilio', 'openai'],
     },
-'data': [
+    'data': [
         'data/res_users.xml',
         'data/data.xml',
         'data/functions.xml',
