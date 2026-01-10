@@ -38,8 +38,6 @@ class ConnectMessage(models.Model):
     # Odoo users
     sender_user = fields.Many2one('res.users', string='Sender User', ondelete='set null', readonly=True)
     sender_user_img = fields.Binary(related='sender_user.image_1920')
-    receiver_user = fields.Many2one('res.users', ondelete='set null', string='Receiver User', readonly=True)
-    receiver_user_img = fields.Binary(related='receiver_user.image_1920', string='Answered User Avatar')
     partner = fields.Many2one('res.partner', ondelete='set null')
     partner_img = fields.Binary(related='partner.image_1920', string='Partner Image')
     # Geographic information
@@ -82,7 +80,7 @@ class ConnectMessage(models.Model):
 
     @api.model
     def _reference_models(self):
-        return [(model.model, model.name) for model in self.env['ir.model'].search([])]
+        return [(model.model, model.name) for model in self.env['ir.model'].sudo().search([])]
 
     @api.depends('res_model', 'res_id')
     def _compute_ref(self):
@@ -226,11 +224,6 @@ class ConnectMessage(models.Model):
                 partner = self.env['res.partner'].get_partner_by_number(from_number)
                 if partner:
                     values.update({'partner': partner.id})
-
-                number = self.env['connect.number'].search([('phone_number', '=', to_number)], limit=1)
-                if number and number.user:
-                    values.update({'receiver_user': number.user.user.id})
-
                 # Determine parent and target using OriginalRepliedMessageSid if provided
                 original_sid = (
                     params.get('OriginalRepliedMessageSid')
@@ -245,11 +238,7 @@ class ConnectMessage(models.Model):
                     last_message = self.env['connect.message'].search([
                         ('from_number', '=', to_number), ('to_number', '=', from_number)
                     ], order='create_date desc', limit=1)
-                print('Parent ', parent_msg)
-                print('Last', last_message)
                 target_msg = parent_msg or last_message
-                print('Traget', target_msg)
-
                 # Validate that the target record still exists; otherwise, skip linking and let destination handler create new
                 valid_target = False
                 if target_msg and target_msg.res_model and target_msg.res_id:
@@ -267,12 +256,32 @@ class ConnectMessage(models.Model):
                         )
                         # Invalidate target to avoid chatter posting on a deleted record
                         target_msg = False
-
                 if parent_msg:
                     values.update({'parent_message': parent_msg.id})
-
                 message = self.env['connect.message'].sudo().create(values)
-
+                # Message destination handling when not previous messages found.
+                if not target_msg:
+                    target_msg = message
+                    valid_target = True
+                    config = self.env['connect.message_configuration'].search([('number.phone_number', '=', to_number)], limit=1)
+                    dest_model = (config.destination if config and config.destination else 'res.partner')
+                    defaults = {}
+                    if config and config.default_values:
+                        try:
+                            defaults = dict(ast.literal_eval(config.default_values or '{}'))
+                        except Exception as e:
+                            logger.error('Invalid default data: %s\n%s', config.default_values, e)
+                    if dest_model in self.env:
+                        try:
+                            new_rec = self.env[dest_model].with_context(mail_create_nosubscribe=True).sudo().create_record_from_message(message, default_values=defaults)
+                            target_msg.write({
+                                'res_model': dest_model,
+                                'res_id': new_rec.id,
+                            })
+                        except Exception as e:
+                            logger.warning('create_record_from_message failed for %s: %s', dest_model, e)
+                    else:
+                        logger.warning('Destination model %s not found', dest_model)
                 # Add message to chatter at the target record when available and valid
                 if valid_target and target_msg and target_msg.res_model and target_msg.res_id:
                     obj = self.env[target_msg.res_model].with_user(SUPERUSER_ID).browse(target_msg.res_id)
@@ -297,30 +306,10 @@ class ConnectMessage(models.Model):
                         }
                         if partner:
                             kwargs.update({'author_id': partner.id})
-                        else:
-                            kwargs.update({'body': Markup('From: {}. Message: {}{}').format(from_number, params.get('Body'), link)})
                         chatter = obj.with_context(mail_create_nosubscribe=True).message_post(**kwargs)
                         chatter.connect_message = message
-
                         # Let Odoo generate notifications for followers automatically (no manual mail.notification)
                         self.env['connect.settings'].connect_reload_view(target_msg.res_model)
-
-                # Message destination handling (restored)
-                config = self.env['connect.message_configuration'].search([('number.phone_number', '=', to_number)], limit=1)
-                dest_model = (config.destination if config and config.destination else 'res.partner')
-                defaults = {}
-                if config and config.default_values:
-                    try:
-                        defaults = dict(ast.literal_eval(config.default_values or '{}'))
-                    except Exception as e:
-                        logger.error('Invalid default data: %s\n%s', config.default_values, e)
-                if dest_model in self.env:
-                    try:
-                        self.env[dest_model].sudo().create_record_from_message(message, default_values=defaults)
-                    except Exception as e:
-                        logger.warning('create_record_from_message failed for %s: %s', dest_model, e)
-                else:
-                    logger.warning('Destination model %s not found', dest_model)
             else:
                 # Update message status
                 logger.info("Received Update Twilio SMS webhook data:\n%s", params)
@@ -388,10 +377,8 @@ class ConnectMessage(models.Model):
                     'subtype_id': mt_note,
                     'message_type': message.message_type
                 }
-
                 kwargs.update({'author_id': sender_user.partner_id.id})
                 chatter = obj.with_context(mail_create_nosubscribe=True).message_post(**kwargs)
-
                 mail_notification_values = [{
                     'author_id': chatter.author_id.id,
                     'mail_message_id': chatter.id,
