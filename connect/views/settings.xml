@@ -82,7 +82,7 @@
                       <field name="transcript_calls"/>
                       <field name="transcript_provider"
                              invisible="transcript_calls == False"/>
-                      <hr/>
+                      <hr/><br/>
                       <field name="summary_prompt"
                              invisible="transcript_calls == False"/>
                       <field name="register_summary"
