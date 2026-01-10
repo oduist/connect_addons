@@ -7,7 +7,7 @@
             <form string="Connect Partner To">
                 <sheet>
                     <group>
-                        <field name="partner_id" readonly="1" invisible="not partner_id"/>
+                        <field name="partner_id" readonly="1" attrs="{'invisible': [('partner_id', '=', False)]}"/>
                         <field name="number" required="1"/>
                         <field name="extension_id" options="{'no_create': True}" required="1"/>
                         <field name="outgoing_callerid_id" options="{'no_create': True}" required="1"/>
