@@ -106,9 +106,9 @@ class Settings(models.Model):
     debug_mode = fields.Boolean()
     twilio_auto_sync = fields.Boolean(default=True)
     twilio_region = fields.Selection([
-        ('us1', 'US East (Virginia)'),
-        ('ie1', 'Ireland (Dublin)'),
-        ('au1', 'Australia (Sydney)'),
+        ('us1', 'US'),
+        ('ie1', 'Europe'),
+        ('au1', 'Australia'),
     ], default='us1', required=True)
     twilio_edge = fields.Selection(selection=TWILIO_EDGES, required=True, default='ashburn')
     account_sid = fields.Char(string="Account SID")
