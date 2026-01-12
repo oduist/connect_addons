@@ -28,7 +28,7 @@ class CallFlow(models.Model):
     exten = fields.Many2one('connect.exten', ondelete='set null', readonly=True)
     exten_number = fields.Char(related='exten.number', store=True)
     language = fields.Char(default='en-US', required=True)
-    voice = fields.Char(required=True, default='Woman')
+    voice = fields.Char(required=True, default='man')
     gather_input = fields.Boolean()
     gather_input_type = fields.Selection(string='Input Type',
         selection=[
