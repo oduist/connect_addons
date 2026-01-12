@@ -78,11 +78,10 @@
                 <page name="transcription" string="Transcription"
                       invisible="is_registered == False">
                   <group>
-                    <group>
+                    <group name="transcribe_options">
                       <field name="transcript_calls"/>
                       <field name="transcript_provider"
                              invisible="transcript_calls == False"/>
-                      <hr/>
                       <field name="summary_prompt"
                              invisible="transcript_calls == False"/>
                       <field name="register_summary"
