@@ -508,7 +508,7 @@ class Domain(models.Model):
         self.env["connect.call"].on_call_status(request)
         to_val = request.get("To") or ''
         # Extract number for SIP or WhatsApp channels
-        found = re.search(r"^sip:(.+)@(.+)\\.sip\\.((.+)\\.)?twilio\\.com", to_val)
+        found = re.search(r"^sip:(.+)@(.+)\.sip\.((.+)\.)?twilio\.com", to_val)
         is_whatsapp = False
         if found:
             found_num = found.group(1)
