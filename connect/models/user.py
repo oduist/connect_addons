@@ -407,7 +407,7 @@ class User(models.Model):
             })
         dial_sip = Dial(**dial_sip_kwargs)
         dial_sip.sip(
-            'sip:{}'.format(self.uri),
+            'sip:{}{}'.format(self.uri, ';secure=true' if self.domain.secure_media else ''),
             statusCallbackEvent='initiated answered completed',
             statusCallback=status_url)
         response.append(dial_sip)
