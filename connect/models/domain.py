@@ -32,6 +32,7 @@ class Domain(models.Model):
     edge_domains = fields.Text(compute="_get_domain_name")
     friendly_name = fields.Char(required=True)
     sip_registration = fields.Boolean("SIP Registration", readonly=True, default=True)
+    secure_media = fields.Boolean(default=False)
     delete_protection = fields.Boolean(default=True)
 
     _sql_constrains = [
@@ -79,6 +80,7 @@ class Domain(models.Model):
         domain = client.sip.domains.create(
             friendly_name=self.friendly_name,
             domain_name=self.domain_name,
+            secure=self.secure_media,
             voice_url=self.application.voice_url,
             voice_fallback_url=self.application.voice_fallback_url,
             sip_registration=True,
@@ -404,6 +406,7 @@ class Domain(models.Model):
             domain.update(
                 friendly_name=self.friendly_name,
                 domain_name=self.domain_name,
+                secure=self.secure_media,
                 voice_url=self.application.voice_url,
                 voice_fallback_url=self.application.voice_fallback_url,
                 voice_status_callback_url=self.application.voice_status_url,
@@ -429,7 +432,7 @@ class Domain(models.Model):
         client = self.env["connect.settings"].get_client()
         # Update only Twilio fields.
         if not (
-            set(["friendly_name", "domain_name", "subdomain", "app"]) & set(vals.keys())
+            set(["friendly_name", "secure_media", "domain_name", "subdomain", "app"]) & set(vals.keys())
         ):
             return super().write(vals)
         res = super().write(vals)
