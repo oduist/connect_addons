@@ -262,7 +262,7 @@ class Settings(models.Model):
             rec.call_duration_limit = int(
                 self.env["ir.config_parameter"]
                 .sudo()
-                .get_param("connect.call_duration_limit", "240")
+                .get_param("connect.call_duration_limit", "7200")
             )
 
     @api.model
