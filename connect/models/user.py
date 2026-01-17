@@ -332,6 +332,8 @@ class User(models.Model):
             callerId = caller_user.exten.number or ''
             if not callerId:
                 logger.warning('Exten not set for user %s', caller_user.name)
+                # Get default callerid as Twilio always requires it.
+                callerId = self.env['connect.outgoing_callerid'].search([('is_default', '=', True)], limit=1).number
         else:
             callerId = request.get('Caller')
         return callerId
@@ -405,7 +407,7 @@ class User(models.Model):
             })
         dial_sip = Dial(**dial_sip_kwargs)
         dial_sip.sip(
-            'sip:{}'.format(self.uri),
+            'sip:{}{}'.format(self.uri, ';secure=true' if self.domain.secure_media else ''),
             statusCallbackEvent='initiated answered completed',
             statusCallback=status_url)
         response.append(dial_sip)
@@ -620,4 +622,3 @@ class User(models.Model):
         else:
             self.env['connect.user_callflow'].search(
                 [('user', '=', self.id), ('callflow_type', '=', 'voicemail')]).unlink()
-

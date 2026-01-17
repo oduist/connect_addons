@@ -124,7 +124,7 @@ export class Calls extends Component {
         for (const item of records) {
             const call_number = item.called_users[0] === this.user ? item.caller : item.called
             item.favorite = this.favorites.includes(call_number)
-            const local_time = new Date(`${item.create_date} UTC`).toLocaleTimeString("en-GB")
+            const local_time = new Date(`${item.create_date}Z`).toLocaleTimeString("en-GB")
             item.create_date = `${item.create_date.split(' ')[0]} ${local_time}`
         }
         this.state.calls = records

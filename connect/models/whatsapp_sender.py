@@ -16,7 +16,9 @@ from urllib.parse import urljoin
 import requests
 from markupsafe import Markup
 
-from odoo import models, fields, api
+from odoo import models, fields, api, release
+if release.version_info[0] >= 19:
+    from odoo.models import Constraint
 from odoo.exceptions import ValidationError
 from .settings import debug
 from .res_partner import strip_number
@@ -61,10 +63,14 @@ class ConnectWhatsappSender(models.Model):
     # Local controls
     no_sync = fields.Boolean(string='Do not sync', default=False)
     is_default = fields.Boolean(string='Default WhatsApp Sender', help='Used as default when user has no personal sender set.')
-    _sql_constraints = [
-        ('sid_unique', 'UNIQUE(sid)', 'This Sender SID already exists!'),
-        ('number_unique', 'UNIQUE(number)', 'This number already exists!'),
-    ]
+    if release.version_info[0] >= 19:
+        _sid_uniq = Constraint('UNIQUE(sid)', 'This Sender SID already exists!')
+        _number_uniq = Constraint('UNIQUE(number)', 'This number already exists!')
+    else:
+        _sql_constraints = [
+            ('sid_unique', 'UNIQUE(sid)', 'This Sender SID already exists!'),
+            ('number_unique', 'UNIQUE(number)', 'This number already exists!'),
+        ]
 
     @api.constrains('is_default')
     def _check_single_default(self):
@@ -270,7 +276,7 @@ class ConnectWhatsappSender(models.Model):
                     '24 hours contact window has been expired. '
                     'Please select a message template to initiate a new contact window.'
                 )
-        client = self.env['connect.settings'].get_client()
+        client = self.env['connect.settings'].get_client(region=False)
         try:
             create_kwargs = {
                 'to': f'whatsapp:{recipient}',

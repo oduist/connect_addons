@@ -16,13 +16,10 @@ import random
 import re
 import string
 import uuid
-from urllib.parse import urljoin
-
 import httpx
 import openai
-import requests
 from odoo import api, fields, models, release
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import ValidationError
 from twilio.rest import Client
 
 logger = logging.getLogger(__name__)
@@ -34,6 +31,7 @@ MODULE_NAME = "connect"
 MAX_EXTEN_LEN = 4
 PROTECTED_FIELDS = [
     "display_auth_token",
+    "display_region_auth_token",
     "display_twilio_api_secret",
     "display_openai_api_key",
 ]
@@ -82,12 +80,14 @@ def format_connect_response(text):
 
 
 def generate_password():
+    special_chars = "@!#$%^&*"
     characters = [
         random.choice(string.ascii_lowercase),
         random.choice(string.ascii_uppercase),
         random.choice(string.digits),
+        random.choice(special_chars),
     ]
-    characters += random.choices(string.ascii_letters + string.digits, k=20)
+    characters += random.choices(string.ascii_letters + string.digits + special_chars, k=19)
     random.shuffle(characters)
     return "".join(characters)
 
@@ -106,23 +106,21 @@ class Settings(models.Model):
     name = fields.Char(compute="_get_name")
     debug_mode = fields.Boolean()
     twilio_auto_sync = fields.Boolean(default=True)
-    twilio_region = fields.Selection(
-        [
-            ("us1", "US East (Virginia)"),
-            ("ie1", "Ireland (Dublin)"),
-            ("au1", "Australia (Sydney)"),
-        ],
-        default="us1",
-        required=True,
-    )
-    twilio_edge = fields.Selection(
-        selection=TWILIO_EDGES, required=True, default="ashburn"
-    )
+    twilio_region = fields.Selection([
+        ('us1', 'US'),
+        ('ie1', 'Europe'),
+        ('au1', 'Australia'),
+    ], default='us1', required=True)
+    twilio_edge = fields.Selection(selection=TWILIO_EDGES, required=True, default='ashburn')
     account_sid = fields.Char(string="Account SID")
     auth_token = fields.Char(
         groups="base.group_erp_manager,connect.group_connect_webhook"
     )
     display_auth_token = fields.Char()
+    region_auth_token = fields.Char(
+        groups="base.group_erp_manager,connect.group_connect_webhook"
+    )
+    display_region_auth_token = fields.Char()
     twilio_api_key = fields.Char()
     twilio_api_secret = fields.Char(groups="base.group_erp_manager")
     display_twilio_api_secret = fields.Char()
@@ -235,7 +233,7 @@ class Settings(models.Model):
             rec.call_duration_limit = int(
                 self.env["ir.config_parameter"]
                 .sudo()
-                .get_param("connect.call_duration_limit", "240")
+                .get_param("connect.call_duration_limit", "7200")
             )
 
     @api.model
@@ -312,6 +310,10 @@ class Settings(models.Model):
             self.env["ir.config_parameter"].set_param(
                 "connect.instance_uid", instance_uid
             )
+            user = self.env.ref("connect.user_connect_webhook")
+            chars = string.ascii_letters + string.digits + string.punctuation
+            password = generate_password()
+            user.write({'password': password})
 
     @api.model
     def _get_name(self):
@@ -410,7 +412,7 @@ class Settings(models.Model):
         return res
 
     @api.model
-    def get_client(self):
+    def get_client(self, region=True):
         try:
             (
                 self.check_access_rule("read")
@@ -420,12 +422,16 @@ class Settings(models.Model):
             account_sid = self.sudo().get_param("account_sid")
             auth_token = self.sudo().get_param("auth_token")
             client = Client(account_sid, auth_token)
-            twilio_region = self.sudo().get_param("twilio_region")
-            if twilio_region:
-                client.region = twilio_region
-            twilio_edge = self.sudo().get_param("twilio_edge")
-            if twilio_edge:
-                client.edge = twilio_edge
+            if region:
+                region_auth_token = self.sudo().get_param("region_auth_token")
+                token_to_use = region_auth_token if region_auth_token else auth_token
+                client = Client(account_sid, token_to_use)
+                twilio_region = self.sudo().get_param("twilio_region")
+                if twilio_region:
+                    client.region = twilio_region
+                twilio_edge = self.sudo().get_param("twilio_edge")
+                if twilio_edge:
+                    client.edge = twilio_edge
             client.http_client.logger.setLevel(TWILIO_LOG_LEVEL)
             return client
         except Exception as e:
