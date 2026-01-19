@@ -32,27 +32,28 @@
                 <sheet>
                     <group>
                         <group>
-                        <field name="name"/>
+                        <field name="name" readonly="tool_type == 'system'"/>
                         <field name="description"/>
-                        <field name="tool_type"/>
+                        <field name="tool_type" readonly="tool_type == 'system'"/>
                         <field name="param_type" string="Parameters Type"
-                            invisible="tool_type != 'webhook'"/>
+                               invisible="tool_type != 'webhook'"/>
                         </group>
                         <group>
                             <field name="path"
-                                invisible="tool_type != 'webhook'"/>
+                                   invisible="tool_type != 'webhook'"/>
                             <field name="url"
-                                invisible="tool_type != 'webhook'"/>
+                                   invisible="tool_type != 'webhook'"/>
                             <field name="method"
-                                invisible="tool_type != 'webhook'"/>
+                                   invisible="tool_type != 'webhook'"/>
                             <field name="client_expects_response"
-                                invisible="tool_type != 'client'"/>
-                            <field name="response_timeout_secs"/>
+                                   invisible="tool_type != 'client'"/>
+                            <field name="response_timeout_secs"
+                                   invisible="tool_type == 'system'"/>
                         </group>
                     </group>
                     <group string="Parameters" invisible="tool_type == 'system'">
                         <field name="params" nolabel="1"
-                            invisible="tool_type == 'system'"/>
+                               invisible="tool_type == 'system'"/>
                     </group>
                 </sheet>
             </form>

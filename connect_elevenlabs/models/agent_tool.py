@@ -6,7 +6,7 @@ import logging
 
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
-from elevenlabs import ToolRequestModel, ToolRequestModelToolConfig_Client, ToolRequestModelToolConfig_Webhook
+from elevenlabs import ToolRequestModel
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class ElevenlabsAgentTool(models.Model):
     _name = 'connect.elevenlabs_agent_tool'
     _description = 'Elevenlabs Agent Tool'
-    _order = 'name'
+    _order = 'tool_type ASC, name ASC'
 
     name = fields.Char(required=True)
     tool_id = fields.Char()
@@ -72,56 +72,55 @@ class ElevenlabsAgentTool(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         res = super().create(vals_list)
-        client = self.env['connect.settings'].get_elevenlabs_client()
-        try:
-            # Create tool using ElevenLabs API
-            tool_config = res.compute_agent_tools()
-            
-            if ToolRequestModel and tool_config:
-                # Use model-based approach if available
+        if res.tool_type != 'system':
+            client = self.env['connect.settings'].get_elevenlabs_client()
+            try:
+                # Create tool using ElevenLabs API
+                tool_config = res.compute_agent_tools_config()
                 tool = client.conversational_ai.tools.create(
-                    request=ToolRequestModel(
-                        tool_config=tool_config
-                    )
+                    request=ToolRequestModel(tool_config=tool_config)
                 )
-            else:
-                # Fallback to direct API call with dict
-                tool_dict = res.compute_agent_tools_dict()
-                tool = client.conversational_ai.tools.create(
-                    request=tool_dict
-                )
-            
-            res.tool_id = tool.id
-            logger.info(f'Successfully created tool: {res.name} with ID: {tool.id}')
-            
-        except Exception as e:
-            logger.exception(f'Error creating tool {res.name}: {e}')
-            raise ValidationError(f'Failed to create ElevenLabs tool: {str(e)}')
-        return res
 
-    def compute_agent_tools(self):
-        """Compute tool configuration using model classes (if available)"""
-        # Due to issues with model classes in v2.7.1, prefer dict approach
-        # if not ToolRequestModelToolConfig_Client or not ToolRequestModelToolConfig_Webhook:
-        #     return None  # Fall back to dict method
-        return None  # Always use dict method for v2.7.1 compatibility
-            
-        dynamic_variables_placeholders = dict(
-            [(param.name, f'test_{param.name}') for param in self.params if param.value_type == 'dynamic_variable'])
-            
+                res.tool_id = tool.id
+                logger.info(f'Successfully created tool: {res.name} with ID: {tool.id}')
+
+            except Exception as e:
+                logger.exception(f'Error creating tool {res.name}: {e}')
+                raise ValidationError(f'Failed to create ElevenLabs tool: {str(e)}')
+        return res
+    
+    def compute_agent_tools_config(self):
+        """Compute tool configuration using plain dictionaries (fallback method)"""
         try:
             if self.tool_type == 'client':
+                # Build client tool configuration
+                parameters = {}
+                required = []
+                
+                for param in self.params:
+                    parameters[param.name] = {
+                        'type': param.data_type,
+                        'description': param.description if param.value_type == 'description' else param.name
+                    }
+                    if param.required:
+                        required.append(param.name)
+                
+
                 tool_config = {
                     'name': self.name,
                     'description': self.description,
                     'expects_response': self.client_expects_response,
-                    # Note: v2.7.1 might have different parameter structure
+                    'parameters': {
+                        'type': 'object',
+                        'properties': parameters,
+                        'required': required
+                    } if parameters else {},
+                    'response_timeout_secs': self.response_timeout_secs,
                 }
-                logger.info(f'Client Tool config: {json.dumps(tool_config, indent=2)}')
-                return ToolRequestModelToolConfig_Client(**tool_config)
+
                 
             elif self.tool_type == 'webhook':
-                # Build API schema for webhook tools
+                # Build webhook tool configuration 
                 api_schema = {
                     'method': self.method,
                     'url': self.get_tool_url(),
@@ -150,93 +149,20 @@ class ElevenlabsAgentTool(models.Model):
                     'name': self.name,
                     'description': self.description,
                     'api_schema': api_schema,
-                }
-                logger.info(f'Webhook Tool config: {json.dumps(tool_config, indent=2)}')
-                return ToolRequestModelToolConfig_Webhook(**tool_config)
-                
-        except Exception as e:
-            logger.error(f'Error creating tool config with models: {e}')
-            return None  # Fall back to dict method
-            
-        return None
-    
-    def compute_agent_tools_dict(self):
-        """Compute tool configuration using plain dictionaries (fallback method)"""
-        try:
-            if self.tool_type == 'client':
-                # Build client tool configuration
-                parameters = {}
-                required = []
-                
-                for param in self.params:
-                    parameters[param.name] = {
-                        'type': param.data_type,
-                        'description': param.description if param.value_type == 'description' else param.name
-                    }
-                    if param.required:
-                        required.append(param.name)
-                
-                tool_dict = {
-                    'tool_config': {
-                        'name': self.name,
-                        'description': self.description,
-                        'expects_response': self.client_expects_response,
-                        'parameters': {
-                            'type': 'object',
-                            'properties': parameters,
-                            'required': required
-                        } if parameters else {},
-                        'response_timeout_secs': self.response_timeout_secs,
-                    }
-                }
-                
-            elif self.tool_type == 'webhook':
-                # Build webhook tool configuration 
-                api_schema = {
-                    'method': self.method,
-                    'url': self.get_tool_url(),
-                }
-                
-                # Add request body schema if we have body parameters
-                if self.params and self.param_type == 'body':
-                    properties = {}
-                    required = []
-                    
-                    for param in self.params:
-                        properties[param.name] = {
-                            'type': param.data_type,
-                            'description': param.description if param.value_type == 'description' else param.name
-                        }
-                        if param.required:
-                            required.append(param.name)
-                    
-                    api_schema['request_body_schema'] = {
-                        'type': 'object',
-                        'properties': properties,
-                        'required': required
-                    }
-                
-                tool_dict = {
-                    'tool_config': {
-                        'name': self.name,
-                        'description': self.description,
-                        'api_schema': api_schema,
-                        'response_timeout_secs': self.response_timeout_secs,
-                    }
+                    'response_timeout_secs': self.response_timeout_secs,
                 }
                 
             else:
                 # System tools or other types
-                tool_dict = {
-                    'tool_config': {
-                        'name': self.name,
-                        'description': self.description,
-                        'type': self.tool_type,
-                    }
+                tool_config = {
+                    'name': self.name,
+                    'description': self.description,
+                    'type': self.tool_type,
                 }
+
             
-            logger.info(f'Dict-based tool config: {json.dumps(tool_dict, indent=2)}')
-            return tool_dict
+            logger.info(f'Dict-based tool config: {json.dumps(tool_config, indent=2)}')
+            return tool_config
             
         except Exception as e:
             logger.error(f'Error creating dict-based tool config: {e}')
@@ -265,7 +191,7 @@ class ElevenlabsAgentTool(models.Model):
                 except Exception as e:
                     logger.warning(f'Failed to delete ElevenLabs tool {record.name}: {e}')
                     # Continue with deletion even if ElevenLabs deletion fails
-        
+
         return super().unlink()
     
     def update_elevenlabs_tool(self):
@@ -274,26 +200,16 @@ class ElevenlabsAgentTool(models.Model):
             return
             
         client = self.env['connect.settings'].get_elevenlabs_client()
-        
+
         try:
             # Try model-based approach first
-            tool_config = self.compute_agent_tools()
-            
-            if ToolRequestModel and tool_config:
-                client.conversational_ai.tools.update(
-                    tool_id=self.tool_id,
-                    request=ToolRequestModel(
-                        tool_config=tool_config
-                    )
-                )
-            else:
-                # Fallback to dict-based approach
-                tool_dict = self.compute_agent_tools_dict()
-                client.conversational_ai.tools.update(
-                    tool_id=self.tool_id,
-                    request=tool_dict
-                )
-                
+            tool_config = self.compute_agent_tools_config()
+
+            response = client.conversational_ai.tools.update(
+                tool_id=self.tool_id,
+                request=ToolRequestModel(tool_config=tool_config)
+            )
+
             logger.info(f'Successfully updated ElevenLabs tool: {self.name}')
             
         except Exception as e:
@@ -324,16 +240,12 @@ class ElevenlabsAgentTool(models.Model):
             else:
                 # Create if doesn't exist
                 client = self.env['connect.settings'].get_elevenlabs_client()
-                tool_config = self.compute_agent_tools()
-                
-                if ToolRequestModel and tool_config:
-                    tool = client.conversational_ai.tools.create(
-                        request=ToolRequestModel(tool_config=tool_config)
-                    )
-                else:
-                    tool_dict = self.compute_agent_tools_dict()
-                    tool = client.conversational_ai.tools.create(request=tool_dict)
-                
+                tool_config = self.compute_agent_tools_config()
+
+                tool = client.conversational_ai.tools.create(
+                    request=ToolRequestModel(tool_config=tool_config)
+                )
+
                 self.tool_id = tool.id
                 message = f"Tool '{self.name}' created successfully with ID: {tool.id}"
             

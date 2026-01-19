@@ -9,7 +9,8 @@ from twilio.twiml.voice_response import VoiceResponse, Connect
 from odoo.addons.connect.models.settings import debug
 from odoo.addons.connect.models.twiml import pretty_xml
 from odoo.exceptions import ValidationError
-from elevenlabs import ConversationConfig
+from elevenlabs.types import ConversationalConfig, AgentPlatformSettingsRequestModel
+from elevenlabs import ElevenLabs
 
 # Supress a warning message.
 import warnings
@@ -224,38 +225,171 @@ class ElevenlabsAgent(models.Model):
         return True
 
     def create_elevenlabs_agent(self):
-        # try:
         client = self.env['connect.settings'].get_elevenlabs_client()
-        return client.conversational_ai.agents.create(
-            name=self.name,
-            conversation_config=ConversationConfig(),
-            platform_settings=self.compute_platform_settings(),
-        )
-        # except Exception as e:
-        #     logger.exception("Error create Elevenlabs agent: ", e)
+        try:
+            conversation_config = self._build_conversational_config()
+            return client.conversational_ai.agents.create(
+                name=self.name,
+                conversation_config=conversation_config,
+                platform_settings=self._build_platform_settings(),
+            )
+        except Exception as e:
+            logger.exception("Error creating ElevenLabs agent: %s", e)
+            raise
 
     def update_elevenlabs_agent(self):
-        # print('--compute_agent_conversation_config', json.dumps(self.compute_agent_conversation_config(), indent=2))
-        # print('--compute_platform_settings', json.dumps(self.compute_platform_settings(), indent=2))
-        # try:
         client = self.env['connect.settings'].get_elevenlabs_client()
-        client.conversational_ai.agents.update(
-            agent_id=self.agent_uid,
-            name=self.name,
-            conversation_config=self.compute_agent_conversation_config(),
-            platform_settings=self.compute_platform_settings(),
-        )
-        # except Exception as e:
-        #     logger.exception("Error update Elevenlabs agent: ", e)
+        try:
+            conversation_config = self._build_conversational_config()
+            client.conversational_ai.agents.update(
+                agent_id=self.agent_uid,
+                name=self.name,
+                conversation_config=conversation_config,
+                platform_settings=self._build_platform_settings(),
+            )
+        except Exception as e:
+            logger.exception("Error updating ElevenLabs agent: %s", e)
+            raise
 
     def delete_elevenlabs_agent(self):
-        # try:
         client = self.env['connect.settings'].get_elevenlabs_client()
-        client.conversational_ai.agents.delete(
-            agent_id=self.agent_uid
+        try:
+            client.conversational_ai.agents.delete(agent_id=self.agent_uid)
+        except Exception as e:
+            logger.exception("Error deleting ElevenLabs agent: %s", e)
+            raise
+
+    def _build_conversational_config(self) -> ConversationalConfig:
+        """Build proper ConversationalConfig object using new API types"""
+
+        def get_model():
+            version = '2_5'
+            if self.language == 'en':
+                version = '2'
+            return f'eleven_flash_v{version}' if self.use_flash else f'eleven_turbo_v{version}'
+
+        # Build agent config - using dict due to complex nested structure
+        dynamic_variable_placeholders = {}
+        for tool in self.tools:
+            dynamic_variable_placeholders.update(
+                dict([(param.name, f'test_{param.name}') for param in tool.params if
+                      param.value_type == 'dynamic_variable']))
+
+        agent_dict = {
+            'first_message': self.first_message,
+            'language': self.language,
+        }
+
+        if dynamic_variable_placeholders:
+            agent_dict['dynamic_variables'] = dynamic_variable_placeholders
+
+        agent_dict['prompt'] = self._compute_prompt_config()
+
+        # Build ASR config
+        asr_dict = {
+            'user_input_audio_format': self.user_input_audio_format
+        }
+
+        # Build TTS config
+        tts_dict = {
+            'agent_output_audio_format': self.output_audio_format,
+            'similarity_boost': self.similarity_boost,
+            'speed': self.speed,
+            'stability': self.stability,
+            'voice_id': self.voice.voice_id,
+            'model_id': get_model(),
+        }
+
+        # Build conversation config
+        conversation_dict = {
+            'max_duration_seconds': self.max_duration_seconds
+        }
+
+        # Build language presets
+        language_presets = {}
+        first_message_translations = self.get_field_translations('first_message')[0]
+        for trans in first_message_translations:
+            if trans['lang'] not in self.additional_languages.mapped('code'):
+                logger.info('Not using language %s because not included in additional_languages.',
+                            trans['lang'])
+                continue
+            lang_code = trans['lang'].split('_')[0]
+            language_presets[lang_code] = {
+                'overrides': {
+                    'agent': {
+                        'first_message': trans['value'],
+                    }
+                }
+            }
+
+        # Return complete ConversationalConfig using dict structure
+        config_dict = {
+            'agent': agent_dict,
+            'asr': asr_dict,
+            'tts': tts_dict,
+            'conversation': conversation_dict,
+        }
+
+        if language_presets:
+            config_dict['language_presets'] = language_presets
+
+        try:
+            # Try standard validation first
+            return ConversationalConfig(**config_dict)
+        except Exception as e:
+            logger.warning(f"Standard validation failed for ConversationalConfig: {e}. Using model_construct.")
+            # Fallback to model_construct to bypass frozen validation
+            return ConversationalConfig.model_construct(**config_dict)
+
+    def _compute_built_in_tools(self):
+        built_in_tools = {}
+        for tool in self.tools:
+            if tool.tool_type == 'system':
+                built_in_tools.update({
+                    tool.name: {
+                        "type": "system",
+                        "name": tool.name,
+                        "description": "",
+                        "params": {
+                            "system_tool_type": tool.name
+                        },
+                        "disable_interruptions": False
+                    },
+                })
+
+        return built_in_tools
+
+    def _compute_prompt_config(self):
+        previous_topics = '\nLast conversation summary {{previous_topics}}.'
+        agent_prompt = f'{tools.html2plaintext(self.prompt)}{previous_topics}'
+
+        prompt_dict = {
+            'prompt': agent_prompt,
+            'llm': self.llm,
+            'temperature': self.temperature,
+            'tool_ids': self.compute_agent_tools(),
+            'built_in_tools': self._compute_built_in_tools(),
+        }
+
+        if self.max_tokens > 0:
+            prompt_dict['max_tokens'] = self.max_tokens
+        return prompt_dict
+
+    def _build_platform_settings(self) -> AgentPlatformSettingsRequestModel:
+        """Build proper AgentPlatformSettingsRequestModel object using new API types"""
+        return AgentPlatformSettingsRequestModel(
+            overrides={
+                'conversation_config_override': {
+                    'agent': {
+                        'language': True,
+                    }
+                },
+            },
+            call_limits={
+                'agent_concurrency_limit': self.agent_concurrency_limit,
+                'daily_limit': self.daily_limit,
+            }
         )
-        # except Exception as e:
-        #     logger.exception("Error update Elevenlabs agent: ", e)
 
     def compute_platform_settings(self):
         return {
@@ -290,125 +424,12 @@ class ElevenlabsAgent(models.Model):
             }
         return res
 
-    def compute_agent_conversation_config(self, skip_tools=False):
-        def get_model():
-            version = '2_5'
-            if self.language == 'en':
-                version = '2'
-            return f'eleven_flash_v{version}' if self.use_flash else f'eleven_turbo_v{version}'
-
-        dynamic_variable_placeholders = {}
-        for tool in self.tools:
-            dynamic_variable_placeholders.update(
-                dict([(param.name, f'test_{param.name}') for param in tool.params if
-                      param.value_type == 'dynamic_variable']))
-        previous_topics = '\nLast conversation summary {{previous_topics}}.'
-        config = {
-            'agent': {
-                'first_message': self.first_message,
-                'language': self.language,
-                'dynamic_variables': dynamic_variable_placeholders,
-                'prompt': {
-                    'max_tokens': self.max_tokens,
-                    'prompt': f'{tools.html2plaintext(self.prompt)}{previous_topics}',
-                    'llm': self.llm,
-                    'temperature': self.temperature,
-                    'knowledge_base': self._compute_knowledge_base_config(),
-                    'tools': self.compute_agent_tools() if self.tools and not skip_tools else []
-                }
-            },
-            "language_presets": self.compute_language_presets(),
-            'asr': {
-                'user_input_audio_format': self.user_input_audio_format
-            },
-            'conversation': {
-                'max_duration_seconds': self.max_duration_seconds
-            },
-            'tts': {
-                'agent_output_audio_format': self.output_audio_format,
-                'similarity_boost': self.similarity_boost,
-                'speed': self.speed,
-                'stability': self.stability,
-                'voice_id': self.voice.voice_id,
-                'model_id': get_model(),
-            }
-        }
-        logger.info('Tools: {}'.format(json.dumps(config, indent=2)))
-        return config
-
-    def _compute_knowledge_base_config(self):
-        """Compute knowledge base configuration - can be overridden by connect_elevenlabs_knowledge"""
-        return []
-
     def compute_agent_tools(self):
-        tools = []
+        agent_tools = []
         for tool in self.tools:
-            if not tool.is_enabled:
-                continue
-            dynamic_variables_placeholders = dict(
-                [(param.name, f'test_{param.name}') for param in tool.params if param.value_type == 'dynamic_variable'])
-            if tool.tool_type == 'client':
-                tool_config = {
-                    'type': tool.tool_type,
-                    'description': tool.description,
-                    'name': tool.name,
-                    'dynamic_variables': dynamic_variables_placeholders,
-                    'expects_response': tool.client_expects_response,
-                    'parameters': {
-                        "description": tool.body_params_description or '',
-                        'required': [param.name for param in tool.params if param.required],
-                        'properties': {
-                            param.name: {
-                                'type': param.data_type,
-                                'description': param.description if param.value_type == 'description' else '',
-                                "constant_value": param.constant_value if param.value_type == 'constant_value' else '',
-                                "dynamic_variable": param.dynamic_variable if param.value_type == 'dynamic_variable' else '',
-                            } for param in tool.params
-                        }
-                    },
-                    'response_timeout_secs': tool.response_timeout_secs,
-                }
-                tools.append(tool_config)
-            elif tool.tool_type == 'webhook':
-                tool_config = {
-                    'type': tool.tool_type,
-                    'description': tool.description,
-                    'name': tool.name,
-                    'dynamic_variables': dynamic_variables_placeholders,
-                    'response_timeout_secs': tool.response_timeout_secs,
-                }
-                tool_config.update({
-                    'api_schema': {
-                        'method': tool.method,
-                        'url': tool.get_tool_url(),
-                        'request_body_schema': {
-                            "description": tool.body_params_description,
-                            'required': [param.name for param in tool.params if param.required],
-                            'properties': {
-                                param.name: {
-                                    'type': param.data_type,
-                                    'description': param.description if param.value_type == 'description' else '',
-                                    "constant_value": param.constant_value if param.value_type == 'constant_value' else '',
-                                    "dynamic_variable": param.dynamic_variable if param.value_type == 'dynamic_variable' else '',
-                                } for param in tool.params
-                            }
-                        },
-                        'request_headers': {
-                            'x-elevenlabs-agent-token': self.env['connect.settings'].get_param(
-                                'elevenlabs_agent_token'),
-                        }
-                    },
-                    'response_timeout_secs': tool.response_timeout_secs,
-                })
-                tools.append(tool_config)
-            elif tool.tool_type == 'system':
-                tool_config = {
-                    'type': tool.tool_type,
-                    'description': tool.description,
-                    'name': tool.name,
-                }
-                tools.append(tool_config)
-        return tools
+            if tool.tool_id:
+                agent_tools.append(tool.tool_id)
+        return agent_tools
 
     def print_config(self):
         client = self.env['connect.settings'].get_elevenlabs_client()
