@@ -2,6 +2,7 @@
 import inspect
 import json
 import logging
+from multiprocessing import RLock
 import os
 import secrets
 
@@ -664,14 +665,15 @@ class Settings(models.Model):
     def compute_sip_uri(self, user):
         return "sip:{}".format(self.env.user.connect_user.uri)
 
-    def get_external_call_route(self, number, callerId, status_url):
+    def get_external_call_route(self, number, callerId, status_url,
+            record='do-not-record', record_status_url=None):
         call_duration_limit = int(self.sudo().get_param('call_duration_limit'))
         twiml = """
         <Response>
-            <Dial callerId="{}" timeLimit="{}"><Number statusCallback='{}' statusCallbackEvent='initiated answered completed'>{}</Number></Dial>
+            <Dial record="{}" recordingStatusCallback="{}" callerId="{}" timeLimit="{}"><Number statusCallback='{}' statusCallbackEvent='initiated answered completed'>{}</Number></Dial>
         </Response>
         """.format(
-            callerId, call_duration_limit, status_url, number
+            record, record_status_url, callerId, call_duration_limit, status_url, number
         )
         return twiml
 
@@ -716,6 +718,8 @@ class Settings(models.Model):
         api_url = self.sudo().get_param("api_url")
         edge = self.twilio_edge or self.env['connect.settings'].get_param('twilio_edge')
         status_url = urljoin(api_url, "twilio/webhook/callstatus#e={}".format(edge))
+        record = 'record-from-answer-dual' if self.env.user.connect_user.record_calls else 'do-not-record'
+        record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus#e={}".format(edge))
         # Resolve callerId
         if exten:
             # Internal call to an extension.
@@ -731,14 +735,12 @@ class Settings(models.Model):
                     raise ValidationError("You must configure a WhatsApp sender!")
                 callerId = f"whatsapp:{caller_number}"
                 # Build WhatsApp Dial
-                call_duration_limit = int(self.sudo().get_param('call_duration_limit'))
-                record_attrs = 'record=""' if pbx_user.record_calls else ""
                 twiml = """<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Dial callerId="{}">
+    <Dial callerId="{}" record="{}" recordingStatusCallback="{}">
         <WhatsApp statusCallback="{}" statusCallbackEvent="ringing answered completed">{}</WhatsApp>
     </Dial>
-</Response>""".format(callerId, status_url, number)
+</Response>""".format(callerId, record, record_status_url, status_url, number)
             else:
                 # Regular phone call
                 default_number = self.env["connect.outgoing_callerid"].search(
@@ -748,19 +750,14 @@ class Settings(models.Model):
                     callerId = user.connect_user.outgoing_callerid.number
                 else:
                     callerId = default_number.number
-                twiml = self.get_external_call_route(number, callerId, status_url)
-        record = self.env.user.connect_user.record_calls
-        record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus#e={}".format(edge))
+                twiml = self.get_external_call_route(
+                    number, callerId, status_url, record=record, record_status_url=record_status_url)
         debug(self, 'Originate destination TwiML: {}'.format(twiml))
         channel = client.calls.create(
             twiml=twiml,
             to=to,
             from_=callerId,
             status_callback=status_url,
-            record=record,
-            recording_channels="dual",
-            recording_status_callback=record_status_url,
-            recording_status_callback_event=["completed"],
             status_callback_event=["initiated", "answered", "completed"],
         )
         self.env["connect.channel"].sudo().create(
