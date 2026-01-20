@@ -18,13 +18,23 @@ _logger = logging.getLogger(__name__)
 class IrModuleModule(models.Model):
     _inherit = "ir.module.module"
 
-    oduist_license_status = fields.Html(
+    oduist_license_status = fields.Char(
         string="License Status",
         compute="_compute_oduist_license_status",
     )
 
     oduist_module_purchased = fields.Boolean(
         string="Module Purchased",
+        compute="_compute_oduist_license_status",
+    )
+
+    oduist_module_price = fields.Char(
+        string="Module Price",
+        readonly=True,
+    )
+
+    oduist_module_show_price = fields.Char(
+        string="Price",
         compute="_compute_oduist_license_status",
     )
 
@@ -37,15 +47,19 @@ class IrModuleModule(models.Model):
                 order_id = status.get("order_id", "")
                 rec.oduist_license_status = f"Purchase Order: {order_id}"
                 rec.oduist_module_purchased = True
+                rec.oduist_module_show_price = ""
             elif status["status"] == "trial_active":
                 rec.oduist_license_status = f"Trial: {status['days_left']} days left"
                 rec.oduist_module_purchased = False
+                rec.oduist_module_show_price = rec.oduist_module_price or ""
             elif status["status"] == "trial_expired":
-                rec.oduist_license_status = "<font color='red'>Trial expired</font>"
+                rec.oduist_license_status = "Trial Expired"
                 rec.oduist_module_purchased = False
+                rec.oduist_module_show_price = rec.oduist_module_price or ""
             elif status["status"] == "demo":
                 rec.oduist_license_status = "Demo"
                 rec.oduist_module_purchased = True
+                rec.oduist_module_show_price = ""
 
     def buy_oduist_license(self):
         """Buy license for this specific module."""

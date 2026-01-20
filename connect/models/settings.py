@@ -169,18 +169,18 @@ class Settings(models.Model):
         help="Email to contact."
     )
     subscribe_to_security_alerts = fields.Boolean(
-        string="Critical Security Alerts",
+        string="Subscribe to Critical Security Alerts",
         help="Receive immediate notifications regarding critical security vulnerabilities "
              "or urgent issues with your installed Connect modules."
     )
     subscribe_to_onboarding = fields.Boolean(
-        string="Personalized Onboarding Support",
+        string="Subscribe to Personalized Onboarding Support",
         help="Receive step-by-step guidance for system setup. Usage data is analyzed "
             "to provide relevant tips and streamline your configuration process "
             "based on active features."
     )
     subscribe_to_updates = fields.Boolean(
-            string="Product News & AI Insights",
+            string="Subscribe to Product News & AI Tips and Tricks",
             help="Stay updated on new features, product releases, and the latest AI "
                  "advancements within the Odoo ecosystem."
         )

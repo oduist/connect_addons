@@ -31,13 +31,14 @@ def rpc(url: str, request_data: dict) -> dict:
         "method": "call",
         "params": request_data,
     }
-    res = None
     try:
         res = requests.post(url, json=payload, timeout=30)
         res.raise_for_status()
-        return res.json().get("result")
+        return res.json().get("result", {})
     except requests.exceptions.RequestException as e:
-        raise ValidationError(f"License check request failed: {str(e)}")
+        return {"error": f"Request failed: {str(e)}"}
+    except Exception as e:
+        return {"error": f"Unexpected error: {str(e)}"}
 
 class ConnectLicense(models.AbstractModel):
     """
@@ -242,14 +243,12 @@ class ConnectLicense(models.AbstractModel):
                 request_data["subscribe_email"] = subscribe_email
 
         license_check_url = urljoin(base_url, "/license/v2/check")
-        response = {}
-        try:
-            response = rpc(license_check_url, request_data)
-
-        except requests.exceptions.RequestException as e:
-            _logger.debug('License check request failed: %s', str(e))
+        response = rpc(license_check_url, request_data)
+        if response.get("error"):
+            error_msg = response.get("error")
+            _logger.debug('License check request failed: %s', error_msg)
             if raise_exc:
-                raise ValidationError(f"License check request failed: {str(e)}")
+                raise ValidationError(error_msg)
 
         if not response and raise_exc:
             raise ValidationError("License check failed: empty response")
@@ -277,6 +276,8 @@ class ConnectLicense(models.AbstractModel):
                         vals = {}
                         if module_info.get("latest_version"):
                             vals["latest_version"] = module_info.get("latest_version")
+                        if module_info.get("price"):
+                            vals["oduist_module_price"] = module_info.get("price")
                         if vals:
                             module.write(vals)
         else:
@@ -308,17 +309,35 @@ class ConnectLicense(models.AbstractModel):
         if not instance_uid:
             raise ValidationError("Instance UID not configured!")
 
+        # Get main company (first by ID)
+        main_company = self.env["res.company"].search([], order="id", limit=1)
+        country_code = main_company.country_id.code if main_company and main_company.country_id else None
+
         request_data = {
             "instance_hash": self._hash_instance_uid(instance_uid),
             "modules": module_list,
         }
 
-        license_buy_url = urljoin(base_url, "/license/v2/buy")
+        if main_company:
+            if main_company.vat:
+                request_data["vat_number"] = main_company.vat
+            if main_company.name:
+                request_data["vat_company_name"] = main_company.name
+            if main_company.street:
+                request_data["vat_street"] = main_company.street
+            if main_company.city:
+                request_data["vat_city"] = main_company.city
+            if main_company.state_id and main_company.state_id.code:
+                request_data["vat_state"] = main_company.state_id.code
+            if country_code:
+                request_data["vat_country"] = country_code
+            if main_company.zip:
+                request_data["vat_postcode"] = main_company.zip
 
-        try:
-            response = rpc(license_buy_url, request_data)
-        except requests.exceptions.RequestException as e:
-            raise ValidationError(f"License buy request failed: {str(e)}")
+        license_buy_url = urljoin(base_url, "/license/v2/buy")
+        response = rpc(license_buy_url, request_data)
+        if response.get("error"):
+            raise ValidationError(response.get("error"))
 
         if response and response.get("payment_link"):
             _logger.info(f"License buy result: {response}")
