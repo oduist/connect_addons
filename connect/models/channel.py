@@ -17,9 +17,9 @@ class Channel(models.Model):
     _order = 'id desc'
 
     call = fields.Many2one('connect.call', ondelete='cascade')
-    sid = fields.Char('SID', readonly=True)
+    sid = fields.Char('SID', readonly=True, index=True)
     parent_channel = fields.Many2one('connect.channel', ondelete='cascade', tracking=True)
-    parent_sid = fields.Char('Parent SID', tracking=True, readonly=True)
+    parent_sid = fields.Char('Parent SID', tracking=True, readonly=True, index=True)
     partner = fields.Many2one('res.partner', ondelete='set null', tracking=True)
     called = fields.Char(tracking=True)
     to = fields.Char(tracking=True)
@@ -119,10 +119,10 @@ class Channel(models.Model):
             if not channel.parent_channel:
                 # Check if channel has parent_sid without channel
                 if channel.parent_sid:
-                    parent_channel = self.search([('sid', '=', channel.parent_sid)])
+                    parent_channel = self.search([('sid', '=', channel.parent_sid)], limit=1)
                     data['parent_channel'] = parent_channel.id
                 elif params.get('ParentCallSid'):
-                    parent_channel = self.search([('sid', '=', params.get('ParentCallSid'))])
+                    parent_channel = self.search([('sid', '=', params.get('ParentCallSid'))], limit=1)
                     data['parent_channel'] = parent_channel.id
                     data['parent_sid'] = parent_channel.parent_channel.sid
             channel.write(data)
@@ -141,10 +141,10 @@ class Channel(models.Model):
             }
             # Check if channel has parent_sid without channel
             if channel.parent_sid:
-                parent_channel = self.search([('sid', '=', channel.parent_sid)])
+                parent_channel = self.search([('sid', '=', channel.parent_sid)], limit=1)
                 data['parent_channel'] = parent_channel.id
             elif params.get('ParentCallSid'):
-                parent_channel = self.search([('sid', '=', params.get('ParentCallSid'))])
+                parent_channel = self.search([('sid', '=', params.get('ParentCallSid'))], limit=1)
                 data['parent_channel'] = parent_channel.id
                 data['parent_sid'] = parent_channel.parent_channel.sid
             # Find caller user
