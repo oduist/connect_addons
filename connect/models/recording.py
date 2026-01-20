@@ -53,35 +53,40 @@ class Recording(models.Model):
 
     def transcribe_recording(self, openai_api_key, summary_prompt):
         result = {}
+        temp_file_path = None
         try:
             client = self.env['connect.settings'].get_openai_client()
             response = requests.get(self.media_url, stream=True)
             response.raise_for_status()
             with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
-                # Write the content from the URL to the temporary file
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         temp_file.write(chunk)
                 temp_file_path = temp_file.name
+            file_size = os.path.getsize(temp_file_path)
+            if file_size > 26214400:
+                error_msg = 'File exceeds size limit (26MB). Please use the Elevenlabs module for larger files.'
+                logger.error(error_msg)
+                result['transcription_error'] = error_msg
+                return
             with open(temp_file_path, 'rb') as audio_file:
                 transcript = client.audio.transcriptions.create(
                     model="whisper-1", file=audio_file,
                     response_format='verbose_json', timestamp_granularities=["segment"])
-                # result['minutes'] = round(transcript.duration / 60.0, 2)
-            # Create segments
             segments = ''
             for s in transcript.segments:
                 seconds = int(s.start)
                 ts = f"{int(seconds // 3600):02d}:{int((seconds % 3600) // 60):02d}:{int(seconds % 60):02d}"
                 segments += '{} {}\n'.format(ts, s.text)
             result['transcript'] = segments
-            # Make a summary
             result.update(self.make_summary(client, summary_prompt, result['transcript']))
             result['transcription_error'] = False
         except Exception as e:
             logger.exception(f'Transcribe error: {e}')
             result['transcription_error'] = str(e)
         finally:
+            if temp_file_path and os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
             self.write(result)
 
     def make_summary(self, client, summary_prompt, transcript):

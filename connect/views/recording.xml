@@ -68,8 +68,7 @@
                         </group>
                     </group>
                     </page>
-                    <page name="transcript" string="Transcript"
-                          attrs="{'invisible': [('transcript', '=', False)]}">
+                    <page name="transcript" string="Transcript">
                         <group>
                             <group>
                                 <field name="transcription_error"
