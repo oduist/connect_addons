@@ -327,8 +327,8 @@ class ConnectLicense(models.AbstractModel):
                 request_data["vat_street"] = main_company.street
             if main_company.city:
                 request_data["vat_city"] = main_company.city
-            if main_company.state_id and main_company.state_id.code:
-                request_data["vat_state"] = main_company.state_id.code
+            if main_company.state_id and main_company.state_id.name:
+                request_data["vat_state"] = main_company.state_id.name
             if country_code:
                 request_data["vat_country"] = country_code
             if main_company.zip:
