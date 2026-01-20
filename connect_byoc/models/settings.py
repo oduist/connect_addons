@@ -15,7 +15,8 @@ class Settings(models.Model):
         super().sync()
         self.env["connect.byoc"].sync()
 
-    def get_external_call_route(self, number, callerId, status_url):
+    def get_external_call_route(self, number, callerId, status_url,
+            record='do-not-record', record_status_url=None):
         # External call to PSTN. Find outgoing rule.
         rule = self.env["connect.outgoing_rule"].find_rule(number)
         if not rule:
@@ -23,9 +24,11 @@ class Settings(models.Model):
         callerId = self.env['connect.domain'].get_byoc_caller_id_number(rule.byoc, number, callerId)
         twiml = """
         <Response>
-            <Dial callerId="{}"><Number {} statusCallback='{}' statusCallbackEvent='initiated answered completed'>{}</Number></Dial>
+            <Dial record="{}" recordingStatusCallback="{}" callerId="{}"><Number {} statusCallback='{}' statusCallbackEvent='initiated answered completed'>{}</Number></Dial>
         </Response>
         """.format(
+            record,
+            record_status_url,
             callerId,
             'byoc="{}"'.format(rule.byoc.sid) if rule.byoc else "",
             status_url,
