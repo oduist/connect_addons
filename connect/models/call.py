@@ -43,8 +43,8 @@ class Call(models.Model):
         recording_widget = fields.Char(compute='_get_recording_data')
     recording_icon = fields.Html(compute='_get_recording_data', string='R')
     summary = fields.Html()
-    called = fields.Char(readonly=True)
-    caller = fields.Char(readonly=True)
+    called = fields.Char(readonly=True, index=True)
+    caller = fields.Char(readonly=True, index=True)
     parent_call = fields.Many2one('connect.call', ondelete='cascade', readonly=True)
     partner = fields.Many2one('res.partner', ondelete='set null')
     partner_img = fields.Binary(related='partner.image_1920', string='Partner Image')
@@ -53,8 +53,8 @@ class Call(models.Model):
         ('phone', 'Phone'),
         ('whatsapp', 'WhatsApp')
     ], default='phone', index=True)
-    status = fields.Char(readonly=True)
-    duration = fields.Integer(string='Seconds', readonly=True)
+    status = fields.Char(readonly=True, index=True)
+    duration = fields.Integer(string='Seconds', readonly=True, index=True)
     duration_minutes = fields.Float(string='Minutes', compute='_get_duration_human', store=True)
     duration_human = fields.Char(compute='_get_duration_human', string='Duration', store=True)
     # PBX users are Connect SIP or Client users.
@@ -86,8 +86,8 @@ class Call(models.Model):
     price = fields.Float(string='Call Price', readonly=True, digits=(10, 3))
     price_unit = fields.Char(string='Price Unit', readonly=True, help='The currency unit for call price (e.g., USD)')
     price_currency = fields.Char(string='Price Currency', readonly=True, default='USD')
-    call_sid = fields.Char(string='Twilio Call SID', readonly=True, help='Twilio CallSid for fetching price information')
-    is_price_fetched = fields.Boolean(string='Price Fetched', default=False, readonly=True, help='Indicates if call price has been fetched from Twilio API')
+    call_sid = fields.Char(string='Twilio Call SID', readonly=True, index=True, help='Twilio CallSid for fetching price information')
+    is_price_fetched = fields.Boolean(string='Price Fetched', default=False, readonly=True, index=True, help='Indicates if call price has been fetched from Twilio API')
 
     def _get_name(self):
         for rec in self:

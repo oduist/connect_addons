@@ -361,7 +361,7 @@ class User(models.Model):
             dial_client_kwargs['action'] = dial_action_url
         if self.record_calls:
             dial_client_kwargs.update({
-                'record': 'record-from-answer',
+                'record': 'record-from-answer-dual',
                 'recordingStatusCallback': record_status_url
             })
         dial_client = Dial(**dial_client_kwargs)
