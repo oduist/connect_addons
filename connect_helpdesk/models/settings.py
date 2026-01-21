@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*
 
 from odoo import fields, models
-from odoo.addons.connect.models.settings import CONNECT_MODULES
+from odoo.addons.connect.models.license import ODUIST_MODULES
 
-CONNECT_MODULES.append('connect_helpdesk')
+ODUIST_MODULES.append('connect_helpdesk')
 
 
 class HelpdeskSettings(models.Model):

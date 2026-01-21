@@ -21,7 +21,7 @@ class Call(models.Model):
             if not user.connect_user:
                 raise ValidationError('User does not have a SIP username defined!')
             # check license
-            if not self.env['connect.license'].check_license('connect_website'):
+            if not self.env['oduist.license'].check_license('connect_website'):
                 raise ValidationError('Connect Website License has expired! Please buy a license.')
             to = 'client:{}?autoAnswer=yes&Partner={}&From={}'.format(
                 user.connect_user.uri, partner.id, number)

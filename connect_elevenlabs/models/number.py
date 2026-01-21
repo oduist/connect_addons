@@ -25,7 +25,7 @@ class ElevenlabsNumber(models.Model):
 
     @api.model
     def route_call(self, request):
-        if not self.env['connect.license'].check_license('connect_elevenlabs', silent=True):
+        if not self.env['oduist.license'].check_license('connect_elevenlabs', silent=True):
             return super().route_call(request)
         res = super().route_call(request)
         number = self.search([('phone_number', '=', request['Called'])])

@@ -40,6 +40,6 @@ def post_init_hook(*args):
         _logger.error('Error in post_init_hook: %s', str(e))
 
     try:
-        env['connect.license'].sudo().update_license_status(raise_exc=False)
+        env['oduist.license'].sudo().update_license_status(raise_exc=False)
     except Exception:
         pass

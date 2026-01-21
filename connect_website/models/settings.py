@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import logging
-from odoo.addons.connect.models.settings import CONNECT_MODULES
+from odoo.addons.connect.models.license import ODUIST_MODULES
 from odoo import fields, models
 
-CONNECT_MODULES.append('connect_website')
+ODUIST_MODULES.append('connect_website')
 
 logger = logging.getLogger(__name__)
 

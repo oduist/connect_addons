@@ -160,7 +160,7 @@ class Number(models.Model):
 
     def render(self, request={}, params={}):
         self.ensure_one()
-        if not self.env["connect.license"].check_license('connect'):
+        if not self.env["oduist.license"].check_license('connect'):
             return "<Response><Pause length='1'/><Say>This is Oduist Connect. Your trial period is over. Please buy a license to continue.</Say><Pause length='1'/></Response>"
         if self.destination == 'twiml' and self.twiml:
             return self.twiml.render(request)

@@ -15,7 +15,7 @@ class HelpdeskCall(models.Model):
 
     @api.model
     def on_call_status(self, params):
-        if not self.env["connect.license"].check_license('connect_helpdesk'):
+        if not self.env["oduist.license"].check_license('connect_helpdesk'):
             return super().on_call_status(params)
         call_id = super().on_call_status(params)
         if not call_id:
@@ -43,7 +43,7 @@ class HelpdeskCall(models.Model):
 
     def create_ticket_button(self):
         self.ensure_one()
-        if not self.env["connect.license"].check_license('connect_helpdesk'):
+        if not self.env["oduist.license"].check_license('connect_helpdesk'):
             raise ValidationError('Connect Helpdesk license is not activated!')
         name_number = self.caller if self.direction == 'incoming' else self.called
         context = {

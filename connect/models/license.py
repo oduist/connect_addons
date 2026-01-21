@@ -8,20 +8,20 @@ Modification is prohibited under Oduist Proprietary License.
 See LICENSE and COPYRIGHT files for full terms.
 """
 
-import hashlib
 import logging
+import uuid
 from datetime import datetime, timedelta
-from functools import wraps
 from urllib.parse import urljoin
 
 import jwt
 import requests
-from odoo import _, api, models, release
-from odoo.exceptions import UserError, ValidationError
+from odoo import api, fields, models, release
+from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
 PUBLIC_KEY_PARAM = "oduist_license.public_key"
+ODUIST_MODULES = []
 
 
 def rpc(url: str, request_data: dict) -> dict:
@@ -40,44 +40,150 @@ def rpc(url: str, request_data: dict) -> dict:
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
 
-class ConnectLicense(models.AbstractModel):
+
+class OduistLicense(models.Model):
     """
-    License validation and management for Connect OPL-1 modules.
-    Handles JWT token validation and 30-day trial period.
+    License configuration and validation for Oduist modules.
+    Single-record model storing license data and subscription preferences.
     """
 
-    _name = "connect.license"
-    _description = "Connect License Manager"
+    _name = "oduist.license"
+    _description = "License Configuration"
+
+    instance_uid = fields.Char(
+        string="Instance UID",
+        help="Unique identifier for this Odoo instance",
+        readonly=True,
+    )
+    license_token = fields.Text(
+        string="License Token",
+        groups="base.group_erp_manager",
+        help="JWT license token from oduist.com. Leave empty to use 30-day trial.",
+    )
+    registration_number = fields.Char(
+        string="Registration Number",
+        help="Registration number from license server",
+    )
+    subscribe_email = fields.Char(
+        help="Email for subscription notifications"
+    )
+    subscribe_to_security_alerts = fields.Boolean(
+        string="Subscribe to Critical Security Alerts",
+        help="Receive immediate notifications regarding critical security vulnerabilities "
+        "or urgent issues with your installed modules."
+    )
+    subscribe_to_onboarding = fields.Boolean(
+        string="Subscribe to Personalized Onboarding Support",
+        help="Receive step-by-step guidance for system setup. Usage data is analyzed "
+        "to provide relevant tips and streamline your configuration process "
+        "based on active features."
+    )
+    subscribe_to_updates = fields.Boolean(
+        string="Subscribe to Product News & AI Tips and Tricks",
+        help="Stay updated on new features, product releases, and the latest AI "
+        "advancements within the Odoo ecosystem."
+    )
+    name = fields.Char(compute="_get_name", store=False)
+    oduist_modules = fields.Many2many(
+        "ir.module.module",
+        string="Oduist Modules",
+        compute="_compute_oduist_modules",
+    )
+    all_modules_purchased = fields.Boolean(
+        compute="_compute_oduist_modules",
+    )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Auto-generate instance_uid on first record creation"""
+        for vals in vals_list:
+            if not vals.get("instance_uid"):
+                vals["instance_uid"] = str(uuid.uuid4())
+        return super().create(vals_list)
+
+    def write(self, vals):
+        """Update license status when agreement fields change"""
+        res = super().write(vals)
+        agreement_fields = {
+            "subscribe_to_security_alerts",
+            "subscribe_to_onboarding",
+            "subscribe_to_updates",
+            "subscribe_email",
+        }
+        if any(field in vals for field in agreement_fields):
+            self.sudo().update_license_status(raise_exc=False)
+        return res
+
+    def _get_name(self):
+        """Compute display name"""
+        for rec in self:
+            rec.name = "License Configuration"
+
+    def _compute_oduist_modules(self):
+        """Compute oduist modules and check if all are purchased"""
+        for rec in self:
+            modules = (
+                self.env["ir.module.module"]
+                .sudo()
+                .search([("name", "in", ODUIST_MODULES), ("state", "=", "installed")])
+            )
+            rec.oduist_modules = modules
+            rec.all_modules_purchased = all(
+                m.oduist_module_purchased for m in modules
+            )
+
+    @api.model
+    def get_param(self, param, default=False):
+        """Get parameter value from single record. Creates record if not exists."""
+        data = self.search([])
+        if not data:
+            data = self.sudo().with_context(no_constrains=True).create({})
+        else:
+            data = data[0]
+        if not data:
+            return default
+        value = getattr(data, param, None)
+        return value if value is not None else default
+
+    @api.model
+    def set_param(self, param, value):
+        """Set parameter value in single record. Creates record if not exists."""
+        data = self.search([])
+        if not data:
+            data = self.sudo().with_context(no_constrains=True).create({param: value})
+        else:
+            data[0].write({param: value})
+
+    @api.model
+    def open_license_form(self):
+        """Open license configuration form."""
+        rec = self.search([])
+        if not rec:
+            rec = self.sudo().with_context(no_constrains=True).create({})
+        else:
+            rec = rec[0]
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": "oduist.license",
+            "res_id": rec.id,
+            "name": "License Configuration",
+            "views": [[self.env.ref(self._module + ".oduist_license_form").id, "form"]],
+            "target": "current",
+        }
 
     @api.model
     def _get_license_token(self):
-        """Get license token from settings."""
-        return (
-            self.env["connect.settings"].sudo().get_param("license_token", default="")
-        )
-
-    @api.model
-    def _get_database_uuid(self):
-        """Get database UUID from system parameters."""
-        return (
-            self.env["ir.config_parameter"]
-            .sudo()
-            .get_param("connect.instance_uid", default="")
-        )
+        """Get license token from this record"""
+        return self.sudo().get_param("license_token", default="")
 
     @api.model
     def _get_public_key(self):
-        """Get public key from system parameters."""
+        """Get public key from system parameters"""
         return (
             self.env["ir.config_parameter"]
             .sudo()
             .get_param(PUBLIC_KEY_PARAM, default="")
         )
-
-    @api.model
-    def _hash_instance_uid(self, instance_uid: str) -> str:
-        """Generate SHA-256 hash of instance_uid."""
-        return hashlib.sha256(instance_uid.encode()).hexdigest()
 
     @api.model
     def validate_token(self, token):
@@ -104,13 +210,12 @@ class ConnectLicense(models.AbstractModel):
                 options={"verify_signature": True},
             )
 
-            db_uuid = self._get_database_uuid()
-            expected_hash = self._hash_instance_uid(db_uuid)
-            if payload.get("instance_hash") != expected_hash:
+            instance_uid = self.sudo().get_param("instance_uid")
+            if payload.get("instance_uid") != instance_uid:
                 _logger.warning(
-                    "Token instance hash mismatch. Expected: %s, Got: %s",
-                    expected_hash,
-                    payload.get("instance_hash"),
+                    "Token instance UID mismatch. Expected: %s, Got: %s",
+                    instance_uid,
+                    payload.get("instance_uid"),
                 )
                 return None
 
@@ -183,6 +288,55 @@ class ConnectLicense(models.AbstractModel):
             }
 
     @api.model
+    def get_oduist_license_banner(self):
+        """
+        Get license banner info for installed Oduist modules.
+        Priority: trial_expired > trial_active > demo
+        Returns: dict with module_name, status, message, type
+        """
+        installed_oduist_modules = (
+            self.env["ir.module.module"]
+            .sudo()
+            .search([("name", "in", ODUIST_MODULES), ("state", "=", "installed")])
+            .mapped("name")
+        )
+        if not installed_oduist_modules:
+            return None
+        trial_expired_module = None
+        trial_active_module = None
+        demo_module = None
+        for module_name in installed_oduist_modules:
+            status = self.get_license_status(module_name)
+            if status["status"] == "trial_expired" and not trial_expired_module:
+                trial_expired_module = (module_name, status)
+            elif status["status"] == "trial_active" and not trial_active_module:
+                trial_active_module = (module_name, status)
+            elif status["status"] == "demo" and not demo_module:
+                demo_module = (module_name, status)
+        selected_module = None
+        if trial_expired_module:
+            selected_module = trial_expired_module
+            message_type = "danger"
+            message = f"Oduist {selected_module[0].replace('_', ' ').title()}: Buy a license to continue"
+        elif trial_active_module:
+            selected_module = trial_active_module
+            days_left = selected_module[1].get("days_left", 0)
+            message_type = "warning" if days_left <= 7 else "info"
+            message = f"Oduist {selected_module[0].replace('_', ' ').title()} Trial: {days_left} days remaining"
+        elif demo_module:
+            selected_module = demo_module
+            message_type = "warning"
+            message = f"Oduist {selected_module[0].replace('_', ' ').title()}: Demo License"
+        if not selected_module:
+            return None
+        return {
+            "module_name": selected_module[0],
+            "status": selected_module[1]["status"],
+            "message": message,
+            "type": message_type,
+        }
+
+    @api.model
     def check_license(self, module_name, silent=True):
         status = self.sudo().get_license_status(module_name)
         is_valid = status["status"] != "trial_expired"
@@ -198,7 +352,7 @@ class ConnectLicense(models.AbstractModel):
     def update_license_status(self, raise_exc=True):
         """
         Check license status with license server.
-        Updates license_token, latest_version and description for modules.
+        Updates license_token, registration_number and subscription data.
         """
         base_url = (
             self.env["ir.config_parameter"].sudo().get_param("oduist_license_server")
@@ -206,25 +360,22 @@ class ConnectLicense(models.AbstractModel):
         if not base_url:
             raise ValidationError("License server URL not configured!")
 
-        instance_uid = (
-            self.env["ir.config_parameter"].sudo().get_param("connect.instance_uid")
-        )
+        instance_uid = self.sudo().get_param("instance_uid")
         if not instance_uid:
             raise ValidationError("Instance UID not configured!")
-
-        Settings = self.env["connect.settings"].sudo()
+        License = self.env["oduist.license"].sudo()
         ICP = self.env["ir.config_parameter"].sudo()
 
-        subscribe_to_security_alerts = Settings.get_param("subscribe_to_security_alerts", default=False)
-        subscribe_to_onboarding = Settings.get_param("subscribe_to_onboarding", default=False)
-        subscribe_to_updates = Settings.get_param("subscribe_to_updates", default=False)
+        subscribe_to_security_alerts = License.get_param("subscribe_to_security_alerts", default=False)
+        subscribe_to_onboarding = License.get_param("subscribe_to_onboarding", default=False)
+        subscribe_to_updates = License.get_param("subscribe_to_updates", default=False)
 
         # Get main company (first by ID)
         main_company = self.env["res.company"].search([], order="id", limit=1)
         country_code = main_company.country_id.code if main_company and main_company.country_id else None
 
         request_data = {
-            "instance_hash": self._hash_instance_uid(instance_uid),
+            "instance_uid": instance_uid,
             "odoo_version": release.version_info[0],
         }
 
@@ -238,7 +389,7 @@ class ConnectLicense(models.AbstractModel):
         if subscribe_to_updates:
             request_data["subscribe_to_updates"] = True
         if subscribe_to_security_alerts or subscribe_to_onboarding or subscribe_to_updates:
-            subscribe_email = Settings.get_param("subscribe_email", default="")
+            subscribe_email = License.get_param("subscribe_email", default="")
             if subscribe_email:
                 request_data["subscribe_email"] = subscribe_email
 
@@ -253,17 +404,16 @@ class ConnectLicense(models.AbstractModel):
         if not response and raise_exc:
             raise ValidationError("License check failed: empty response")
         if response.get("token"):
-            Settings.set_param("license_token", response.get("token"))
+            License.set_param("license_token", response.get("token"))
             ICP.set_param(PUBLIC_KEY_PARAM, response.get("public_key"))
             token_data = self.validate_token(response.get("token"))
             if token_data and token_data.get("registration_number"):
-                ICP.set_param(
-                    "connect.registration_number", token_data.get("registration_number")
+                License.set_param(
+                    "registration_number", token_data.get("registration_number")
                 )
-            from odoo.addons.connect.models.settings import CONNECT_MODULES
             modules_data = response.get("modules", {})
             for module_name, module_info in modules_data.items():
-                if module_name in CONNECT_MODULES:
+                if module_name in ODUIST_MODULES:
                     module = (
                         self.env["ir.module.module"]
                         .sudo()
@@ -286,6 +436,19 @@ class ConnectLicense(models.AbstractModel):
             if raise_exc:
                 raise ValidationError(error_msg)
 
+    def buy_all_licenses(self):
+        """Initiate purchase process for all Oduist modules (excluding already purchased)."""
+        token = self.sudo().get_param("license_token")
+        if not token:
+            self.update_license_status()
+            token = self.sudo().get_param("license_token")
+        token_data = self.validate_token(token) if token else None
+        purchased_modules = token_data.get("purchased_modules", {}) if token_data else {}
+        modules_to_buy = [m for m in ODUIST_MODULES if m not in purchased_modules]
+        if not modules_to_buy:
+            raise ValidationError("All modules are already purchased!")
+        return self.buy_licenses(modules_to_buy)
+
     @api.model
     def buy_licenses(self, module_list):
         """
@@ -303,18 +466,15 @@ class ConnectLicense(models.AbstractModel):
         if not base_url:
             raise ValidationError("License server URL not configured!")
 
-        instance_uid = (
-            self.env["ir.config_parameter"].sudo().get_param("connect.instance_uid")
-        )
+        instance_uid = self.sudo().get_param("instance_uid")
         if not instance_uid:
             raise ValidationError("Instance UID not configured!")
-
         # Get main company (first by ID)
         main_company = self.env["res.company"].search([], order="id", limit=1)
         country_code = main_company.country_id.code if main_company and main_company.country_id else None
 
         request_data = {
-            "instance_hash": self._hash_instance_uid(instance_uid),
+            "instance_uid": instance_uid,
             "modules": module_list,
         }
 

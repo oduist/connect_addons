@@ -1,17 +1,8 @@
 # -*- coding: utf-8 -*-
-"""
-ODUIST PROPRIETARY LICENSE
-Copyright (c) 2025 Oduist
-
-This file contains license validation logic.
-Modification is prohibited under Oduist Proprietary License.
-See LICENSE and COPYRIGHT files for full terms.
-"""
 
 import inspect
 import json
 import logging
-from multiprocessing import RLock
 import os
 import random
 import re
@@ -93,7 +84,9 @@ def generate_password():
     return "".join(characters)
 
 
-CONNECT_MODULES = ["connect"]
+from odoo.addons.connect.models.license import ODUIST_MODULES
+
+ODUIST_MODULES.append('connect')
 
 
 class Settings(models.Model):
@@ -128,12 +121,6 @@ class Settings(models.Model):
     twilio_balance = fields.Char(readonly=True)
     openai_api_key = fields.Char(groups="base.group_erp_manager")
     display_openai_api_key = fields.Char()
-    # License token for license validation
-    license_token = fields.Text(
-        string="License Token",
-        groups="base.group_erp_manager",
-        help="JWT license token from oduist.com. Leave empty to use 30-day trial.",
-    )
     number_search_operation = fields.Selection(
         [("=", "Equal"), ("like", "Like")], default="=", required=True
     )
@@ -155,62 +142,20 @@ class Settings(models.Model):
         help="Enable fetching call prices from Twilio API after call completion. May add delay to call processing.",
     )
     ############################################################
-    instance_uid = fields.Char("Instance UID", compute="_get_instance_data")
     api_url = fields.Char("API URL", compute="_get_instance_data")
     api_fallback_url = fields.Char("API Fallback URL")
     twilio_verify_requests = fields.Boolean(
         default=True, string="Verify Twilio Requests"
     )
-    # Registration fields
-    registration_number = fields.Char(compute="_get_instance_data")
     is_registered = (
         fields.Boolean()
     )  # TODO: Remove after upgrades, not needed any more.
-    subscribe_email = fields.Char(
-        help="Email to contact."
-    )
-    subscribe_to_security_alerts = fields.Boolean(
-        string="Subscribe to Critical Security Alerts",
-        help="Receive immediate notifications regarding critical security vulnerabilities "
-             "or urgent issues with your installed Connect modules."
-    )
-    subscribe_to_onboarding = fields.Boolean(
-        string="Subscribe to Personalized Onboarding Support",
-        help="Receive step-by-step guidance for system setup. Usage data is analyzed "
-            "to provide relevant tips and streamline your configuration process "
-            "based on active features."
-    )
-    subscribe_to_updates = fields.Boolean(
-            string="Subscribe to Product News & AI Tips and Tricks",
-            help="Stay updated on new features, product releases, and the latest AI "
-                 "advancements within the Odoo ecosystem."
-        )
     module_version = fields.Char(compute="_get_instance_data")
     odoo_version = fields.Char(compute="_get_instance_data")
 
     call_duration_limit = fields.Integer(
         compute="_get_instance_data", string="Call Duration Limit (seconds)"
     )
-    connect_modules = fields.Many2many(
-        "ir.module.module",
-        string="Connect Modules",
-        compute="_compute_connect_modules",
-    )
-    all_modules_purchased = fields.Boolean(
-        compute="_compute_connect_modules",
-    )
-
-    def _compute_connect_modules(self):
-        for rec in self:
-            modules = (
-                self.env["ir.module.module"]
-                .sudo()
-                .search([("name", "in", CONNECT_MODULES), ("state", "=", "installed")])
-            )
-            rec.connect_modules = modules
-            rec.all_modules_purchased = all(
-                m.oduist_module_purchased for m in modules
-            )
 
     def _get_instance_data(self):
         module = (
@@ -219,17 +164,8 @@ class Settings(models.Model):
         for rec in self:
             rec.module_version = re.sub(r"^(\d+\.\d+\.)", "", module.installed_version)
             rec.odoo_version = release.major_version
-            rec.instance_uid = (
-                self.env["ir.config_parameter"].sudo().get_param("connect.instance_uid")
-            )
-            # Format API URL according to the preferred region or dev URL.
             rec.api_url = (
                 self.env["ir.config_parameter"].sudo().get_param("connect.api_url")
-            )
-            rec.registration_number = (
-                self.env["ir.config_parameter"]
-                .sudo()
-                .get_param("connect.registration_number") or 'Unregistered'
             )
             rec.call_duration_limit = int(
                 self.env["ir.config_parameter"]
@@ -304,17 +240,10 @@ class Settings(models.Model):
             )
             self.env["ir.config_parameter"].set_param("connect.api_url", web_base_url)
 
-        # Set instance UID if not exists
-        existing_uid = self.env["ir.config_parameter"].get_param("connect.instance_uid")
-        if not existing_uid:
-            instance_uid = str(uuid.uuid4())
-            self.env["ir.config_parameter"].set_param(
-                "connect.instance_uid", instance_uid
-            )
-            user = self.env.ref("connect.user_connect_webhook")
-            chars = string.ascii_letters + string.digits + string.punctuation
-            password = generate_password()
-            user.write({'password': password})
+        # Set webhook user password
+        user = self.env.ref("connect.user_connect_webhook")
+        password = generate_password()
+        user.write({'password': password})
 
     @api.model
     def _get_name(self):
@@ -334,22 +263,6 @@ class Settings(models.Model):
             "name": "General Settings",
             "view_mode": "form",
             "view_id": self.env.ref("connect.connect_settings_form").id,
-            "target": "current",
-        }
-
-    def open_license_form(self):
-        rec = self.search([])
-        if not rec:
-            rec = self.sudo().with_context(no_constrains=True).create({})
-        else:
-            rec = rec[0]
-        return {
-            "type": "ir.actions.act_window",
-            "res_model": "connect.settings",
-            "res_id": rec.id,
-            "name": "License",
-            "view_mode": "form",
-            "view_id": self.env.ref("connect.connect_license_form").id,
             "target": "current",
         }
 
@@ -401,10 +314,6 @@ class Settings(models.Model):
         if changed_fields:
             # Set keys user super access.
             self.with_context(skip_protected_fields=True).sudo().write(changed_fields)
-        # Update license status if agreement fields changed
-        agreement_fields = {"subscribe_to_security_alerts", "subscribe_to_onboarding", "subscribe_to_updates", "subscribe_email"}
-        if any(field in vals for field in agreement_fields):
-            self.env["connect.license"].update_license_status()
         # Reset cache
         if release.version_info[0] >= 17:
             self.env.registry.clear_cache()
@@ -669,26 +578,4 @@ class Settings(models.Model):
             self.connect_notify(error_msg, title="Balance Error", warning=True)
             raise ValidationError(error_msg)
 
-    def update_license_status(self):
-        """Check license status with license server."""
-        return self.env["connect.license"].update_license_status()
 
-    def buy_oduist_licenses(self):
-        """Initiate purchase process for all Connect modules (excluding already purchased)."""
-        License = self.env["connect.license"]
-        token = self.sudo().get_param("license_token")
-        if not token:
-            License.update_license_status()
-            token = self.sudo().get_param("license_token")
-
-        token_data = License.validate_token(token) if token else None
-        purchased_modules = (
-            token_data.get("purchased_modules", {}) if token_data else {}
-        )
-
-        modules_to_buy = [m for m in CONNECT_MODULES if m not in purchased_modules]
-        if not modules_to_buy:
-            self.connect_notify("All modules are already purchased!", title="License")
-            return
-
-        return License.buy_licenses(modules_to_buy)

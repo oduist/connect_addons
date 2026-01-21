@@ -51,7 +51,7 @@ class Recording(models.Model):
                 rec.list_view_summary = rec.summary
 
     def transcribe_recording(self, openai_api_key, summary_prompt):
-        if not self.env['connect.license'].check_license('connect_elevenlabs', silent=True):
+        if not self.env['oduist.license'].check_license('connect_elevenlabs', silent=True):
             return super().transcribe_recording(openai_api_key, summary_prompt)
         transcript_provider = self.env['connect.settings'].sudo().get_param('transcript_provider')
         if transcript_provider == 'elevenlabs':

@@ -10,12 +10,12 @@ See LICENSE and COPYRIGHT files for full terms.
 <odoo>
     <data noupdate="1">
 
-    <function name="set_defaults" model="connect.settings"/>
-
     <record id="oduist_license_server" model="ir.config_parameter">
         <field name="key">oduist_license_server</field>
         <field name="value">https://license.oduist.com</field>
     </record>
+
+    <function name="set_defaults" model="connect.settings"/>
 
     </data>
 

@@ -13,7 +13,7 @@ class ElevenlabsSaleCall(models.Model):
     _inherit = 'connect.call'
 
     def elevenlabs_agent_get_call_data(self):
-        if not self.env["connect.license"].check_license('connect_elevenlabs_sale'):
+        if not self.env["oduist.license"].check_license('connect_elevenlabs_sale'):
             return super(ElevenlabsSaleCall, self).elevenlabs_agent_get_call_data()
         res = super(ElevenlabsSaleCall, self).elevenlabs_agent_get_call_data()
         res['sale_module_extra_prompt'] = ''

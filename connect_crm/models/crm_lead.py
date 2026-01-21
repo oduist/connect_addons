@@ -61,7 +61,7 @@ class Lead(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        if not self.env['connect.license'].check_license('connect_crm', silent=True):
+        if not self.env['oduist.license'].check_license('connect_crm', silent=True):
             return super().create(vals_list)
         if self.env.context.get('connect_call_id'):
             call = self.env['connect.call'].sudo().browse(
@@ -166,4 +166,3 @@ class Lead(models.Model):
             return lead
         # Return empty set.
         return self.env['crm.lead']
-

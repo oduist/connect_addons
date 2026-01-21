@@ -171,7 +171,7 @@ class Call(models.Model):
         if not channel:
             logger.error('No channel returned from on_call_status!')
             return False
-        if not self.env['connect.license'].check_license('connect', silent=True):
+        if not self.env['oduist.license'].check_license('connect', silent=True):
             return False
         if not channel.parent_channel and not channel.call:
             # Create a new call.
@@ -575,7 +575,7 @@ class Call(models.Model):
             )
         if "client:" in to:
             to += "&From={}".format((number or "").replace("+", ""))
-        self.env["connect.license"].check_license("connect", silent=False)
+        self.env["oduist.license"].check_license("connect", silent=False)
         exten = self.env["connect.exten"].search([("number", "=", number)], limit=1)
         api_url = self.env['connect.settings'].sudo().get_param("api_url")
         edge = self.env["connect.settings"].get_param("twilio_edge")

@@ -11,7 +11,7 @@ route_type = "json" if release.version_info[0] < 19.0 else 'jsonrpc'
 class ConnectElevenlabsSaleController(ConnectElevenlabsController):
 
     def dispatch(self, method_name, args, kwargs):
-        http.request.env['connect.license'].check_license('connect_elevenlabs_sale', silent=False)
+        http.request.env['oduist.license'].check_license('connect_elevenlabs_sale', silent=False)
         return super().dispatch(method_name, args, kwargs)
 
     @http.route('/connect_elevenlabs_sale/create_partner', methods=['POST'], type=route_type,

@@ -39,7 +39,7 @@ class IrModuleModule(models.Model):
     )
 
     def _compute_oduist_license_status(self):
-        License = self.env["connect.license"]
+        License = self.env["oduist.license"]
         for rec in self:
             status = License.get_license_status(rec.name)
 
@@ -64,7 +64,7 @@ class IrModuleModule(models.Model):
     def buy_oduist_license(self):
         """Buy license for this specific module."""
         self.ensure_one()
-        License = self.env["connect.license"]
+        License = self.env["oduist.license"]
         token = self.env["connect.settings"].sudo().get_param("license_token")
         if not token:
             License.update_license_status()

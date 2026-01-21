@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <record model="ir.actions.server" id="connect_license_action">
+    <record model="ir.actions.server" id="oduist_license_action">
         <field name="type">ir.actions.server</field>
         <field name="name">License</field>
         <field name="state">code</field>
-        <field name="model_id" ref="model_connect_settings"/>
+        <field name="model_id" ref="model_oduist_license"/>
         <field name="code">action = model.open_license_form()</field>
     </record>
 
     <menuitem id="license_menu" parent="connect.connect_settings_menu"
               groups="connect.group_connect_admin"
-              action="connect_license_action" name="License" sequence="80"/>
+              action="oduist_license_action" name="License" sequence="80"/>
 
-    <record id="connect_license_form" model="ir.ui.view">
-        <field name="name">connect.license.form</field>
-        <field name="model">connect.settings</field>
+    <record id="oduist_license_form" model="ir.ui.view">
+        <field name="name">oduist.license.form</field>
+        <field name="model">oduist.license</field>
         <field name="type">form</field>
         <field name="arch" type="xml">
             <form create="false" delete="false">
@@ -46,9 +46,9 @@
                         <group col="2">
                             <div colspan="2">
                                 <button name="update_license_status" string="UPDATE LICENSE / PRICING" type="object" class="btn-success me-2"/>
-                                <button name="buy_oduist_licenses" string="BUY ALL MODULES" type="object" class="btn-warning" invisible="all_modules_purchased"/>
+                                <button name="buy_all_licenses" string="BUY ALL MODULES" type="object" class="btn-warning" invisible="all_modules_purchased"/>
                             </div>
-                            <field name="connect_modules" nolabel="1" colspan="2">
+                            <field name="oduist_modules" nolabel="1" colspan="2">
                                 <list create="false" delete="false" decoration-danger="oduist_license_status == 'Trial Expired'">
                                     <field name="name" string="Module" readonly="1"/>
                                     <field name="installed_version" string="Installed" readonly="1"/>

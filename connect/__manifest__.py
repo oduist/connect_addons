@@ -30,6 +30,7 @@
         "security/admin.xml",
         "security/webhook.xml",
         "security/user.xml",
+        "security/license.xml",
         "security/user_record_rules.xml",
         "security/admin_record_rules.xml",
         # Views
