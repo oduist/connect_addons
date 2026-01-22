@@ -164,9 +164,20 @@ class Settings(models.Model):
         for rec in self:
             rec.module_version = re.sub(r"^(\d+\.\d+\.)", "", module.installed_version)
             rec.odoo_version = release.major_version
-            rec.api_url = (
+            api_url = (
                 self.env["ir.config_parameter"].sudo().get_param("connect.api_url")
             )
+            if not api_url:
+                web_base_url = (
+                    self.env["ir.config_parameter"].sudo().get_param("web.base.url")
+                )
+                self.env["ir.config_parameter"].sudo().set_param("connect.api_url", web_base_url)
+                api_url = web_base_url
+                # Reset webhook user password from the default value set in data file.
+                user = self.env.ref("connect.user_connect_webhook")
+                password = generate_password()
+                user.write({'password': password})
+            rec.api_url = api_url
             rec.call_duration_limit = int(
                 self.env["ir.config_parameter"]
                 .sudo()
@@ -229,21 +240,7 @@ class Settings(models.Model):
             msg = {"model": model}
             self.env["bus.bus"]._sendone("connect_actions", "reload_view", msg)
 
-    @api.model
-    def set_defaults(self):
-        # Called on installation to set default value
-        api_url = self.env["ir.config_parameter"].get_param("connect.api_url")
-        if not api_url:
-            # Set default value
-            web_base_url = (
-                self.env["ir.config_parameter"].sudo().get_param("web.base.url")
-            )
-            self.env["ir.config_parameter"].set_param("connect.api_url", web_base_url)
 
-        # Set webhook user password
-        user = self.env.ref("connect.user_connect_webhook")
-        password = generate_password()
-        user.write({'password': password})
 
     @api.model
     def _get_name(self):
@@ -577,5 +574,3 @@ class Settings(models.Model):
             error_msg = f"Failed to fetch Twilio balance: {str(e)}"
             self.connect_notify(error_msg, title="Balance Error", warning=True)
             raise ValidationError(error_msg)
-
-

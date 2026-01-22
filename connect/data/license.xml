@@ -15,8 +15,6 @@ See LICENSE and COPYRIGHT files for full terms.
         <field name="value">https://license.oduist.com</field>
     </record>
 
-    <function name="set_defaults" model="connect.settings"/>
-
     </data>
 
 </odoo>
