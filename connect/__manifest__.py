@@ -20,7 +20,7 @@
     "sequences": True,
     "data": [
         "data/res_users.xml",
-        "data/data.xml",
+        "data/license.xml",
         "data/ir_cron.xml",
         "data/twiml.xml",
         "data/res_partner.xml",
