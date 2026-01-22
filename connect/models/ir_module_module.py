@@ -65,7 +65,7 @@ class IrModuleModule(models.Model):
         """Buy license for this specific module."""
         self.ensure_one()
         License = self.env["oduist.license"]
-        token = self.env["connect.settings"].sudo().get_param("license_token")
+        token = License.sudo().get_param("license_token")
         if not token:
             License.update_license_status()
         return License.buy_licenses([self.name])

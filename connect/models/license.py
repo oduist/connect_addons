@@ -232,35 +232,23 @@ class OduistLicense(models.Model):
             return None
 
     @api.model
-    def is_trial_valid(self, module_name="connect"):
-        """
-        Check if trial period is still valid (30 days from installation).
-
-        Args:
-            module_name: Name of the module to check
-
-        Returns:
-            tuple: (is_valid: bool, days_left: int)
-        """
+    def is_trial_valid(self, module_name):
         module = (
             self.env["ir.module.module"]
             .sudo()
             .search([("name", "=", module_name), ("state", "=", "installed")], limit=1)
         )
-
         if not module:
             return False, 0
         install_date = module.create_date or datetime.now() - timedelta(days=30)
         now = datetime.now()
         days_passed = (now - install_date).days
         days_left = 30 - days_passed
-
         is_valid = days_left > 0
-
         return is_valid, max(0, days_left)
 
     @api.model
-    def get_license_status(self, module_name="connect"):
+    def get_license_status(self, module_name):
         token = self._get_license_token()
         if token:
             payload = self.validate_token(token)

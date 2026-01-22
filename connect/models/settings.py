@@ -1,4 +1,12 @@
 # -*- coding: utf-8 -*-
+"""
+ODUIST PROPRIETARY LICENSE
+Copyright (c) 2025 Oduist
+
+This file contains license validation logic.
+Modification is prohibited under Oduist Proprietary License.
+See LICENSE and COPYRIGHT files for full terms.
+"""
 
 import inspect
 import json
@@ -7,20 +15,20 @@ import os
 import random
 import re
 import string
-import uuid
 import httpx
 import openai
 from odoo import api, fields, models, release
 from odoo.exceptions import ValidationError
 from twilio.rest import Client
+from odoo.addons.connect.models.license import ODUIST_MODULES
+ODUIST_MODULES.append('connect')
 
 logger = logging.getLogger(__name__)
 
 TWILIO_LOG_LEVEL = logging.WARNING
 
-############### SETTINGS #####################################
-MODULE_NAME = "connect"
 MAX_EXTEN_LEN = 4
+
 PROTECTED_FIELDS = [
     "display_auth_token",
     "display_region_auth_token",
@@ -83,10 +91,6 @@ def generate_password():
     random.shuffle(characters)
     return "".join(characters)
 
-
-from odoo.addons.connect.models.license import ODUIST_MODULES
-
-ODUIST_MODULES.append('connect')
 
 
 class Settings(models.Model):
