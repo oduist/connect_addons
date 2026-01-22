@@ -1,7 +1,6 @@
 from . import controllers
 from . import models
 
-
 import logging
 from odoo import fields, api, SUPERUSER_ID
 
@@ -16,9 +15,11 @@ def post_init_hook(*args):
             # Odoo 15 - cr and registry arguments
             cr, registry = args
             env = api.Environment(cr, SUPERUSER_ID, {})
-        # Find the connect module record
-        module = env['ir.module.module'].sudo().search([('name', '=', 'connect_elevenlabs_sale')], limit=1)
+        # Find the connect_elevenlabs_sale module record
+        module = env['ir.module.module'].search([('name', '=', 'connect_elevenlabs_sale')], limit=1)
         if module:
-            module.sudo().write({'create_date': fields.Datetime.now()})
+            module.write({'create_date': fields.Datetime.now()})
+        # Update module pricing.
+        env['oduist.license'].update_license_status(raise_exc=False)
     except Exception as e:
         _logger.error('Error in post_init_hook: %s', str(e))
