@@ -1,5 +1,4 @@
 from . import models
-from . import controllers
 
 import logging
 from odoo import fields, api, SUPERUSER_ID

@@ -98,12 +98,12 @@ For settings views, use `colspan="2"` for proper layout of div elements.
 
 **Before (18.0):**
 ```xml
-<div string="Technical Support" invisible="not is_registered">
+<div string="Technical Support">
 ```
 
 **After (19.0):**
 ```xml
-<div colspan="2" string="Technical Support" invisible="not is_registered">
+<div colspan="2" string="Technical Support">
 ```
 
 ## 3. Migration Checklist
