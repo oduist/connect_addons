@@ -2,10 +2,10 @@
 
 {
     'name': 'Connect',
-    'version': '1.0.13',
+    'version': '2.0.1',
     'author': 'Oduist',
     'maintainer': 'Oduist',
-    'live_test_url': 'https://connect-demo-18.oduist.com/',
+    'live_test_url': 'https://connect-demo.oduist.com/',
     'price': 0,
     'currency': 'EUR',
     'support': 'support@oduist.com',
@@ -15,12 +15,12 @@
     'description': '',
     'depends': ['mail', 'contacts', 'sms'],
     'external_dependencies': {
-        'python': ['twilio', 'openai'],
+        'python': ['twilio', 'openai', 'PyJWT'],
     },
+    'sequences': True,
     'data': [
         'data/res_users.xml',
-        'data/data.xml',
-        'data/functions.xml',
+        'data/license.xml',
         'data/ir_cron.xml',
         'data/twiml.xml',
         'data/res_partner.xml',
@@ -30,11 +30,13 @@
         'security/admin.xml',
         'security/webhook.xml',
         'security/user.xml',
+        'security/license.xml',
         'security/user_record_rules.xml',
         'security/admin_record_rules.xml',
         # Views
         'views/menu.xml',
         'views/settings.xml',
+        'views/license.xml',
         'views/domain.xml',
         'views/user.xml',
         'views/twiml.xml',
@@ -64,11 +66,13 @@
     'installable': True,
     'application': True,
     'auto_install': False,
+    'post_init_hook': 'post_init_hook',
     'images': ['static/description/logo.png'],
     'assets': {
         'web.assets_backend': [
             '/connect/static/src/icomoon/style.css',
             '/connect/static/src/components/phone/*/*',
+            '/connect/static/src/components/license_banner/*',
             '/connect/static/src/js/main.js',
             '/connect/static/src/js/utils.js',
             '/connect/static/src/widgets/phone_field/*',

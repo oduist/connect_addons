@@ -1,10 +1,22 @@
+# -*- coding: utf-8 -*-
+"""
+ODUIST PROPRIETARY LICENSE
+Copyright (c) 2025 Oduist
+
+This file contains license validation logic.
+Modification is prohibited under Oduist Proprietary License.
+See LICENSE and COPYRIGHT files for full terms.
+"""
+
 from . import call
 from . import callflow
+from . import ir_module_module
 from . import channel
 from . import debug
 from . import domain
 from . import exten
 from . import favorite
+from . import license
 from . import mail
 from . import message
 from . import message_configuration
