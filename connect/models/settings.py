@@ -150,20 +150,13 @@ class Settings(models.Model):
     is_registered = (
         fields.Boolean()
     )  # TODO: Remove after upgrades, not needed any more.
-    module_version = fields.Char(compute="_get_instance_data")
-    odoo_version = fields.Char(compute="_get_instance_data")
 
     call_duration_limit = fields.Integer(
         compute="_get_instance_data", string="Call Duration Limit (seconds)"
     )
 
     def _get_instance_data(self):
-        module = (
-            self.env["ir.module.module"].sudo().search([("name", "=", MODULE_NAME), ("state", "=", "installed")])
-        )
         for rec in self:
-            rec.module_version = re.sub(r"^(\d+\.\d+\.)", "", module.installed_version)
-            rec.odoo_version = release.major_version
             api_url = (
                 self.env["ir.config_parameter"].sudo().get_param("connect.api_url")
             )
