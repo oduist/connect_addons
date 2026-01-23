@@ -66,8 +66,7 @@ class Domain(models.Model):
 
             dial_client = Dial(timeout=10, callerId=caller_id)
             api_url = self.env['connect.settings'].sudo().get_param('api_url')
-            instance_uid = self.env['connect.settings'].sudo().get_param('instance_uid')
-            status_url = urljoin(api_url, 'app/connect/webhook/{}/callstatus'.format(instance_uid))
+            status_url = urljoin(api_url, 'connect/webhook/callstatus')
 
             client = Client(
                 statusCallbackEvent='initiated answered completed',

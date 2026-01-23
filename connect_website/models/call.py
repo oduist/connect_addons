@@ -27,8 +27,7 @@ class Call(models.Model):
                 user.connect_user.uri, partner.id, number)
             caller_id = user.connect_user.exten.number
             api_url = self.env['connect.settings'].sudo().get_param('api_url')
-            instance_uid = self.env['connect.settings'].sudo().get_param('instance_uid', '')
-            status_url = urljoin(api_url, 'app/connect/webhook/{}/callstatus'.format(instance_uid))
+            status_url = urljoin(api_url, 'connect/webhook/callstatus')
             twiml = """
                 <Response>
                     <Dial timeout="10">
