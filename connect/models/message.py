@@ -1,6 +1,6 @@
 import ast
 import logging
-
+from urllib.parse import urljoin
 import phonenumbers
 from markupsafe import Markup
 from phonenumbers import parse, format_number, PhoneNumberFormat
@@ -108,10 +108,7 @@ class ConnectMessage(models.Model):
             else:
                 # Check if from_number matches any of our numbers
                 our_numbers = self.env['connect.number'].search([]).mapped('phone_number')
-                our_whatsapp = self.env['connect.whatsapp_sender'].search([]).mapped('number')
-                all_our_numbers = set(our_numbers) | set(our_whatsapp)
-
-                if rec.from_number in all_our_numbers:
+                if rec.from_number in our_numbers:
                     rec.direction = 'outgoing'
                 else:
                     rec.direction = 'incoming'
@@ -199,7 +196,6 @@ class ConnectMessage(models.Model):
                 logger.warning("Received Twilio SMS webhook with incorrect AccountSid")
                 return
             if params.get('SmsStatus') == 'received':
-                logger.info("Received Twilio SMS webhook data:\n%s", params)
                 # Create SMS message record
                 from_number = params.get('From')
                 to_number = params.get('To')
@@ -213,14 +209,7 @@ class ConnectMessage(models.Model):
                         })
                 except Exception:
                     pass
-                if 'whatsapp:' in from_number:
-                    from_number = from_number.replace('whatsapp:', '')
-                    to_number = to_number.replace('whatsapp:', '')
-                    values.update({
-                        'message_type': 'WhatsApp',
-                        'from_number': from_number,
-                        'to_number': to_number,
-                    })
+
                 partner = self.env['res.partner'].get_partner_by_number(from_number)
                 if partner:
                     values.update({'partner': partner.id})
@@ -293,15 +282,12 @@ class ConnectMessage(models.Model):
                             body = Markup(f"<div class='d-flex flex-row'>"
                                           f"<span class='px-1'>{values.get('body')}</span>"
                                           f"<br/>{message.media_widget}</div>")
-                        # Include link to the message form
-                        link = Markup(f"<small><a href=\"/web#id={message.id}&model=connect.message&view_type=form\">Message</a></small>")
-                        body = Markup(str(body) + str(link))
 
                         # Post as a comment to notify subscribed followers similar to incoming mail
-                        mt_comment = self.env.ref('mail.mt_comment').id
+                        mt_note = self.env.ref('mail.mt_note').id
                         kwargs = {
                             'body': body,
-                            'subtype_id': mt_comment,
+                            'subtype_id': mt_note,
                             'message_type': message.message_type
                         }
                         if partner:
@@ -328,7 +314,7 @@ class ConnectMessage(models.Model):
     def send(self, recipient, body, res_id=None, res_model=None, outgoing_callerid=None):
         sender_user = self.env.user
         message_data = {
-            'message_type': 'WhatsApp',
+            'message_type': 'sms',
             'to_number': recipient,
             'body': body,
             'sender_user': sender_user.id,
@@ -344,10 +330,7 @@ class ConnectMessage(models.Model):
             if not number:
                 raise ValidationError('You dont have an outgoing callerid number!')
             sender = number.number
-        message = self.client_send(recipient, sender, body, whatsapp=True)
-        if not message:
-            message = self.client_send(recipient, sender, body)
-            message_data.update({'message_type': 'sms'})
+        message = self.client_send(recipient, sender, body)
         if not message:
             raise ValidationError('Unexpected error! Contact admin or maintainer!')
         # Create message record
@@ -369,9 +352,7 @@ class ConnectMessage(models.Model):
             mt_note = self.env.ref('mail.mt_note').id
             obj = self.env[res_model].with_user(SUPERUSER_ID).browse(res_id)
             if hasattr(obj, 'message_post'):
-                # Include link to the message form
-                link = Markup(f"<small><a href=\"/web#id={message.id}&model=connect.message&view_type=form\">Message</a></small>")
-                chat_body = Markup(str(body) + '<br/>' + str(link))
+                chat_body = Markup(body)
                 kwargs = {
                     'body': chat_body,
                     'subtype_id': mt_note,
@@ -391,24 +372,25 @@ class ConnectMessage(models.Model):
                 self.env['mail.notification'].sudo().create(mail_notification_values)
                 self.env['connect.settings'].connect_reload_view(res_model)
 
-    def client_send(self, recipient, sender, body, whatsapp=False):
+    def client_send(self, recipient, sender, body):
+        api_url = self.env['connect.settings'].get_param('api_url')
+        status_callback_url = urljoin(api_url, 'twilio/webhook/message_status')
         try:
-            client = self.env['connect.settings'].get_client()
+            # Messaging is only supported in the US region.
+            client = self.env['connect.settings'].get_client(region=False)
             # Send message to twilio
             message = client.messages.create(
-                to='whatsapp:{}'.format(recipient) if whatsapp else recipient,
-                from_='whatsapp:{}'.format(sender) if whatsapp else sender,
+                to=recipient,
+                from_=sender,
                 body=body,
+                status_callback=status_callback_url,
             )
             if message.error_code:
                 return False
             logger.info('Message to %s is sent.', recipient)
             return message
         except Exception as e:
-            if not whatsapp:
-                logger.exception(e)
-            else:
-                logger.warning('Unable to send WhatsUp message to "{}"!'.format(recipient))
+            logger.exception(e)
             return False
 
     def action_retry(self):
@@ -429,3 +411,69 @@ class ConnectMessage(models.Model):
             except Exception as e:
                 logger.exception('Retry send failed for message %s: %s', rec.id, e)
         return True
+
+    @api.model
+    def update_message_status(self, data: dict):
+        """Update connect.message status from Twilio status callback payload.
+        Expected keys: SmsSid/MessageSid and SmsStatus/MessageStatus.
+        """
+        sid = data.get('SmsSid') or data.get('MessageSid')
+        status = data.get('SmsStatus') or data.get('MessageStatus')
+        if not sid:
+            logger.warning('Message status callback without SID: %s', data)
+            return True
+        try:
+            message = self.env['connect.message'].search([('message_sid', '=', sid)], limit=1)
+            if not message:
+                logger.info('Message not found for SID %s', sid)
+                return True
+            vals = {'status': status} if status else {}
+            connect_user = self.env.ref("connect.user_connect_webhook")
+            connect_partner = connect_user.partner_id
+            if (status or '').lower() == 'failed':
+                # Some callbacks include error details
+                code = data.get('ErrorCode')
+                msg = data.get('ErrorMessage')
+                if code:
+                    vals['error_code'] = code
+                if msg:
+                    vals['error_message'] = msg
+                    vals['has_error'] = True
+                if message.res_model and message.res_id:
+                    chatter_message = 'Failed to send this SMS message'
+                    self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
+            elif (status or '').lower() == 'delivered' and message.res_model and message.res_id:
+                chatter_message = 'SMS message is delivered.'
+                self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
+            elif (status or '').lower() ==  'undelivered' and message.res_model and message.res_id:
+                chatter_message = ('Message is undelivered.')
+                self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
+            if vals:
+                message.write(vals)
+        except Exception as e:
+            logger.warning('Failed to update message status for %s: %s', sid, e)
+        return True
+
+    def chatter_post(self, res_model, res_id, author, body):
+        try:
+            mt_note = self.env.ref('mail.mt_note').id
+            obj = self.env[res_model].browse(res_id)
+            if hasattr(obj, 'message_post'):
+                chatter = obj.sudo().with_context(mail_create_nosubscribe=True).message_post(
+                    body=body,
+                    subtype_id=mt_note,
+                    message_type='sms',
+                    author_id=author,
+                )
+                self.env['mail.notification'].sudo().create([{
+                    'author_id': chatter.author_id.id,
+                    'mail_message_id': chatter.id,
+                    'res_partner_id': chatter.author_id.id,
+                    #'sms_number': self.number, # NO number field.
+                    'notification_type': 'sms',
+                    'is_read': True,
+                    'notification_status': 'ready',
+                }])
+                self.env['connect.settings'].connect_reload_view(res_model)
+        except Exception as e:
+            logger.warning('Failed to post SMS chatter message on %s,%s: %s', res_model, res_id, e)
