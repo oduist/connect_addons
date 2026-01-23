@@ -44,5 +44,6 @@
     'images': ['static/description/logo.png'],
     'assets': {
         'web.assets_backend': [],
-    }
+    },
+    'post_init_hook': 'post_init_hook',
 }

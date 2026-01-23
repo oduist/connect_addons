@@ -60,7 +60,6 @@ class ElevenlabsFile(models.Model):
         return '/web/content/connect.elevenlabs_file/{}/file/{}'.format(self.id, self.filename)
 
     def get_file_url(self):
-        instance_uid = self.env['connect.settings'].sudo().get_param('instance_uid')
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
         url = urljoin(api_url, '/web/content/connect.elevenlabs_file/{}/file/{}'.format(
             self.id, self.filename)
@@ -84,4 +83,3 @@ class ElevenlabsFile(models.Model):
         except Exception as e:
             logger.exception('Elevenlabs error:')
             raise ValidationError('Elevenlabs error: {}'.format(e))
-

@@ -1,3 +1,13 @@
+# -*- coding: utf-8 -*-
+"""
+ODUIST PROPRIETARY LICENSE
+Copyright (c) 2025 Oduist
+
+This file contains license validation logic.
+Modification is prohibited under Oduist Proprietary License.
+See LICENSE and COPYRIGHT files for full terms.
+"""
+
 import ast
 import logging
 
@@ -194,6 +204,8 @@ class ConnectMessage(models.Model):
 
     @api.model
     def receive(self, params):
+        if not self.env['oduist.license'].check_license('connect', silent=True):
+            return str(MessagingResponse())
         try:
             if params.get('AccountSid') != self.env['connect.settings'].get_param('account_sid'):
                 logger.warning("Received Twilio SMS webhook with incorrect AccountSid")
@@ -326,6 +338,7 @@ class ConnectMessage(models.Model):
         return str(MessagingResponse())  # Return empty TwiML response, i.e. no reply.
 
     def send(self, recipient, body, res_id=None, res_model=None, outgoing_callerid=None):
+        self.env['oduist.license'].check_license('connect', silent=False)
         sender_user = self.env.user
         message_data = {
             'message_type': 'WhatsApp',

@@ -1,4 +1,12 @@
 # -*- coding: utf-8 -*-
+"""
+ODUIST PROPRIETARY LICENSE
+Copyright (c) 2025 Oduist
+
+This file contains license validation logic.
+Modification is prohibited under Oduist Proprietary License.
+See LICENSE and COPYRIGHT files for full terms.
+"""
 
 import json
 import logging
@@ -152,6 +160,8 @@ class Number(models.Model):
 
     def render(self, request={}, params={}):
         self.ensure_one()
+        if not self.env["oduist.license"].check_license('connect'):
+            return "<Response><Pause length='1'/><Say>This is Oduist Connect. Your trial period is over. Please buy a license to continue.</Say><Pause length='1'/></Response>"
         if self.destination == 'twiml' and self.twiml:
             return self.twiml.render(request)
         elif self.destination == 'user' and self.user:

@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 
 class ConnectElevenlabsController(http.Controller):
 
+    def dispatch(self, method_name, args, kwargs):
+        http.request.env['oduist.license'].check_license('connect_elevenlabs', silent=False)
+        return super().dispatch(method_name, args, kwargs)
+
     def check_agent_request(self):
         auth_token = http.request.env['connect.settings'].sudo().get_param('elevenlabs_agent_token')
         agent_token = http.request.httprequest.headers.get('x-elevenlabs-agent-token')
