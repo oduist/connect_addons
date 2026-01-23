@@ -14,18 +14,18 @@ patch(PhoneField.prototype, {
     },
 
     _onClickCallButton(e) {
-         e.preventDefault()
-         const {resModel, resId} = this.props.record.model.config
-         const args = [this.props.record.data[this.props.name], resModel, resId]
-         this.env.model.orm.call("connect.call", "originate_call", args, {})
+        e.preventDefault()
+        const {resModel, resId} = this.props.record.model.config
+        const args = [this.props.record.data[this.props.name], resModel, resId]
+        this.env.model.orm.call("connect.call", "originate_call", args, {})
     },
 
     _onClickWhatsappCallButton(e) {
-         e.preventDefault()
-         const {resModel, resId} = this.props.record.model.config
-         const args = [this.props.record.data[this.props.name], resModel, resId]
-         // Pass whatsapp_call flag via kwargs to avoid breaking positional args
-         this.env.model.orm.call("connect.call", "originate_call", args, { whatsapp_call: true })
+        e.preventDefault()
+        const {resModel, resId} = this.props.record.model.config
+        const args = [this.props.record.data[this.props.name], resModel, resId]
+        // Pass whatsapp_call flag via kwargs to avoid breaking positional args
+        this.env.model.orm.call("connect.call", "originate_call", args, { whatsapp_call: true })
     },
 
     async _onClickWhatsappMessageButton(e){
