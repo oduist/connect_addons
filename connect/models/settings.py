@@ -15,6 +15,8 @@ import os
 import random
 import re
 import string
+from urllib.parse import urljoin
+
 import httpx
 import openai
 from odoo import api, fields, models, release
@@ -91,6 +93,13 @@ def generate_password():
     random.shuffle(characters)
     return "".join(characters)
 
+
+def strip_number(number):
+    """Strip number formating"""
+    if not isinstance(number, str):
+        return number
+    pattern = r'[\s\(\)\-\+]'
+    return re.sub(pattern, '', number).lstrip('0')
 
 
 class Settings(models.Model):
