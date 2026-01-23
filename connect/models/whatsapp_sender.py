@@ -109,7 +109,7 @@ class ConnectWhatsappSender(models.Model):
         edge = self.env['connect.settings'].get_param('twilio_edge')
         for rec in self:
             rec.callback_url = urljoin(api_url, f'twilio/webhook/message#e={edge}')
-            rec.status_callback_url = urljoin(api_url, f'twilio/webhook/message_status#e={edge}')
+            rec.status_callback_url = urljoin(api_url, f'twilio/webhook/whatsapp_message_status#e={edge}')
 
     @api.model
     def sync(self):
@@ -383,7 +383,6 @@ class ConnectWhatsappSender(models.Model):
                 self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
             if vals:
                 message.write(vals)
-                self.env['connect.settings'].connect_reload_view('connect.message')
         except Exception as e:
             logger.warning('Failed to update message status for %s: %s', sid, e)
         return True
