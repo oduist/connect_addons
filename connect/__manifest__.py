@@ -6,7 +6,7 @@
     "author": "Oduist",
     "maintainer": "Oduist",
     "live_test_url": "https://connect-demo.oduist.com/",
-    "price": 0,
+    "price": 0, # TRIAL
     "currency": "EUR",
     "support": "support@oduist.com",
     "license": "Other proprietary",
