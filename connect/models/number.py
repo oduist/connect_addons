@@ -55,13 +55,9 @@ class Number(models.Model):
         for rec in self:
             rec.voice_status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
             rec.voice_url = urljoin(api_url, 'twilio/webhook/number#e={}'.format(edge))
-            if self.env['connect.settings'].get_param('twilio_region') == 'us1':
-                # Messages are supported only in US region.
-                rec.message_url = urljoin(api_url, 'twilio/webhook/message#e={}'.format(edge))
-                rec.message_fallback_url = urljoin(api_url, 'twilio/webhook/message#e={}'.format(edge))
-            else:
-                rec.message_url = ''
-                rec.message_fallback_url = ''
+            # Messages are supported only in US region and don't use edges.
+            rec.message_url = urljoin(api_url, 'twilio/webhook/message')
+            rec.message_fallback_url = ''
             if fallback_url:
                 rec.voice_fallback_url = urljoin(fallback_url, 'twilio/webhook/number#e={}'.format(edge))
             else:
