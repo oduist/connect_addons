@@ -61,11 +61,3 @@ class ConnectController(http.Controller):
             return res
         else:
             raise UserError("Failed to download the media. Status code: %s" % response.status_code)
-
-    @http.route('/connect/<string:uid>/', methods=['GET', 'POST'], type='http', auth='public', csrf=False)
-    def health_check(self, uid):
-        instance_uid = http.request.env['connect.settings'].sudo().get_param('instance_uid')
-        if uid == instance_uid:
-            return "True"
-        else:
-            return "False"
