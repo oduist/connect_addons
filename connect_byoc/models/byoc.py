@@ -124,6 +124,7 @@ class BYOC(models.Model):
             rec.domain = domain
 
     def unlink(self):
+        self.env['oduist.license'].check_license('connect_byoc', silent=False)
         for rec in self:
             client = self.env["connect.settings"].get_client()
             # Delete the BYOC trunk in Twilio.
@@ -145,6 +146,7 @@ class BYOC(models.Model):
         return res
 
     def write(self, vals):
+        self.env['oduist.license'].check_license('connect_byoc', silent=False)
         self.ensure_one() # We do not support updating of multiple records.
         if self.env.context.get("skip_twilio_sync"):
             return super(BYOC, self).write(vals)
@@ -199,6 +201,7 @@ class BYOC(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        self.env['oduist.license'].check_license('connect_byoc', silent=False)
         if self.env.context.get("skip_twilio_sync"):
             return super(BYOC, self).create(vals_list)
         recs = super(BYOC, self).create(vals_list)
@@ -235,6 +238,8 @@ class BYOC(models.Model):
 
     @api.model
     def sync(self):
+        if not self.env['oduist.license'].check_license('connect_byoc', silent=True):
+            return False
         client = self.env["connect.settings"].get_client()
         trunks = client.voice.v1.byoc_trunks.list()
         for trunk in trunks:

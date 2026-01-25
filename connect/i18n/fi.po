@@ -223,7 +223,6 @@ msgstr "Vastannut käyttäjä"
 
 #. module: connect
 #: model:ir.model.fields,field_description:connect.field_connect_call__answered_user_img
-#: model:ir.model.fields,field_description:connect.field_connect_message__receiver_user_img
 msgid "Answered User Avatar"
 msgstr "Vastanneen käyttäjän avatar"
 

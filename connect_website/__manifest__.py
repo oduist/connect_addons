@@ -16,9 +16,10 @@
         # Views
         'views/settings.xml',
         # Snippets
-        'views/snippets/s_talk_button.xml',
+        'views/snippets/s_connect_button.xml',
         'views/snippets/snippets.xml',
     ],
     'demo': [],
     'images': ['static/description/logo.png'],
+    'post_init_hook': 'post_init_hook',
 }

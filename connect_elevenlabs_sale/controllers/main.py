@@ -2,18 +2,19 @@
 
 import json
 import logging
-import requests
-from odoo import http, SUPERUSER_ID, registry, release
-from werkzeug.exceptions import BadRequest, NotFound
-from odoo.exceptions import UserError
+from odoo import http, release
 from odoo.addons.connect_elevenlabs.controllers.main import ConnectElevenlabsController
 
 logger = logging.getLogger(__name__)
-
+route_type = "json" if release.version_info[0] < 19.0 else 'jsonrpc'
 
 class ConnectElevenlabsSaleController(ConnectElevenlabsController):
 
-    @http.route('/connect_elevenlabs_sale/create_partner', methods=['POST'], type='json',
+    def dispatch(self, method_name, args, kwargs):
+        http.request.env['oduist.license'].check_license('connect_elevenlabs_sale', silent=False)
+        return super().dispatch(method_name, args, kwargs)
+
+    @http.route('/connect_elevenlabs_sale/create_partner', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
     def create_partner(self):
         self.check_agent_request()
@@ -38,7 +39,7 @@ class ConnectElevenlabsSaleController(ConnectElevenlabsController):
         }
 
 
-    @http.route('/connect_elevenlabs_sale/get_products', methods=['POST'], type='json',
+    @http.route('/connect_elevenlabs_sale/get_products', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
     def get_products(self):
         self.check_agent_request()
@@ -57,7 +58,7 @@ class ConnectElevenlabsSaleController(ConnectElevenlabsController):
         logger.info('Available products: %s', json.dumps(res, indent=2))
         return res
 
-    @http.route('/connect_elevenlabs_sale/create_order', methods=['POST'], type='json',
+    @http.route('/connect_elevenlabs_sale/create_order', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
     def create_order(self):
         self.check_agent_request()
@@ -89,7 +90,7 @@ class ConnectElevenlabsSaleController(ConnectElevenlabsController):
         return {'order_name': order.name}
 
 
-    @http.route('/connect_elevenlabs_sale/get_order', methods=['POST'], type='json',
+    @http.route('/connect_elevenlabs_sale/get_order', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
     def get_order(self):
         self.check_agent_request()
@@ -131,7 +132,7 @@ class ConnectElevenlabsSaleController(ConnectElevenlabsController):
         logger.info('Sale Order data for partner %s: %s', data.get('partner_id'), json.dumps(orders))
         return json.dumps(orders)
 
-    @http.route('/connect_elevenlabs_sale/get_orders', methods=['POST'], type='json',
+    @http.route('/connect_elevenlabs_sale/get_orders', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
     def get_orders(self):
         data = json.loads(http.request.httprequest.get_data(as_text=True))
