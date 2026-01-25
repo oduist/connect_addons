@@ -54,10 +54,8 @@
                     </group>
                     <group string="Parameters"
                            attrs="{'invisible': [('tool_type', '=', 'system')]}">
-                        <group>
-                            <field name="body_params_description"
+                        <field name="body_params_description"
                                    attrs="{'invisible': ['|', ('param_type', '!=', 'body'), ('tool_type', 'not in', ['webhook','client'])]}"/>
-                        </group>
                     </group>
                     <field name="params" nolabel="1"
                            attrs="{'invisible': [('tool_type', '=', 'system')]}"/>
