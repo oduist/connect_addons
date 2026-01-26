@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_connect_message_content_template" model="ir.actions.act_window">
+        <field name="name">WhatsApp Templates</field>
+        <field name="res_model">connect.message_content_template</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="connect_message_content_template_menu"
+              name="WhatsApp Templates"
+              action="action_connect_message_content_template"
+              sequence="64"
+              parent="connect.connect_messaging_menu"
+              groups="connect.group_connect_admin"/>
+
+    <record id="view_connect_message_content_template_search" model="ir.ui.view">
+        <field name="name">connect.message_content_template.search</field>
+        <field name="model">connect.message_content_template</field>
+        <field name="arch" type="xml">
+            <search>
+                <!-- Search fields -->
+                <field name="model_id" string="Model"/>
+                <field name="friendly_name" string="Name" filter_domain="[('friendly_name', 'ilike', self)]"/>
+                <field name="body" filter_domain="[('body', 'ilike', self)]"/>
+
+                <!-- Status filters -->
+                <separator/>
+                <filter string="Unsubmitted" name="st_unsubmitted" domain="[('status', '=', 'unsubmitted')]"/>
+                <filter string="Received" name="st_received" domain="[('status', '=', 'received')]"/>
+                <filter string="Pending" name="st_pending" domain="[('status', '=', 'pending')]"/>
+                <filter string="Approved" name="st_approved" domain="[('status', '=', 'approved')]"/>
+                <filter string="Rejected" name="st_rejected" domain="[('status', '=', 'rejected')]"/>
+                <filter string="Paused" name="st_paused" domain="[('status', '=', 'paused')]"/>
+                <filter string="Disabled" name="st_disabled" domain="[('status', '=', 'disabled')]"/>
+
+                <!-- Group By -->
+                <group expand="0" string="Group By">
+                    <filter string="Model" name="gb_model" context="{'group_by': 'model_id'}"/>
+                    <filter string="Content Type" name="gb_type" context="{'group_by': 'content_type'}"/>
+                    <filter string="Status" name="gb_status" context="{'group_by': 'status'}"/>
+                    <filter string="Category" name="gb_category" context="{'group_by': 'category'}"/>
+                    <filter string="Date Created" name="gb_date_created" context="{'group_by': 'date_created'}"/>
+                    <filter string="Date Updated" name="gb_date_updated" context="{'group_by': 'date_updated'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_connect_message_content_template_tree" model="ir.ui.view">
+        <field name="name">connect.message_content_template.tree</field>
+        <field name="model">connect.message_content_template</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="friendly_name"/>
+                <field name="model_id" string="Model"/>
+                <field name="sender_id"/>
+                <field name="language"/>
+                <field name="content_type"/>
+                <field name="category"/>
+                <field name="display_status" string="Status"/>
+                <field name="date_created"/>
+                <field name="date_updated"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_connect_message_content_template_form" model="ir.ui.view">
+        <field name="name">connect.message_content_template.form</field>
+        <field name="model">connect.message_content_template</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_submit_missing" type="object" string="Submit" class="btn btn-secondary" invisible="status != 'missing'"/>
+                    <button name="action_fetch_approval_status" type="object" string="Fetch approval status" class="btn btn-secondary"/>
+                    <button name="action_approve" type="object" string="Approve" class="btn btn-primary" invisible="not (status == 'unsubmitted' or status == 'rejected')"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="friendly_name" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="model_id" string="Model"/>
+                            <field name="sender_id"/>
+                            <field name="language" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
+                            <field name="content_type" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
+                            <field name="category" readonly="not ((status == 'unsubmitted' or status == 'rejected') or (status == 'approved' and allow_category_change))"/>
+                            <field name="variables" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
+                            <field name="body" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
+                            <field name="actions" readonly="not (status == 'unsubmitted' or status == 'rejected')"/>
+                        </group>
+                        <group>
+                            <field name="status"/>
+                            <field name="rejection_reason"/>
+                            <field name="allow_category_change"/>
+                            <field name="date_created"/>
+                            <field name="date_updated"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -41,7 +41,10 @@
                 <field name="duration_minutes" optional="hide" sum="1"/>
                 <field name="duration_human" optional="show" sum="1"/>
                 <field name="direction" optional="show"/>
+                <field name="call_type" optional="hide"/>
                 <field name="status" optional="show"/>
+                <field name="price" optional="hide" groups="connect.group_connect_admin" sum="Total Cost"/>
+                <field name="price_unit" optional="hide" groups="connect.group_connect_admin"/>
                 <field name="recording_icon" widget="html" optional="show"/>
                 <field name="voicemail_icon" optional="show"/>
             </list>
@@ -125,9 +128,11 @@
                                     <field name="duration"/>
                                     <field name="duration_minutes"/>
                                     <field name="duration_human"/>
+                                    <field name="price" groups="connect.group_connect_admin"/>
+                                    <field name="price_unit" groups="connect.group_connect_admin"/>
                                 </group>
                                 <group>
-                                    <field name="parent_call" ivisible="not parent_call"/>
+                                    <field name="parent_call" invisible="not parent_call"/>
                                     <field name="caller_pbx_user"/>
                                     <field name="called_pbx_users" widget="many2many_tags"/>
                                     <field name="answered_pbx_user"/>
@@ -191,8 +196,12 @@
                 <filter name="by_answered_user" context="{'group_by': 'answered_user'}"/>
                 <filter name="by_direction" context="{'group_by': 'direction'}"/>
                 <filter name="by_status" context="{'group_by': 'status'}"/>
+                <filter name="by_call_type" string="Group by Call Type" context="{'group_by': 'call_type'}"/>
                 <filter name="by_created" context="{'group_by': 'create_date'}"/>
                 <filter name="has_error" string="Failed Calls" domain="[('has_error', '=', True)]"/>
+                <separator/>
+                <filter name="only_phone" string="Phone" domain="[('call_type', '=', 'phone')]"/>
+                <filter name="only_whatsapp" string="WhatsApp" domain="[('call_type', '=', 'whatsapp')]"/>
             </search>
         </field>
     </record>

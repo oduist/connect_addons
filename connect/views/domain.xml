@@ -20,6 +20,7 @@
             <list>
                 <field name="friendly_name"/>
                 <field name="domain_name"/>
+                <field name="secure_media"/>
                 <field name="delete_protection"/>
             </list>
         </field>
@@ -40,11 +41,14 @@
                     <group>
                         <group>
                             <field name="subdomain"/>
+                            <field name="secure_media"/>
                             <field name="application"/>
                         </group>
                         <group>
                             <field name="delete_protection"/>
-                            <field name="domain_name" readonly="1"/>
+                            <field name="domain_name" string="Global Hostname"/>
+                            <field name="edge_domains" string="Edges"
+                                help="Twilio Edges are regional connection points for Twilio. Choose the one closest to your users or infrastructure to reduce latency and improve call quality."/>
                         </group>
                     </group>
                 </sheet>

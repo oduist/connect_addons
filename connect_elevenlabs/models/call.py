@@ -14,6 +14,14 @@ class Call(models.Model):
         elevenlabs_recording_widget = fields.Char(compute='_get_elevenlabs_recording_data', string='Agent Recording')
 
 
+    def _get_recording_data(self):
+        super(Call, self)._get_recording_data()
+        for rec in self:
+            # Also show recording icons on Agent calls.
+            if rec.elevenlabs_agent:
+                rec.recording_icon = '<span class="fa fa-file-sound-o"/>'
+                # No need for else condition as it's already set in super().
+
     def elevenlabs_agent_get_call_data(self):
         self.ensure_one()
         users = self.env['connect.user'].search([])
@@ -66,8 +74,8 @@ class Call(models.Model):
         # Make one query to get all records.
         recordings = self.env['connect.recording'].search([('call', 'in', [k.id for k in self])])
         for rec in self:
-            recording = recordings.filtered(lambda x: x.call.id == rec.id)
-            if recording and recording[0].elevenlabs_transcript:
+            recording = recordings.filtered(lambda x: x.call.id == rec.id and x.elevenlabs_transcript)
+            if recording:
                 rec.elevenlabs_transcript = recording[0].elevenlabs_transcript
                 rec.elevenlabs_recording_widget = recording[0].elevenlabs_recording_widget
             else:

@@ -36,7 +36,7 @@
             <field name="tool_type">system</field>
         </record>
 
-        <!-- Elevenlabs Agent Tool: transfer_to_extension -->
+        <!-- Elevenlabs Agent Tool: transfer_to_extension
         <record id="transfer_to_extension_tool" model="connect.elevenlabs_agent_tool">
             <field name="name">transfer_to_extension</field>
             <field name="description">Transfer (connect) the call to human by his extension. Always pass all parameters. If user does not enter an extension use default_exten as exten.</field>
@@ -46,7 +46,6 @@
             <field name="param_type">body</field>
         </record>
 
-        <!-- parameters for transfer_to_extension tool -->
         <record id="transfer_to_extension_param_default_exten" model="connect.agent_tool_params">
             <field name="name">default_exten</field>
             <field name="data_type">string</field>
@@ -75,6 +74,6 @@
             <field name="description">Channel SID for the current call</field>
             <field name="tool" ref="transfer_to_extension_tool"/>
         </record>
-
+        -->
     </data>
 </odoo>

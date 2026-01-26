@@ -20,6 +20,10 @@ warnings.filterwarnings("ignore", category=PydanticDeprecatedSince20)
 
 logger = logging.getLogger(__name__)
 
+default_prompt = """
+You are Harper, a vibrant and personable sales consultant with a passion for Conversational AI systems.
+"""
+
 language_list = [
     ('ar', 'Arabic'),
     ('bg', 'Bulgarian'),
@@ -77,7 +81,6 @@ llm_list = [
     ('grok-beta', 'Grok Beta'),
 ]
 
-
 class ElevenlabsAgent(models.Model):
     _name = 'connect.elevenlabs_agent'
     _description = 'Elevenlabs Agent'
@@ -85,15 +88,14 @@ class ElevenlabsAgent(models.Model):
     name = fields.Char(required=True)
     voice = fields.Many2one('connect.elevenlabs_voice', required=True)
     first_message = fields.Char(default="Hi there! How could I help you today?", required=True, translate=True)
-    prompt = fields.Html(required=True, default="You are Harper, a vibrant and personable sales consultant with "
-                                                "a passion for Conversational AI systems. ")
+    prompt = fields.Html(required=True, default=default_prompt)
     language = fields.Selection(selection=language_list, default='en', required=True)
     additional_languages = fields.Many2many('res.lang', domain=[('active', '=', True)], required=True)
     tools = fields.Many2many('connect.elevenlabs_agent_tool')
     temperature = fields.Float(required=True, default=0.0)
     max_tokens = fields.Integer(
         required=True, default=-1, help='If greater than 0, maximum number of tokens the LLM can predict')
-    llm = fields.Selection(selection=llm_list, default='gpt-4o', required=True)
+    llm = fields.Selection(selection=llm_list, string='LLM', default='gpt-4o', required=True)
     agent_uid = fields.Char(string="Agent ID")
     use_flash = fields.Boolean(default=True)
     output_audio_format = fields.Selection([
@@ -114,6 +116,13 @@ class ElevenlabsAgent(models.Model):
         ('pcm_44100', 'PCM 44100'),
         ('pcm_48000', 'PCM 48000'),
     ], required=True, default='ulaw_8000')
+    model = fields.Selection([
+        ('eleven_turbo_v2', 'Eleven Turbo v2'),
+        ('eleven_turbo_v2_5', 'Eleven Turbo v2.5'),
+        ('eleven_flash_v2', 'Eleven Flash v2'),
+        ('eleven_flash_v2_5', 'Eleven Flash v2.5'),
+        ],
+        required=True, default='eleven_flash_v2_5')
     stability = fields.Float(default=0.5, required=True)
     speed = fields.Float(default=1.0, required=True)
     max_duration_seconds = fields.Integer(default=600, required=True)
@@ -122,6 +131,8 @@ class ElevenlabsAgent(models.Model):
     daily_limit = fields.Integer(default=100000, required=True,
                                  help='The maximum number of conversations per day')
     similarity_boost = fields.Float(default=0.8, required=True)
+    turn_timeout = fields.Float(default=7.0, required=True)
+    silence_end_call_timeout = fields.Integer(required=True, default=10)
     exten = fields.Many2one('connect.exten', ondelete='set null', readonly=True)
     exten_number = fields.Char(related='exten.number')
 
@@ -131,11 +142,14 @@ class ElevenlabsAgent(models.Model):
         if not self.env.context.get('skip_elevenlabs'):
             for rec in res:
                 agent = rec.create_elevenlabs_agent()
-                rec.agent_uid = agent.agent_id
+                rec.with_context(skip_elevenlabs=True).write({'agent_uid': agent.agent_id})
                 rec.update_elevenlabs_agent()
         return res
 
     def write(self, vals):
+        if vals.get('exten'):
+            # Skip all syncing.
+            return super().write(vals)
         res = super().write(vals)
         if not self.env.context.get('skip_elevenlabs'):
             self.update_elevenlabs_agent()
@@ -145,7 +159,7 @@ class ElevenlabsAgent(models.Model):
         try:
             self.delete_elevenlabs_agent()
         except Exception as e:
-            logger.exception("Error Delete Elevenlabs agent: ", e)
+            logger.exception("Error Delete Elevenlabs agent: %s", e)
         return super().unlink()
 
     @api.constrains('temperature')
@@ -180,7 +194,7 @@ class ElevenlabsAgent(models.Model):
         self.ensure_one()
         channel_sid = request.get("CallSid")
         call_id = self.env['connect.channel'].search([('sid', '=', channel_sid)], limit=1).call.id
-        elevenlabs_agent_url = self.env['connect.settings'].get_param('elevenlabs_agent_url').replace('https://',
+        elevenlabs_agent_url = self.env['connect.settings'].sudo().get_param('elevenlabs_agent_url').replace('https://',
                                                                                                       'wss://')
         agent_uid = self.agent_uid
         connect = Connect()

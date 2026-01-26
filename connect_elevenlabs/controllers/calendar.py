@@ -5,14 +5,14 @@ import logging
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from odoo import http
+from odoo import http, release
 
 logger = logging.getLogger(__name__)
-
+route_type = "json" if release.version_info[0] < 19.0 else 'jsonrpc'
 
 class CalendarController(http.Controller):
 
-    @http.route('/connect_elevenlabs/get_available_slots/<int:user_id>', methods=['POST'], type='json', auth='public',
+    @http.route('/connect_elevenlabs/get_available_slots/<int:user_id>', methods=['POST'], type=route_type, auth='public',
                 csrf=False)
     def get_available_slots(self, user_id):
         kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
@@ -55,7 +55,7 @@ class CalendarController(http.Controller):
         })
         return free_intervals
 
-    @http.route('/connect_elevenlabs/create_event/<int:user_id>', methods=['POST'], type='json', auth='public',
+    @http.route('/connect_elevenlabs/create_event/<int:user_id>', methods=['POST'], type=route_type, auth='public',
                 csrf=False)
     def create_event(self, user_id):
         kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
@@ -88,6 +88,6 @@ class CalendarController(http.Controller):
         })
         return {'status': 201, 'detail': 'Event successfully created'}
 
-    @http.route('/connect_elevenlabs/get_current_date', methods=['POST'], type='json', auth='public', csrf=False)
+    @http.route('/connect_elevenlabs/get_current_date', methods=['POST'], type=route_type, auth='public', csrf=False)
     def get_current_date(self):
         return {'current_date': str(datetime.now())}

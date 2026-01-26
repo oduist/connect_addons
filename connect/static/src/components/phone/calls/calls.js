@@ -46,27 +46,28 @@ class CallDetail extends Component {
         this.state.call = call
     }
 
-    async _createOpenPartner() {
+    async _createPartner() {
+        const phone = this.state.call.called_users[0] === this.user ? this.state.call.caller : this.state.call.called
+        let context = {
+            connect_call_id: this.state.call.id,
+            default_phone: phone,
+            default_name: `Partner ${phone}`
+        }
+        this.action.doAction({
+            context,
+            res_model: 'res.partner',
+            target: 'new',
+            type: 'ir.actions.act_window',
+            views: [[false, 'form']],
+        })
+    }
+
+    async _openPartner() {
         await this.getCall(this.state.call.id)
         if (this.state.call.partner) {
             this.action.doAction({
                 res_id: this.state.call.partner[0],
                 res_model: "res.partner",
-                target: 'new',
-                type: 'ir.actions.act_window',
-                views: [[false, 'form']],
-            })
-        } else {
-            const phone = this.state.call.called_users[0] === this.user ?
-                this.state.call.caller : this.state.call.called
-            let context = {
-                connect_call_id: this.state.call.id,
-                default_phone: phone,
-                default_name: `Partner ${phone}`
-            }
-            this.action.doAction({
-                context,
-                res_model: 'res.partner',
                 target: 'new',
                 type: 'ir.actions.act_window',
                 views: [[false, 'form']],
@@ -123,7 +124,7 @@ export class Calls extends Component {
         for (const item of records) {
             const call_number = item.called_users[0] === this.user ? item.caller : item.called
             item.favorite = this.favorites.includes(call_number)
-            const local_time = new Date(`${item.create_date} UTC`).toLocaleTimeString("en-GB")
+            const local_time = new Date(`${item.create_date}Z`).toLocaleTimeString("en-GB")
             item.create_date = `${item.create_date.split(' ')[0]} ${local_time}`
         }
         this.state.calls = records

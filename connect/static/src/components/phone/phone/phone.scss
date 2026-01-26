@@ -17,7 +17,7 @@
   bottom: 0;
   font-size: 12px;
   flex-flow: column nowrap;
-  z-index: 1000;
+  z-index: 1100;
 
   .flex-container {
     display: flex;
@@ -195,6 +195,11 @@
         font-size: 18px;
         color: $o-brand-odoo;
         text-align: center;
+      }
+
+      .custom-whatsapp {
+          margin-right: 5px;
+          color: #70bd53;
       }
     }
   }

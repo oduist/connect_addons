@@ -22,6 +22,26 @@
     <field name="perm_unlink" eval="1"/>
   </record>
 
+  <record id="connect_whatsapp_composer_user" model="ir.model.access">
+    <field name="name">connect_whatsapp_composer_user</field>
+    <field name="model_id" ref="connect.model_connect_whatsapp_composer"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
+  </record>
+
+  <record id="connect_originate_to_wizard_user" model="ir.model.access">
+    <field name="name">connect_originate_to_wizard_user</field>
+    <field name="model_id" ref="connect.model_connect_originate_to_wizard"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
+  </record>
+
   <!-- Domains -->
   <record id="connect_domain_user" model="ir.model.access">
     <field name="name">connect_domain_user</field>
@@ -42,6 +62,17 @@
     <field name="perm_write" eval="0"/>
     <field name="perm_create" eval="0"/>
     <field name="perm_unlink" eval="0"/>
+  </record>
+
+<!-- User Callflow -->
+  <record id="connect_user_callflow_user" model="ir.model.access">
+    <field name="name">connect_user_callflow_user</field>
+    <field name="model_id" ref="connect.model_connect_user_callflow"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
   </record>
 
   <!-- TwiML -->
@@ -176,4 +207,25 @@
     <field name="perm_unlink" eval="0"/>
   </record>
 
+  <!-- WhatsApp Sender -->
+  <record id="connect_whatsapp_sender_user" model="ir.model.access">
+    <field name="name">connect_whatsapp_sender_user</field>
+    <field name="model_id" ref="connect.model_connect_whatsapp_sender"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+  <!-- Message Content Template -->
+  <record id="connect_message_content_template_user" model="ir.model.access">
+    <field name="name">connect_message_content_template_user</field>
+    <field name="model_id" ref="connect.model_connect_message_content_template"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
 </odoo>

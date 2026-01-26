@@ -28,7 +28,7 @@ class CallFlow(models.Model):
     exten = fields.Many2one('connect.exten', ondelete='set null', readonly=True)
     exten_number = fields.Char(related='exten.number', store=True)
     language = fields.Char(default='en-US', required=True)
-    voice = fields.Char(required=True, default='Woman')
+    voice = fields.Char(required=True, default='man')
     gather_input = fields.Boolean()
     gather_input_type = fields.Selection(string='Input Type',
         selection=[
@@ -57,8 +57,10 @@ class CallFlow(models.Model):
 
     def _get_gather_action_url(self):
         api_url = self.env['connect.settings'].get_param('api_url')
+        edge = self.env['connect.settings'].get_param('twilio_edge')
         for rec in self:
-            rec.gather_action_url = urljoin(api_url, 'twilio/webhook/callflow/{}/gather'.format(rec.id))
+            rec.gather_action_url = urljoin(api_url,
+                'twilio/webhook/callflow/{}/gather#e={}'.format(rec.id, edge))
 
     @api.model
     def gather_action(self, flow_id, request):
@@ -76,10 +78,12 @@ class CallFlow(models.Model):
     def render(self, request={}, params={}):
         self.ensure_one()
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        voicemail_record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus')
-        status_url = urljoin(api_url, 'twilio/webhook/callstatus')
-        action_url = urljoin(api_url, 'twilio/webhook/connect.callflow/call_action/{}'.format(self.id))
-        record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus')
+        edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
+        voicemail_record_status_url = urljoin(api_url,
+                                            'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
+        status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
+        action_url = urljoin(api_url, 'twilio/webhook/connect.callflow/call_action/{}#e={}'.format(self.id, edge))
+        record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus#e={}'.format(edge))
         invalid_input = params.get('invalid_input')
         response = VoiceResponse()
         if invalid_input:
@@ -115,29 +119,20 @@ class CallFlow(models.Model):
             else:
                 dial = Dial(callerId=callerId, action=action_url)
             for user in self.ring_users:
-                if user.ring_first == 'sip':
-                    dial.sip('sip:{}'.format(user.uri),
+                callflows = self.env['connect.user_callflow'].sudo().search(
+                    [('callflow_type', 'in', ['sip', 'client']), ('user', '=', user.id)], order='prio')
+                for callflow in callflows:
+                    if callflow.callflow_type == 'sip':
+                        dial.sip('sip:{}'.format(user.uri),
+                                statusCallbackEvent='answered completed',
+                                statusCallback=status_url)
+                    else:
+                        client = Client(
                             statusCallbackEvent='answered completed',
                             statusCallback=status_url)
-                elif user.ring_first == 'client':
-                    client = Client(
-                        statusCallbackEvent='answered completed',
-                        statusCallback=status_url)
-                    client.identity(user.uri)
-                    client.parameter(name='CallerName', value=callerId)
-                    dial.append(client)
-                # Ring 2nd
-                if user.ring_second == 'sip':
-                    dial.sip('sip:{}'.format(user.uri),
-                            statusCallbackEvent='answered completed',
-                            statusCallback=status_url)
-                elif user.ring_second == 'client':
-                    client = Client(
-                        statusCallbackEvent='answered completed',
-                        statusCallback=status_url)
-                    client.identity(user.uri)
-                    client.parameter(name='CallerName', value=callerId)
-                    dial.append(client)
+                        client.identity(user.get_client_identity())
+                        client.parameter(name='CallerName', value=callerId)
+                        dial.append(client)
             response.append(dial)
         else:
             # No ring users set, just send to voicemail if enabled.
@@ -175,7 +170,8 @@ class CallFlow(models.Model):
             # The call was not connected, point to the voicemail
             if callflow.voicemail_prompt:
                 api_url = self.env['connect.settings'].sudo().get_param('api_url')
-                record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus')
+                edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
+                record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
                 response.pause(length=1)
                 response.say(callflow.voicemail_prompt, language=callflow.language, voice=callflow.voice)
                 response.record(

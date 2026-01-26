@@ -49,15 +49,29 @@ def format_number(self, number, country=None, format_type='e164'):
 class Partner(models.Model):
     _inherit = 'res.partner'
 
+    @api.model
+    def create_record_from_message(self, message, default_values=None):
+        """Default destination handler: ensure a Partner exists for the message sender.
+        default_values: dict of additional field values to include in creation.
+        """
+        number = message.from_number
+        partner = self.get_partner_by_number(number)
+        if partner:
+            return partner
+        vals = {
+            'name': number,
+            'phone': number,
+        }
+        if isinstance(default_values, dict):
+            vals.update(default_values)
+        return self.create(vals)
+
     connect_calls_count = fields.Integer(compute='_get_connect_calls_count')
+    connect_messages_count = fields.Integer(compute='_get_connect_messages_count')
     connect_recorded_calls = fields.One2many('connect.recording', 'partner')
-    connect_phone_normalized = fields.Char(compute='_get_connect_phone_normalized',
-                                   index=True, store=True,
-                                   string='E.164 phone')
-    connect_mobile_normalized = fields.Char(compute='_get_connect_phone_normalized',
-                                    index=True, store=True,
-                                    string='E.164 mobile')
     connect_user = fields.Many2one('connect.user', compute='_get_connect_user')
+    if release.version_info[0] >= 19:
+        mobile = fields.Char()
 
 
     def _get_connect_user(self):
@@ -101,14 +115,6 @@ class Partner(models.Model):
         return res
 
 
-    @api.depends('phone', 'mobile', 'country_id')
-    def _get_connect_phone_normalized(self):
-        for rec in self:
-            rec.update({
-                'connect_phone_normalized': rec._normalize_phone(rec.phone) if rec.phone else False,
-                'connect_mobile_normalized': rec._normalize_phone(rec.mobile) if rec.mobile else False
-            })
-
     def _normalize_phone(self, number):
         """Keep normalized (E.164) phone numbers in normalized fields.
         """
@@ -139,14 +145,7 @@ class Partner(models.Model):
         a) If partners belong to same company, return company record.
         b) If partners belong to different companies return False.
         """
-        re_uri = re.compile(r'^sip:(\+\d+)@(.+)$')
-        found = re_uri.search(number)
-        if found:
-            number = found.group(1)
-        found = self.sudo().search([
-            '|',
-            ('connect_phone_normalized', '=', number),
-            ('connect_mobile_normalized', '=', number)])
+        found = self.sudo().search([('phone_mobile_search', '=', number)])
         debug(self, '{} belongs to partners: {}'.format(
             number, found.mapped('id')
         ))
@@ -207,6 +206,17 @@ class Partner(models.Model):
                     'connect.call'].sudo().search_count(
                     [('partner', '=', rec.id)])
 
+    def _get_connect_messages_count(self):
+        for rec in self:
+            if rec.is_company:
+                rec.connect_messages_count = self.env['connect.message'].sudo().search_count(
+                    ['|', ('partner', '=', rec.id), ('partner.parent_id', '=', rec.id)]
+                )
+            else:
+                rec.connect_messages_count = self.env['connect.message'].sudo().search_count(
+                    [('partner', '=', rec.id)]
+                )
+
     def _phone_format(self, number=None, country=None, company=None, force_format='E164', **kwargs):
         version_info = release.version_info
         # For Odoo versions before 16
@@ -219,8 +229,7 @@ class Partner(models.Model):
         else:
             # Ensure 'fname' and 'raise_exception' are extracted from kwargs or set to defaults
             fname = kwargs.get('fname', False)
-            raise_exception = kwargs.get('raise_exception', False)
-            return super(Partner, self)._phone_format(fname=fname, number=number, country=country, force_format=force_format, raise_exception=raise_exception)
+            return super(Partner, self)._phone_format(fname=fname, number=number, country=country, force_format=force_format)
 
     @api.model
     def api_get_partner(self, number):
@@ -230,4 +239,73 @@ class Partner(models.Model):
             return {'id': partner.id, 'name': partner.display_name}
         else:
             return {'id': False, 'name': 'Unknown'}
+
+    @api.model
+    def originate_call_to(self, number, extension_id, callerid, partner_id=False):
+        """Originate a call to partner and connect to an extension.
+
+        Args:
+            number: Phone number to call (partner's phone)
+            extension_id: ID of connect.exten to connect to after partner answers
+            callerid: Caller ID to display
+            partner_id: Optional partner ID for tracking
+
+        Flow:
+            1. Call the partner's number
+            2. When partner answers, execute TwiML from extension.render()
+        """
+        from urllib.parse import urljoin
+
+        settings = self.env['connect.settings'].sudo()
+        client = settings.get_client()
+
+        # Get extension and render its TwiML
+        extension = self.env['connect.exten'].browse(extension_id)
+        if not extension.exists():
+            raise ValueError('Extension not found')
+
+        # Format number
+        number = strip_number(number)
+        if len(number) > 4:
+            number = "+{}".format(number)
+
+        # Get API URL and edge for callbacks
+        api_url = settings.get_param("api_url")
+        edge = settings.get_param('twilio_edge')
+        status_url = urljoin(api_url, "twilio/webhook/callstatus#e={}".format(edge))
+        record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus#e={}".format(edge))
+
+        # Render TwiML from extension destination
+        twiml = str(extension.render())
+
+        # Check if recording is enabled for current user
+        record = False
+        if self.env.user.connect_user:
+            record = self.env.user.connect_user.record_calls
+
+        debug(self, 'Originate call to TwiML: {}'.format(twiml))
+
+        # Create outbound call to partner, execute extension TwiML when answered
+        channel = client.calls.create(
+            twiml=twiml,
+            to=number,
+            from_=callerid,
+            status_callback=status_url,
+            record=record,
+            recording_channels="dual",
+            recording_status_callback=record_status_url,
+            recording_status_callback_event=["completed"],
+            status_callback_event=["initiated", "answered", "completed"],
+        )
+
+        # Create channel record for tracking
+        self.env["connect.channel"].sudo().create({
+            "sid": channel.sid,
+            "technical_direction": "outbound-api",
+            "caller_user": self.env.user.id,
+            "caller_pbx_user": self.env.user.connect_user.id if self.env.user.connect_user else False,
+            "partner": partner_id,
+            "called": number,
+            "caller": callerid,
+        })
 
