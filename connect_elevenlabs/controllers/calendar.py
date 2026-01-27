@@ -12,10 +12,11 @@ route_type = "json" if release.version_info[0] < 19.0 else 'jsonrpc'
 
 class CalendarController(http.Controller):
 
-    @http.route('/connect_elevenlabs/get_available_slots/<int:user_id>', methods=['POST'], type=route_type, auth='public',
+    @http.route('/connect_elevenlabs/get_available_slots', methods=['POST'], type=route_type, auth='public',
                 csrf=False)
-    def get_available_slots(self, user_id):
+    def get_available_slots(self):
         kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
+        user_id = kwargs.get('user_id')
         if kwargs.get('timezone'):
             user_timezone = timezone(timedelta(hours=int(kwargs.get('timezone'))))
         else:
@@ -55,10 +56,11 @@ class CalendarController(http.Controller):
         })
         return free_intervals
 
-    @http.route('/connect_elevenlabs/create_event/<int:user_id>', methods=['POST'], type=route_type, auth='public',
+    @http.route('/connect_elevenlabs/create_event', methods=['POST'], type=route_type, auth='public',
                 csrf=False)
-    def create_event(self, user_id):
+    def create_event(self):
         kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
+        user_id = kwargs.get('user_id')
         if kwargs.get('timezone'):
             user_timezone = timezone(timedelta(hours=int(kwargs.get('timezone'))))
         else:

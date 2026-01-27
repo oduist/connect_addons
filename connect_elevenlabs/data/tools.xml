@@ -83,7 +83,7 @@
             <field name="name">get_available_slots</field>
             <field name="description">Get available time slots for a user on a specific date. Returns a list of free intervals during business hours (8:00-18:00).</field>
             <field name="tool_type">webhook</field>
-            <field name="path">/connect_elevenlabs/get_available_slots/&lt;user_id&gt;</field>
+            <field name="path">/connect_elevenlabs/get_available_slots</field>
             <field name="method">POST</field>
             <field name="param_type">body</field>
             <field name="response_timeout_secs">10</field>
@@ -122,7 +122,7 @@
             <field name="name">create_event</field>
             <field name="description">Create a calendar event for a user. The event is created in UTC time after converting from the user's timezone.</field>
             <field name="tool_type">webhook</field>
-            <field name="path">/connect_elevenlabs/create_event/&lt;user_id&gt;</field>
+            <field name="path">/connect_elevenlabs/create_event</field>
             <field name="method">POST</field>
             <field name="param_type">body</field>
             <field name="response_timeout_secs">10</field>
