@@ -48,6 +48,7 @@
                     <notebook>
                         <page name="prompt" string="Prompt">
                             <group>
+                                <field name="template"/>
                                 <field name="first_message"/>
                                 <field name="prompt"/>
                             </group>

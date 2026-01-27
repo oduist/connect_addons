@@ -132,18 +132,19 @@ class ElevenlabsAgentTool(models.Model):
                     'url': self.get_tool_url(),
                 }
 
-                # Add request body schema if we have body parameters
-                if self.params and self.param_type == 'body':
+                # Add request body schema for body parameters
+                if self.param_type == 'body':
                     properties = {}
                     required = []
 
-                    for param in self.params:
-                        properties[param.name] = {
-                            'type': param.data_type,
-                            'description': param.description if param.value_type == 'description' else param.name
-                        }
-                        if param.required:
-                            required.append(param.name)
+                    if self.params:
+                        for param in self.params:
+                            properties[param.name] = {
+                                'type': param.data_type,
+                                'description': param.description if param.value_type == 'description' else param.name
+                            }
+                            if param.required:
+                                required.append(param.name)
 
                     api_schema['request_body_schema'] = {
                         'type': 'object',

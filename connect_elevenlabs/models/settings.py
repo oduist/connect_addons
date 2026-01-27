@@ -26,6 +26,7 @@ class Elevenlabsettings(models.Model):
     elevenlabs_voice = fields.Many2one('connect.elevenlabs_voice', ondelete='set null', string='Selected Voice')
     elevenlabs_enabled = fields.Boolean()
     elevenlabs_agent_url = fields.Char(string='Agent URL', required=True, default='https://elevenlabs-agent.ngrok.io')
+    elevenlabs_agent_headers = fields.Text(string='Agent Headers')
     elevenlabs_post_call_webhook_url = fields.Char(compute='_get_post_call_webhook_url')
     display_elevenlabs_post_call_webhook_secret = fields.Char()
     elevenlabs_post_call_webhook_secret = fields.Char(groups="base.group_erp_manager")

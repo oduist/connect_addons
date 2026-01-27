@@ -75,5 +75,114 @@
             <field name="tool" ref="transfer_to_extension_tool"/>
         </record>
         -->
+
+        <!-- Calendar Tools -->
+
+        <!-- Elevenlabs Agent Tool: get_available_slots -->
+        <record id="agent_tool_get_available_slots" model="connect.elevenlabs_agent_tool">
+            <field name="name">get_available_slots</field>
+            <field name="description">Get available time slots for a user on a specific date. Returns a list of free intervals during business hours (8:00-18:00).</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs/get_available_slots/&lt;user_id&gt;</field>
+            <field name="method">POST</field>
+            <field name="param_type">body</field>
+            <field name="response_timeout_secs">10</field>
+        </record>
+
+        <record id="get_available_slots_param_user_id" model="connect.agent_tool_params">
+            <field name="name">user_id</field>
+            <field name="data_type">integer</field>
+            <field name="required">True</field>
+            <field name="value_type">dynamic_variable</field>
+            <field name="dynamic_variable">user_id</field>
+            <field name="description">ID of the user to get available slots for</field>
+            <field name="tool" ref="agent_tool_get_available_slots"/>
+        </record>
+
+        <record id="get_available_slots_param_start" model="connect.agent_tool_params">
+            <field name="name">start</field>
+            <field name="data_type">string</field>
+            <field name="required">False</field>
+            <field name="value_type">description</field>
+            <field name="description">Start date in YYYY-MM-DD format. If not provided, defaults to tomorrow.</field>
+            <field name="tool" ref="agent_tool_get_available_slots"/>
+        </record>
+
+        <record id="get_available_slots_param_timezone" model="connect.agent_tool_params">
+            <field name="name">timezone</field>
+            <field name="data_type">string</field>
+            <field name="required">False</field>
+            <field name="value_type">description</field>
+            <field name="description">Timezone offset in hours (e.g., -5 for EST, 2 for CEST). If not provided, uses user's timezone.</field>
+            <field name="tool" ref="agent_tool_get_available_slots"/>
+        </record>
+
+        <!-- Elevenlabs Agent Tool: create_event -->
+        <record id="agent_tool_create_event" model="connect.elevenlabs_agent_tool">
+            <field name="name">create_event</field>
+            <field name="description">Create a calendar event for a user. The event is created in UTC time after converting from the user's timezone.</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs/create_event/&lt;user_id&gt;</field>
+            <field name="method">POST</field>
+            <field name="param_type">body</field>
+            <field name="response_timeout_secs">10</field>
+        </record>
+
+        <record id="create_event_param_user_id" model="connect.agent_tool_params">
+            <field name="name">user_id</field>
+            <field name="data_type">integer</field>
+            <field name="required">True</field>
+            <field name="value_type">dynamic_variable</field>
+            <field name="dynamic_variable">user_id</field>
+            <field name="description">ID of the user to create event for</field>
+            <field name="tool" ref="agent_tool_create_event"/>
+        </record>
+
+        <record id="create_event_param_name" model="connect.agent_tool_params">
+            <field name="name">name</field>
+            <field name="data_type">string</field>
+            <field name="required">False</field>
+            <field name="value_type">description</field>
+            <field name="description">Event name or title. If not provided, defaults to 'Unknowns'.</field>
+            <field name="tool" ref="agent_tool_create_event"/>
+        </record>
+
+        <record id="create_event_param_start" model="connect.agent_tool_params">
+            <field name="name">start</field>
+            <field name="data_type">string</field>
+            <field name="required">True</field>
+            <field name="value_type">description</field>
+            <field name="description">Event start time in YYYY-MM-DD HH:MM:SS format</field>
+            <field name="tool" ref="agent_tool_create_event"/>
+        </record>
+
+        <record id="create_event_param_stop" model="connect.agent_tool_params">
+            <field name="name">stop</field>
+            <field name="data_type">string</field>
+            <field name="required">True</field>
+            <field name="value_type">description</field>
+            <field name="description">Event end time in YYYY-MM-DD HH:MM:SS format</field>
+            <field name="tool" ref="agent_tool_create_event"/>
+        </record>
+
+        <record id="create_event_param_timezone" model="connect.agent_tool_params">
+            <field name="name">timezone</field>
+            <field name="data_type">string</field>
+            <field name="required">False</field>
+            <field name="value_type">description</field>
+            <field name="description">Timezone offset in hours (e.g., -5 for EST, 2 for CEST). If not provided, uses user's timezone.</field>
+            <field name="tool" ref="agent_tool_create_event"/>
+        </record>
+
+        <!-- Elevenlabs Agent Tool: get_current_date -->
+        <record id="agent_tool_get_current_date" model="connect.elevenlabs_agent_tool">
+            <field name="name">get_current_date</field>
+            <field name="description">Get the current date and time in server timezone (UTC).</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs/get_current_date</field>
+            <field name="method">POST</field>
+            <field name="param_type">body</field>
+            <field name="response_timeout_secs">5</field>
+        </record>
     </data>
 </odoo>

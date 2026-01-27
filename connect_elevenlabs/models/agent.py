@@ -135,6 +135,12 @@ class ElevenlabsAgent(models.Model):
     silence_end_call_timeout = fields.Integer(required=True, default=10)
     exten = fields.Many2one('connect.exten', ondelete='set null', readonly=True)
     exten_number = fields.Char(related='exten.number')
+    template = fields.Many2one('connect.elevenlabs_agent_template', ondelete='set null')
+
+    @api.onchange('template')
+    def _onchange_template(self):
+        if self.template:
+            self.prompt = self.template.system_prompt
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -198,9 +204,10 @@ class ElevenlabsAgent(models.Model):
                                                                                                       'wss://')
         agent_uid = self.agent_uid
         connect = Connect()
-        connect.stream(
+        stream = connect.stream(
             url=f"{elevenlabs_agent_url}/twilio/stream/{agent_uid}/{call_id}/{channel_sid}",
         )
+        #stream.parameter(name='skip_zrok_interstitial', value='1')
         response = VoiceResponse()
         response.append(connect)
         debug(self, pretty_xml(response))

@@ -1,5 +1,6 @@
 from . import agent
 from . import agent_tool
+from . import agent_template
 from . import call
 from . import callflow
 from . import exten
