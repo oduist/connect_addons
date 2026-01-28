@@ -105,5 +105,22 @@ class CalendarController(http.Controller):
         events = http.request.env['calendar.event'].sudo().search(
             [('attendee_ids.partner_id', '=', partner_id)],
             order='start desc'
-        ).read(['name', 'start', 'stop', 'user_id', 'location', 'description'])
+        ).read(['id', 'name', 'start', 'stop', 'user_id', 'location', 'description'])
         return {'status': 200, 'meetings': events}
+
+    @http.route('/connect_elevenlabs/remove_meeting', methods=['POST'], type=route_type, auth='public',
+                csrf=False)
+    def remove_meeting(self):
+        kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
+        event_id = kwargs.get('event_id')
+        if not event_id:
+            return {'status': 400, 'detail': 'event_id is required'}
+        try:
+            event = http.request.env['calendar.event'].sudo().browse(event_id)
+            if not event.exists():
+                return {'status': 404, 'detail': 'Event not found'}
+            event.unlink()
+            return {'status': 200, 'detail': 'Event successfully removed'}
+        except Exception as e:
+            logger.error(f'Error removing event {event_id}: {str(e)}')
+            return {'status': 500, 'detail': f'Error removing event: {str(e)}'}
