@@ -20,6 +20,7 @@ class ElevenlabsAgentTool(models.Model):
 
     name = fields.Char(required=True)
     tool_id = fields.Char()
+    synced = fields.Boolean(default=False, string='Synced to ElevenLabs')
     description = fields.Text(required=True)
     tool_type = fields.Selection(
         [('client', 'Client'), ('webhook', 'Webhook'), ('system', 'System')], default='webhook', required=True)
@@ -78,21 +79,8 @@ class ElevenlabsAgentTool(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         res = super().create(vals_list)
-        if res.tool_type != 'system':
-            client = self.env['connect.settings'].get_elevenlabs_client()
-            try:
-                # Create tool using ElevenLabs API
-                tool_config = res.compute_agent_tools_config()
-                tool = client.conversational_ai.tools.create(
-                    request=ToolRequestModel(tool_config=tool_config)
-                )
-
-                res.tool_id = tool.id
-                logger.info(f'Successfully created tool: {res.name} with ID: {tool.id}')
-
-            except Exception as e:
-                logger.exception(f'Error creating tool {res.name}: {e}')
-                raise ValidationError(f'Failed to create ElevenLabs tool: {str(e)}')
+        if res.tool_type != 'system' and not self.env.context.get('install_mode'):
+            res._sync_to_elevenlabs()
         return res
 
     def compute_agent_tools_config(self):
@@ -178,15 +166,13 @@ class ElevenlabsAgentTool(models.Model):
     def write(self, vals):
         """Override write to update tool in ElevenLabs when changed"""
         result = super().write(vals)
-
-        # Update tool in ElevenLabs if it exists and we're not in a skip context
-        if self.tool_id and not self.env.context.get('skip_elevenlabs'):
-            try:
-                self.update_elevenlabs_tool()
-            except Exception as e:
-                logger.warning(f'Failed to update ElevenLabs tool {self.name}: {e}')
-                # Don't fail the write operation, just log the warning
-
+        if not self.env.context.get('skip_elevenlabs'):
+            for record in self:
+                if record.synced and record.tool_id:
+                    try:
+                        record.update_elevenlabs_tool()
+                    except Exception as e:
+                        logger.warning(f'Failed to update ElevenLabs tool {record.name}: {e}')
         return result
 
     def unlink(self):
@@ -238,44 +224,56 @@ class ElevenlabsAgentTool(models.Model):
             logger.error(f'Error deleting ElevenLabs tool {self.name}: {e}')
             raise ValidationError(f'Failed to delete ElevenLabs tool: {str(e)}')
 
-    def action_sync_with_elevenlabs(self):
-        """Action to sync tool with ElevenLabs"""
+    def _sync_to_elevenlabs(self):
+        """Internal method to sync tool to ElevenLabs"""
+        client = self.env['connect.settings'].get_elevenlabs_client()
         try:
-            if self.tool_id:
-                self.update_elevenlabs_tool()
-                message = f"Tool '{self.name}' updated successfully"
-            else:
-                # Create if doesn't exist
-                client = self.env['connect.settings'].get_elevenlabs_client()
-                tool_config = self.compute_agent_tools_config()
-
-                tool = client.conversational_ai.tools.create(
-                    request=ToolRequestModel(tool_config=tool_config)
-                )
-
-                self.tool_id = tool.id
-                message = f"Tool '{self.name}' created successfully with ID: {tool.id}"
-
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': 'Tool Sync Success',
-                    'message': message,
-                    'type': 'success',
-                }
-            }
-
+            tool_config = self.compute_agent_tools_config()
+            tool = client.conversational_ai.tools.create(
+                request=ToolRequestModel(tool_config=tool_config)
+            )
+            self.write({'tool_id': tool.id, 'synced': True})
+            logger.info(f'Successfully synced tool: {self.name} with ID: {tool.id}')
         except Exception as e:
+            logger.error(f'Error syncing tool {self.name}: {e}')
+            raise ValidationError(f'Failed to sync ElevenLabs tool: {str(e)}')
+
+    def action_sync_unsync_tools(self):
+        """Action to sync all unsynced tools to ElevenLabs"""
+        unsynced_tools = self.search([('synced', '=', False), ('tool_type', '!=', 'system')])
+        if not unsynced_tools:
             return {
                 'type': 'ir.actions.client',
                 'tag': 'display_notification',
                 'params': {
-                    'title': 'Tool Sync Failed',
-                    'message': f'Error syncing tool: {str(e)}',
-                    'type': 'danger',
+                    'title': 'No Tools to Sync',
+                    'message': 'All tools are already synced',
+                    'type': 'info',
                 }
             }
+        synced_count = 0
+        failed_tools = []
+        for tool in unsynced_tools:
+            try:
+                tool._sync_to_elevenlabs()
+                synced_count += 1
+            except Exception as e:
+                failed_tools.append(f"{tool.name}: {str(e)}")
+                logger.exception(f'Failed to sync tool {tool.name}: {e}')
+        message = f'Successfully synced {synced_count} tool(s)'
+        msg_type = 'success'
+        if failed_tools:
+            message += f'. Failed: {", ".join(failed_tools)}'
+            msg_type = 'warning' if synced_count > 0 else 'danger'
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Tools Sync',
+                'message': message,
+                'type': msg_type,
+            }
+        }
 
 
 class ElevenlabsAgentToolparams(models.Model):

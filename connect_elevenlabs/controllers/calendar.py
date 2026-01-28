@@ -29,8 +29,8 @@ class CalendarController(http.Controller):
             date = datetime.strptime(kwargs.get('start'), '%Y-%m-%d').replace(tzinfo=user_timezone)
         else:
             current_date = datetime.now().date() + timedelta(days=1)
-            date = current_date.strftime('%Y-%m-%d')
-        date.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
+            date = datetime.combine(current_date, datetime.min.time()).replace(tzinfo=user_timezone)
+        date = date.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
 
         end_date = date + timedelta(days=1)
 
@@ -54,6 +54,7 @@ class CalendarController(http.Controller):
             "start": current_start,
             "stop": day_end
         })
+        print(free_intervals)
         return free_intervals
 
     @http.route('/connect_elevenlabs/create_event', methods=['POST'], type=route_type, auth='public',
@@ -93,3 +94,16 @@ class CalendarController(http.Controller):
     @http.route('/connect_elevenlabs/get_current_date', methods=['POST'], type=route_type, auth='public', csrf=False)
     def get_current_date(self):
         return {'current_date': str(datetime.now())}
+
+    @http.route('/connect_elevenlabs/get_meetings', methods=['POST'], type=route_type, auth='public',
+                csrf=False)
+    def get_meetings(self):
+        kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
+        partner_id = kwargs.get('partner_id')
+        if not partner_id:
+            return {'status': 400, 'detail': 'partner_id is required'}
+        events = http.request.env['calendar.event'].sudo().search(
+            [('attendee_ids.partner_id', '=', partner_id)],
+            order='start desc'
+        ).read(['name', 'start', 'stop', 'user_id', 'location', 'description'])
+        return {'status': 200, 'meetings': events}

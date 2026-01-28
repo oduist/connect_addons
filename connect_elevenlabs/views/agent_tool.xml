@@ -20,6 +20,7 @@
             <list>
                 <field name="name"/>
                 <field name="tool_type"/>
+                <field name="synced"/>
             </list>
         </field>
     </record>
@@ -29,12 +30,16 @@
         <field name="model">connect.elevenlabs_agent_tool</field>
         <field name="arch" type="xml">
             <form>
+                <header>
+                    <button name="action_sync_unsync_tools" type="object" string="Sync Unsynced Tools" class="btn-primary"/>
+                </header>
                 <sheet>
                     <group>
                         <group>
                         <field name="name" readonly="tool_type == 'system'"/>
                         <field name="description"/>
                         <field name="tool_type" readonly="tool_type == 'system'"/>
+                        <field name="synced" readonly="1"/>
                         <field name="param_type" string="Parameters Type"
                                invisible="tool_type != 'webhook'"/>
                         </group>
