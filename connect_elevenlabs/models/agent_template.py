@@ -10,4 +10,4 @@ class ElevenlabsAgentTemplate(models.Model):
     _description = 'Elevenlabs Agent Template'
 
     name = fields.Char(required=True, index=True)
-    system_prompt = fields.Html(required=True, help='System prompt template for the agent')
+    system_prompt = fields.Text(required=True, help='System prompt template for the agent')

@@ -188,7 +188,7 @@
         <!-- Elevenlabs Agent Tool: get_meetings -->
         <record id="agent_tool_get_meetings" model="connect.elevenlabs_agent_tool">
             <field name="name">get_meetings</field>
-            <field name="description">Get completed meetings for a specific partner/contact. Returns a list of past meetings with details like name, start time, end time, organizer, location, and description.</field>
+            <field name="description">Get meetings for a specific partner/contact. Returns a list of  meetings with details like name, start time, end time, organizer, location, and description.</field>
             <field name="tool_type">webhook</field>
             <field name="path">/connect_elevenlabs/get_meetings</field>
             <field name="method">POST</field>

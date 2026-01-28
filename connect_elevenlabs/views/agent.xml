@@ -50,7 +50,7 @@
                             <group>
                                 <field name="template"/>
                                 <field name="first_message"/>
-                                <field name="prompt"/>
+                                <field name="prompt" widget="text"/>
                             </group>
                         </page>
                         <page string="Conversation" name="conversation">

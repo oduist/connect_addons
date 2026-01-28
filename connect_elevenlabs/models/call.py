@@ -38,6 +38,7 @@ class Call(models.Model):
             'existing_partner': 'Yes' if partner else 'No',
             'partner_phone': partner.phone,
             'partner_id': partner.id,
+            'partner_tz': partner.tz,
             'greeting': partner.name or 'Dear customer',
             'users_directory': ', '.join(['{} <{}>'.format(k.user.name, k.exten.number) for k in users]),
             'previous_conversation_id': '',

@@ -64,7 +64,7 @@
             <group>
               <group>
                 <field name="elevenlabs_agent_url"/>
-                <field name="elevenlabs_agent_headers"/>
+                <field name="elevenlabs_agent_parameters" placeholder="param=value"/>
               </group>
             </group>
             <button type="object" string="Agent Ping" icon="fa-check" name="ping_agent" style="width: 130px"/>

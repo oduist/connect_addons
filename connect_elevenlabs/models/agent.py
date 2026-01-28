@@ -20,10 +20,6 @@ warnings.filterwarnings("ignore", category=PydanticDeprecatedSince20)
 
 logger = logging.getLogger(__name__)
 
-default_prompt = """
-You are Harper, a vibrant and personable sales consultant with a passion for Conversational AI systems.
-"""
-
 language_list = [
     ('ar', 'Arabic'),
     ('bg', 'Bulgarian'),
@@ -88,7 +84,7 @@ class ElevenlabsAgent(models.Model):
     name = fields.Char(required=True)
     voice = fields.Many2one('connect.elevenlabs_voice', required=True)
     first_message = fields.Char(default="Hi there! How could I help you today?", required=True, translate=True)
-    prompt = fields.Html(required=True, default=default_prompt)
+    prompt = fields.Text(required=True)
     language = fields.Selection(selection=language_list, default='en', required=True)
     additional_languages = fields.Many2many('res.lang', domain=[('active', '=', True)], required=True)
     tools = fields.Many2many('connect.elevenlabs_agent_tool')
@@ -382,7 +378,7 @@ class ElevenlabsAgent(models.Model):
 
     def _compute_prompt_config(self):
         previous_topics = '\nLast conversation summary {{previous_topics}}.'
-        agent_prompt = f'{tools.html2plaintext(self.prompt)}{previous_topics}'
+        agent_prompt = f'{self.prompt}{previous_topics}'
 
         prompt_dict = {
             'prompt': agent_prompt,
