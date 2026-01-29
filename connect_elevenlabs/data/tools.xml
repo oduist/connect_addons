@@ -204,5 +204,25 @@
             <field name="description">ID of the partner/contact to get meetings for</field>
             <field name="tool" ref="agent_tool_get_meetings"/>
         </record>
+
+        <!-- Elevenlabs Agent Tool: remove_meeting -->
+        <record id="agent_tool_remove_meeting" model="connect.elevenlabs_agent_tool">
+            <field name="name">remove_meeting</field>
+            <field name="description">Remove/cancel a scheduled calendar meeting by event ID. Use this when a user requests to cancel or delete a meeting.</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs/remove_meeting</field>
+            <field name="method">POST</field>
+            <field name="param_type">body</field>
+            <field name="response_timeout_secs">10</field>
+        </record>
+
+        <record id="remove_meeting_param_event_id" model="connect.agent_tool_params">
+            <field name="name">event_id</field>
+            <field name="data_type">integer</field>
+            <field name="required">True</field>
+            <field name="value_type">description</field>
+            <field name="description">ID of the calendar event to remove</field>
+            <field name="tool" ref="agent_tool_remove_meeting"/>
+        </record>
     </data>
 </odoo>
