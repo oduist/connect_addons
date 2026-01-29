@@ -101,7 +101,7 @@ class Elevenlabsettings(models.Model):
         self.env['connect.elevenlabs_agent_tool'].with_context(skip_elevenlabs=True).search([]).write(
             {'tool_id': None, 'synced': False})
 
-        self.connect_notify('Setup done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)
+        self.connect_notify('Unbind done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)
 
     def ping_agent(self):
         self.ensure_one()
