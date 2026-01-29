@@ -81,10 +81,27 @@ class Elevenlabsettings(models.Model):
 
     def elevenlabs_sync(self):
         self.elevenlabs_get_voices()
+        self.connect_notify('Voices sync done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)
         self.elevenlabs_reset_token()
+        # Sync tools first
+        for tool in self.env['connect.elevenlabs_agent_tool'].search([
+            ('tool_type', '!=', 'system'), ('tool_id', '=', False)]):
+            tool._sync_to_elevenlabs()
+        self.connect_notify('Tools sync done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)
+
         for agent in self.env['connect.elevenlabs_agent'].search([]):
             agent.update_elevenlabs_agent()
         self.connect_notify('Sync done', title='Elevenlabs Agent', notify_uid=self.env.user.id)
+
+    def elevenlabs_unbind_account(self):
+        """Sync with new ElevenLabs account: clear agent and tool IDs"""
+        # Clear all agent UIDs
+        self.env['connect.elevenlabs_agent'].with_context(skip_elevenlabs=True).search([]).write({'agent_uid': None})
+        # Clear all tool IDs
+        self.env['connect.elevenlabs_agent_tool'].with_context(skip_elevenlabs=True).search([]).write(
+            {'tool_id': None, 'synced': False})
+
+        self.connect_notify('Setup done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)
 
     def ping_agent(self):
         self.ensure_one()

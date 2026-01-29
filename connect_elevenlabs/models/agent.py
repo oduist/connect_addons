@@ -10,7 +10,7 @@ from odoo.addons.connect.models.settings import debug
 from odoo.addons.connect.models.twiml import pretty_xml
 from odoo.exceptions import ValidationError
 from elevenlabs.types import ConversationalConfig, AgentPlatformSettingsRequestModel
-from elevenlabs import ElevenLabs
+from elevenlabs.core.api_error import ApiError
 
 # Supress a warning message.
 import warnings
@@ -143,9 +143,7 @@ class ElevenlabsAgent(models.Model):
         res = super().create(vals_list)
         if not self.env.context.get('skip_elevenlabs'):
             for rec in res:
-                agent = rec.create_elevenlabs_agent()
-                rec.with_context(skip_elevenlabs=True).write({'agent_uid': agent.agent_id})
-                rec.update_elevenlabs_agent()
+                rec._sync_elevenlabs_agent()
         return res
 
     def write(self, vals):
@@ -187,6 +185,13 @@ class ElevenlabsAgent(models.Model):
         for rec in self:
             if rec.similarity_boost and rec.similarity_boost < 0 or rec.similarity_boost > 1:
                 raise ValidationError('Please enter a similarity boost value between 0 and 1.')
+
+    def _sync_elevenlabs_agent(self):
+        """Create ElevenLabs agent and sync it with Odoo."""
+        self.ensure_one()
+        agent = self.create_elevenlabs_agent()
+        self.with_context(skip_elevenlabs=True).write({'agent_uid': agent.agent_id})
+        self.update_elevenlabs_agent()
 
     def create_extension(self):
         self.ensure_one()
@@ -264,6 +269,14 @@ class ElevenlabsAgent(models.Model):
                 conversation_config=conversation_config,
                 platform_settings=self._build_platform_settings(),
             )
+        except ApiError as e:
+            if e.status_code == 404:
+                logger.exception("Agent doesn't exist! Create.")
+                self._sync_elevenlabs_agent()
+                self.update_elevenlabs_agent()
+            else:
+                logger.exception("Error updating ElevenLabs agent: %s", e)
+                raise
         except Exception as e:
             logger.exception("Error updating ElevenLabs agent: %s", e)
             raise
