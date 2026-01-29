@@ -164,9 +164,10 @@ class ElevenlabsAgentTool(models.Model):
             raise ValidationError(f'Failed to create tool configuration: {str(e)}')
 
     def write(self, vals):
+        print(vals)
         """Override write to update tool in ElevenLabs when changed"""
         result = super().write(vals)
-        if not self.env.context.get('skip_elevenlabs'):
+        if not self.env.context.get('skip_elevenlabs') or not self.env.context.get('install_mode'):
             for record in self:
                 if record.synced and record.tool_id:
                     try:
@@ -237,6 +238,42 @@ class ElevenlabsAgentTool(models.Model):
         except Exception as e:
             logger.error(f'Error syncing tool {self.name}: {e}')
             raise ValidationError(f'Failed to sync ElevenLabs tool: {str(e)}')
+
+    def remove_all_from_elevenlabs(self):
+        """Delete all tools from ElevenLabs and mark all Odoo tools as not synced"""
+        client = self.env['connect.settings'].get_elevenlabs_client()
+        deleted_count = 0
+        failed_tools = []
+        try:
+            response = client.conversational_ai.tools.list()
+            elevenlabs_tools = response.tools if hasattr(response, 'tools') else []
+        except Exception as e:
+            logger.error(f'Failed to fetch tools from ElevenLabs: {e}')
+            raise ValidationError(f'Failed to fetch tools from ElevenLabs: {str(e)}')
+        for tool in elevenlabs_tools:
+            tool_id = tool.id if hasattr(tool, 'id') else tool.get('id')
+            tool_name = tool_id
+            try:
+                client.conversational_ai.tools.delete(tool_id=tool_id)
+                deleted_count += 1
+            except Exception as e:
+                failed_tools.append(f"{tool_name}: {str(e)}")
+                logger.warning(f'Failed to delete ElevenLabs tool {tool_name}: {e}')
+        self.search([]).with_context(skip_elevenlabs=True).write({'synced': False, 'tool_id': False})
+        message = f'Deleted {deleted_count} tool(s) from ElevenLabs'
+        msg_type = 'success'
+        if failed_tools:
+            message += f'. Failed: {", ".join(failed_tools)}'
+            msg_type = 'warning' if deleted_count > 0 else 'danger'
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Remove All Tools',
+                'message': message,
+                'type': msg_type,
+            }
+        }
 
     def action_sync_unsync_tools(self):
         """Action to sync all unsynced tools to ElevenLabs"""
