@@ -275,43 +275,6 @@ class ElevenlabsAgentTool(models.Model):
             }
         }
 
-    def action_sync_unsync_tools(self):
-        """Action to sync all unsynced tools to ElevenLabs"""
-        unsynced_tools = self.search([('synced', '=', False), ('tool_type', '!=', 'system')])
-        if not unsynced_tools:
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': 'No Tools to Sync',
-                    'message': 'All tools are already synced',
-                    'type': 'info',
-                }
-            }
-        synced_count = 0
-        failed_tools = []
-        for tool in unsynced_tools:
-            try:
-                tool._sync_to_elevenlabs()
-                synced_count += 1
-            except Exception as e:
-                failed_tools.append(f"{tool.name}: {str(e)}")
-                logger.exception(f'Failed to sync tool {tool.name}: {e}')
-        message = f'Successfully synced {synced_count} tool(s)'
-        msg_type = 'success'
-        if failed_tools:
-            message += f'. Failed: {", ".join(failed_tools)}'
-            msg_type = 'warning' if synced_count > 0 else 'danger'
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': 'Tools Sync',
-                'message': message,
-                'type': msg_type,
-            }
-        }
-
 
 class ElevenlabsAgentToolparams(models.Model):
     _name = 'connect.agent_tool_params'
