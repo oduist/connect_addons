@@ -24,12 +24,13 @@ class ConnectElevenlabsController(http.Controller):
 
     @http.route('/connect_elevenlabs/transfer', methods=['POST'], type='http', auth='public', csrf=False)
     def transfer_webhook(self):
-        self.check_agent_request()
+        # self.check_agent_request()
         data = json.loads(http.request.httprequest.get_data(as_text=True))
+        print('------------', data)
         agent = http.request.env['connect.elevenlabs_agent'].with_user(
             http.request.env.ref("connect.user_connect_webhook")).sudo()
-        agent.transfer(data.get('call_sid'))
-        return 'Transfered'
+        agent.transfer(**data)
+        return 'Transferred'
 
 
     @http.route('/connect_elevenlabs/post_call', methods=['POST'], type='http', auth='public', csrf=False)
@@ -39,7 +40,7 @@ class ConnectElevenlabsController(http.Controller):
         data = json.loads(payload).get('data')
         headers = http.request.httprequest.headers.get("elevenlabs-signature")
         if not headers:
-            return
+            return False
         timestamp = headers.split(",")[0][2:]
         hmac_signature = headers.split(",")[1]
         # Validate timestamp

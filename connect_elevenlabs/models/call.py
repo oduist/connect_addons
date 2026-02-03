@@ -58,6 +58,14 @@ class Call(models.Model):
                 'previous_conversation_id': previous_conversations[0].elevenlabs_conversation_id,
                 'previous_topics': previous_conversations[0].elevenlabs_summary,
             })
+        
+        # Add transfer if transfer tool is configured
+        if self.elevenlabs_agent.has_transfer_to_number and self.elevenlabs_agent.transfer_number:
+            transfer_dest = self.elevenlabs_agent.transfer_number
+            if transfer_dest._name == 'connect.exten':
+                data.update({'transfer_id': transfer_dest.id, 'transfer_model': 'connect.exten'})
+            else:
+                data.update({'transfer_id': transfer_dest.id, 'transfer_model': 'connect.number'})
         return data
 
     @api.model

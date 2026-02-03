@@ -59,6 +59,10 @@
                                     <field name="name"/>
                                     <field name="voice"/>
                                     <field name="tools" widget="many2many_tags"/>
+                                    <field name="has_transfer_to_number" invisible="True"/>
+                                    <field name="transfer_number" invisible="not has_transfer_to_number" required="has_transfer_to_number"/>
+
+<!--                                    <field name="has_transfer_to_agent"/>-->
                                 </group>
                                 <group>
                                     <field name="language"/>

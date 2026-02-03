@@ -57,8 +57,6 @@
                         <field name="params" nolabel="1"
                                invisible="tool_type == 'system'"/>
                     </group>
-                    <field name="params" nolabel="1"
-                           invisible="tool_type == 'system'"/>
                 </sheet>
             </form>
         </field>

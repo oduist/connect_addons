@@ -132,6 +132,22 @@ class ElevenlabsAgent(models.Model):
     exten = fields.Many2one('connect.exten', ondelete='set null', readonly=True)
     exten_number = fields.Char(related='exten.number')
     template = fields.Many2one('connect.elevenlabs_agent_template', ondelete='set null')
+    has_transfer_to_number = fields.Boolean(compute='_compute_has_transfer_to_number', store=False)
+    transfer_number = fields.Reference(selection='_get_transfer_models', string='Transfer To')
+    has_transfer_to_agent = fields.Boolean()
+
+    def _get_transfer_models(self):
+        return [('connect.number', 'Number'), ('connect.exten', 'Extension')]
+
+    @api.depends('tools')
+    def _compute_has_transfer_to_number(self):
+        transfer_tool = self.env.ref('connect_elevenlabs.agent_tool_transfer_to_number', raise_if_not_found=False)
+        for rec in self:
+            rec.has_transfer_to_number = transfer_tool.id in rec.tools.ids if transfer_tool else False
+
+    @api.onchange('tools')
+    def _onchange_tools(self):
+        self._compute_has_transfer_to_number()
 
     @api.onchange('template')
     def _onchange_template(self):
@@ -214,27 +230,14 @@ class ElevenlabsAgent(models.Model):
         debug(self, pretty_xml(response))
         return response
 
-    def transfer_test(self):
-        client = self.env['connect.settings'].get_client()
-        call = client.calls.create(
-            to='+18109578170',
-            from_='+18109578170',
-            twiml="""<Response>
-                <Pause length="1"/>
-                <Connect>
-                    <Stream url="wss://740e-2001-19f0-7400-1cfe-5400-4ff-fec7-4bbd.ngrok-free.app/twilio/stream/agent_01jvf4w2mretqvv55sxy0h50np/237/CA8ba5afd6763d6b6298500e6f96c66c14"/>
-                </Connect>
-            </Response> """
-        )
-
     @api.model
-    def transfer(self, params):
-        channel_sid = params['channel_sid']
-        exten = params['exten'] or params['default_exten']
+    def transfer(self, channel_sid=None, transfer_model=None, transfer_id=None):
+        if not channel_sid or not transfer_model or not transfer_id:
+            return False
         self = self.sudo()
         client = self.env['connect.settings'].get_client()
         channel = self.env['connect.channel'].search([('sid', '=', channel_sid)])
-        exten = self.env['connect.exten'].search([('number', '=', exten)])
+        exten = self.env[transfer_model].browse(transfer_id)
         if not exten:
             return 'Extension not found, please try again.'
         twiml = exten.render({
