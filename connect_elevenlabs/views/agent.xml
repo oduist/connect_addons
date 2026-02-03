@@ -60,9 +60,13 @@
                                     <field name="voice"/>
                                     <field name="tools" widget="many2many_tags"/>
                                     <field name="has_transfer_to_number" invisible="True"/>
+
+                                    <div class="o_horizontal_separator mt-4 mb-3 text-uppercase fw-bolder small" invisible="not has_transfer_to_number">Transfer to Number</div>
                                     <field name="transfer_number" invisible="not has_transfer_to_number" required="has_transfer_to_number"/>
 
-<!--                                    <field name="has_transfer_to_agent"/>-->
+                                    <div class="o_horizontal_separator mt-4 mb-3 text-uppercase fw-bolder small" invisible="not has_transfer_to_agent">Transfer to Agent</div>
+                                    <field name="transfer_to_agent" invisible="not has_transfer_to_agent" required="has_transfer_to_agent"/>
+                                    <field name="transfer_to_agent_condition" invisible="not has_transfer_to_agent" required="has_transfer_to_agent"/>
                                 </group>
                                 <group>
                                     <field name="language"/>

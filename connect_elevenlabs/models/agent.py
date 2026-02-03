@@ -134,7 +134,10 @@ class ElevenlabsAgent(models.Model):
     template = fields.Many2one('connect.elevenlabs_agent_template', ondelete='set null')
     has_transfer_to_number = fields.Boolean(compute='_compute_has_transfer_to_number', store=False)
     transfer_number = fields.Reference(selection='_get_transfer_models', string='Transfer To')
-    has_transfer_to_agent = fields.Boolean()
+    has_transfer_to_agent = fields.Boolean(compute='_compute_has_transfer_to_agent', store=False)
+    transfer_to_agent = fields.Many2one('connect.elevenlabs_agent', ondelete='restrict', domain="[('id', '!=', id)]")
+    transfer_to_agent_condition = fields.Char(string="Condition")
+
 
     def _get_transfer_models(self):
         return [('connect.number', 'Number'), ('connect.exten', 'Extension')]
@@ -146,8 +149,18 @@ class ElevenlabsAgent(models.Model):
             rec.has_transfer_to_number = transfer_tool.id in rec.tools.ids if transfer_tool else False
 
     @api.onchange('tools')
-    def _onchange_tools(self):
+    def _onchange_transfer_to_number(self):
         self._compute_has_transfer_to_number()
+
+    @api.depends('tools')
+    def _compute_has_transfer_to_agent(self):
+        transfer_tool = self.env.ref('connect_elevenlabs.agent_tool_transfer_to_agent', raise_if_not_found=False)
+        for rec in self:
+            rec.has_transfer_to_agent = transfer_tool.id in rec.tools.ids if transfer_tool else False
+
+    @api.onchange('tools')
+    def _onchange_transfer_to_agent(self):
+        self._compute_has_transfer_to_agent()
 
     @api.onchange('template')
     def _onchange_template(self):
@@ -378,14 +391,18 @@ class ElevenlabsAgent(models.Model):
         built_in_tools = {}
         for tool in self.tools:
             if tool.tool_type == 'system':
+                params = {"system_tool_type": tool.name}
+                if tool.name == 'transfer_to_agent':
+                    params.update({'transfers': [{
+                        'agent_id': self.transfer_to_agent.agent_uid,
+                        'condition': self.transfer_to_agent_condition,
+                    }]})
                 built_in_tools.update({
                     tool.name: {
                         "type": "system",
                         "name": tool.name,
                         "description": "",
-                        "params": {
-                            "system_tool_type": tool.name
-                        },
+                        "params": params,
                         "disable_interruptions": False
                     },
                 })
