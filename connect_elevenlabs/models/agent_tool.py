@@ -86,6 +86,7 @@ class ElevenlabsAgentTool(models.Model):
     def compute_agent_tools_config(self):
         """Compute tool configuration using plain dictionaries (fallback method)"""
         try:
+            dynamic_variable_placeholders = {}
             if self.tool_type == 'client':
                 # Build client tool configuration
                 parameters = {}
@@ -129,8 +130,14 @@ class ElevenlabsAgentTool(models.Model):
                         for param in self.params:
                             properties[param.name] = {
                                 'type': param.data_type,
-                                'description': param.description if param.value_type == 'description' else param.name
                             }
+                            if param.value_type == 'dynamic_variable':
+                                properties[param.name].update({'dynamic_variable': param.name})
+                                dynamic_variable_placeholders.update({param.name: "default"})
+                            else:
+                                properties[param.name].update({
+                                    'description': param.description if param.value_type == 'description' else param.name
+                                })
                             if param.required:
                                 required.append(param.name)
 
@@ -145,6 +152,7 @@ class ElevenlabsAgentTool(models.Model):
                     'description': self.description,
                     'api_schema': api_schema,
                     'response_timeout_secs': self.response_timeout_secs,
+                    'dynamic_variables': dynamic_variable_placeholders,
                 }
 
             else:

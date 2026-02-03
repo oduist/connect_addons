@@ -36,42 +36,71 @@
             <field name="tool_type">system</field>
         </record>
 
-        <!-- Elevenlabs Agent Tool: transfer_to_extension -->
+        <!-- Elevenlabs Agent Tool: transfer_to_number -->
         <record id="agent_tool_transfer_to_number" model="connect.elevenlabs_agent_tool">
             <field name="name">transfer_to_number</field>
-            <field name="description">Transfer (connect) the call to human by his extension.</field>
-            <field name="tool_type">client</field>
-            <field name="client_expects_response">True</field>
-            <field name="response_timeout_secs">5</field>
+            <field name="description">Transfer the conversation to a human agent when appropriate.
+Call this function when:
+- Direct requests: "I want to speak to a human", "Connect me with a representative", "Transfer me to an agent"
+- Technical limitations: The user needs something beyond your capabilities
+- Complex issues: Problems requiring human judgment or access to systems beyond your reach
+
+Before calling this function, try to assist the user first if the request is within your capabilities.
+
+Do not call this function when:
+- You can answer basic information requests yourself
+- You can complete simple tasks within your capabilities
+- The user hasn't explicitly requested human assistance for complex issues
+
+Human operators available for transfer:
+[transfer rules will be populated at runtime]
+
+EXAMPLE FLOWS:
+
+Example 1 (explicit request):
+User: "I want to talk to a real person instead of an AI. Please connect me to a human agent."
+Assistant: "I understand you'd prefer to speak with a human agent. I'm arranging that connection for you now, and a human representative will assist you shortly."
+[transfer_to_number function called]
+
+Example 2 (technical limitation):
+User: "I need to change my billing address and payment method for my order #12345."
+Assistant: "I understand you need to update your billing information. Since this requires accessing your account details, I'll connect you with a human representative who can help you with that change safely."
+[transfer_to_number function called]
+
+Example 3 (DO NOT call):
+User: "What's your refund policy?"
+Assistant: "Our standard refund policy allows returns within 30 days of purchase with a receipt. Would you like more specific information about a particular product or situation?"</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs/transfer</field>
+            <field name="method">POST</field>
             <field name="param_type">body</field>
+            <field name="response_timeout_secs">10</field>
         </record>
 
-        <record id="transfer_to_extension_param_default_exten" model="connect.agent_tool_params">
-            <field name="name">default_exten</field>
+        <record id="transfer_to_number_param_model" model="connect.agent_tool_params">
+            <field name="name">transfer_model</field>
             <field name="data_type">string</field>
             <field name="required">True</field>
-            <field name="value_type">constant_value</field>
-            <field name="constant_value">2001</field>
-            <field name="description">Default extension to use when none is provided.</field>
+            <field name="value_type">dynamic_variable</field>
+            <field name="dynamic_variable">transfer_model</field>
             <field name="tool" ref="agent_tool_transfer_to_number"/>
         </record>
 
-        <record id="transfer_to_extension_param_exten" model="connect.agent_tool_params">
-            <field name="name">exten</field>
-            <field name="data_type">string</field>
-            <field name="required">False</field>
-            <field name="value_type">description</field>
-            <field name="description">Extension of person to connect</field>
+        <record id="transfer_to_number_param_id" model="connect.agent_tool_params">
+            <field name="name">transfer_id</field>
+            <field name="data_type">integer</field>
+            <field name="required">True</field>
+            <field name="value_type">dynamic_variable</field>
+            <field name="dynamic_variable">transfer_id</field>
             <field name="tool" ref="agent_tool_transfer_to_number"/>
         </record>
 
-        <record id="transfer_to_extension_param_channel_sid" model="connect.agent_tool_params">
+        <record id="transfer_to_number_param_channel_sid" model="connect.agent_tool_params">
             <field name="name">channel_sid</field>
             <field name="data_type">string</field>
             <field name="required">True</field>
             <field name="value_type">dynamic_variable</field>
             <field name="dynamic_variable">channel_sid</field>
-            <field name="description">Channel SID for the current call</field>
             <field name="tool" ref="agent_tool_transfer_to_number"/>
         </record>
 
