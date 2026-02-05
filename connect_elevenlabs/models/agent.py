@@ -132,35 +132,19 @@ class ElevenlabsAgent(models.Model):
     exten = fields.Many2one('connect.exten', ondelete='set null', readonly=True)
     exten_number = fields.Char(related='exten.number')
     template = fields.Many2one('connect.elevenlabs_agent_template', ondelete='set null')
-    has_transfer_to_number = fields.Boolean(compute='_compute_has_transfer_to_number', store=False)
-    transfer_number = fields.Reference(selection='_get_transfer_models', string='Transfer To')
-    has_transfer_to_agent = fields.Boolean(compute='_compute_has_transfer_to_agent', store=False)
-    transfer_to_agent = fields.Many2one('connect.elevenlabs_agent', ondelete='restrict', domain="[('id', '!=', id)]")
-    transfer_to_agent_condition = fields.Char(string="Condition")
-
-
-    def _get_transfer_models(self):
-        return [('connect.number', 'Number'), ('connect.exten', 'Extension')]
+    has_transfer_to_exten = fields.Boolean(compute='_compute_has_transfer_to_exten', store=False)
+    transfer_to_exten = fields.Many2many('connect.exten')
+    transfer_to_agent = fields.One2many('connect.elevenlabs_agent_transfer', 'agent')
 
     @api.depends('tools')
-    def _compute_has_transfer_to_number(self):
-        transfer_tool = self.env.ref('connect_elevenlabs.agent_tool_transfer_to_number', raise_if_not_found=False)
+    def _compute_has_transfer_to_exten(self):
+        transfer_tool = self.env.ref('connect_elevenlabs.agent_tool_transfer_to_exten', raise_if_not_found=False)
         for rec in self:
-            rec.has_transfer_to_number = transfer_tool.id in rec.tools.ids if transfer_tool else False
+            rec.has_transfer_to_exten = transfer_tool.id in rec.tools.ids if transfer_tool else False
 
     @api.onchange('tools')
-    def _onchange_transfer_to_number(self):
-        self._compute_has_transfer_to_number()
-
-    @api.depends('tools')
-    def _compute_has_transfer_to_agent(self):
-        transfer_tool = self.env.ref('connect_elevenlabs.agent_tool_transfer_to_agent', raise_if_not_found=False)
-        for rec in self:
-            rec.has_transfer_to_agent = transfer_tool.id in rec.tools.ids if transfer_tool else False
-
-    @api.onchange('tools')
-    def _onchange_transfer_to_agent(self):
-        self._compute_has_transfer_to_agent()
+    def _onchange_transfer_to_exten(self):
+        self._compute_has_transfer_to_exten()
 
     @api.onchange('template')
     def _onchange_template(self):
@@ -244,13 +228,14 @@ class ElevenlabsAgent(models.Model):
         return response
 
     @api.model
-    def transfer(self, channel_sid=None, transfer_model=None, transfer_id=None):
-        if not channel_sid or not transfer_model or not transfer_id:
+    def transfer(self, channel_sid=None, exten=None):
+        if not channel_sid or not exten:
             return False
         self = self.sudo()
+        exten = '101'
         client = self.env['connect.settings'].get_client()
         channel = self.env['connect.channel'].search([('sid', '=', channel_sid)])
-        exten = self.env[transfer_model].browse(transfer_id)
+        exten = self.env['connect.exten'].search([('number', '=', exten)])
         if not exten:
             return 'Extension not found, please try again.'
         twiml = exten.render({
@@ -391,21 +376,30 @@ class ElevenlabsAgent(models.Model):
         built_in_tools = {}
         for tool in self.tools:
             if tool.tool_type == 'system':
-                params = {"system_tool_type": tool.name}
-                if tool.name == 'transfer_to_agent':
-                    params.update({'transfers': [{
-                        'agent_id': self.transfer_to_agent.agent_uid,
-                        'condition': self.transfer_to_agent_condition,
-                    }]})
                 built_in_tools.update({
                     tool.name: {
                         "type": "system",
                         "name": tool.name,
                         "description": "",
-                        "params": params,
+                        "params": {"system_tool_type": tool.name},
                         "disable_interruptions": False
                     },
                 })
+        transfers = []
+        for transfer in self.transfer_to_agent:
+            transfers.append({
+                'agent_id': transfer.transfer_to_agent.agent_uid,
+                'condition': transfer.condition,
+            })
+        built_in_tools.update({
+            'transfer_to_agent': {
+                "type": "system",
+                "name": 'transfer_to_agent',
+                "description": "",
+                "params": {"system_tool_type": 'transfer_to_agent', 'transfers': transfers},
+                "disable_interruptions": False
+            },
+        })
 
         return built_in_tools
 

@@ -60,12 +60,10 @@ class Call(models.Model):
             })
         
         # Add transfer if transfer tool is configured
-        if self.elevenlabs_agent.has_transfer_to_number and self.elevenlabs_agent.transfer_number:
-            transfer_dest = self.elevenlabs_agent.transfer_number
-            if transfer_dest._name == 'connect.exten':
-                data.update({'transfer_id': transfer_dest.id, 'transfer_model': 'connect.exten'})
-            else:
-                data.update({'transfer_id': transfer_dest.id, 'transfer_model': 'connect.number'})
+        if self.elevenlabs_agent.has_transfer_to_exten:
+            for exten in self.elevenlabs_agent.transfer_to_exten:
+                pass
+            data.update({'exten': 101 , 'user_id': 2})
         return data
 
     @api.model

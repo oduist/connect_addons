@@ -59,14 +59,20 @@
                                     <field name="name"/>
                                     <field name="voice"/>
                                     <field name="tools" widget="many2many_tags"/>
-                                    <field name="has_transfer_to_number" invisible="True"/>
+                                    <field name="has_transfer_to_exten" invisible="True"/>
+                                    <field name="transfer_to_exten" invisible="not has_transfer_to_exten" required="has_transfer_to_exten">
+                                        <list>
+                                            <field name="number"/>
+                                            <field name="dst"/>
+                                        </list>
+                                    </field>
 
-                                    <div class="o_horizontal_separator mt-4 mb-3 text-uppercase fw-bolder small" invisible="not has_transfer_to_number">Transfer to Number</div>
-                                    <field name="transfer_number" invisible="not has_transfer_to_number" required="has_transfer_to_number"/>
-
-                                    <div class="o_horizontal_separator mt-4 mb-3 text-uppercase fw-bolder small" invisible="not has_transfer_to_agent">Transfer to Agent</div>
-                                    <field name="transfer_to_agent" invisible="not has_transfer_to_agent" required="has_transfer_to_agent"/>
-                                    <field name="transfer_to_agent_condition" invisible="not has_transfer_to_agent" required="has_transfer_to_agent"/>
+                                    <field name="transfer_to_agent">
+                                        <list>
+                                            <field name="transfer_to_agent" string="Agent"/>
+                                            <field name="condition"/>
+                                        </list>
+                                    </field>
                                 </group>
                                 <group>
                                     <field name="language"/>
