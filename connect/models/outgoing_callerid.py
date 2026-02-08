@@ -41,7 +41,7 @@ class OutgoingCallerID(models.Model):
             rec.name = '{} "{}"'.format(rec.number, rec.friendly_name)
 
     def sync_outgoing_callerid(self, callerid_type):
-        client = self.env['connect.settings'].get_client()
+        client = self.env['connect.settings'].get_client(region=False)
         if callerid_type == 'outgoing_callerid':
             numbers = client.outgoing_caller_ids.list()
         elif callerid_type == 'number':
@@ -154,7 +154,7 @@ class OutgoingCallerID(models.Model):
             if rec.sid and rec.callerid_type == 'outgoing_callerid':
                 # Check if twilio_auto_sync is disabled
                 if self.env["connect.settings"].get_param("twilio_auto_sync"):
-                    client = self.env['connect.settings'].get_client()
+                    client = self.env['connect.settings'].get_client(region=False)
                     client.outgoing_caller_ids(rec.sid).update(friendly_name=self.friendly_name)
             elif rec.sid and rec.callerid_type == 'number':
                 # Sync number friendly name.
@@ -171,7 +171,7 @@ class OutgoingCallerID(models.Model):
             if rec.sid and rec.callerid_type == 'outgoing_callerid':
                 sids[rec.sid] = rec.number
         res = super().unlink()
-        client = self.env['connect.settings'].get_client()
+        client = self.env['connect.settings'].get_client(region=False)
         for sid in sids.keys():
             try:
                 client.outgoing_caller_ids(sid).delete()

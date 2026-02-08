@@ -61,16 +61,25 @@ class Number(models.Model):
             debug(self, 'Ignoring number {} update.'.format(self.phone_number))
             return
         try:
-            # Update phone number configuration
             number = client.incoming_phone_numbers(self.sid)
             number.update(
                 friendly_name=self.friendly_name,
                 voice_url=self.voice_url,
                 voice_fallback_url=self.voice_fallback_url,
-                sms_url=self.message_url,
-                sms_fallback_url=self.message_fallback_url,
                 status_callback=self.voice_status_url
             )
+            region = self.env['connect.settings'].sudo().get_param('twilio_region')
+            if region and region != 'us1':
+                us_client = self.env['connect.settings'].get_client(region=False)
+                us_client.incoming_phone_numbers(self.sid).update(
+                    sms_url=self.message_url,
+                    sms_fallback_url=self.message_fallback_url,
+                )
+            else:
+                number.update(
+                    sms_url=self.message_url,
+                    sms_fallback_url=self.message_fallback_url,
+                )
             debug(self, 'Number {} updated.'.format(self.phone_number))
         except Exception as e:
             logger.exception('Number Update Exception:')
