@@ -97,7 +97,7 @@ class ElevenLabsCallflow(models.Model):
             self = self.sudo()
             if not self.env['connect.settings'].sudo().get_param('elevenlabs_enabled'):
                 return super().get_voicemail_prompt_message(response)
-            if not self.voicemail_prompt_file or self.voicemail_prompt_file.file:
+            if not self.voicemail_prompt_file or not self.voicemail_prompt_file.file:
                 self._generate_elevenlabs_voicemail_prompt()
             response.play(self.voicemail_prompt_file.get_file_url())
         except Exception as e:
