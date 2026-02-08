@@ -216,11 +216,11 @@ class ConnectWhatsappSender(models.Model):
         if connect_user and connect_user.whatsapp_sender_id:
             return connect_user.whatsapp_sender_id
         # 2) Default flag
-        default = self.search([('is_default', '=', True)], limit=1)
+        default = self.search([('is_default', '=', True), ('status', '=', 'ONLINE'), ('no_sync', '=', False)], limit=1)
         if default:
             return default
-        # 3) Any
-        any_sender = self.search([], limit=1)
+        # 3) Any online sender
+        any_sender = self.search([('status', '=', 'ONLINE'), ('no_sync', '=', False)], limit=1)
         return any_sender
 
     def send_whatsapp(self, recipient, body, res_model=None, res_id=None, raise_on_error=True, content_sid=None, content_variables=None):
