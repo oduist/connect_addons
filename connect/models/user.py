@@ -536,10 +536,9 @@ class User(models.Model):
     def on_call_action(self, record_id, request):
         # Was used for VoiceMail. Left for future features.
         user = self.browse(record_id)
-        call_status = request.get('CallStatus')
+        call_status = request.get('DialCallStatus')
         if not call_status:
-            # VoiceMail
-            call_status = request.get('DialCallStatus')
+            call_status = request.get('CallStatus')
         if call_status != 'completed':
             dialplan = user.render(request)
             return dialplan
