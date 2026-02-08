@@ -173,7 +173,7 @@ class CallFlow(models.Model):
                 edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
                 record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
                 response.pause(length=1)
-                response.say(callflow.voicemail_prompt, language=callflow.language, voice=callflow.voice)
+                callflow.get_voicemail_prompt_message(response)
                 response.record(
                     maxLength=120,
                     finishOnKey='#',
