@@ -111,8 +111,7 @@ Assistant: "Our standard refund policy allows returns within 30 days of purchase
             <field name="name">user_id</field>
             <field name="data_type">integer</field>
             <field name="required">True</field>
-            <field name="value_type">dynamic_variable</field>
-            <field name="dynamic_variable">user_id</field>
+            <field name="value_type">description</field>
             <field name="description">ID of the user to get available slots for</field>
             <field name="tool" ref="agent_tool_get_available_slots"/>
         </record>
@@ -150,8 +149,7 @@ Assistant: "Our standard refund policy allows returns within 30 days of purchase
             <field name="name">user_id</field>
             <field name="data_type">integer</field>
             <field name="required">True</field>
-            <field name="value_type">dynamic_variable</field>
-            <field name="dynamic_variable">user_id</field>
+            <field name="value_type">description</field>
             <field name="description">ID of the user to create event for</field>
             <field name="tool" ref="agent_tool_create_event"/>
         </record>
@@ -206,7 +204,7 @@ Assistant: "Our standard refund policy allows returns within 30 days of purchase
         <!-- Elevenlabs Agent Tool: get_meetings -->
         <record id="agent_tool_get_meetings" model="connect.elevenlabs_agent_tool">
             <field name="name">get_meetings</field>
-            <field name="description">Get meetings for a specific partner/contact. Returns a list of  meetings with details like name, start time, end time, organizer, location, and description.</field>
+            <field name="description">Get meetings for a specific partner/contact. Returns a list of meetings with details like name, start time, end time, organizer, location, and description.</field>
             <field name="tool_type">webhook</field>
             <field name="path">/connect_elevenlabs/get_meetings</field>
             <field name="method">POST</field>

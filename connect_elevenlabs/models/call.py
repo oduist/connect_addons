@@ -58,12 +58,6 @@ class Call(models.Model):
                 'previous_conversation_id': previous_conversations[0].elevenlabs_conversation_id,
                 'previous_topics': previous_conversations[0].elevenlabs_summary,
             })
-        
-        # Add transfer if transfer tool is configured
-        if self.elevenlabs_agent.has_transfer_to_exten:
-            for exten in self.elevenlabs_agent.transfer_to_exten:
-                pass
-            data.update({'exten': 101 , 'user_id': 2})
         return data
 
     @api.model
