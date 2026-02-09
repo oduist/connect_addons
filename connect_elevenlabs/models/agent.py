@@ -229,14 +229,27 @@ class ElevenlabsAgent(models.Model):
 
     @api.model
     def transfer(self, channel_sid=None, exten=None):
+        logger.info(f'Transfer request: exten={exten}, channel_sid={channel_sid}')
         if not channel_sid or not exten:
             return False
         self = self.sudo()
         client = self.env['connect.settings'].get_client()
         channel = self.env['connect.channel'].search([('sid', '=', channel_sid)])
-        exten = self.env['connect.exten'].search([('number', '=', exten)])
-        if not exten:
-            return 'Extension not found, please try again.'
+        exten_rec = self.env['connect.exten'].search([('number', '=', str(exten).strip())])
+        if not exten_rec:
+            agent = channel.call.elevenlabs_agent if channel and channel.call else None
+            if agent and agent.transfer_to_exten:
+                available = ', '.join(
+                    [k.transfer_to_exten.number for k in agent.transfer_to_exten])
+                if len(agent.transfer_to_exten) == 1:
+                    exten_rec = agent.transfer_to_exten[0].transfer_to_exten
+                    logger.info('Extension %s not found, falling back to single configured extension %s',
+                                exten, exten_rec.number)
+                else:
+                    return f'Extension {exten} not found. Available extensions: {available}. Please try again with a correct number.'
+            else:
+                return f'Extension {exten} not found, please try again.'
+        exten = exten_rec
         twiml = exten.render({
             'Caller': channel.caller,
             'Called': channel.called,

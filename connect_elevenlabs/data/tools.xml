@@ -80,7 +80,11 @@ Assistant: "Our standard refund policy allows returns within 30 days of purchase
         <record id="transfer_to_exten_param_id" model="connect.agent_tool_params">
             <field name="name">exten</field>
             <field name="data_type">string</field>
-            <field name="description">The extension number to transfer the call to. Select the extension number that matches the caller's situation based on the condition. Available extensions and conditions: {{transfer_extens}}</field>
+            <field name="description">The extension number to transfer the call to.
+The list of available extensions is: {{transfer_extens}}.
+Each entry is formatted as "NUMBER - CONDITION", for example "100 - Sales department".
+You MUST return ONLY the NUMBER part (the digits before " - ").
+NEVER return 0 or any number not present in the list.</field>
             <field name="required">True</field>
             <field name="tool" ref="agent_tool_transfer_to_exten"/>
         </record>
