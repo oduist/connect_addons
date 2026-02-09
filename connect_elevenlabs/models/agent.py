@@ -133,7 +133,7 @@ class ElevenlabsAgent(models.Model):
     exten_number = fields.Char(related='exten.number')
     template = fields.Many2one('connect.elevenlabs_agent_template', ondelete='set null')
     has_transfer_to_exten = fields.Boolean(compute='_compute_has_transfer_to_exten', store=False)
-    transfer_to_exten = fields.Many2many('connect.exten')
+    transfer_to_exten = fields.One2many('connect.elevenlabs_agent_transfer_exten', 'agent')
     transfer_to_agent = fields.One2many('connect.elevenlabs_agent_transfer', 'agent')
 
     @api.depends('tools')
@@ -232,7 +232,6 @@ class ElevenlabsAgent(models.Model):
         if not channel_sid or not exten:
             return False
         self = self.sudo()
-        exten = '101'
         client = self.env['connect.settings'].get_client()
         channel = self.env['connect.channel'].search([('sid', '=', channel_sid)])
         exten = self.env['connect.exten'].search([('number', '=', exten)])

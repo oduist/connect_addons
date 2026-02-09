@@ -297,7 +297,7 @@ class ElevenlabsAgentToolparams(models.Model):
         default='description', required=True)
     constant_value = fields.Char()
     dynamic_variable = fields.Char()
-    description = fields.Char()
+    description = fields.Text()
     tool = fields.Many2one('connect.elevenlabs_agent_tool')
 
     @api.onchange('name')

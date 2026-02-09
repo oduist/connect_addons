@@ -62,8 +62,8 @@
                                     <field name="has_transfer_to_exten" invisible="True"/>
                                     <field name="transfer_to_exten" invisible="not has_transfer_to_exten" required="has_transfer_to_exten">
                                         <list>
-                                            <field name="number"/>
-                                            <field name="dst"/>
+                                            <field name="transfer_to_exten" string="Extension"/>
+                                            <field name="condition"/>
                                         </list>
                                     </field>
 

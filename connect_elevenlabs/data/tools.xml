@@ -53,7 +53,7 @@ Do not call this function when:
 - The user hasn't explicitly requested human assistance for complex issues
 
 Human operators available for transfer:
-[transfer rules will be populated at runtime]
+{{transfer_extens}}
 
 EXAMPLE FLOWS:
 
@@ -80,7 +80,7 @@ Assistant: "Our standard refund policy allows returns within 30 days of purchase
         <record id="transfer_to_exten_param_id" model="connect.agent_tool_params">
             <field name="name">exten</field>
             <field name="data_type">string</field>
-            <field name="description">The extension number to transfer the call to. Select the appropriate extension number from the list of available human operators provided in the tool description.</field>
+            <field name="description">The extension number to transfer the call to. Select the extension number that matches the caller's situation based on the condition. Available extensions and conditions: {{transfer_extens}}</field>
             <field name="required">True</field>
             <field name="tool" ref="agent_tool_transfer_to_exten"/>
         </record>

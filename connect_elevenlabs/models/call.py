@@ -58,6 +58,11 @@ class Call(models.Model):
                 'previous_conversation_id': previous_conversations[0].elevenlabs_conversation_id,
                 'previous_topics': previous_conversations[0].elevenlabs_summary,
             })
+        if self.elevenlabs_agent.transfer_to_exten:
+            data['transfer_extens'] = ', '.join(
+                ['{} - {}'.format(k.transfer_to_exten.number, k.condition) for k in self.elevenlabs_agent.transfer_to_exten]
+            )
+
         return data
 
     @api.model
