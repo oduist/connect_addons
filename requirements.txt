@@ -1,5 +1,4 @@
 phonenumbers
-httpx
 twilio
 elevenlabs
 
@@ -8,5 +7,4 @@ typing_extensions==4.10.0
 openai==1.39.0
 
 # For Odoo 18 on Ubuntu 20.04
-# httpx==0.27.2
 # openai==1.55.3
