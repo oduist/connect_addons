@@ -60,14 +60,21 @@ class OdooConnection:
         return False
 
     async def start_call_event(self, call_id, agent_uid):
-        call_data = await self.odoo.execute_kw(
-            model_name='connect.call',
-            method='elevenlabs_agent_start_call_event',
-            args={'call_id': call_id, 'agent_uid': agent_uid},
-            kwargs={}
-        )
-        logger.info('Call data: %s', call_data)
-        return call_data
+        try:
+            call_data = await self.odoo.execute_kw(
+                model_name='connect.call',
+                method='elevenlabs_agent_start_call_event',
+                args={'call_id': call_id, 'agent_uid': agent_uid},
+                kwargs={}
+            )
+            if not call_data or not isinstance(call_data, dict) or 'id' not in call_data:
+                logger.error('Invalid call data returned from Odoo: %s', call_data)
+                raise ValueError('Call or agent not found in Odoo')
+            logger.info('Call data: %s', call_data)
+            return call_data
+        except (TypeError, KeyError, ValueError) as e:
+            logger.error('Call validation failed: %s', str(e))
+            raise
 
 
 async def odoo_query(params):
@@ -157,21 +164,31 @@ async def agent_ping():
 
 @app.websocket("/twilio/stream/{agent_uid}/{call_id}/{channel_sid}")
 async def handle_media_stream(websocket: WebSocket, agent_uid: str, call_id: str, channel_sid: str):
-    # Set some defaults required by prompt and tools.
+    odoo = OdooConnection()
     call_info = {
         'partner_id': False,
         'call_id': call_id,
         'channel_sid': channel_sid,
-        'greeting': 'Dear customer', # Default name.
+        'greeting': 'Dear customer',
     }
-    odoo = OdooConnection()
+    
     try:
-        await odoo.login()
+        if not await odoo.login():
+            logger.error('Failed to login to Odoo for call_id=%s, agent_uid=%s', call_id, agent_uid)
+            await websocket.accept()
+            await websocket.close(code=1008, reason="Odoo connection failed")
+            return
         call_info.update(await odoo.start_call_event(call_id, agent_uid))
-    except Exception:
-        logger.exception('Get call data error:')
-        call_info['greeting'] = 'Oops! Something went wrong. Please reach out to our support team.'
-        call_info['system_error'] = True
+    except (ValueError, RuntimeError) as e:
+        logger.error('Call validation failed: call_id=%s, agent_uid=%s, error=%s', call_id, agent_uid, str(e))
+        await websocket.accept()
+        await websocket.close(code=1008, reason="Invalid call or agent")
+        return
+    except Exception as e:
+        logger.exception('Unexpected error validating call: call_id=%s, agent_uid=%s', call_id, agent_uid)
+        await websocket.accept()
+        await websocket.close(code=1011, reason="Internal server error")
+        return
 
     logger.info('Call info: {}'.format(json.dumps(call_info, indent=2)))
     await websocket.accept()
