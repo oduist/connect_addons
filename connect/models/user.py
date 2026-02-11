@@ -73,7 +73,8 @@ class User(models.Model):
     callerid_number = fields.Many2one('connect.number', ondelete='restrict') # TODO: Remove after 1.0
     outgoing_callerid = fields.Many2one('connect.outgoing_callerid', ondelete='set null',
         domain=['|',('status', '=', 'validated'),('callerid_type', '=', 'number')])
-    whatsapp_sender_id = fields.Many2one('connect.whatsapp_sender', string='WhatsApp Sender', ondelete='set null')
+    whatsapp_sender_id = fields.Many2one('connect.whatsapp_sender', string='WhatsApp Sender', ondelete='set null',
+        domain="[('no_sync', '=', False), ('status', '=', 'ONLINE')]")
     missed_calls_notify = fields.Boolean(default=False, help='Notify user on missed calls.')
     greeting_message = fields.Char()
     summary_prompt = fields.Char()
@@ -535,10 +536,9 @@ class User(models.Model):
     def on_call_action(self, record_id, request):
         # Was used for VoiceMail. Left for future features.
         user = self.browse(record_id)
-        call_status = request.get('CallStatus')
+        call_status = request.get('DialCallStatus')
         if not call_status:
-            # VoiceMail
-            call_status = request.get('DialCallStatus')
+            call_status = request.get('CallStatus')
         if call_status != 'completed':
             dialplan = user.render(request)
             return dialplan
