@@ -1,10 +1,7 @@
 phonenumbers
 twilio
 elevenlabs
+openai
 
-# For Odoo 18.0 official docker image: openai==1.39.0 & typing_extensions==4.10.0:
-typing_extensions==4.10.0
-openai==1.39.0
-
-# For Odoo 18 on Ubuntu 20.04
-# openai==1.55.3
+# For Odoo 18.0 official docker image:
+# pip3 install --user  --force-reinstall --break-system-package typing_extensions openai
