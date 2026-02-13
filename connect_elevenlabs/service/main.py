@@ -6,6 +6,7 @@ import traceback
 import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import Response
 from aio_odoorpc import AsyncOdooRPC
 from elevenlabs import ElevenLabs
 from elevenlabs.conversational_ai.conversation import ClientTools, Conversation, ConversationInitiationData
@@ -147,7 +148,7 @@ client_tools.register('transfer_to_extension', transfer_to_extension, is_async=T
 
 @app.get("/")
 async def root():
-    return {"message": "Twilio-ElevenLabs Integration Server"}
+    return Response(content="", media_type="text/html")
 
 
 @app.api_route("/agent/ping", methods=["GET", "POST"])
