@@ -32,6 +32,7 @@
         'views/callflow.xml',
         'views/user.xml',
         'views/agent.xml',
+        'views/agent_prompt.xml',
         'views/agent_transfer.xml',
         'views/agent_transfer_exten.xml',
         'views/agent_template.xml',

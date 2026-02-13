@@ -49,9 +49,17 @@
                         <page name="prompt" string="Prompt">
                             <group>
                                 <field name="template"/>
+                                <field name="active_prompt_version"/>
                                 <field name="first_message"/>
                                 <field name="prompt" widget="text"/>
                             </group>
+                            <separator string="Prompt Versions"/>
+                            <field name="prompt_version_ids">
+                                <list editable="bottom">
+                                    <field name="name"/>
+                                    <field name="prompt"/>
+                                </list>
+                            </field>
                         </page>
                         <page string="Conversation" name="conversation">
                             <group>

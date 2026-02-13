@@ -85,6 +85,9 @@ class ElevenlabsAgent(models.Model):
     voice = fields.Many2one('connect.elevenlabs_voice', required=True)
     first_message = fields.Char(default="Hi there! How could I help you today?", required=True, translate=True)
     prompt = fields.Text(required=True)
+    prompt_version_ids = fields.One2many('connect.elevenlabs_agent_prompt', 'agent', string='Prompt Versions')
+    active_prompt_version = fields.Many2one('connect.elevenlabs_agent_prompt', string='Prompt Version',
+                                            domain="[('agent', '=', id)]")
     language = fields.Selection(selection=language_list, default='en', required=True)
     additional_languages = fields.Many2many('res.lang', domain=[('active', '=', True)], required=True)
     tools = fields.Many2many('connect.elevenlabs_agent_tool')
@@ -145,6 +148,11 @@ class ElevenlabsAgent(models.Model):
     @api.onchange('tools')
     def _onchange_transfer_to_exten(self):
         self._compute_has_transfer_to_exten()
+
+    @api.onchange('active_prompt_version')
+    def _onchange_active_prompt_version(self):
+        if self.active_prompt_version:
+            self.prompt = self.active_prompt_version.prompt
 
     @api.onchange('template')
     def _onchange_template(self):
