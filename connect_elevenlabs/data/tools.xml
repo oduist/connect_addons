@@ -102,7 +102,7 @@ NEVER return 0 or any number not present in the list.</field>
 
         <!-- Elevenlabs Agent Tool: get_available_slots -->
         <record id="agent_tool_get_available_slots" model="connect.elevenlabs_agent_tool">
-            <field name="name">get_available_slots</field>
+            <field name="name">calendar_get_available_slots</field>
             <field name="description">Get available time slots for a user on a specific date. Returns a list of free intervals during business hours (8:00-18:00).</field>
             <field name="tool_type">webhook</field>
             <field name="path">/connect_elevenlabs/get_available_slots</field>
@@ -140,7 +140,7 @@ NEVER return 0 or any number not present in the list.</field>
 
         <!-- Elevenlabs Agent Tool: create_event -->
         <record id="agent_tool_create_event" model="connect.elevenlabs_agent_tool">
-            <field name="name">create_event</field>
+            <field name="name">calendar_create_event</field>
             <field name="description">Create a calendar event for a user. The event is created in UTC time after converting from the user's timezone.</field>
             <field name="tool_type">webhook</field>
             <field name="path">/connect_elevenlabs/create_event</field>
@@ -196,7 +196,7 @@ NEVER return 0 or any number not present in the list.</field>
 
         <!-- Elevenlabs Agent Tool: get_current_date -->
         <record id="agent_tool_get_current_date" model="connect.elevenlabs_agent_tool">
-            <field name="name">get_current_date</field>
+            <field name="name">calendar_get_current_date</field>
             <field name="description">Get the current date and time in server timezone (UTC).</field>
             <field name="tool_type">webhook</field>
             <field name="path">/connect_elevenlabs/get_current_date</field>
@@ -207,7 +207,7 @@ NEVER return 0 or any number not present in the list.</field>
 
         <!-- Elevenlabs Agent Tool: get_meetings -->
         <record id="agent_tool_get_meetings" model="connect.elevenlabs_agent_tool">
-            <field name="name">get_meetings</field>
+            <field name="name">calendar_get_meetings</field>
             <field name="description">Get meetings for a specific partner/contact. Returns a list of meetings with details like name, start time, end time, organizer, location, and description.</field>
             <field name="tool_type">webhook</field>
             <field name="path">/connect_elevenlabs/get_meetings</field>
@@ -227,7 +227,7 @@ NEVER return 0 or any number not present in the list.</field>
 
         <!-- Elevenlabs Agent Tool: remove_meeting -->
         <record id="agent_tool_remove_meeting" model="connect.elevenlabs_agent_tool">
-            <field name="name">remove_meeting</field>
+            <field name="name">calendar_remove_meeting</field>
             <field name="description">Remove/cancel a scheduled calendar meeting by event ID. Use this when a user requests to cancel or delete a meeting.</field>
             <field name="tool_type">webhook</field>
             <field name="path">/connect_elevenlabs/remove_meeting</field>
