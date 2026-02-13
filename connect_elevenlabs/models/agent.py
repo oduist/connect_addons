@@ -335,6 +335,12 @@ class ElevenlabsAgent(models.Model):
                 dict([(param.name, f'test_{param.name}') for param in tool.params if
                       param.value_type == 'dynamic_variable']))
 
+        # Register transfer_extens placeholder so ElevenLabs resolves {{transfer_extens}} in tool descriptions
+        if self.transfer_to_exten:
+            dynamic_variable_placeholders['transfer_extens'] = ', '.join(
+                ['{} - {}'.format(k.transfer_to_exten.number, k.condition) for k in self.transfer_to_exten]
+            )
+
         agent_dict = {
             'first_message': self.first_message,
             'language': self.language,

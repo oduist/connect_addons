@@ -59,12 +59,12 @@ EXAMPLE FLOWS:
 
 Example 1 (explicit request):
 User: "I want to talk to a real person instead of an AI. Please connect me to a human agent."
-Assistant: "I understand you'd prefer to speak with a human agent. I'm arranging that connection for you now, and a human representative will assist you shortly."
+Assistant: "I'm transferring you to Sales department!"
 [transfer_to_exten function called]
 
 Example 2 (technical limitation):
 User: "I need to change my billing address and payment method for my order #12345."
-Assistant: "I understand you need to update your billing information. Since this requires accessing your account details, I'll connect you with a human representative who can help you with that change safely."
+Assistant: "I'm transferring you to Billing support!"
 [transfer_to_exten function called]
 
 Example 3 (DO NOT call):
