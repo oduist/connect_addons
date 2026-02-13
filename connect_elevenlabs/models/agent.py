@@ -172,6 +172,15 @@ class ElevenlabsAgent(models.Model):
             # Skip all syncing.
             return super().write(vals)
         res = super().write(vals)
+        if 'prompt' in vals and 'active_prompt_version' not in vals:
+            for rec in self:
+                version_count = len(rec.prompt_version_ids)
+                version = self.env['connect.elevenlabs_agent_prompt'].create({
+                    'name': f'v{version_count + 1}',
+                    'agent': rec.id,
+                    'prompt': vals['prompt'],
+                })
+                rec.with_context(skip_elevenlabs=True).write({'active_prompt_version': version.id})
         if not self.env.context.get('skip_elevenlabs'):
             self.update_elevenlabs_agent()
         return res
