@@ -527,6 +527,7 @@ class ElevenlabsAgent(models.Model):
                 {
                     "agent_id": transfer.transfer_to_agent.agent_uid,
                     "condition": transfer.condition,
+                    "enable_transferred_agent_first_message": True,
                 }
             )
         built_in_tools.update(
@@ -539,7 +540,7 @@ class ElevenlabsAgent(models.Model):
                         "system_tool_type": "transfer_to_agent",
                         "transfers": transfers,
                     },
-                    "disable_interruptions": False,
+                    "disable_interruptions": True,
                 },
             }
         )
