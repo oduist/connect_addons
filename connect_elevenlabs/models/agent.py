@@ -335,15 +335,16 @@ class ElevenlabsAgent(models.Model):
             [("number", "=", str(exten).strip())]
         )
         if not exten_rec:
-            agent = channel.call.elevenlabs_agent if channel and channel.call else None
-            if agent and agent.transfer_to_exten:
+            # Get all published extensions
+            published_extens = self.env['connect.exten'].search([('is_published', '=', True)])
+            if published_extens:
                 available = ", ".join(
-                    ['<{}> "{}"'.format(k.transfer_to_exten.number, k.transfer_to_exten.name) for k in agent.transfer_to_exten]
+                    ['<{}> "{}"'.format(k.number, k.dst.name if k.dst else '') for k in published_extens]
                 )
-                if len(agent.transfer_to_exten) == 1:
-                    exten_rec = agent.transfer_to_exten[0].transfer_to_exten
+                if len(published_extens) == 1:
+                    exten_rec = published_extens[0]
                     logger.info(
-                        "Extension %s not found, falling back to single configured extension %s",
+                        "Extension %s not found, falling back to single published extension %s",
                         exten,
                         exten_rec.number,
                     )
