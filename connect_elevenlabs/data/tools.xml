@@ -74,6 +74,7 @@ Assistant: "Our standard refund policy allows returns within 30 days of purchase
             <field name="path">/connect_elevenlabs/transfer</field>
             <field name="method">POST</field>
             <field name="param_type">body</field>
+            <field name="body_params_description">Extract the target extension number from the conversation. The caller will mention a department name or person, match it to the available extensions list provided in {{transfer_extens}}. Also include the channel_sid dynamic variable for call routing.</field>
             <field name="response_timeout_secs">10</field>
         </record>
 
@@ -108,6 +109,7 @@ NEVER return 0 or any number not present in the list.</field>
             <field name="path">/connect_elevenlabs/get_available_slots</field>
             <field name="method">POST</field>
             <field name="param_type">body</field>
+            <field name="body_params_description">Extract the user ID, desired date, and timezone from the conversation. The caller may mention a specific date (convert to YYYY-MM-DD) or say "tomorrow"/"next week". Timezone may be mentioned as a city name or offset (e.g. EST, GMT+2).</field>
             <field name="response_timeout_secs">10</field>
         </record>
 
@@ -146,6 +148,7 @@ NEVER return 0 or any number not present in the list.</field>
             <field name="path">/connect_elevenlabs/create_event</field>
             <field name="method">POST</field>
             <field name="param_type">body</field>
+            <field name="body_params_description">Extract event details from the conversation: the user ID, event name/title, start and stop times (convert to YYYY-MM-DD HH:MM:SS format), and timezone. The caller may describe times naturally (e.g. "3pm tomorrow for one hour") — convert these to exact datetime values.</field>
             <field name="response_timeout_secs">10</field>
         </record>
 
@@ -202,6 +205,7 @@ NEVER return 0 or any number not present in the list.</field>
             <field name="path">/connect_elevenlabs/get_current_date</field>
             <field name="method">POST</field>
             <field name="param_type">body</field>
+            <field name="body_params_description">No parameters need to be extracted from the conversation. This tool returns the current server date and time.</field>
             <field name="response_timeout_secs">5</field>
         </record>
 
@@ -213,6 +217,7 @@ NEVER return 0 or any number not present in the list.</field>
             <field name="path">/connect_elevenlabs/get_meetings</field>
             <field name="method">POST</field>
             <field name="param_type">body</field>
+            <field name="body_params_description">Extract the partner/contact ID from the conversation context. The partner_id identifies the contact whose meetings should be retrieved.</field>
             <field name="response_timeout_secs">10</field>
         </record>
 
@@ -233,6 +238,7 @@ NEVER return 0 or any number not present in the list.</field>
             <field name="path">/connect_elevenlabs/remove_meeting</field>
             <field name="method">POST</field>
             <field name="param_type">body</field>
+            <field name="body_params_description">Extract the calendar event ID from the conversation. The caller will reference a specific meeting to cancel — use the event_id from a previous get_meetings call result.</field>
             <field name="response_timeout_secs">10</field>
         </record>
 

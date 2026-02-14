@@ -141,11 +141,14 @@ class ElevenlabsAgentTool(models.Model):
                             if param.required:
                                 required.append(param.name)
 
-                    api_schema['request_body_schema'] = {
+                    request_body_schema = {
                         'type': 'object',
                         'properties': properties,
                         'required': required
                     }
+                    if self.body_params_description:
+                        request_body_schema['description'] = self.body_params_description
+                    api_schema['request_body_schema'] = request_body_schema
 
                 tool_config = {
                     'name': self.name,
