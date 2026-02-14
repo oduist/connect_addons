@@ -58,9 +58,11 @@ class Call(models.Model):
                 'previous_conversation_id': previous_conversations[0].elevenlabs_conversation_id,
                 'previous_topics': previous_conversations[0].elevenlabs_summary,
             })
-        if self.elevenlabs_agent.transfer_to_exten:
-            data['transfer_extens'] = ', '.join(
-                ['{} - {}'.format(k.transfer_to_exten.number, k.condition) for k in self.elevenlabs_agent.transfer_to_exten]
+        # Get published extensions for transfer
+        published_extens = self.env['connect.exten'].search([('is_published', '=', True)])
+        if published_extens:
+            data['available_extensions'] = ', '.join(
+                ['<{}> "{}"'.format(k.number, k.dst.name if k.dst else '') for k in published_extens]
             )
 
         return data

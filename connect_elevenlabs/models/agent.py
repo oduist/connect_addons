@@ -338,7 +338,7 @@ class ElevenlabsAgent(models.Model):
             agent = channel.call.elevenlabs_agent if channel and channel.call else None
             if agent and agent.transfer_to_exten:
                 available = ", ".join(
-                    [k.transfer_to_exten.number for k in agent.transfer_to_exten]
+                    ['<{}> "{}"'.format(k.transfer_to_exten.number, k.transfer_to_exten.name) for k in agent.transfer_to_exten]
                 )
                 if len(agent.transfer_to_exten) == 1:
                     exten_rec = agent.transfer_to_exten[0].transfer_to_exten
