@@ -54,6 +54,9 @@
                         </group>
                     </group>
                     <group string="Parameters" invisible="tool_type == 'system'">
+                        <field name="body_params_description"
+                               invisible="param_type != 'body'"
+                               string="Body Parameters Description"/>
                         <field name="params" nolabel="1"
                                invisible="tool_type == 'system'"/>
                     </group>
