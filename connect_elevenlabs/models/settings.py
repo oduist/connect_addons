@@ -79,6 +79,16 @@ class Elevenlabsettings(models.Model):
         self.set_param('elevenlabs_agent_token', str(uuid.uuid4()))
 
 
+    def elevenlabs_sync_tools(self):
+        """Sync all non-system tools to ElevenLabs (create or update)"""
+        tools = self.env['connect.elevenlabs_agent_tool'].search([('tool_type', '!=', 'system')])
+        for tool in tools:
+            if tool.tool_id:
+                tool.update_elevenlabs_tool()
+            else:
+                tool._sync_to_elevenlabs()
+        self.connect_notify('Tools sync done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)
+
     def elevenlabs_sync(self):
         self.elevenlabs_get_voices()
         self.connect_notify('Voices sync done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)

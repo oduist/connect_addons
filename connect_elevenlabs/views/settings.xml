@@ -44,6 +44,8 @@
                            confirm="Are you sure you want to unbind your ElevenLabs account? This will clear all agent and tool IDs."/>
                   <button name="elevenlabs_regenerate_prompts" type="object" string="REGENERATE PROMPTS" class="btn btn-secondary me-1"
                           invisible="not elevenlabs_enabled"/>
+                  <button name="elevenlabs_sync_tools" type="object" string="SYNC TOOLS" class="btn btn-secondary me-1"
+                          invisible="not elevenlabs_enabled"/>
                 </div>
                 <a invisible="not elevenlabs_enabled"
                   colspan="2" target="_new" href="https://elevenlabs.io/app/voice-library?">Add shared voices</a>
