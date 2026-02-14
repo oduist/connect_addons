@@ -351,7 +351,7 @@ class ElevenlabsAgent(models.Model):
                 else:
                     return f"Extension {exten} not found. Available extensions: {available}. Please try again with a correct number."
             else:
-                return f"Extension {exten} not found, please try again."
+                return "There is no public extension to connect the call. Cannot transfer"
         exten = exten_rec
         twiml = exten.render(
             {
