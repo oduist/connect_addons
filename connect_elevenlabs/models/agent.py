@@ -326,7 +326,9 @@ class ElevenlabsAgent(models.Model):
     def transfer(self, channel_sid=None, exten=None):
         logger.info(f"Transfer request: exten={exten}, channel_sid={channel_sid}")
         if not channel_sid or not exten:
-            return False
+            return "Not all parameters passed. You must provide channel_sid and exten (only digits)"
+        if isinstance(exten, str) and not exten.isalnum():
+            return "Wrong extension format. Only digits, e.g. 101"
         self = self.sudo()
         client = self.env["connect.settings"].get_client()
         channel = self.env["connect.channel"].search([("sid", "=", channel_sid)])
@@ -360,7 +362,7 @@ class ElevenlabsAgent(models.Model):
         )
         debug(self, "Transfer to: {}".format(pretty_xml(twiml)))
         client.calls(channel_sid).update(twiml=twiml)
-        return True
+        return "Transfer Successful"
 
     def create_elevenlabs_agent(self):
         client = self.env["connect.settings"].get_elevenlabs_client()
