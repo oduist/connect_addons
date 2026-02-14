@@ -313,10 +313,9 @@ class ElevenlabsAgent(models.Model):
         )
         agent_uid = self.agent_uid
         connect = Connect()
-        stream = connect.stream(
+        connect.stream(
             url=f"{elevenlabs_agent_url}/twilio/stream/{agent_uid}/{call_id}/{channel_sid}",
         )
-        # stream.parameter(name='skip_zrok_interstitial', value='1')
         response = VoiceResponse()
         response.append(connect)
         debug(self, pretty_xml(response))

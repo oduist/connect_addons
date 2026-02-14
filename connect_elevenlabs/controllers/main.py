@@ -49,8 +49,8 @@ class ConnectElevenlabsController(http.Controller):
         data = json.loads(http.request.httprequest.get_data(as_text=True))
         agent = http.request.env['connect.elevenlabs_agent'].with_user(
             http.request.env.ref("connect.user_connect_webhook")).sudo()
-        agent.transfer(**data)
-        return 'Transferred'
+        res = agent.transfer(**data)
+        return res
 
 
     @http.route('/connect_elevenlabs/post_call', methods=['POST'], type='http', auth='public', csrf=False)

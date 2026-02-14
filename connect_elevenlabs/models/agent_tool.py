@@ -30,7 +30,7 @@ class ElevenlabsAgentTool(models.Model):
         [('GET', 'GET'), ('POST', 'POST'), ('PATCH', 'PATCH'), ('PUT', 'PUT'), ('DELETE', 'DELETE')],
         default='POST', required=True)
     params = fields.One2many('connect.agent_tool_params', 'tool', string='Parameters')
-    body_params_description = fields.Char(string='Parameters Description')
+    body_params_description = fields.Text(string='Parameters Description')
     response_timeout_secs = fields.Integer(required=True, default=20, string='Response Timeout')
     param_type = fields.Selection([
         # ('query', 'Query'),
