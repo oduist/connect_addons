@@ -551,7 +551,8 @@ class ElevenlabsAgent(models.Model):
 
     def _compute_prompt_config(self):
         previous_topics = "\nLast conversation summary {{previous_topics}}."
-        agent_prompt = f"{self.prompt}{previous_topics}"
+        published_extensions = "\nCALL TRANSFER INFORMATION\n- Available extensions: {{published_extensions}}"
+        agent_prompt = f"{self.prompt}{previous_topics}{published_extensions}"
 
         prompt_dict = {
             "prompt": agent_prompt,
