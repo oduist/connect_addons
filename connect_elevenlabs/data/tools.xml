@@ -39,53 +39,20 @@
         <!-- Elevenlabs Agent Tool: transfer_to_exten -->
         <record id="agent_tool_transfer_to_exten" model="connect.elevenlabs_agent_tool">
             <field name="name">transfer_to_exten</field>
-            <field name="description">Transfer the conversation to a human agent when appropriate.
-Call this function when:
-- Direct requests: "I want to speak to a human", "Connect me with a representative", "Transfer me to an agent"
-- Technical limitations: The user needs something beyond your capabilities
-- Complex issues: Problems requiring human judgment or access to systems beyond your reach
-
-Before calling this function, try to assist the user first if the request is within your capabilities.
-
-Do not call this function when:
-- You can answer basic information requests yourself
-- You can complete simple tasks within your capabilities
-- The user hasn't explicitly requested human assistance for complex issues
-
-Human operators available for transfer:
-{{transfer_extens}}
-
-EXAMPLE FLOWS:
-
-Example 1 (explicit request):
-User: "I want to talk to a real person instead of an AI. Please connect me to a human agent."
-Assistant: "I'm transferring you to Sales department!"
-[transfer_to_exten function called]
-
-Example 2 (technical limitation):
-User: "I need to change my billing address and payment method for my order #12345."
-Assistant: "I'm transferring you to Billing support!"
-[transfer_to_exten function called]
-
-Example 3 (DO NOT call):
-User: "What's your refund policy?"
-Assistant: "Our standard refund policy allows returns within 30 days of purchase with a receipt. Would you like more specific information about a particular product or situation?"</field>
+            <field name="description">Transfer the conversation to company extension. 
+Call this tool when on requests like "I want to speak to a human", "Connect me with a representative", or similar.</field>
             <field name="tool_type">webhook</field>
             <field name="path">/connect_elevenlabs/transfer</field>
             <field name="method">POST</field>
             <field name="param_type">body</field>
-            <field name="body_params_description">Extract the target extension number from the conversation. The caller will mention a department name or person, match it to the available extensions list provided in {{transfer_extens}}. Also include the channel_sid dynamic variable for call routing.</field>
+            <field name="body_params_description">Extract the target extension number from {{available_extensions}}</field>
             <field name="response_timeout_secs">10</field>
         </record>
 
         <record id="transfer_to_exten_param_id" model="connect.agent_tool_params">
             <field name="name">exten</field>
             <field name="data_type">string</field>
-            <field name="description">The extension number to transfer the call to.
-The list of available extensions is: {{transfer_extens}}.
-Each entry is formatted as "NUMBER - CONDITION", for example "100 - Sales department".
-You MUST return ONLY the NUMBER part (the digits before " - ").
-NEVER return 0 or any number not present in the list.</field>
+            <field name="description">The extension number to transfer the call to. Must be all digits.</field>
             <field name="required">True</field>
             <field name="tool" ref="agent_tool_transfer_to_exten"/>
         </record>
