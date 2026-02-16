@@ -68,6 +68,7 @@ llm_list = [
     ("gpt-5-mini", "GPT 5 Mini"),
     ("gpt-5-nano", "GPT 5 Nano"),
     ("gpt-5.1", "GPT 5.1"),
+    ("gpt-5.2", "GPT 5.2"),
     # Gemini (Google)
     ("gemini-1.0-pro", "Gemini 1.0 Pro"),
     ("gemini-1.5-pro", "Gemini 1.5 Pro"),
@@ -124,7 +125,7 @@ class ElevenlabsAgent(models.Model):
         help="If greater than 0, maximum number of tokens the LLM can predict",
     )
     llm = fields.Selection(
-        selection=llm_list, string="LLM", default="gpt-4o", required=True
+        selection=llm_list, string="LLM", default="gpt-5.2", required=True
     )
     agent_uid = fields.Char(string="Agent ID")
     use_flash = fields.Boolean(default=True)
