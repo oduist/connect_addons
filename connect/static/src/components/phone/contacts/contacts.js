@@ -157,11 +157,12 @@ export class Contacts extends Component {
     }
 
     _onClickMakeTransfer(phoneNumber) {
-        this.bus.trigger('busPhoneMakeTransfer', phoneNumber)
+        this.bus.trigger('busPhoneMakeTransfer', {phoneNumber})
     }
 
     _onClickMakeForward(phoneNumber) {
-        this.bus.trigger('busPhoneMakeForward', phoneNumber.replace('+', ''))
+        const normalized = phoneNumber ? phoneNumber.replace('+', '') : phoneNumber
+        this.bus.trigger('busPhoneMakeForward', {phoneNumber: normalized})
     }
 
     _openPartner(id) {

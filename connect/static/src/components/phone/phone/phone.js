@@ -143,6 +143,8 @@ export class Phone extends Component {
 
             this.bus.addEventListener('busPhoneMakeForward', ({detail}) => this._busPhoneMakeForward(detail))
 
+            this.bus.addEventListener('busPhoneMakeTransfer', ({detail}) => this._busPhoneMakeTransfer(detail))
+
             this.bus.addEventListener('busPhoneToggleDisplay', ({detail}) => this._busPhoneToggleDisplay(detail))
 
             this.bus.addEventListener('busPhoneHangUp', ({detail}) => this._busPhoneHangUp(detail))
@@ -347,15 +349,53 @@ export class Phone extends Component {
         await this._onClickEndCall()
     }
 
-    async _busPhoneMakeForward(phoneNumber) {
+    async _busPhoneMakeForward({phoneNumber} = {}) {
         if (this.session) {
-            // TODO: fix forward
-            // this.session.sendDTMF(`${this.attended_transfer_sequence}${phoneNumber}#`)
+            try {
+                const result = await this.orm.call('connect.transfer_wizard', 'execute_transfer', [
+                    phoneNumber,
+                    'blind',
+                    this.call_id,
+                    this.session.parameters.CallSid
+                ])
+                if (result.success) {
+                    this.notify(result.message, {sticky: false, type: 'success'})
+                } else {
+                    this.notify(result.error || 'Forward failed', {sticky: false, type: 'warning'})
+                }
+            } catch (error) {
+                console.error('Forward error:', error)
+                this.notify('Forward failed', {sticky: false, type: 'warning'})
+            }
         }
         this.bc.postMessage({event: "tbcForward", params: {phoneNumber}})
         this.state.isDialingPanel = true
-        // this.state.isCallForwarded = true
         this.state.isForward = false
+        this.state.isContacts = false
+    }
+
+    async _busPhoneMakeTransfer({phoneNumber} = {}) {
+        if (this.session) {
+            try {
+                const result = await this.orm.call('connect.transfer_wizard', 'execute_transfer', [
+                    phoneNumber,
+                    'attended',
+                    this.call_id,
+                    this.session.parameters.CallSid
+                ])
+                if (result.success) {
+                    this.notify(result.message, {sticky: false, type: 'success'})
+                } else {
+                    this.notify(result.error || 'Transfer failed', {sticky: false, type: 'warning'})
+                }
+            } catch (error) {
+                console.error('Transfer error:', error)
+                this.notify('Transfer failed', {sticky: false, type: 'warning'})
+            }
+        }
+        this.bc.postMessage({event: "tbcTransfer", params: {phoneNumber}})
+        this.state.isDialingPanel = true
+        this.state.isTransfer = false
         this.state.isContacts = false
     }
 
