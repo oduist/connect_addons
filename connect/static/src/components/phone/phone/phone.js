@@ -369,9 +369,7 @@ export class Phone extends Component {
             }
         }
         this.bc.postMessage({event: "tbcForward", params: {phoneNumber}})
-        this.state.isDialingPanel = true
-        this.state.isForward = false
-        this.state.isContacts = false
+        this.endCall()
     }
 
     async _busPhoneMakeTransfer({phoneNumber} = {}) {
