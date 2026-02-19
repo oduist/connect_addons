@@ -144,15 +144,20 @@ class Channel(models.Model):
         if channel:
             # Update channel data.
             data = {
-                'called': called_clean,
-                'to': to_clean,
                 'technical_direction': params['Direction'],
                 'status': params['CallStatus'],
                 'duration': int(params.get('CallDuration', 0)),
-                'caller': caller_clean,
                 'call_type': call_type,
                 'sequence_number': sequence_number,
             }
+            # Only overwrite caller/called/to when webhook provides non-empty values
+            # to prevent Twilio completion callbacks from blanking identity fields.
+            if caller_clean:
+                data['caller'] = caller_clean
+            if called_clean:
+                data['called'] = called_clean
+            if to_clean:
+                data['to'] = to_clean
             # Find an existing parent channel.
             if not channel.parent_channel:
                 # Check if channel has parent_sid without channel

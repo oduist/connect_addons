@@ -683,8 +683,8 @@ class Call(models.Model):
                 # Default
                 debug(self, 'Setting default call direction to outgoing.')
                 direction = 'outgoing'
-            # Set call pattern for outgoing calls (always direct_call since they're one-to-one)
-            call_pattern = 'direct_call' if direction == 'outgoing' else False
+            # Set call pattern for outgoing and internal calls (always direct_call since they're one-to-one)
+            call_pattern = 'direct_call' if direction in ('outgoing', 'internal') else False
             call = self.with_context(tracking_disable=True).create({
                 'partner': channel.partner.id,
                 'called': channel.called_number,
@@ -700,11 +700,12 @@ class Call(models.Model):
         elif channel.parent_channel and channel.parent_channel.call:
             # Secondary channel, assign the call from the parent.
             channel.call = channel.parent_channel.call
-            # Only set to internal for true internal calls, not outgoing calls with transfers
-            if channel.call.direction != 'outgoing':
-                if channel.caller_pbx_user and channel.parent_channel.called_pbx_user:
-                    channel.call.direction = 'internal'
-                elif channel.called_pbx_user and channel.parent_channel.caller_pbx_user:
+            # Detect internal calls: both sides are PBX users (extension-to-extension).
+            # This also reclassifies outgoing→internal when the child channel reveals the called user.
+            if channel.caller_pbx_user and channel.parent_channel.called_pbx_user:
+                channel.call.direction = 'internal'
+            elif channel.called_pbx_user and channel.parent_channel.caller_pbx_user:
+                if not channel.call.transferred_users:
                     channel.call.direction = 'internal'
         # Set called from 2nd call leg for click2call external calls.
         if channel.parent_channel and channel.parent_channel.technical_direction == 'outbound-api':
