@@ -342,6 +342,19 @@ class User(models.Model):
             callerId = request.get('Caller')
         return callerId
 
+    def _get_transferring_pbx_user(self, call):
+        """Find the PBX user who is transferring the call (the last user who answered before transfer)."""
+        if call.answered_pbx_user:
+            return call.answered_pbx_user
+        # answered_pbx_user not yet set (finalization hasn't run), find from channels
+        completed_channels = call.channels.filtered(
+            lambda c: c.called_pbx_user and c.status in ('completed', 'in-progress')
+                      and c.called_pbx_user.user not in call.transferred_users
+        )
+        if completed_channels:
+            return completed_channels.sorted('id')[0].called_pbx_user
+        return None
+
     def _get_caller_name(self, request, params):
         caller_user = self.env['connect.user'].get_user_by_uri(request.get('Caller'))
         caller_name = params.get('CallerName', False)
@@ -360,6 +373,14 @@ class User(models.Model):
         # For transfer redirects, use dial_complete for completion tracking
         if params.get('_is_transfer_redirect'):
             dial_action_url = urljoin(api_url, 'connect/dial_complete#e={}'.format(edge))
+        # For transfers, use the transferring user's caller ID instead of the original caller
+        channel = self.env['connect.channel'].search([('sid', '=', request.get('CallSid'))])
+        call = channel.call if channel else None
+        if call and call.transferred_users:
+            transferring_user = self._get_transferring_pbx_user(call)
+            if transferring_user:
+                callerId = transferring_user.exten.number or callerId
+                caller_name = transferring_user.name or caller_name
         dial_client_kwargs = {'timeout': self.client_ring_timeout, 'callerId': callerId}
         # Check for action callback URL.
         if params.get('dial_action_url'):
@@ -378,8 +399,9 @@ class User(models.Model):
         client.identity(self.get_client_identity())
         if caller_name:
             client.parameter(name='CallerName', value=caller_name)
-        channel = self.env['connect.channel'].search([('sid', '=', request.get('CallSid'))])
-        call = channel.call
+        if not channel:
+            channel = self.env['connect.channel'].search([('sid', '=', request.get('CallSid'))])
+            call = channel.call if channel else None
         if call and call.partner:
             partner_id = call.partner.id
             if not caller_name:
@@ -402,6 +424,13 @@ class User(models.Model):
         # For transfer redirects, use dial_complete for completion tracking
         if params.get('_is_transfer_redirect'):
             dial_action_url = urljoin(api_url, 'connect/dial_complete#e={}'.format(edge))
+        # For transfers, use the transferring user's caller ID instead of the original caller
+        channel = self.env['connect.channel'].search([('sid', '=', request.get('CallSid'))])
+        call = channel.call if channel else None
+        if call and call.transferred_users:
+            transferring_user = self._get_transferring_pbx_user(call)
+            if transferring_user:
+                callerId = transferring_user.exten.number or callerId
         record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus#e={}'.format(edge))
         status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
         dial_sip_kwargs = {'timeout': self.sip_ring_timeout, 'callerId': callerId}
