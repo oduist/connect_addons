@@ -861,16 +861,6 @@ export class Phone extends Component {
         setFocus(this.phoneInput.el)
     }
 
-    _onClickTransfer(ev) {
-        if (this.state.isTransfer) return
-        this.state.isForward = false
-        this.state.isKeypad = false
-        this.state.isDialingPanel = false
-        this.state.isContacts = true
-        this.state.isTransfer = true
-        this.bus.trigger('busContactSetState', {isTransfer: true, isContactMode: true})
-    }
-
     _onClickForward(ev) {
         if (this.state.isForward) return
         this.state.isTransfer = false
