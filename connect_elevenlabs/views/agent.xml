@@ -48,7 +48,8 @@
                     <notebook>
                         <page name="prompt" string="Prompt">
                             <group>
-                                <field name="template" invisible="prompt"/>
+                                <field name="template"
+                                       attrs="{'invisible': [('prompt', '!=', False)]}"/>
                                 <field name="active_prompt_version" options="{'no_create': True, 'no_create_edit': True}"/>
                                 <field name="first_message"/>
                                 <field name="prompt" widget="text"/>
