@@ -8,10 +8,10 @@
     </record>
 
     <menuitem id="connect.elevenlabs_agent_menu"
-        sequence="60"
-        parent="connect.connect_voice_menu"
-        name="Agents"
-        action="connect_elevenlabs.agent_action"/>
+              sequence="60"
+              parent="connect.connect_voice_menu"
+              name="Agents"
+              action="connect_elevenlabs.agent_action"/>
 
     <record id="connect_elevenlabs_agent_list" model="ir.ui.view">
         <field name="name">connect_elevenlabs_agent_list</field>
@@ -48,9 +48,13 @@
                     <notebook>
                         <page name="prompt" string="Prompt">
                             <group>
+                                <field name="template"
+                                       attrs="{'invisible': [('prompt', '!=', False)]}"/>
+                                <field name="active_prompt_version" options="{'no_create': True, 'no_create_edit': True}"/>
                                 <field name="first_message"/>
-                                <field name="prompt"/>
+                                <field name="prompt" widget="text"/>
                             </group>
+
                         </page>
                         <page string="Conversation" name="conversation">
                             <group>
@@ -58,6 +62,12 @@
                                     <field name="name"/>
                                     <field name="voice"/>
                                     <field name="tools" widget="many2many_tags"/>
+                                    <field name="transfer_to_agent">
+                                        <tree>
+                                            <field name="transfer_to_agent" string="Agent"/>
+                                            <field name="condition"/>
+                                        </tree>
+                                    </field>
                                 </group>
                                 <group>
                                     <field name="language"/>
@@ -88,13 +98,7 @@
                                 </group>
                             </group>
                         </page>
-                        <page name="Knowledge base" string="Knowledge base">
-                            <group>
-                                <field name="knowledge_base_name"
-                                       attrs="{'required': [('knowledge_base_note', '!=', False)]}"/>
-                                <field name="knowledge_base_note"/>
-                            </group>
-                        </page>
+
                         <page name="dev" string="Development" groups="base.group_no_one">
                             <group>
                                 <group>
