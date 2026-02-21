@@ -22,6 +22,7 @@
                 <field name="number"/>
                 <field name="dst"/>
                 <field name="dst_name" string="Model"/>
+                <field name="is_published"/>
             </tree>
         </field>
     </record>
@@ -43,6 +44,7 @@
                             <field name="dst"/>
                         </group>
                         <group>
+                            <field name="is_published"/>
                         </group>
                     </group>
                     <group>
