@@ -2,7 +2,7 @@
 
 {
     'name': 'Connect ElevenLabs',
-    'version': '1.0.2',
+    'version': '1.0.3',
     'author': 'Oduist',
     'price': 0,
     'currency': 'EUR',
@@ -20,6 +20,7 @@
     'data': [
         # Data
         'data/tools.xml',
+        'data/agent_templates.xml',
         # Security
         'security/admin.xml',
         'security/user.xml',
@@ -31,6 +32,9 @@
         'views/callflow.xml',
         'views/user.xml',
         'views/agent.xml',
+        'views/agent_prompt.xml',
+        'views/agent_transfer.xml',
+        'views/agent_template.xml',
         'views/agent_tool.xml',
         'views/agent_tool_params.xml',
         'views/number.xml',
