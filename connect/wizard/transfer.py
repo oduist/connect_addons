@@ -414,7 +414,7 @@ class CallForwardHandler(models.TransientModel):
             # Determine if this is an outgoing call to use appropriate transfer method
             is_outgoing_call = False
             if call and call.exists():
-                is_outgoing_call = call.direction in ('outgoing', 'internal')
+                is_outgoing_call = call.direction == 'outgoing'
                 
                 # Log current user context for debugging user-specific issues
                 current_user = self.env.user

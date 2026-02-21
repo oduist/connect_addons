@@ -371,7 +371,7 @@ export class Phone extends Component {
             try {
                 const result = await this.orm.call('connect.transfer_wizard', 'execute_transfer', [
                     phoneNumber,
-                    'attended',
+                    'blind',
                     this.call_id,
                     this.session.parameters.CallSid
                 ])
@@ -386,9 +386,7 @@ export class Phone extends Component {
             }
         }
         this.bc.postMessage({event: "tbcTransfer", params: {phoneNumber}})
-        this.state.isDialingPanel = true
-        this.state.isTransfer = false
-        this.state.isContacts = false
+        this.endCall()
     }
 
     async prepareCall(props) {
