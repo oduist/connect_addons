@@ -733,16 +733,11 @@ class Call(models.Model):
             channel.connect_notify()
         # DATABASE LOCKING: Acquire exclusive lock on call record to prevent concurrent modifications
         self.env.cr.execute("SELECT id FROM connect_call WHERE id = %s FOR UPDATE", (channel.call.id,))
-        # Set called users - only for originally called users, not transfer recipients
+        # Set called users - all called users including transfer recipients
         if channel.called_user:
-            if hasattr(channel, 'call_source') and channel.call_source == 'transfer':
-                logger.info(f"Skipped adding {channel.called_user.login} to called_users - call_source indicates this is a transfer recipient")
-            else:
-                if channel.called_user.id not in channel.call.called_users.ids:
-                    channel.call.called_users = [(4, channel.called_user.id)]
-                    logger.info(f"Added {channel.called_user.login} to called_users - originally called user (call_source: {getattr(channel, 'call_source', 'None')}) for call {channel.call.id}")
-                else:
-                    logger.info(f"Skipped adding {channel.called_user.login} to called_users - user already present for call {channel.call.id}")
+            if channel.called_user.id not in channel.call.called_users.ids:
+                channel.call.called_users = [(4, channel.called_user.id)]
+                logger.info(f"Added {channel.called_user.login} to called_users (call_source: {getattr(channel, 'call_source', 'None')}) for call {channel.call.id}")
         # Update webhook expectations for child call webhooks
         if params.get('ParentCallSid'):
             call_status = params.get('CallStatus')
