@@ -7,6 +7,7 @@
         <field name="arch" type="xml">
             <form>
                 <group>
+                    <field name="agent" invisible="1"/>
                     <field name="transfer_to_agent"/>
                     <field name="condition"/>
                 </group>
