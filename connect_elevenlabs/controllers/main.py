@@ -16,7 +16,16 @@ logger = logging.getLogger(__name__)
 
 class ConnectElevenlabsController(http.Controller):
 
-    def check_agent_request(self):
+    def check_tool_token(self):
+        token = http.request.httprequest.headers.get('x-elevenlabs-agent-token')
+        if not token:
+            return False
+        expected_token = http.request.env['connect.settings'].sudo().get_param('elevenlabs_agent_token')
+        if not expected_token or token != expected_token:
+            return False
+        return True
+
+    def check_post_call_webhook(self):
         payload = http.request.httprequest.get_data(as_text=True)
         headers = http.request.httprequest.headers.get("elevenlabs-signature")
         if not headers:
@@ -44,8 +53,8 @@ class ConnectElevenlabsController(http.Controller):
 
     @http.route('/connect_elevenlabs/transfer', methods=['POST'], type='http', auth='public', csrf=False)
     def transfer_webhook(self):
-        # if not self.check_agent_request():
-        #     raise Unauthorized()
+        if not self.check_tool_token():
+            raise Unauthorized()
         data = json.loads(http.request.httprequest.get_data(as_text=True))
         agent = http.request.env['connect.elevenlabs_agent'].with_user(
             http.request.env.ref("connect.user_connect_webhook")).sudo()
@@ -55,31 +64,10 @@ class ConnectElevenlabsController(http.Controller):
 
     @http.route('/connect_elevenlabs/post_call', methods=['POST'], type='http', auth='public', csrf=False)
     def post_call_webhook(self):
+        if not self.check_post_call_webhook():
+            raise Unauthorized()
         user_connect_webhook = http.request.env.ref("connect.user_connect_webhook")
-        payload = http.request.httprequest.get_data(as_text=True)
-        data = json.loads(payload).get('data')
-        headers = http.request.httprequest.headers.get("elevenlabs-signature")
-        if not headers:
-            return False
-        timestamp = headers.split(",")[0][2:]
-        hmac_signature = headers.split(",")[1]
-        # Validate timestamp
-        tolerance = int(time.time()) - 30 * 60
-        if int(timestamp) < tolerance:
-            logger.info('Invalid elevenlabs post call webhook timestamp!')
-            return ''
-        # Validate signature
-        full_payload_to_sign = f"{timestamp}.{payload}"
-        webhook_secret = http.request.env['connect.settings'].sudo().get_param('elevenlabs_post_call_webhook_secret')
-        mac = hmac.new(
-            key=webhook_secret.encode("utf-8"),
-            msg=full_payload_to_sign.encode("utf-8"),
-            digestmod=sha256,
-        )
-        digest = 'v0=' + mac.hexdigest()
-        if hmac_signature != digest:
-            logger.info('Invalid elevenlabs post call webhook signature!')
-            return ''
+        data = json.loads(http.request.httprequest.get_data(as_text=True)).get('data')
 
         dynamic_variables = data.get('conversation_initiation_client_data').get('dynamic_variables')
         call_id = int(dynamic_variables.get('call_id'))

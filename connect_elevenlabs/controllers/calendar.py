@@ -5,6 +5,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
+from werkzeug.exceptions import Unauthorized
+
 from odoo import http, release
 
 logger = logging.getLogger(__name__)
@@ -12,9 +14,20 @@ route_type = "json" if release.version_info[0] < 19.0 else 'jsonrpc'
 
 class CalendarController(http.Controller):
 
+    def check_tool_token(self):
+        token = http.request.httprequest.headers.get('x-elevenlabs-agent-token')
+        if not token:
+            return False
+        expected_token = http.request.env['connect.settings'].sudo().get_param('elevenlabs_agent_token')
+        if not expected_token or token != expected_token:
+            return False
+        return True
+
     @http.route('/connect_elevenlabs/get_available_slots', methods=['POST'], type=route_type, auth='public',
                 csrf=False)
     def get_available_slots(self):
+        if not self.check_tool_token():
+            raise Unauthorized()
         kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
         user_id = kwargs.get('user_id')
         if kwargs.get('timezone'):
@@ -60,6 +73,8 @@ class CalendarController(http.Controller):
     @http.route('/connect_elevenlabs/create_event', methods=['POST'], type=route_type, auth='public',
                 csrf=False)
     def create_event(self):
+        if not self.check_tool_token():
+            raise Unauthorized()
         kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
         user_id = kwargs.get('user_id')
         if kwargs.get('timezone'):
@@ -93,11 +108,15 @@ class CalendarController(http.Controller):
 
     @http.route('/connect_elevenlabs/get_current_date', methods=['POST'], type=route_type, auth='public', csrf=False)
     def get_current_date(self):
+        if not self.check_tool_token():
+            raise Unauthorized()
         return {'current_date': str(datetime.now())}
 
     @http.route('/connect_elevenlabs/get_meetings', methods=['POST'], type=route_type, auth='public',
                 csrf=False)
     def get_meetings(self):
+        if not self.check_tool_token():
+            raise Unauthorized()
         kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
         partner_id = kwargs.get('partner_id')
         if not partner_id:
@@ -111,6 +130,8 @@ class CalendarController(http.Controller):
     @http.route('/connect_elevenlabs/remove_meeting', methods=['POST'], type=route_type, auth='public',
                 csrf=False)
     def remove_meeting(self):
+        if not self.check_tool_token():
+            raise Unauthorized()
         kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
         event_id = kwargs.get('event_id')
         if not event_id:
