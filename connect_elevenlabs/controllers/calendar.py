@@ -10,7 +10,6 @@ from odoo import http, release
 logger = logging.getLogger(__name__)
 route_type = "json" if release.version_info[0] < 19.0 else 'jsonrpc'
 
-
 class CalendarController(http.Controller):
 
     @http.route('/connect_elevenlabs/get_available_slots', methods=['POST'], type=route_type, auth='public',
@@ -92,7 +91,7 @@ class CalendarController(http.Controller):
         })
         return {'status': 201, 'detail': 'Event successfully created'}
 
-    @http.route('/connect_elevenlabs/get_current_date', methods=['POST'], type='json', auth='public', csrf=False)
+    @http.route('/connect_elevenlabs/get_current_date', methods=['POST'], type=route_type, auth='public', csrf=False)
     def get_current_date(self):
         return {'current_date': str(datetime.now())}
 
