@@ -8,3 +8,6 @@ Before making any code changes, always:
 3. Ask for explicit confirmation before proceeding with implementation
 
 Do NOT write or modify any code until the user explicitly approves the plan.
+
+## Odoo development workflow
+When Oduflow MCP is connected, call 'get_agents_guide' to get development workflow instructions.
