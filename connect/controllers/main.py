@@ -7,7 +7,7 @@ from datetime import timedelta
 import requests
 from werkzeug.exceptions import NotFound
 
-from odoo import http, release
+from odoo import fields, http, release
 from odoo.api import SUPERUSER_ID
 from odoo.exceptions import UserError
 
@@ -186,10 +186,12 @@ class ConnectController(http.Controller):
 
     def _find_original_call_for_redirect_completion(self, original_call_sid, dial_call_sid):
         """Find the original call that initiated this transfer redirect"""
-        recent_calls = http.request.env['connect.call'].sudo().search([
+        Call = http.request.env['connect.call'].sudo()
+        cutoff = fields.Datetime.now() - timedelta(minutes=5)
+
+        recent_calls = Call.search([
             ('transfer_context', '!=', False),
-            ('create_date', '>=', http.request.env.context.get('tz_offset_timestamp',
-                http.request.env['connect.call'].sudo().search([], order='id desc', limit=1).create_date - timedelta(minutes=5)))
+            ('create_date', '>=', cutoff),
         ])
 
         for call in recent_calls:
@@ -199,11 +201,11 @@ class ConnectController(http.Controller):
                     (dial_call_sid and dial_call_sid in context_str)):
                     return call
 
-        recent_transfers = http.request.env['connect.call'].sudo().search([
+        # Fallback: find recent calls with transfers still in progress
+        recent_transfers = Call.search([
             ('transferred_users', '!=', False),
-            ('create_date', '>=', http.request.env.context.get('tz_offset_timestamp',
-                http.request.env['connect.call'].sudo().search([], order='id desc', limit=1).create_date - timedelta(minutes=5))),
-            ('status', 'not in', ['completed', 'failed', 'busy', 'no-answer'])
+            ('create_date', '>=', cutoff),
+            ('status', 'not in', ['completed', 'failed', 'busy', 'no-answer']),
         ], limit=5)
 
         if recent_transfers:

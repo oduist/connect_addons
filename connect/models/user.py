@@ -360,7 +360,7 @@ class User(models.Model):
         caller_name = params.get('CallerName', False)
         if caller_user:
             caller_name = caller_user.name
-
+        return caller_name
 
     def render_client(self, response, request, params):
         caller_name = self._get_caller_name(request, params)

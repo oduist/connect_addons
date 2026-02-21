@@ -279,16 +279,10 @@ export class Phone extends Component {
                         self.sendDTMF(params.key)
                     }
                 } else if (event === 'tbcTransfer') {
-                    // console.log('tbcTransfer', params)
-                    if (self.session) {
-                        self.session.refer(params.phoneNumber)
-                    }
+                    // Transfer is handled by backend via Twilio API, no SIP action needed
                 } else if (event === 'tbcForward') {
-                    // console.log('tbcForward', params)
+                    // Forward is handled by backend via Twilio API, only sync UI state
                     this.state.isCallForwarded = true
-                    if (self.session) {
-                        this.session.sendDTMF(`${this.attended_transfer_sequence}${params.phoneNumber}#`)
-                    }
                 } else if (event === 'tbcMicrophoneMute') {
                     // console.log('tbcMicrophoneMute')
                     if (self.session) {

@@ -587,6 +587,7 @@ class CallForwardHandler(models.TransientModel):
             log_message = f'{transfer_type.capitalize()} transfer to {phone_number} for session {session_id}'
             if call_id:
                 log_message += f' (Call ID: {call_id})'
+            logger.info(log_message)
         except Exception as e:
             logger.warning(f'Could not log transfer attempt: {e}')
 
@@ -655,11 +656,13 @@ class CallForwardHandler(models.TransientModel):
             transfer_context = call.transfer_context or {}
             transfer_recipient_login = None
             
-            # Look for the transfer recipient in the context
+            # Look for the transfer recipient in the context using call SID or dial call SID
             for context_key, context_value in transfer_context.items():
-                if context_key.startswith('CAd7c8b8a6') or context_key == call_sid:  # Match call SID patterns
-                    if isinstance(context_value, str) and '@' in context_value:  # Email format
-                        transfer_recipient_login = context_value
+                if context_key.startswith('_'):  # Skip internal keys like _external_leg
+                    continue
+                if context_key in (call_sid, dial_call_sid):
+                    if isinstance(context_value, dict) and 'user_id' in context_value:
+                        transfer_recipient_login = context_value.get('user_login')
                         break
             
             if transfer_recipient_login:
@@ -667,14 +670,12 @@ class CallForwardHandler(models.TransientModel):
                 transfer_recipient = self.env['res.users'].sudo().search([('login', '=', transfer_recipient_login)], limit=1)
                 if transfer_recipient:
                     call.completed_by_user = transfer_recipient
-                    call.transfer_completion_handled = True
                 else:
                     logger.warning(f'Could not find user with login {transfer_recipient_login}')
             else:
                 # Fallback: use the first transfer recipient
                 if call.transferred_users:
                     call.completed_by_user = call.transferred_users[0]
-                    call.transfer_completion_handled = True
         
         response = VoiceResponse()
         response.hangup()
