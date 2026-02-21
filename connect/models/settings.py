@@ -6,7 +6,6 @@ from multiprocessing import RLock
 import os
 import secrets
 
-import httpx
 import openai
 import requests
 import random
@@ -615,11 +614,7 @@ class Settings(models.Model):
         api_key = self.sudo().get_param('openai_api_key')
         if not api_key:
             return False
-        if os.environ.get('OPENAI_PROXY'):
-            client = openai.OpenAI(
-                api_key=api_key, http_client=httpx.Client(proxy=os.environ.get('HTTPS_PROXY')))
-        else:
-            client = openai.OpenAI(api_key=api_key)
+        client = openai.OpenAI(api_key=api_key)
         return client
 
     def check_api_url(self):

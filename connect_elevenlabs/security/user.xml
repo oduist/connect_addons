@@ -66,4 +66,26 @@
     <field name="perm_unlink" eval="0"/>
   </record>
 
+  <!-- Elevenlabs Agent Prompt -->
+  <record id="connect_elevenlabs_agent_prompt_user" model="ir.model.access">
+    <field name="name">connect_elevenlabs_agent_prompt_user</field>
+    <field name="model_id" ref="connect_elevenlabs.model_connect_elevenlabs_agent_prompt"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+  <!-- Elevenlabs Agent Transfer-->
+  <record id="connect_elevenlabs_agent_transfer_user" model="ir.model.access">
+    <field name="name">connect_elevenlabs_agent_transfer_user</field>
+    <field name="model_id" ref="connect_elevenlabs.model_connect_elevenlabs_agent_transfer"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
 </odoo>

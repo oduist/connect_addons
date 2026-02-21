@@ -20,7 +20,7 @@
             <tree>
                 <field name="name"/>
                 <field name="tool_type"/>
-                <field name="is_enabled"/>
+                <field name="synced"/>
             </tree>
         </field>
     </record>
@@ -33,32 +33,33 @@
                 <sheet>
                     <group>
                         <group>
-                            <field name="name"/>
-                            <field name="description"/>
-                            <field name="tool_type"/>
-                            <field name="param_type" string="Parameters Type"
-                                   invisible="tool_type != 'webhook'"/>
+                        <field name="name" readonly="tool_type == 'system'"/>
+                        <field name="description"/>
+                        <field name="tool_type" readonly="tool_type == 'system'"/>
+                        <field name="synced" readonly="1"/>
+                        <field name="param_type" string="Parameters Type"
+                               invisible="tool_type != 'webhook'"/>
                         </group>
                         <group>
-                            <field name="is_enabled"/>
                             <field name="path"
-                                   invisible="tool_type != 'webhook' or url != False"/>
+                                   invisible="tool_type != 'webhook'"/>
                             <field name="url"
-                                   invisible="tool_type != 'webhook' or path != False"/>
+                                   invisible="tool_type != 'webhook'"/>
                             <field name="method"
                                    invisible="tool_type != 'webhook'"/>
                             <field name="client_expects_response"
                                    invisible="tool_type != 'client'"/>
-                            <field name="response_timeout_secs"/>
+                            <field name="response_timeout_secs"
+                                   invisible="tool_type == 'system'"/>
                         </group>
                     </group>
-                    <group string="Parameters"
-                           invisible="tool_type == 'system'">
+                    <group string="Parameters" invisible="tool_type == 'system'">
                         <field name="body_params_description"
-                               invisible="param_type != 'body' or tool_type not in ['webhook','client']" required="params.length > 0"/>
+                               invisible="param_type != 'body'"
+                               string="Body Parameters Description"/>
+                        <field name="params" nolabel="1"
+                               invisible="tool_type == 'system'"/>
                     </group>
-                    <field name="params" nolabel="1"
-                           invisible="tool_type == 'system'"/>
                 </sheet>
             </form>
         </field>
