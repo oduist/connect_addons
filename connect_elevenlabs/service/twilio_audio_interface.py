@@ -14,6 +14,7 @@ class TwilioAudioInterface(AudioInterface):
         self.stream_sid = None
         self.input_callback = None
         self.output_thread = None
+        self.loop = asyncio.get_event_loop()
 
     def start(self, input_callback: Callable[[bytes], None]):
         self.input_callback = input_callback
@@ -35,7 +36,13 @@ class TwilioAudioInterface(AudioInterface):
                 _ = self.output_queue.get(block=False)
         except queue.Empty:
             pass
-        asyncio.run(self._send_clear_message_to_twilio())
+        try:
+            future = asyncio.run_coroutine_threadsafe(
+                self._send_clear_message_to_twilio(), self.loop
+            )
+            future.result(timeout=5.0)
+        except Exception as e:
+            print(f"Error sending clear message to Twilio: {e}")
 
     async def handle_twilio_message(self, data):
         try:
@@ -52,26 +59,27 @@ class TwilioAudioInterface(AudioInterface):
 
     def _output_thread(self):
         while not self.should_stop.is_set():
-            asyncio.run(self._send_audio_to_twilio())
+            try:
+                audio = self.output_queue.get(timeout=0.2)
+            except queue.Empty:
+                continue
+            try:
+                future = asyncio.run_coroutine_threadsafe(
+                    self._send_audio_to_twilio(audio), self.loop
+                )
+                future.result(timeout=5.0)
+            except Exception as e:
+                print(f"Error sending audio: {e}")
 
-    async def _send_audio_to_twilio(self):
-        try:
-            audio = self.output_queue.get(timeout=0.2)
-            audio_payload = base64.b64encode(audio).decode("utf-8")
-            audio_delta = {
-                "event": "media",
-                "streamSid": self.stream_sid,
-                "media": {"payload": audio_payload},
-            }
-            await self.websocket.send_json(audio_delta)
-        except queue.Empty:
-            pass
-        except Exception as e:
-            print(f"Error sending audio: {e}")
+    async def _send_audio_to_twilio(self, audio: bytes):
+        audio_payload = base64.b64encode(audio).decode("utf-8")
+        audio_delta = {
+            "event": "media",
+            "streamSid": self.stream_sid,
+            "media": {"payload": audio_payload},
+        }
+        await self.websocket.send_json(audio_delta)
 
     async def _send_clear_message_to_twilio(self):
-        try:
-            clear_message = {"event": "clear", "streamSid": self.stream_sid}
-            await self.websocket.send_json(clear_message)
-        except Exception as e:
-            print(f"Error sending clear message to Twilio: {e}")
+        clear_message = {"event": "clear", "streamSid": self.stream_sid}
+        await self.websocket.send_json(clear_message)
