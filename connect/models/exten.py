@@ -31,6 +31,7 @@ class Exten(models.Model):
         compute='_get_dst', inverse='_set_dst')
     dst_name = fields.Char(compute='_get_dst')
     twiml = fields.Text('TwiML', compute='_get_twiml', readonly=True)
+    is_published = fields.Boolean('Published')
 
     # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
     if release.version_info[0] >= 19:

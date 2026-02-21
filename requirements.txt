@@ -1,16 +1,7 @@
 phonenumbers
-httpx
 twilio
+elevenlabs
 openai
-elevenlabs==1.59.0
 
-# OpenAI & HTTPX versions mismatch issue. If you get on Transcribe:
-# TypeError: Client.__init__() got an unexpected keyword argument 'proxies'
-# Try to install special versions of httpx & openai. Read more: https://oduist.com/knowledge/article/92
-
-# For Odoo 18.0 official docker image: openai==1.39.0 & typing_extensions==4.10.0:
-# RUN pip3 install twilio elevenlabs typing_extensions==4.10.0 openai==1.39.0 --break-system-packages
-
-# For Odoo 18 on Ubuntu 20.04
-# httpx==0.27.2
-# openai==1.55.3
+# For Odoo 18.0 official docker image:
+# pip3 install --user  --force-reinstall --break-system-package typing_extensions openai

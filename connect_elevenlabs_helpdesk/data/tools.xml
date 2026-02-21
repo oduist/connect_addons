@@ -1,0 +1,200 @@
+<odoo>
+    <data>
+
+        <!-- Tool: helpdesk_create_ticket -->
+        <record id="tool_helpdesk_create_ticket" model="connect.elevenlabs_agent_tool">
+            <field name="name">helpdesk_create_ticket</field>
+            <field name="description">Creates a new helpdesk support ticket. Use this when the customer wants to report an issue, request support, or create a new ticket. Returns ticket_id for future reference.</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs_helpdesk/create_ticket</field>
+            <field name="method">POST</field>
+            <field name="param_type">body</field>
+            <field name="body_params_description">Subject is required. Description and team_name are optional.</field>
+            <field name="response_timeout_secs">20</field>
+        </record>
+
+        <record id="tool_helpdesk_create_ticket_param_subject" model="connect.agent_tool_params">
+            <field name="name">subject</field>
+            <field name="description">Short subject/title describing the issue or request.</field>
+            <field name="data_type">string</field>
+            <field name="required" eval="True"/>
+            <field name="value_type">description</field>
+            <field name="tool" ref="tool_helpdesk_create_ticket"/>
+        </record>
+
+        <record id="tool_helpdesk_create_ticket_param_description" model="connect.agent_tool_params">
+            <field name="name">description</field>
+            <field name="description">Detailed description of the issue or request.</field>
+            <field name="data_type">string</field>
+            <field name="required" eval="False"/>
+            <field name="value_type">description</field>
+            <field name="tool" ref="tool_helpdesk_create_ticket"/>
+        </record>
+
+        <record id="tool_helpdesk_create_ticket_param_team_name" model="connect.agent_tool_params">
+            <field name="name">team_name</field>
+            <field name="description">Name of the helpdesk team to assign the ticket to (e.g., "Technical Support", "Sales").</field>
+            <field name="data_type">string</field>
+            <field name="required" eval="False"/>
+            <field name="value_type">description</field>
+            <field name="tool" ref="tool_helpdesk_create_ticket"/>
+        </record>
+
+        <record id="tool_helpdesk_create_ticket_param_partner_id" model="connect.agent_tool_params">
+            <field name="name">partner_id</field>
+            <field name="data_type">integer</field>
+            <field name="required" eval="False"/>
+            <field name="value_type">dynamic_variable</field>
+            <field name="dynamic_variable">partner_id</field>
+            <field name="tool" ref="tool_helpdesk_create_ticket"/>
+        </record>
+
+        <record id="tool_helpdesk_create_ticket_param_call_id" model="connect.agent_tool_params">
+            <field name="name">call_id</field>
+            <field name="data_type">integer</field>
+            <field name="required" eval="True"/>
+            <field name="value_type">dynamic_variable</field>
+            <field name="dynamic_variable">call_id</field>
+            <field name="tool" ref="tool_helpdesk_create_ticket"/>
+        </record>
+
+        <!-- Tool: helpdesk_search_tickets -->
+        <record id="tool_helpdesk_search_tickets" model="connect.elevenlabs_agent_tool">
+            <field name="name">helpdesk_search_tickets</field>
+            <field name="description">Searches for helpdesk tickets belonging to the current caller/partner. Returns a list of tickets with their IDs, names, and status. Use this to find existing tickets before creating new ones or to check ticket status.</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs_helpdesk/search_tickets</field>
+            <field name="method">POST</field>
+            <field name="param_type">body</field>
+            <field name="body_params_description">Partner ID is injected automatically. Set only_open to true to filter for open tickets only.</field>
+            <field name="response_timeout_secs">20</field>
+        </record>
+
+        <record id="tool_helpdesk_search_tickets_param_partner_id" model="connect.agent_tool_params">
+            <field name="name">partner_id</field>
+            <field name="data_type">integer</field>
+            <field name="required" eval="True"/>
+            <field name="value_type">dynamic_variable</field>
+            <field name="dynamic_variable">partner_id</field>
+            <field name="tool" ref="tool_helpdesk_search_tickets"/>
+        </record>
+
+        <record id="tool_helpdesk_search_tickets_param_only_open" model="connect.agent_tool_params">
+            <field name="name">only_open</field>
+            <field name="description">Set to true to only return open/active tickets (not closed or resolved).</field>
+            <field name="data_type">boolean</field>
+            <field name="required" eval="False"/>
+            <field name="value_type">description</field>
+            <field name="tool" ref="tool_helpdesk_search_tickets"/>
+        </record>
+
+        <!-- Tool: helpdesk_fetch_ticket -->
+        <record id="tool_helpdesk_fetch_ticket" model="connect.elevenlabs_agent_tool">
+            <field name="name">helpdesk_fetch_ticket</field>
+            <field name="description">Fetches detailed information about a specific helpdesk ticket by its ID. Use this after searching for tickets to get complete details about a specific ticket.</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs_helpdesk/fetch_ticket</field>
+            <field name="method">POST</field>
+            <field name="param_type">body</field>
+            <field name="body_params_description">Ticket ID is required.</field>
+            <field name="response_timeout_secs">20</field>
+        </record>
+
+        <record id="tool_helpdesk_fetch_ticket_param_ticket_id" model="connect.agent_tool_params">
+            <field name="name">ticket_id</field>
+            <field name="description">The ID of the ticket to fetch details for.</field>
+            <field name="data_type">integer</field>
+            <field name="required" eval="True"/>
+            <field name="value_type">description</field>
+            <field name="tool" ref="tool_helpdesk_fetch_ticket"/>
+        </record>
+
+        <!-- Tool: helpdesk_update_ticket -->
+        <record id="tool_helpdesk_update_ticket" model="connect.elevenlabs_agent_tool">
+            <field name="name">helpdesk_update_ticket</field>
+            <field name="description">Updates an existing helpdesk ticket. Use this to change the ticket subject, description, priority, or stage. At least one update field must be provided.</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs_helpdesk/update_ticket</field>
+            <field name="method">POST</field>
+            <field name="param_type">body</field>
+            <field name="body_params_description">Ticket ID is required. Provide at least one field to update: subject, description, priority, or stage_name.</field>
+            <field name="response_timeout_secs">20</field>
+        </record>
+
+        <record id="tool_helpdesk_update_ticket_param_ticket_id" model="connect.agent_tool_params">
+            <field name="name">ticket_id</field>
+            <field name="description">The ID of the ticket to update.</field>
+            <field name="data_type">integer</field>
+            <field name="required" eval="True"/>
+            <field name="value_type">description</field>
+            <field name="tool" ref="tool_helpdesk_update_ticket"/>
+        </record>
+
+        <record id="tool_helpdesk_update_ticket_param_subject" model="connect.agent_tool_params">
+            <field name="name">subject</field>
+            <field name="description">New subject/title for the ticket.</field>
+            <field name="data_type">string</field>
+            <field name="required" eval="False"/>
+            <field name="value_type">description</field>
+            <field name="tool" ref="tool_helpdesk_update_ticket"/>
+        </record>
+
+        <record id="tool_helpdesk_update_ticket_param_description" model="connect.agent_tool_params">
+            <field name="name">description</field>
+            <field name="description">Updated description of the issue.</field>
+            <field name="data_type">string</field>
+            <field name="required" eval="False"/>
+            <field name="value_type">description</field>
+            <field name="tool" ref="tool_helpdesk_update_ticket"/>
+        </record>
+
+        <record id="tool_helpdesk_update_ticket_param_priority" model="connect.agent_tool_params">
+            <field name="name">priority</field>
+            <field name="description">Priority level: 0 (Low), 1 (Medium), 2 (High), 3 (Urgent).</field>
+            <field name="data_type">string</field>
+            <field name="required" eval="False"/>
+            <field name="value_type">description</field>
+            <field name="tool" ref="tool_helpdesk_update_ticket"/>
+        </record>
+
+        <record id="tool_helpdesk_update_ticket_param_stage_name" model="connect.agent_tool_params">
+            <field name="name">stage_name</field>
+            <field name="description">Name of the stage to move the ticket to (e.g., "In Progress", "Resolved", "Closed").</field>
+            <field name="data_type">string</field>
+            <field name="required" eval="False"/>
+            <field name="value_type">description</field>
+            <field name="tool" ref="tool_helpdesk_update_ticket"/>
+        </record>
+
+        <!-- Tool: helpdesk_ticket_activity -->
+        <record id="tool_helpdesk_ticket_activity" model="connect.elevenlabs_agent_tool">
+            <field name="name">helpdesk_ticket_activity</field>
+            <field name="description">Adds a note or comment to an existing helpdesk ticket. Use this to log call summaries, additional information from the customer, or follow-up notes.</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs_helpdesk/ticket_activity</field>
+            <field name="method">POST</field>
+            <field name="param_type">body</field>
+            <field name="body_params_description">Ticket ID and note content are required.</field>
+            <field name="response_timeout_secs">20</field>
+        </record>
+
+        <record id="tool_helpdesk_ticket_activity_param_ticket_id" model="connect.agent_tool_params">
+            <field name="name">ticket_id</field>
+            <field name="description">The ID of the ticket to add the note to.</field>
+            <field name="data_type">integer</field>
+            <field name="required" eval="True"/>
+            <field name="value_type">description</field>
+            <field name="tool" ref="tool_helpdesk_ticket_activity"/>
+        </record>
+
+        <record id="tool_helpdesk_ticket_activity_param_note" model="connect.agent_tool_params">
+            <field name="name">note</field>
+            <field name="description">The note or comment content to add to the ticket.</field>
+            <field name="data_type">string</field>
+            <field name="required" eval="True"/>
+            <field name="value_type">description</field>
+            <field name="tool" ref="tool_helpdesk_ticket_activity"/>
+        </record>
+
+    </data>
+</odoo>
