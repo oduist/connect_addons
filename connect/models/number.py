@@ -4,6 +4,8 @@ import json
 import logging
 from urllib.parse import urljoin
 from odoo import fields, models, api, release
+if release.version_info[0] >= 19:
+    from odoo.models import Constraint
 from odoo.exceptions import ValidationError
 from .settings import format_connect_response, debug
 
@@ -35,10 +37,15 @@ class Number(models.Model):
     callflow = fields.Many2one('connect.callflow', ondelete='set null')
     user = fields.Many2one('connect.user', ondelete='set null')
 
-    _sql_constrains = [
-        ('sid_unique', 'UNIQUE(sid)', 'This SID is already used!'),
-        ('phone_number_unique', 'UNIQUE(phone_number)', 'This phone number is already used!'),
-    ]
+    # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
+    if release.version_info[0] >= 19:
+        _sid_unique = Constraint('UNIQUE(sid)', 'This SID is already used!')
+        _phone_number_unique = Constraint('UNIQUE(phone_number)', 'This phone number is already used!')
+    else:
+        _sql_constraints = [
+            ('sid_unique', 'UNIQUE(sid)', 'This SID is already used!'),
+            ('phone_number_unique', 'UNIQUE(phone_number)', 'This phone number is already used!'),
+        ]
 
     def _get_twilio_urls(self):
         api_url = self.env['connect.settings'].get_param('api_url')
@@ -129,7 +136,7 @@ class Number(models.Model):
         # Additionally, ensure all existing numbers have correct routing region
         if region:
             debug(self, 'Updating routing region to {} for all phone numbers during sync.'.format(region))
-            all_numbers = self.search([('sid', '!=', False)])  # Only numbers with SID (not BYOC)
+            all_numbers = self.search([('sid', '!=', False), ('is_ignored', '=', False)])  # Only numbers with SID (not BYOC), skip ignored
             for rec in all_numbers:
                 try:
                     client.routes.v2.phone_numbers(rec.phone_number).update(voice_region=region)
