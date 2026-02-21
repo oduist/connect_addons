@@ -373,14 +373,15 @@ class User(models.Model):
         # For transfer redirects, use dial_complete for completion tracking
         if params.get('_is_transfer_redirect'):
             dial_action_url = urljoin(api_url, 'connect/dial_complete#e={}'.format(edge))
-        # For transfers, use the transferring user's caller ID instead of the original caller
+        # For transfers, show the original caller to the transfer recipient
         channel = self.env['connect.channel'].search([('sid', '=', request.get('CallSid'))])
         call = channel.call if channel else None
         if call and call.transferred_users:
-            transferring_user = self._get_transferring_pbx_user(call)
-            if transferring_user:
-                callerId = transferring_user.exten.number or callerId
-                caller_name = transferring_user.name or caller_name
+            if call.caller_pbx_user and call.caller_pbx_user.exten:
+                callerId = call.caller_pbx_user.exten.number or callerId
+                caller_name = call.caller_pbx_user.name or caller_name
+            elif call.caller:
+                callerId = call.caller or callerId
         dial_client_kwargs = {'timeout': self.client_ring_timeout, 'callerId': callerId}
         # Check for action callback URL.
         if params.get('dial_action_url'):
