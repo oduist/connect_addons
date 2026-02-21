@@ -3,7 +3,6 @@ from . import agent_prompt
 from . import agent_tool
 from . import agent_template
 from . import agent_transfer
-from . import agent_transfer_exten
 from . import call
 from . import callflow
 from . import exten

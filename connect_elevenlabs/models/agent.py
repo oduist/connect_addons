@@ -184,27 +184,7 @@ class ElevenlabsAgent(models.Model):
     exten = fields.Many2one("connect.exten", ondelete="set null", readonly=True)
     exten_number = fields.Char(related="exten.number")
     template = fields.Many2one("connect.elevenlabs_agent_template", ondelete="set null")
-    has_transfer_to_exten = fields.Boolean(
-        compute="_compute_has_transfer_to_exten", store=False
-    )
-    transfer_to_exten = fields.One2many(
-        "connect.elevenlabs_agent_transfer_exten", "agent"
-    )
     transfer_to_agent = fields.One2many("connect.elevenlabs_agent_transfer", "agent")
-
-    @api.depends("tools")
-    def _compute_has_transfer_to_exten(self):
-        transfer_tool = self.env.ref(
-            "connect_elevenlabs.agent_tool_transfer_to_exten", raise_if_not_found=False
-        )
-        for rec in self:
-            rec.has_transfer_to_exten = (
-                transfer_tool.id in rec.tools.ids if transfer_tool else False
-            )
-
-    @api.onchange("tools")
-    def _onchange_transfer_to_exten(self):
-        self._compute_has_transfer_to_exten()
 
     @api.onchange("active_prompt_version")
     def _onchange_active_prompt_version(self):
@@ -432,15 +412,6 @@ class ElevenlabsAgent(models.Model):
                         if param.value_type == "dynamic_variable"
                     ]
                 )
-            )
-
-        # Register transfer_extens placeholder so ElevenLabs resolves {{transfer_extens}} in tool descriptions
-        if self.transfer_to_exten:
-            dynamic_variable_placeholders["transfer_extens"] = ", ".join(
-                [
-                    "{} - {}".format(k.transfer_to_exten.number, k.condition)
-                    for k in self.transfer_to_exten
-                ]
             )
 
         agent_dict = {
