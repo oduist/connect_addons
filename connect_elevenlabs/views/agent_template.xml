@@ -17,9 +17,9 @@
         <field name="name">connect_elevenlabs_agent_template_list</field>
         <field name="model">connect.elevenlabs_agent_template</field>
         <field name="arch" type="xml">
-            <list>
+            <tree>
                 <field name="name"/>
-            </list>
+            </tree>
         </field>
     </record>
 

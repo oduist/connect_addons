@@ -18,10 +18,10 @@
         <field name="name">connect_elevenlabs_agent_transfer_list</field>
         <field name="model">connect.elevenlabs_agent_transfer</field>
         <field name="arch" type="xml">
-            <list>
+            <tree>
                 <field name="transfer_to_agent"/>
                 <field name="condition"/>
-            </list>
+            </tree>
         </field>
     </record>
 
