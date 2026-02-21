@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="connect_elevenlabs_agent_transfer_form" model="ir.ui.view">
+        <field name="name">connect_elevenlabs_agent_transfer_form</field>
+        <field name="model">connect.elevenlabs_agent_transfer</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="agent" invisible="1"/>
+                    <field name="transfer_to_agent"/>
+                    <field name="condition"/>
+                </group>
+            </form>
+        </field>
+    </record>
+
+    <record id="connect_elevenlabs_agent_transfer_list" model="ir.ui.view">
+        <field name="name">connect_elevenlabs_agent_transfer_list</field>
+        <field name="model">connect.elevenlabs_agent_transfer</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="transfer_to_agent"/>
+                <field name="condition"/>
+            </tree>
+        </field>
+    </record>
+
+</odoo>

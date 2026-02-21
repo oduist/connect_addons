@@ -38,6 +38,7 @@ class Call(models.Model):
             'existing_partner': 'Yes' if partner else 'No',
             'partner_phone': partner.phone,
             'partner_id': partner.id,
+            'partner_tz': partner.tz,
             'greeting': partner.name or 'Dear customer',
             'users_directory': ', '.join(['{} <{}>'.format(k.user.name, k.exten.number) for k in users]),
             'previous_conversation_id': '',
@@ -57,6 +58,13 @@ class Call(models.Model):
                 'previous_conversation_id': previous_conversations[0].elevenlabs_conversation_id,
                 'previous_topics': previous_conversations[0].elevenlabs_summary,
             })
+        # Get published extensions for transfer
+        published_extens = self.env['connect.exten'].search([('is_published', '=', True)])
+        if published_extens:
+            data['available_extensions'] = ', '.join(
+                ['<{}> "{}"'.format(k.number, k.dst.name if k.dst else '') for k in published_extens]
+            )
+
         return data
 
     @api.model
