@@ -2,6 +2,7 @@ name: CI
 on:
   push:
     branches:
+      - 15.0
       - 16.0
       - 17.0
 
@@ -21,7 +22,7 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@master
       - name: Install module requirements
-        run: pip3 install twilio openai elevenlabs==1.59.0
+        run: pip3 install twilio openai elevenlabs
       - name: Install odoo modules
         run: >
           odoo --addons-path=$GITHUB_WORKSPACE --database=ephemeral
