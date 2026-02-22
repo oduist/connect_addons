@@ -16,41 +16,6 @@ from .settings import debug
 logger = logging.getLogger(__name__)
 
 
-TWILIO_WHATSAPP_ERRORS = {
-    '21408': 'Permission not granted to send to this number.',
-    '21610': 'Recipient has unsubscribed from messages.',
-    '21614': 'Invalid mobile number.',
-    '21617': 'Non-mobile number, cannot receive WhatsApp.',
-    '63003': 'Recipient address not found.',
-    '63007': 'Message failed to send (channel error).',
-    '63014': 'Message body or media missing.',
-    '63015': 'Message blocked by user.',
-    '63016': '24 hours contact window has expired. Please use a message template to initiate a new conversation.',
-    '63017': 'Rate limit exceeded.',
-    '63018': 'Rate limit exceeded for channel.',
-    '63019': 'Media failed to download.',
-    '63020': 'Business Manager account error.',
-    '63021': 'Channels capability error.',
-    '63024': 'Content template incomplete or invalid.',
-    '63025': 'Content template not approved.',
-    '63028': 'Media upload error.',
-    '63030': 'Receiver failed to download the template.',
-    '63031': 'Unsupported parameter for this message type.',
-    '63032': 'Sender and receiver numbers cannot be the same.',
-    '63033': 'WhatsApp limitation prevents delivery.',
-    '63034': 'Recipient opted out of receiving messages.',
-    '63035': 'Media exceeds size limit.',
-    '63038': 'Channel media upload error.',
-    '63039': 'Account exceeded the daily messages limit.',
-    '63040': 'Messaging restrictions: too many messages outside 24-hour window.',
-    '63041': 'Message template rejected.',
-    '63042': 'Message template paused.',
-    '63043': 'Message template disabled.',
-    '63050': 'Meta chose not to deliver this marketing message.',
-    '63051': 'User opted out of marketing messages.',
-}
-
-
 class ConnectWhatsappSender(models.Model):
     _name = 'connect.whatsapp_sender'
     _description = 'Twilio WhatsApp Sender'
@@ -166,9 +131,10 @@ class ConnectWhatsappSender(models.Model):
                 if item.get('sid'):
                     twilio_sids.add(item.get('sid'))
                 vals = self._prepare_vals_from_api(item)
+                # Set default voice_application if not already set
                 if 'voice_application' not in vals or not vals.get('voice_application'):
                     domain_app = self.env['connect.domain'].get_domain_app()
-                    if domain_app and domain_app.sid:
+                    if domain_app:
                         vals['voice_application'] = domain_app.id
                 # Upsert by sid if present, else by number
                 rec = self.search([('sid', '=', vals.get('sid'))]) if vals.get('sid') else self.browse()
@@ -197,13 +163,10 @@ class ConnectWhatsappSender(models.Model):
                                 'status_callback_url': rec.status_callback_url,
                             }
                         }
+                        # Pass voice_application_sid when configured
                         if rec.voice_application and rec.voice_application.sid:
                             payload['configuration'] = {
                                 'voice_application_sid': rec.voice_application.sid
-                            }
-                        else:
-                            payload['configuration'] = {
-                                'voice_application_sid': None
                             }
                         resp_u = requests.post(update_url, auth=(account_sid, auth_token), json=payload, timeout=30)
                         if resp_u.status_code >= 400:
@@ -399,26 +362,24 @@ class ConnectWhatsappSender(models.Model):
             vals = {'status': status} if status else {}
             connect_user = self.env.ref("connect.user_connect_webhook")
             connect_partner = connect_user.partner_id
-            status_lower = (status or '').lower()
-            if status_lower in ('failed', 'undelivered'):
-                code = data.get('ErrorCode') or ''
-                msg = data.get('ErrorMessage') or ''
+            if (status or '').lower() == 'failed':
+                # Some callbacks include error details
+                code = data.get('ErrorCode')
+                msg = data.get('ErrorMessage')
                 if code:
                     vals['error_code'] = code
                 if msg:
                     vals['error_message'] = msg
                     vals['has_error'] = True
                 if message.res_model and message.res_id:
-                    summary = TWILIO_WHATSAPP_ERRORS.get(str(code))
-                    if summary:
-                        chatter_message = f'WhatsApp: {summary}'
-                    elif msg:
-                        chatter_message = f'WhatsApp delivery error ({code}): {msg}'
-                    else:
-                        chatter_message = f'Failed to send WhatsApp message (error {code}).' if code else 'Failed to send WhatsApp message.'
+                    chatter_message = 'Failed to send this Whatsapp message'
                     self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
-            elif status_lower == 'read' and message.res_model and message.res_id:
+            elif (status or '').lower() == 'read' and message.res_model and message.res_id:
                 chatter_message = 'Whatsapp message is read.'
+                self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
+            elif (status or '').lower() ==  'undelivered' and message.res_model and message.res_id:
+                chatter_message = ('24 hours contact window has been expired. '
+                        'Please select a message template to initiate a new contact window!')
                 self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
             if vals:
                 message.write(vals)
