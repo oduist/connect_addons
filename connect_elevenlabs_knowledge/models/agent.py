@@ -22,7 +22,7 @@ class ElevenlabsAgent(models.Model):
             prompt_dict['knowledge_base'] = []
         else:
             prompt_dict['knowledge_base'] = [{
-                "type": "text",
+                "type": doc.type,
                 "name": doc.name,
                 "id": doc.knowledge_id,
             } for doc in self.knowledge_base if doc.knowledge_id and doc.state == 'active']
