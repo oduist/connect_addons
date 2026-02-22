@@ -57,6 +57,12 @@
                                    attrs="{'invisible': [('tool_type', '!=', 'client')]}"/>
                             <field name="response_timeout_secs"
                                    attrs="{'invisible': [('tool_type', '=', 'system')]}"/>
+                            <field name="disable_interruptions"
+                                   attrs="{'invisible': [('tool_type', '!=', 'system')]}"/>
+                            <field name="voicemail_message"
+                                   attrs="{'invisible': [('name', '!=', 'voicemail_detection')]}"/>
+                            <field name="use_out_of_band_dtmf"
+                                   attrs="{'invisible': [('name', '!=', 'play_keypad_touch_tone')]}"/>
                         </group>
                     </group>
                     <group string="Parameters"

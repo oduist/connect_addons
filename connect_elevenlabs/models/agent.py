@@ -8,7 +8,7 @@ import warnings
 import requests
 from elevenlabs.core.api_error import ApiError
 from elevenlabs.types import AgentPlatformSettingsRequestModel, ConversationalConfig
-from odoo import api, fields, models, release, tools
+from odoo import api, fields, models, release
 from odoo.addons.connect.models.settings import debug
 from odoo.addons.connect.models.twiml import pretty_xml
 from odoo.exceptions import ValidationError
@@ -185,6 +185,15 @@ class ElevenlabsAgent(models.Model):
     exten_number = fields.Char(related="exten.number")
     template = fields.Many2one("connect.elevenlabs_agent_template", ondelete="set null")
     transfer_to_agent = fields.One2many("connect.elevenlabs_agent_transfer", "agent")
+    has_transfer_tool = fields.Boolean(compute="_compute_has_transfer_tool")
+
+    @api.depends("tools")
+    def _compute_has_transfer_tool(self):
+        transfer_tool = self.env.ref(
+            "connect_elevenlabs.agent_tool_transfer_to_agent", raise_if_not_found=False
+        )
+        for rec in self:
+            rec.has_transfer_tool = transfer_tool in rec.tools if transfer_tool else False
 
     @api.onchange("active_prompt_version")
     def _onchange_active_prompt_version(self):
@@ -483,41 +492,35 @@ class ElevenlabsAgent(models.Model):
     def _compute_built_in_tools(self):
         built_in_tools = {}
         for tool in self.tools:
-            if tool.tool_type == "system":
-                built_in_tools.update(
-                    {
-                        tool.name: {
-                            "type": "system",
-                            "name": tool.name,
-                            "description": "",
-                            "params": {"system_tool_type": tool.name},
-                            "disable_interruptions": False,
-                        },
-                    }
-                )
-        transfers = []
-        for transfer in self.transfer_to_agent:
-            transfers.append(
-                {
-                    "agent_id": transfer.transfer_to_agent.agent_uid,
-                    "condition": transfer.condition,
-                    "enable_transferred_agent_first_message": True,
-                }
-            )
-        built_in_tools.update(
-            {
-                "transfer_to_agent": {
-                    "type": "system",
-                    "name": "transfer_to_agent",
-                    "description": "",
-                    "params": {
-                        "system_tool_type": "transfer_to_agent",
-                        "transfers": transfers,
-                    },
-                    "disable_interruptions": True,
-                },
+            if tool.tool_type != "system":
+                continue
+
+            tool_config = {
+                "type": "system",
+                "name": tool.name,
+                "description": tool.description or "",
+                "params": {"system_tool_type": tool.name},
+                "disable_interruptions": tool.disable_interruptions,
+                "tool_error_handling_mode": "auto",
             }
-        )
+
+            if tool.name == "transfer_to_agent":
+                transfers = []
+                for transfer in self.transfer_to_agent:
+                    transfers.append(
+                        {
+                            "agent_id": transfer.transfer_to_agent.agent_uid,
+                            "condition": transfer.condition,
+                            "enable_transferred_agent_first_message": True,
+                        }
+                    )
+                tool_config["params"]["transfers"] = transfers
+            elif tool.name == "voicemail_detection":
+                tool_config["params"]["voicemail_message"] = tool.voicemail_message or ""
+            elif tool.name == "play_keypad_touch_tone":
+                tool_config["params"]["use_out_of_band_dtmf"] = tool.use_out_of_band_dtmf
+
+            built_in_tools[tool.name] = tool_config
 
         return built_in_tools
 
