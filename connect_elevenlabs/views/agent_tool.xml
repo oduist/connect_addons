@@ -38,6 +38,9 @@
                             <field name="description"/>
                             <field name="tool_type"
                                    attrs="{'readonly': [('tool_type', '=', 'system')]}"/>
+                            <field name="tool_id" readonly="1"
+                                   attrs="{'invisible': [('tool_type', '=', 'system')]}"
+                                   groups="base.group_no_one"/>
                             <field name="synced" readonly="1"/>
                             <field name="param_type" string="Parameters Type"
                                    attrs="{'invisible': [('tool_type', '!=', 'webhook')]}"/>
