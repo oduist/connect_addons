@@ -1,0 +1,25 @@
+<odoo>
+
+    <!-- Form View for Elevenlabs Knowledge -->
+    <record id="custom_view_elevenlabs_knowledge_form" model="ir.ui.view">
+        <field name="name">connect.connect_elevenlabs_agent_form.form</field>
+        <field name="model">connect.elevenlabs_agent</field>
+        <field name="inherit_id" ref="connect_elevenlabs.connect_elevenlabs_agent_form"/>
+        <field name="arch" type="xml">
+            <page name="llm" position="after">
+                <page name="knowledge_base" string="Knowledge Base">
+                    <field name="knowledge_base" nolabel="1">
+                        <list>
+                            <field name="name"/>
+                            <field name="type"/>
+                            <field name="state" decoration-success="state == 'active'" decoration-danger="state == 'error'"/>
+                            <field name="document_size" optional="show"/>
+                            <field name="updated_at" optional="show"/>
+                        </list>
+                    </field>
+                </page>
+            </page>
+        </field>
+    </record>
+
+</odoo>
