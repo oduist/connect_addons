@@ -122,11 +122,9 @@ class ElevenlabsAgentTool(models.Model):
                 api_schema = {
                     'method': self.method,
                     'url': self.get_tool_url(),
-                    'request_headers': [{
-                        'type': 'value',
-                        'name': 'x-elevenlabs-agent-token',
-                        'value': agent_token,
-                    }],
+                    'request_headers': {
+                        'x-elevenlabs-agent-token': agent_token,
+                    },
                 }
 
                 # Add request body schema for body parameters
