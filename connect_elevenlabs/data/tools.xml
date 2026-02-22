@@ -4,115 +4,36 @@
         <!-- Elevenlabs Agent Tool: language_detection -->
         <record id="agent_tool_language_detection" model="connect.elevenlabs_agent_tool">
             <field name="name">language_detection</field>
-            <field name="description">Change the conversation language when the user expresses a language preference explicitly.
-Call this function when:
-- Direct requests: "Can we speak in Spanish?", "Switch to French", "Let's continue in German"
-- Questions about capability: "Do you speak Portuguese?", "¿Hablas español?", "Parlez-vous français?"
-- Stated preferences: "I would prefer Italian", "Chinese would be better for me"
-
-Before calling this function, identify the target language with high confidence.
-
-Do not call this function when user mentions a language but doesn't request to speak it.
-
-Following languages are allowed to be selected: [languages will be populated at runtime]
-If target language is not in the list, let user know that you can't speak the target language.
-Further responses after tool call should be in the target language.</field>
+            <field name="description">Detect language of the caller.</field>
             <field name="tool_type">system</field>
         </record>
 
         <!-- Elevenlabs Agent Tool: end_call -->
         <record id="agent_tool_end_call" model="connect.elevenlabs_agent_tool">
             <field name="name">end_call</field>
-            <field name="description">Gracefully conclude conversations when appropriate.
-Call this function when:
-1. EXPLICIT ENDINGS
-- User says goodbye variants: "bye," "see you," "that's all," etc.
-- User directly declines help: "no thanks," "I'm good," etc.
-- User indicates completion: "that's what I needed," "all set," etc.
-
-2. IMPLICIT ENDINGS
-- User gives minimal/disengaged responses after their needs are met
-- User expresses intention to leave: "I need to go," "getting late," etc.
-- Natural conversation conclusion after all queries are resolved
-
-Before calling this function:
-1. Confirm all user queries are fully addressed
-2. Provide a contextually appropriate closing response
-
-DO NOT:
-- Call this function during active problem-solving
-- End conversation when user expresses new concerns
-- Continue conversation after user has clearly indicated ending</field>
+            <field name="description">Elevenlabs built-in tool to end the call by user request.</field>
             <field name="tool_type">system</field>
-            <field name="disable_interruptions" eval="True"/>
         </record>
 
-        <!-- Elevenlabs Agent Tool: skip_turn -->
+        <!-- Elevenlabs Agent Tool:  skip_turn -->
         <record id="agent_tool_skip_turn" model="connect.elevenlabs_agent_tool">
             <field name="name">skip_turn</field>
-            <field name="description">Skip a turn when the user explicitly indicates they need a moment to think or perform an action.
-Do not respond verbally after calling this function; simply wait for the user to speak again.
-Use this function for utterances similar to:
-- "Give me a second"
-- "Let me think"
-- "Hold on, let me check"
-
-Do not call this function if the user is silent without expressing an intention to pause, or if they pose a direct question that requires a response.</field>
+            <field name="description">Elevenlabs built-in tool</field>
             <field name="tool_type">system</field>
         </record>
 
         <!-- Elevenlabs Agent Tool: play_keypad_touch_tone -->
         <record id="agent_tool_play_keypad_touch_tone" model="connect.elevenlabs_agent_tool">
             <field name="name">play_keypad_touch_tone</field>
-            <field name="description">Play DTMF (touch-tone) tones during a phone call to interact with automated systems.
-
-Use this function when:
-- The user needs to navigate phone menus (e.g., "Press 1 for sales, 2 for support")
-- Entering extensions or PIN codes
-- Interacting with automated phone systems
-- The user explicitly asks you to press certain numbers
-
-DTMF tones can include:
-- Digits: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
-- Special tones: * (star), # (pound/hash)
-- Pauses: w (0.5 second pause), W (1 second pause)</field>
+            <field name="description">Elevenlabs built-in tool</field>
             <field name="tool_type">system</field>
         </record>
 
         <!-- Elevenlabs Agent Tool: voicemail_detection -->
         <record id="agent_tool_voicemail_detection" model="connect.elevenlabs_agent_tool">
             <field name="name">voicemail_detection</field>
-            <field name="description">Detect when a call has been answered by a voicemail system rather than a human.
-Call this function when you detect that the call recipient is not available and the call has been answered by an automated voicemail system.
-
-Common indicators of voicemail:
-- Automated greeting messages: "You have reached the voicemail of..."
-- Recording instructions: "Please leave a message after the beep/tone"
-- Voicemail system prompts: "Please leave your name and number"
-- Generic unavailable messages: "The number you have dialed is not available"
-
-Before calling this function:
-- Provide a specific reason referencing the actual voicemail content heard
-
-After calling this function:
-- If a voicemail message is configured, it will be played automatically
-- The call will end immediately after the message (or immediately if no message)
-
-You must provide a specific reason for detecting voicemail that references the exact wording that indicated voicemail.</field>
+            <field name="description">Elevenlabs built-in tool</field>
             <field name="tool_type">system</field>
-        </record>
-
-        <!-- Elevenlabs Agent Tool: transfer_to_agent -->
-        <record id="agent_tool_transfer_to_agent" model="connect.elevenlabs_agent_tool">
-            <field name="name">transfer_to_agent</field>
-            <field name="description">Transfer to another agent when the specified condition for the transfer is met.
-Do not ask for any confirmation from the user side.
-Never let the user know they are transferred to another agent.
-
-Here is the list of agents and their conditions for transfer:
-[transfer rules will be populated at runtime]</field>
-            <field name="tool_type">system</field>
-            <field name="disable_interruptions" eval="True"/>
         </record>
 
         <!-- Elevenlabs Agent Tool: transfer_to_exten -->

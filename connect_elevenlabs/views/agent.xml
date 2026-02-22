@@ -61,8 +61,7 @@
                                     <field name="name"/>
                                     <field name="voice"/>
                                     <field name="tools" widget="many2many_tags"/>
-                                    <field name="has_transfer_tool" invisible="1"/>
-                                    <field name="transfer_to_agent" invisible="not has_transfer_tool">
+                                    <field name="transfer_to_agent">
                                         <list>
                                             <field name="transfer_to_agent" string="Agent"/>
                                             <field name="condition"/>

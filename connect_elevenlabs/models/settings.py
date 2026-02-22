@@ -80,8 +80,7 @@ class Elevenlabsettings(models.Model):
 
 
     def elevenlabs_sync_tools(self):
-        """Sync all tools to ElevenLabs (create or update).
-        System tools are excluded — they are managed via agent config (PATCH agent)."""
+        """Sync all non-system tools to ElevenLabs (create or update)"""
         tools = self.env['connect.elevenlabs_agent_tool'].search([('tool_type', '!=', 'system')])
         for tool in tools:
             if tool.tool_id:
@@ -95,7 +94,8 @@ class Elevenlabsettings(models.Model):
         self.connect_notify('Voices sync done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)
         self.elevenlabs_reset_token()
         # Sync tools first
-        for tool in self.env['connect.elevenlabs_agent_tool'].search([('tool_id', '=', False)]):
+        for tool in self.env['connect.elevenlabs_agent_tool'].search([
+            ('tool_type', '!=', 'system'), ('tool_id', '=', False)]):
             tool._sync_to_elevenlabs()
         self.connect_notify('Tools sync done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)
 
