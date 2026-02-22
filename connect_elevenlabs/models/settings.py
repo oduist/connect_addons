@@ -94,10 +94,8 @@ class Elevenlabsettings(models.Model):
         self.elevenlabs_get_voices()
         self.connect_notify('Voices sync done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)
         self.elevenlabs_reset_token()
-        # Sync tools first
-        for tool in self.env['connect.elevenlabs_agent_tool'].search([('tool_id', '=', False)]):
-            tool._sync_to_elevenlabs()
-        self.connect_notify('Tools sync done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)
+        # Sync tools (create new + update existing with new token)
+        self.elevenlabs_sync_tools()
 
         for agent in self.env['connect.elevenlabs_agent'].search([]):
             agent.update_elevenlabs_agent()

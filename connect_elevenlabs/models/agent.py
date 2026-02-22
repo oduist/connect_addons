@@ -8,7 +8,7 @@ import warnings
 import requests
 from elevenlabs.core.api_error import ApiError
 from elevenlabs.types import AgentPlatformSettingsRequestModel, ConversationalConfig
-from odoo import api, fields, models, release, tools
+from odoo import api, fields, models, release
 from odoo.addons.connect.models.settings import debug
 from odoo.addons.connect.models.twiml import pretty_xml
 from odoo.exceptions import ValidationError
