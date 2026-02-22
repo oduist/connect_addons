@@ -47,7 +47,7 @@
                         <group>
                             <field name="delete_protection"/>
                             <field name="domain_name" string="Global Hostname"/>
-                            <field name="edge_domains" string="Edges" 
+                            <field name="edge_domains" string="Edges"
                                 help="Twilio Edges are regional connection points for Twilio. Choose the one closest to your users or infrastructure to reduce latency and improve call quality."/>
                         </group>
                     </group>

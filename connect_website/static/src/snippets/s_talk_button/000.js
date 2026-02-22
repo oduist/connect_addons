@@ -4,12 +4,12 @@ import publicWidget from "web.public.widget"
 import {loadJS} from "@web/core/assets"
 import {session} from "@web/session"
 
-const ConnectTalkButtonWidget = publicWidget.Widget.extend({
-    selector: '.s_connect_talk',
+const ConnectButtonWidget = publicWidget.Widget.extend({
+    selector: '.s_connect_container',
     disabledInEditableMode: true,
 
     events: Object.assign({}, publicWidget.Widget.prototype.events, {
-        'click .s_talk_button': '_clickTalkButton',
+        'click .s_connect_body': '_clickTalkButton',
         'click .answer-call': '_clickAnswerCall',
         'click .reject-call': '_clickRejectCall',
     }),
@@ -23,11 +23,12 @@ const ConnectTalkButtonWidget = publicWidget.Widget.extend({
      */
     async start() {
         await this._super(...arguments)
-        this._$talkButton = this.$('.s_talk_button')
-        this._$talkButtonText = this.$('.s_talk_button').html()
+        this._$talkButton = this.$('.s_connect_text')
+        this._$connectBody = this.$('.s_connect_body')
         this._$incomingCall = this.$('.s_incoming_call')
         this.enabled = false
         this.inCall = false
+        this.incomingCall = false
         this.userAgent = null
         this.identity = null
         this.number = null
@@ -44,7 +45,7 @@ const ConnectTalkButtonWidget = publicWidget.Widget.extend({
     },
 
     initUserAgent: async function () {
-        await loadJS('/connect_website/static/src/snippets/s_talk_button/twilio.min.js')
+        await loadJS('/connect_website/static/src/snippets/s_connect_button/twilio.min.js')
 
         this.identity = this.getIdentity()
         const token = await this.getToken()
@@ -75,8 +76,10 @@ const ConnectTalkButtonWidget = publicWidget.Widget.extend({
                 return
             }
 
+            self.incomingCall = true
             self._$incomingCall.removeClass('hide')
-            self._$talkButton.text('')
+            self._$connectBody.addClass('ring')
+            self._$talkButton.addClass('hide')
 
             // incoming call here
             session.on("accept", async function (data) {
@@ -111,8 +114,11 @@ const ConnectTalkButtonWidget = publicWidget.Widget.extend({
         }
 
         if (!this.checkIdentity()) {
+            this.startCall()
             await this.initUserAgent()
         }
+
+
 
         const self = this
         self.inCall = true
@@ -140,16 +146,18 @@ const ConnectTalkButtonWidget = publicWidget.Widget.extend({
 
     startCall: function () {
         this.inCall = true
+        this.incomingCall = false
         this._$incomingCall.addClass('hide')
-        this.$el.addClass('red')
-        this._$talkButton.html('<i class="fa fa-phone"/>')
+        this._$connectBody.removeClass('ring').addClass('red')
+        this._$talkButton.addClass('hide')
     },
 
     endCall: function () {
         this.inCall = false
+        this.incomingCall = false
         this._$incomingCall.addClass('hide')
-        this.$el.removeClass('red')
-        this._$talkButton.html(this._$talkButtonText)
+        this._$connectBody.removeClass('ring').removeClass('red')
+        this._$talkButton.removeClass('hide')
     },
 
     getConfig: async function () {
@@ -182,16 +190,19 @@ const ConnectTalkButtonWidget = publicWidget.Widget.extend({
     },
 
     _clickTalkButton: function (ev) {
-        if (this.inCall) {
-            if (this.session) {
-                this.session.disconnect()
+        if (!this.incomingCall) {
+            if (this.inCall) {
+                if (this.session) {
+                    this.session.disconnect();
+                }
+            } else {
+                this.makeCall().then()
             }
-        } else {
-            this.makeCall().then()
         }
     },
 
     _clickAnswerCall: function (ev) {
+        ev.stopPropagation()
         this.startCall()
         if (this.session) {
             this.session.accept()
@@ -199,6 +210,7 @@ const ConnectTalkButtonWidget = publicWidget.Widget.extend({
     },
 
     _clickRejectCall: function (ev) {
+        ev.stopPropagation()
         this.endCall()
         if (this.session) {
             this.session.reject()
@@ -207,6 +219,6 @@ const ConnectTalkButtonWidget = publicWidget.Widget.extend({
 
 })
 
-publicWidget.registry.connectTalkButton = ConnectTalkButtonWidget
+publicWidget.registry.connectButton = ConnectButtonWidget
 
-export default ConnectTalkButtonWidget
+export default ConnectButtonWidget

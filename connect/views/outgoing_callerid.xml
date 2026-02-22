@@ -46,7 +46,7 @@
                         </group>
                         <group>
                             <field name="is_default"/>
-                            <field name="callerid_type"/>
+                            <field name="callerid_type" readonly="1"/>
                             <field name="status"
                                    attrs="{'invisible': ['|', ('callerid_type', '!=', 'outgoing_callerid'),  ('id', '=', False)]}"/>
                             <field name="validation_code"
