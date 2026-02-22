@@ -37,7 +37,7 @@
                         <field name="description"/>
                         <field name="tool_type" readonly="tool_type == 'system'"/>
                         <field name="tool_id" readonly="1" invisible="tool_type == 'system'" groups="base.group_no_one"/>
-                        <field name="synced" readonly="1"/>
+                        <field name="synced" readonly="1" invisible="tool_type == 'system'"/>
                         <field name="param_type" string="Parameters Type"
                                invisible="tool_type != 'webhook'"/>
                         </group>
@@ -52,6 +52,12 @@
                                    invisible="tool_type != 'client'"/>
                             <field name="response_timeout_secs"
                                    invisible="tool_type == 'system'"/>
+                            <field name="disable_interruptions"
+                                   invisible="tool_type != 'system'"/>
+                            <field name="voicemail_message"
+                                   invisible="name != 'voicemail_detection'"/>
+                            <field name="use_out_of_band_dtmf"
+                                   invisible="name != 'play_keypad_touch_tone'"/>
                         </group>
                     </group>
                     <group string="Parameters" invisible="tool_type == 'system'">
