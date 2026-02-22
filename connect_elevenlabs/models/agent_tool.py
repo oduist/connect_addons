@@ -105,6 +105,7 @@ class ElevenlabsAgentTool(models.Model):
                 tool_config = {
                     'name': self.name,
                     'description': self.description,
+                    'type': self.tool_type,
                     'expects_response': self.client_expects_response,
                     'parameters': {
                         'type': 'object',
@@ -160,6 +161,7 @@ class ElevenlabsAgentTool(models.Model):
                 tool_config = {
                     'name': self.name,
                     'description': self.description,
+                    'type': self.tool_type,
                     'api_schema': api_schema,
                     'response_timeout_secs': self.response_timeout_secs,
                     'dynamic_variables': dynamic_variable_placeholders,
