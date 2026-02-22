@@ -2,9 +2,6 @@
 
 import json
 import logging
-
-from werkzeug.exceptions import Unauthorized
-
 from odoo import http, release
 from odoo.addons.connect_elevenlabs.controllers.main import ConnectElevenlabsController
 
@@ -17,8 +14,7 @@ class ConnectElevenlabsHelpdeskController(ConnectElevenlabsController):
     @http.route('/connect_elevenlabs_helpdesk/create_ticket', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
     def helpdesk_create_ticket(self):
-        if not self.check_tool_token():
-            raise Unauthorized()
+        self.check_agent_request()
         data = json.loads(http.request.httprequest.get_data(as_text=True))
         logger.info('Agent create_ticket data: %s', data)
         call_id = int(data.get('call_id'))
@@ -57,8 +53,7 @@ class ConnectElevenlabsHelpdeskController(ConnectElevenlabsController):
     @http.route('/connect_elevenlabs_helpdesk/search_tickets', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
     def helpdesk_search_tickets(self):
-        if not self.check_tool_token():
-            raise Unauthorized()
+        self.check_agent_request()
         data = json.loads(http.request.httprequest.get_data(as_text=True))
         logger.info('Agent search_tickets data: %s', data)
         partner_id = data.get('partner_id')
@@ -86,8 +81,7 @@ class ConnectElevenlabsHelpdeskController(ConnectElevenlabsController):
     @http.route('/connect_elevenlabs_helpdesk/fetch_ticket', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
     def helpdesk_fetch_ticket(self):
-        if not self.check_tool_token():
-            raise Unauthorized()
+        self.check_agent_request()
         data = json.loads(http.request.httprequest.get_data(as_text=True))
         logger.info('Agent fetch_ticket data: %s', data)
         ticket_id = data.get('ticket_id')
@@ -115,8 +109,7 @@ class ConnectElevenlabsHelpdeskController(ConnectElevenlabsController):
     @http.route('/connect_elevenlabs_helpdesk/update_ticket', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
     def helpdesk_update_ticket(self):
-        if not self.check_tool_token():
-            raise Unauthorized()
+        self.check_agent_request()
         data = json.loads(http.request.httprequest.get_data(as_text=True))
         logger.info('Agent update_ticket data: %s', data)
         ticket_id = data.get('ticket_id')
@@ -146,8 +139,7 @@ class ConnectElevenlabsHelpdeskController(ConnectElevenlabsController):
     @http.route('/connect_elevenlabs_helpdesk/ticket_activity', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
     def helpdesk_ticket_activity(self):
-        if not self.check_tool_token():
-            raise Unauthorized()
+        self.check_agent_request()
         data = json.loads(http.request.httprequest.get_data(as_text=True))
         logger.info('Agent ticket_activity data: %s', data)
         ticket_id = data.get('ticket_id')
