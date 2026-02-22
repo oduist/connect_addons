@@ -7,6 +7,7 @@ import logging
 from odoo import models, fields, api, release
 from odoo.exceptions import ValidationError
 from elevenlabs import ToolRequestModel
+from elevenlabs.core.api_error import ApiError
 
 logger = logging.getLogger(__name__)
 if release.version_info[0] >= 19:
@@ -223,6 +224,14 @@ class ElevenlabsAgentTool(models.Model):
 
             logger.info(f'Successfully updated ElevenLabs tool: {self.name}')
 
+        except ApiError as e:
+            if e.status_code == 404:
+                logger.warning(f'Tool {self.name} not found in ElevenLabs, recreating...')
+                self.with_context(skip_elevenlabs=True).write({'tool_id': False, 'synced': False})
+                self._sync_to_elevenlabs()
+            else:
+                logger.error(f'Error updating ElevenLabs tool {self.name}: {e}')
+                raise ValidationError(f'Failed to update ElevenLabs tool: {str(e)}')
         except Exception as e:
             logger.error(f'Error updating ElevenLabs tool {self.name}: {e}')
             raise ValidationError(f'Failed to update ElevenLabs tool: {str(e)}')
