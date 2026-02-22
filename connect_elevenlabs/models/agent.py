@@ -185,7 +185,7 @@ class ElevenlabsAgent(models.Model):
     exten_number = fields.Char(related="exten.number")
     template = fields.Many2one("connect.elevenlabs_agent_template", ondelete="set null")
     transfer_to_agent = fields.One2many("connect.elevenlabs_agent_transfer", "agent")
-    has_transfer_tool = fields.Boolean(compute="_compute_has_transfer_tool")
+    has_transfer_tool = fields.Boolean(compute="_compute_has_transfer_tool", store=True)
 
     @api.depends("tools")
     def _compute_has_transfer_tool(self):
