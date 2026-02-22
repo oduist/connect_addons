@@ -185,7 +185,7 @@ class ElevenlabsAgent(models.Model):
     exten_number = fields.Char(related="exten.number")
     template = fields.Many2one("connect.elevenlabs_agent_template", ondelete="set null")
     transfer_to_agent = fields.One2many("connect.elevenlabs_agent_transfer", "agent")
-    has_transfer_tool = fields.Boolean(compute="_compute_has_transfer_tool", store=True)
+    has_transfer_tool = fields.Boolean(compute="_compute_has_transfer_tool")
 
     @api.depends("tools")
     def _compute_has_transfer_tool(self):
@@ -194,13 +194,6 @@ class ElevenlabsAgent(models.Model):
         )
         for rec in self:
             rec.has_transfer_tool = transfer_tool in rec.tools if transfer_tool else False
-
-    @api.onchange("tools")
-    def _onchange_tools(self):
-        transfer_tool = self.env.ref(
-            "connect_elevenlabs.agent_tool_transfer_to_agent", raise_if_not_found=False
-        )
-        self.has_transfer_tool = transfer_tool in self.tools if transfer_tool else False
 
     @api.onchange("active_prompt_version")
     def _onchange_active_prompt_version(self):
