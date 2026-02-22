@@ -80,13 +80,16 @@ class Elevenlabsettings(models.Model):
 
 
     def elevenlabs_sync_tools(self):
-        """Sync all non-system tools to ElevenLabs (create or update)"""
+        """Sync all tools to ElevenLabs (create or update)"""
         tools = self.env['connect.elevenlabs_agent_tool'].search([('tool_type', '!=', 'system')])
         for tool in tools:
             if tool.tool_id:
                 tool.update_elevenlabs_tool()
             else:
                 tool._sync_to_elevenlabs()
+        # System tools are part of agent config, update all agents to sync them
+        for agent in self.env['connect.elevenlabs_agent'].search([]):
+            agent.update_elevenlabs_agent()
         self.connect_notify('Tools sync done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)
 
     def elevenlabs_sync(self):

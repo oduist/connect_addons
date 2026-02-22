@@ -192,12 +192,23 @@ class ElevenlabsAgentTool(models.Model):
         result = super().write(vals)
         if not self.env.context.get('skip_elevenlabs') and not self.env.context.get('install_mode'):
             for record in self:
-                if record.synced and record.tool_id:
+                if record.tool_type == 'system':
+                    record._sync_system_tool_to_agents()
+                elif record.synced and record.tool_id:
                     try:
                         record.update_elevenlabs_tool()
                     except Exception as e:
                         logger.warning(f'Failed to update ElevenLabs tool {record.name}: {e}')
         return result
+
+    def _sync_system_tool_to_agents(self):
+        """Update all agents that use this system tool"""
+        agents = self.env['connect.elevenlabs_agent'].search([('tools', 'in', self.id)])
+        for agent in agents:
+            try:
+                agent.update_elevenlabs_agent()
+            except Exception as e:
+                logger.warning(f'Failed to update agent {agent.name} after system tool change: {e}')
 
     def unlink(self):
         """Override unlink to delete tool from ElevenLabs"""
