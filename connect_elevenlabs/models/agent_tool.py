@@ -40,6 +40,12 @@ class ElevenlabsAgentTool(models.Model):
     ], default='body', required=True)
     client_expects_response = fields.Boolean(string='Expects Response',
                                              help='If true, calling this tool should block the conversation until the client responds with some response which is passed to the llm. If false then we will continue the conversation without waiting for the client to respond, this is useful to show content to a user but not block the conversation')
+    disable_interruptions = fields.Boolean(default=False,
+                                           help='If true, user cannot interrupt the agent while this tool is being executed')
+    voicemail_message = fields.Text(string='Voicemail Message',
+                                    help='Message to play when voicemail is detected. Leave empty for no message.')
+    use_out_of_band_dtmf = fields.Boolean(string='Out of Band DTMF', default=False,
+                                          help='Use out-of-band DTMF tones instead of in-band audio tones')
 
     # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
     if release.version_info[0] >= 19:
