@@ -7,7 +7,7 @@
         <field name="view_mode">list,form</field>
     </record>
 
-    <menuitem id="connect.elevenlabs_agent_tool_menu"
+    <menuitem id="elevenlabs_agent_tool_menu"
               sequence="1300"
               parent="elevenlabs_menu"
               name="Tools"
@@ -55,10 +55,10 @@
                         </group>
                     </group>
                     <group string="Parameters" invisible="tool_type == 'system'">
-                        <field name="body_params_description"
+                        <field name="body_params_description" colspan="2"
                                invisible="param_type != 'body'"
                                string="Body Parameters Description"/>
-                        <field name="params" nolabel="1"
+                        <field name="params" nolabel="1" colspan="2"
                                invisible="tool_type == 'system'"/>
                     </group>
                 </sheet>
