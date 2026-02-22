@@ -7,6 +7,7 @@ import logging
 from odoo import models, fields, api, release
 from odoo.exceptions import ValidationError
 from elevenlabs import ToolRequestModel
+from elevenlabs.core.api_error import ApiError
 
 logger = logging.getLogger(__name__)
 if release.version_info[0] >= 19:
@@ -16,7 +17,7 @@ if release.version_info[0] >= 19:
 class ElevenlabsAgentTool(models.Model):
     _name = 'connect.elevenlabs_agent_tool'
     _description = 'Elevenlabs Agent Tool'
-    _order = 'tool_type ASC, name ASC'
+    _order = 'name ASC'
 
     name = fields.Char(required=True)
     tool_id = fields.Char()
@@ -39,6 +40,12 @@ class ElevenlabsAgentTool(models.Model):
     ], default='body', required=True)
     client_expects_response = fields.Boolean(string='Expects Response',
                                              help='If true, calling this tool should block the conversation until the client responds with some response which is passed to the llm. If false then we will continue the conversation without waiting for the client to respond, this is useful to show content to a user but not block the conversation')
+    disable_interruptions = fields.Boolean(default=False,
+                                           help='If true, user cannot interrupt the agent while this tool is being executed')
+    voicemail_message = fields.Text(string='Voicemail Message',
+                                    help='Message to play when voicemail is detected. Leave empty for no message.')
+    use_out_of_band_dtmf = fields.Boolean(string='Out of Band DTMF', default=False,
+                                          help='Use out-of-band DTMF tones instead of in-band audio tones')
 
     # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
     if release.version_info[0] >= 19:
@@ -104,6 +111,7 @@ class ElevenlabsAgentTool(models.Model):
                 tool_config = {
                     'name': self.name,
                     'description': self.description,
+                    'type': self.tool_type,
                     'expects_response': self.client_expects_response,
                     'parameters': {
                         'type': 'object',
@@ -116,9 +124,13 @@ class ElevenlabsAgentTool(models.Model):
 
             elif self.tool_type == 'webhook':
                 # Build webhook tool configuration
+                agent_token = self.env['connect.settings'].sudo().get_param('elevenlabs_agent_token')
                 api_schema = {
                     'method': self.method,
                     'url': self.get_tool_url(),
+                    'request_headers': {
+                        'x-elevenlabs-agent-token': agent_token,
+                    },
                 }
 
                 # Add request body schema for body parameters
@@ -153,6 +165,7 @@ class ElevenlabsAgentTool(models.Model):
                 tool_config = {
                     'name': self.name,
                     'description': self.description,
+                    'type': self.tool_type,
                     'api_schema': api_schema,
                     'response_timeout_secs': self.response_timeout_secs,
                     'dynamic_variables': dynamic_variable_placeholders,
@@ -179,12 +192,23 @@ class ElevenlabsAgentTool(models.Model):
         result = super().write(vals)
         if not self.env.context.get('skip_elevenlabs') and not self.env.context.get('install_mode'):
             for record in self:
-                if record.synced and record.tool_id:
+                if record.tool_type == 'system':
+                    record._sync_system_tool_to_agents()
+                elif record.synced and record.tool_id:
                     try:
                         record.update_elevenlabs_tool()
                     except Exception as e:
                         logger.warning(f'Failed to update ElevenLabs tool {record.name}: {e}')
         return result
+
+    def _sync_system_tool_to_agents(self):
+        """System tools are part of agent config, sync by updating all agents that use this tool"""
+        agents = self.env['connect.elevenlabs_agent'].search([('tools', 'in', self.id)])
+        for agent in agents:
+            try:
+                agent.update_elevenlabs_agent()
+            except Exception as e:
+                logger.warning(f'Failed to update agent {agent.name} after system tool change: {e}')
 
     def unlink(self):
         """Override unlink to delete tool from ElevenLabs"""
@@ -216,6 +240,14 @@ class ElevenlabsAgentTool(models.Model):
 
             logger.info(f'Successfully updated ElevenLabs tool: {self.name}')
 
+        except ApiError as e:
+            if e.status_code == 404:
+                logger.warning(f'Tool {self.name} not found in ElevenLabs, recreating...')
+                self.with_context(skip_elevenlabs=True).write({'tool_id': False, 'synced': False})
+                self._sync_to_elevenlabs()
+            else:
+                logger.error(f'Error updating ElevenLabs tool {self.name}: {e}')
+                raise ValidationError(f'Failed to update ElevenLabs tool: {str(e)}')
         except Exception as e:
             logger.error(f'Error updating ElevenLabs tool {self.name}: {e}')
             raise ValidationError(f'Failed to update ElevenLabs tool: {str(e)}')
