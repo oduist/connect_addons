@@ -1,0 +1,104 @@
+<odoo>
+
+    <!-- List View for Elevenlabs Knowledge -->
+    <record id="view_elevenlabs_knowledge_tree" model="ir.ui.view">
+        <field name="name">connect.elevenlabs_knowledge.list</field>
+        <field name="model">connect.elevenlabs_knowledge</field>
+        <field name="arch" type="xml">
+            <list string="Knowledge Base">
+                <field name="name"/>
+                <field name="type"/>
+                <field name="state" decoration-success="state == 'active'" decoration-danger="state == 'error'" decoration-warning="state == 'creating'"/>
+                <field name="agent_count" string="Agents"/>
+                <field name="document_size" optional="show"/>
+                <field name="updated_at" optional="show"/>
+                <field name="knowledge_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Action to open Elevenlabs Knowledge views -->
+    <record id="knowledge_action" model="ir.actions.act_window">
+        <field name="name">Knowledge</field>
+        <field name="res_model">connect.elevenlabs_knowledge</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="connect.elevenlabs_knowledge_menu"
+              sequence="1400"
+              parent="connect_elevenlabs.elevenlabs_menu"
+              name="Knowledge"
+              action="connect_elevenlabs_knowledge.knowledge_action"/>
+
+    <!-- Form View for Elevenlabs Knowledge -->
+    <record id="view_elevenlabs_knowledge_form" model="ir.ui.view">
+        <field name="name">connect.elevenlabs_knowledge.form</field>
+        <field name="model">connect.elevenlabs_knowledge</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,creating,active,error"/>
+                    <button name="action_retry_creation" type="object" string="Retry Creation"
+                            attrs="{'invisible': [('state', '!=', 'error')]}" class="btn-primary"/>
+                    <button name="action_view_agents" type="object" string="View Agents"
+                            attrs="{'invisible': [('agent_count', '=', 0)]}" class="btn-secondary"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Document name..."/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group name="document_info">
+                            <field name="type"/>
+                            <field name="knowledge_id" string="Document ID" readonly="1"
+                                   attrs="{'invisible': [('knowledge_id', '=', False)]}"/>
+                            <field name="document_size" readonly="1"
+                                   attrs="{'invisible': [('document_size', '=', 0)]}"/>
+                        </group>
+                        <group name="timestamps">
+                            <field name="created_at" readonly="1"/>
+                            <field name="updated_at" readonly="1"/>
+                            <field name="force_delete"
+                                   attrs="{'invisible': [('knowledge_id', '=', False)]}"/>
+                        </group>
+                    </group>
+                    <group name="content" string="Content">
+                        <field name="url"
+                               attrs="{'invisible': [('type', '!=', 'url')],
+                                       'required': [('type', '=', 'url')]}"/>
+                        <field name="file_name" invisible="1"/>
+                        <field name="file" filename="file_name"
+                               attrs="{'invisible': [('type', '!=', 'file')],
+                                       'required': [('type', '=', 'file')]}"/>
+                        <field name="text" string="Text Content"
+                               attrs="{'invisible': [('type', '!=', 'text')],
+                                       'required': [('type', '=', 'text')]}"/>
+                        <field name="description" placeholder="Document description..."/>
+                    </group>
+                    <group name="error_info" string="Error Information"
+                           attrs="{'invisible': [('error_message', '=', False)]}">
+                        <field name="error_message" readonly="1" nolabel="1"/>
+                    </group>
+                    <notebook>
+                        <page name="agents" string="Used by Agents">
+                            <group>
+                                <field name="agent_count" readonly="1"/>
+                            </group>
+                            <field name="agent_ids" nolabel="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="language"/>
+                                    <field name="llm"/>
+                                    <field name="voice"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>
