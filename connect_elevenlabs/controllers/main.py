@@ -19,16 +19,23 @@ class ConnectElevenlabsController(http.Controller):
     def check_tool_token(self):
         token = http.request.httprequest.headers.get('x-elevenlabs-agent-token')
         if not token:
+            logger.warning('Tool token check failed: no x-elevenlabs-agent-token header in request')
             return False
         expected_token = http.request.env['connect.settings'].sudo().get_param('elevenlabs_agent_token')
-        if not expected_token or token != expected_token:
+        if not expected_token:
+            logger.warning('Tool token check failed: elevenlabs_agent_token is not configured in settings')
             return False
+        if token != expected_token:
+            logger.warning('Tool token check failed: token mismatch (received %s...)', token[:8])
+            return False
+        logger.info('Tool token check passed')
         return True
 
     def check_post_call_webhook(self):
         payload = http.request.httprequest.get_data(as_text=True)
         headers = http.request.httprequest.headers.get("elevenlabs-signature")
         if not headers:
+            logger.warning('Post call webhook check failed: no elevenlabs-signature header')
             return False
         timestamp = headers.split(",")[0][2:]
         hmac_signature = headers.split(",")[1]
@@ -47,12 +54,14 @@ class ConnectElevenlabsController(http.Controller):
         )
         digest = 'v0=' + mac.hexdigest()
         if hmac_signature != digest:
-            logger.info('Invalid elevenlabs post call webhook signature!')
+            logger.warning('Post call webhook check failed: signature mismatch')
             return False
+        logger.info('Post call webhook signature check passed')
         return True
 
     @http.route('/connect_elevenlabs/transfer', methods=['POST'], type='http', auth='public', csrf=False)
     def transfer_webhook(self):
+        logger.info('Incoming request: /connect_elevenlabs/transfer')
         if not self.check_tool_token():
             raise Unauthorized()
         data = json.loads(http.request.httprequest.get_data(as_text=True))
@@ -64,6 +73,7 @@ class ConnectElevenlabsController(http.Controller):
 
     @http.route('/connect_elevenlabs/post_call', methods=['POST'], type='http', auth='public', csrf=False)
     def post_call_webhook(self):
+        logger.info('Incoming request: /connect_elevenlabs/post_call')
         if not self.check_post_call_webhook():
             raise Unauthorized()
         user_connect_webhook = http.request.env.ref("connect.user_connect_webhook")

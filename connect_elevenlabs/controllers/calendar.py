@@ -17,15 +17,22 @@ class CalendarController(http.Controller):
     def check_tool_token(self):
         token = http.request.httprequest.headers.get('x-elevenlabs-agent-token')
         if not token:
+            logger.warning('Tool token check failed: no x-elevenlabs-agent-token header in request')
             return False
         expected_token = http.request.env['connect.settings'].sudo().get_param('elevenlabs_agent_token')
-        if not expected_token or token != expected_token:
+        if not expected_token:
+            logger.warning('Tool token check failed: elevenlabs_agent_token is not configured in settings')
             return False
+        if token != expected_token:
+            logger.warning('Tool token check failed: token mismatch (received %s...)', token[:8])
+            return False
+        logger.info('Tool token check passed')
         return True
 
     @http.route('/connect_elevenlabs/get_available_slots', methods=['POST'], type=route_type, auth='public',
                 csrf=False)
     def get_available_slots(self):
+        logger.info('Incoming request: /connect_elevenlabs/get_available_slots')
         if not self.check_tool_token():
             raise Unauthorized()
         kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
@@ -73,6 +80,7 @@ class CalendarController(http.Controller):
     @http.route('/connect_elevenlabs/create_event', methods=['POST'], type=route_type, auth='public',
                 csrf=False)
     def create_event(self):
+        logger.info('Incoming request: /connect_elevenlabs/create_event')
         if not self.check_tool_token():
             raise Unauthorized()
         kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
@@ -108,6 +116,7 @@ class CalendarController(http.Controller):
 
     @http.route('/connect_elevenlabs/get_current_date', methods=['POST'], type=route_type, auth='public', csrf=False)
     def get_current_date(self):
+        logger.info('Incoming request: /connect_elevenlabs/get_current_date')
         if not self.check_tool_token():
             raise Unauthorized()
         return {'current_date': str(datetime.now())}
@@ -115,6 +124,7 @@ class CalendarController(http.Controller):
     @http.route('/connect_elevenlabs/get_meetings', methods=['POST'], type=route_type, auth='public',
                 csrf=False)
     def get_meetings(self):
+        logger.info('Incoming request: /connect_elevenlabs/get_meetings')
         if not self.check_tool_token():
             raise Unauthorized()
         kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
@@ -130,6 +140,7 @@ class CalendarController(http.Controller):
     @http.route('/connect_elevenlabs/remove_meeting', methods=['POST'], type=route_type, auth='public',
                 csrf=False)
     def remove_meeting(self):
+        logger.info('Incoming request: /connect_elevenlabs/remove_meeting')
         if not self.check_tool_token():
             raise Unauthorized()
         kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
