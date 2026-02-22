@@ -17,7 +17,7 @@ if release.version_info[0] >= 19:
 class ElevenlabsAgentTool(models.Model):
     _name = 'connect.elevenlabs_agent_tool'
     _description = 'Elevenlabs Agent Tool'
-    _order = 'tool_type ASC, name ASC'
+    _order = 'name ASC'
 
     name = fields.Char(required=True)
     tool_id = fields.Char()
