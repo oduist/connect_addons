@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="connect_elevenlabs_knowledge_settings_form" model="ir.ui.view">
+        <field name="name">connect_elevenlabs_knowledge_settings_form</field>
+        <field name="model">connect.settings</field>
+        <field name="inherit_id" ref="connect_elevenlabs.connect_elevenlabs_settings_form"/>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <page name="agent" position="after">
+                <page name="elevenlabs_api" string="API">
+                   <button name="action_sync_from_elevenlabs" type="object" string="Sync from ElevenLabs" class="btn-secondary"/>
+                </page>
+            </page>
+        </field>
+    </record>
+</odoo>
