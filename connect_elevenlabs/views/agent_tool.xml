@@ -52,6 +52,12 @@
                                    invisible="tool_type != 'client'"/>
                             <field name="response_timeout_secs"
                                    invisible="tool_type == 'system'"/>
+                            <field name="disable_interruptions"
+                                   invisible="tool_type != 'system'"/>
+                            <field name="voicemail_message"
+                                   invisible="name != 'voicemail_detection'"/>
+                            <field name="use_out_of_band_dtmf"
+                                   invisible="name != 'play_keypad_touch_tone'"/>
                         </group>
                     </group>
                     <group string="Parameters" invisible="tool_type == 'system'">
