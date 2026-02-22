@@ -175,10 +175,9 @@ class ElevenlabsAgentTool(models.Model):
             raise ValidationError(f'Failed to create tool configuration: {str(e)}')
 
     def write(self, vals):
-        print(vals)
         """Override write to update tool in ElevenLabs when changed"""
         result = super().write(vals)
-        if not self.env.context.get('skip_elevenlabs') or not self.env.context.get('install_mode'):
+        if not self.env.context.get('skip_elevenlabs') and not self.env.context.get('install_mode'):
             for record in self:
                 if record.synced and record.tool_id:
                     try:
@@ -291,7 +290,7 @@ class ElevenlabsAgentToolparams(models.Model):
     _name = 'connect.agent_tool_params'
     _description = 'Elevenlabs Agent Tool Parameters'
 
-    name = fields.Char(name='Identifier')
+    name = fields.Char(string='Identifier')
     data_type = fields.Selection(
         [('string', 'String'), ('boolean', 'Boolean'), ('integer', 'Integer')], default='string', required=True)
     required = fields.Boolean()
