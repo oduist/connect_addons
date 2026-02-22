@@ -38,7 +38,11 @@ class CalendarController(http.Controller):
         kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
         user_id = kwargs.get('user_id')
         if kwargs.get('timezone'):
-            user_timezone = timezone(timedelta(hours=int(kwargs.get('timezone'))))
+            tz_val = kwargs['timezone']
+            try:
+                user_timezone = ZoneInfo(tz_val)
+            except (KeyError, ValueError):
+                user_timezone = timezone(timedelta(hours=int(tz_val)))
         else:
             user = http.request.env['res.users'].sudo().browse(user_id)
             tz = user.partner_id.tz
@@ -86,7 +90,11 @@ class CalendarController(http.Controller):
         kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
         user_id = kwargs.get('user_id')
         if kwargs.get('timezone'):
-            user_timezone = timezone(timedelta(hours=int(kwargs.get('timezone'))))
+            tz_val = kwargs['timezone']
+            try:
+                user_timezone = ZoneInfo(tz_val)
+            except (KeyError, ValueError):
+                user_timezone = timezone(timedelta(hours=int(tz_val)))
         else:
             user = http.request.env['res.users'].sudo().browse(user_id)
             tz = user.partner_id.tz
