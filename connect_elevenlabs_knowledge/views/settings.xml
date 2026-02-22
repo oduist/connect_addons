@@ -7,11 +7,10 @@
         <field name="inherit_id" ref="connect_elevenlabs.connect_elevenlabs_settings_form"/>
         <field name="type">form</field>
         <field name="arch" type="xml">
-            <page name="agent" position="after">
-                <page name="elevenlabs_api" string="API">
-                   <button name="action_sync_from_elevenlabs" type="object" string="Sync from ElevenLabs" class="btn-secondary"/>
-                </page>
-            </page>
+            <button name="elevenlabs_sync_tools" position="after">
+                <button name="action_sync_from_elevenlabs" type="object" string="SYNC KNOWLEDGE" class="btn btn-secondary me-1"
+                        invisible="not elevenlabs_enabled"/>
+            </button>
         </field>
     </record>
 </odoo>

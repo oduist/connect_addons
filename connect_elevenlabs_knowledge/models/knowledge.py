@@ -24,14 +24,14 @@ class ElevenlabsKnowledge(models.Model):
     file = fields.Binary(attachment=True)
     url = fields.Char()
     text = fields.Text()
-    
+
     # Enhanced fields for better management
     description = fields.Text()
     created_at = fields.Datetime(readonly=True)
     updated_at = fields.Datetime(readonly=True)
     document_size = fields.Integer(readonly=True, help="Size of the document in bytes")
     force_delete = fields.Boolean(default=False, help="Force delete even if used by agents")
-    
+
     # Status tracking
     state = fields.Selection([
         ('draft', 'Draft'),
@@ -40,7 +40,7 @@ class ElevenlabsKnowledge(models.Model):
         ('error', 'Error')
     ], default='draft', readonly=True)
     error_message = fields.Text(readonly=True)
-    
+
     # Agent relationships
     agent_ids = fields.Many2many(
         'connect.elevenlabs_agent',
@@ -50,7 +50,7 @@ class ElevenlabsKnowledge(models.Model):
         string='Agents Using This Knowledge'
     )
     agent_count = fields.Integer(compute='_compute_agent_count', string='Number of Agents')
-    
+
     @api.depends('agent_ids')
     def _compute_agent_count(self):
         for record in self:
@@ -72,7 +72,7 @@ class ElevenlabsKnowledge(models.Model):
             if not self.env.context.get('skip_elevenlabs'):
                 rec.create_elevenlabs_knowledge_base()
         return res
-    
+
     def write(self, vals):
         """Override write to handle name updates and agent changes via ElevenLabs API"""
         # Store old agent_ids before write if we need to track changes
@@ -80,9 +80,9 @@ class ElevenlabsKnowledge(models.Model):
         if 'agent_ids' in vals and not self.env.context.get('skip_elevenlabs'):
             for record in self:
                 old_agent_ids[record.id] = set(record.agent_ids.ids)
-        
+
         result = super().write(vals)
-        
+
         # If name is being updated and we have a knowledge_id, update via API
         if 'name' in vals and not self.env.context.get('skip_elevenlabs'):
             for record in self:
@@ -92,17 +92,17 @@ class ElevenlabsKnowledge(models.Model):
                     except Exception as e:
                         # Log error but don't fail the write operation
                         logger.warning(f'Failed to update document name in ElevenLabs: {e}')
-        
+
         # If agent_ids changed, sync all affected agents with ElevenLabs
         if 'agent_ids' in vals and not self.env.context.get('skip_elevenlabs'):
             for record in self:
                 new_agent_ids = set(record.agent_ids.ids)
                 old_ids = old_agent_ids.get(record.id, set())
-                
+
                 # Find which agents were added or removed
                 added_agents = new_agent_ids - old_ids
                 removed_agents = old_ids - new_agent_ids
-                
+
                 # Update all affected agents on ElevenLabs
                 affected_agent_ids = added_agents | removed_agents
                 if affected_agent_ids:
@@ -113,7 +113,7 @@ class ElevenlabsKnowledge(models.Model):
                             logger.info(f'Synced agent "{agent.name}" with ElevenLabs after knowledge change')
                         except Exception as e:
                             logger.warning(f'Failed to sync agent "{agent.name}" with ElevenLabs: {e}')
-        
+
         return result
 
     def unlink(self):
@@ -125,7 +125,7 @@ class ElevenlabsKnowledge(models.Model):
     def create_elevenlabs_knowledge_base(self):
         """Create knowledge base document with enhanced error handling"""
         self.write({'state': 'creating', 'error_message': False})
-        
+
         try:
             client = self.env['connect.settings'].get_elevenlabs_client()
             if self.type == 'url':
@@ -146,7 +146,7 @@ class ElevenlabsKnowledge(models.Model):
                     name=self.name,
                     file=file
                 )
-            
+
             if knowledge_base:
                 self.with_context(skip_elevenlabs=True).write({
                     'knowledge_id': knowledge_base.id,
@@ -159,7 +159,7 @@ class ElevenlabsKnowledge(models.Model):
             else:
                 self.write({'state': 'error', 'error_message': 'Failed to create document - no response from API'})
                 return False
-                
+
         except Exception as e:
             error_msg = f'Error creating knowledge base document: {str(e)}'
             logger.error(error_msg)
@@ -185,12 +185,12 @@ class ElevenlabsKnowledge(models.Model):
                     body_json = json.loads(body_str.replace("'", '"'))
                     error_msg = body_json["detail"]["message"]
                 raise ValidationError(error_msg)
-    
+
     def update_document_name(self, new_name):
         """Update the document name using the latest API"""
         if not self.knowledge_id:
             raise ValidationError('Cannot update document: not yet created in ElevenLabs')
-        
+
         try:
             client = self.env['connect.settings'].get_elevenlabs_client()
             client.conversational_ai.knowledge_base.documents.update(
@@ -202,12 +202,12 @@ class ElevenlabsKnowledge(models.Model):
             })
             logger.info(f'Successfully updated document name to: {new_name} (ID: {self.knowledge_id})')
             return True
-            
+
         except Exception as e:
             error_msg = f'Error updating document name: {str(e)}'
             logger.error(error_msg)
             raise ValidationError(error_msg)
-    
+
     @api.model
     def sync_with_elevenlabs(self, page_size=30, search_term=None):
         """Sync local records with ElevenLabs knowledge base using the list API"""
@@ -218,7 +218,7 @@ class ElevenlabsKnowledge(models.Model):
                 search=search_term,
                 show_only_owned_documents=True
             )
-            
+
             synced_count = 0
             for doc in response.documents:
                 existing = self.search([('knowledge_id', '=', doc.id)], limit=1)
@@ -243,24 +243,24 @@ class ElevenlabsKnowledge(models.Model):
                         'document_size': getattr(doc, 'size', 0),
                         'updated_at': fields.Datetime.now(),
                     })
-            
+
             logger.info(f'Synced {synced_count} documents from ElevenLabs')
             return {'synced_count': synced_count, 'total_found': len(response.documents)}
-            
+
         except Exception as e:
             error_msg = f'Error syncing with ElevenLabs: {str(e)}'
             logger.error(error_msg)
             raise ValidationError(error_msg)
-    
+
     def action_retry_creation(self):
         """Retry creating the knowledge base document"""
         if self.state == 'error':
             return self.create_elevenlabs_knowledge_base()
         else:
             raise ValidationError('Document is not in error state')
-    
 
-    
+
+
     def action_view_agents(self):
         """Action to view agents using this knowledge base document"""
         self.ensure_one()
@@ -272,75 +272,74 @@ class ElevenlabsKnowledge(models.Model):
             'domain': [('knowledge_base', 'in', [self.id])],
             'context': {'default_knowledge_base': [(6, 0, [self.id])]}
         }
-    
+
     def get_agents_using_document(self):
         """Get all agents that use this knowledge base document"""
         agents = self.env['connect.elevenlabs_agent'].search([
             ('knowledge_base', 'in', [self.id])
         ])
         return agents
-    
+
     def add_to_agent(self, agent_id):
         """Add this knowledge document to an agent"""
         self.ensure_one()
         agent = self.env['connect.elevenlabs_agent'].browse(agent_id)
         if not agent.exists():
             raise ValidationError(f'Agent with ID {agent_id} not found')
-        
+
         if self.id not in agent.knowledge_base.ids:
             agent.add_knowledge_documents(self.id)
             logger.info(f'Added knowledge document "{self.name}" to agent "{agent.name}"')
             return True
-        
+
         logger.info(f'Knowledge document "{self.name}" already linked to agent "{agent.name}"')
         return False
-    
+
     def remove_from_agent(self, agent_id):
         """Remove this knowledge document from an agent"""
         self.ensure_one()
         agent = self.env['connect.elevenlabs_agent'].browse(agent_id)
         if not agent.exists():
             raise ValidationError(f'Agent with ID {agent_id} not found')
-        
+
         if self.id in agent.knowledge_base.ids:
             agent.remove_knowledge_documents(self.id)
             logger.info(f'Removed knowledge document "{self.name}" from agent "{agent.name}"')
             return True
-        
+
         logger.info(f'Knowledge document "{self.name}" not linked to agent "{agent.name}"')
         return False
-    
+
     def add_to_agents(self, agent_ids):
         """Add this knowledge document to multiple agents"""
         self.ensure_one()
         if not agent_ids:
             return False
-        
+
         # Convert to list if single ID
         if isinstance(agent_ids, int):
             agent_ids = [agent_ids]
-        
+
         success_count = 0
         for agent_id in agent_ids:
             if self.add_to_agent(agent_id):
                 success_count += 1
-        
+
         return success_count > 0
-    
+
     def remove_from_agents(self, agent_ids):
         """Remove this knowledge document from multiple agents"""
         self.ensure_one()
         if not agent_ids:
             return False
-        
+
         # Convert to list if single ID
         if isinstance(agent_ids, int):
             agent_ids = [agent_ids]
-        
+
         success_count = 0
         for agent_id in agent_ids:
             if self.remove_from_agent(agent_id):
                 success_count += 1
-        
-        return success_count > 0
 
+        return success_count > 0
