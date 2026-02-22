@@ -195,6 +195,13 @@ class ElevenlabsAgent(models.Model):
         for rec in self:
             rec.has_transfer_tool = transfer_tool in rec.tools if transfer_tool else False
 
+    @api.onchange("tools")
+    def _onchange_tools(self):
+        transfer_tool = self.env.ref(
+            "connect_elevenlabs.agent_tool_transfer_to_agent", raise_if_not_found=False
+        )
+        self.has_transfer_tool = transfer_tool in self.tools if transfer_tool else False
+
     @api.onchange("active_prompt_version")
     def _onchange_active_prompt_version(self):
         if self.active_prompt_version:
