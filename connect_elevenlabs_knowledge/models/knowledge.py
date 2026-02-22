@@ -58,13 +58,12 @@ class ElevenlabsKnowledge(models.Model):
 
     @api.constrains('file_name')
     def _check_knowledge_file_format(self):
+        allowed = ('.epub', '.pdf', '.docx', '.txt', '.html')
         for knowledge in self:
-            if type(knowledge.file_name) == bool:
+            if not knowledge.file_name or isinstance(knowledge.file_name, bool):
                 continue
-            for extension in ['.epub', '.pdf', '.docx', '.txt', '.html']:
-                if knowledge.file_name.endswith(extension):
-                    return
-            raise ValidationError('Invalid file type. Allowed formats is .epub, .pdf, .docx, .txt and .html')
+            if not knowledge.file_name.endswith(allowed):
+                raise ValidationError('Invalid file type. Allowed formats: .epub, .pdf, .docx, .txt and .html')
 
     @api.model_create_multi
     def create(self, vals_list):
