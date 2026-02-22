@@ -198,7 +198,6 @@ class ElevenlabsKnowledge(models.Model):
                 name=new_name
             )
             self.with_context(skip_elevenlabs=True).write({
-                'name': new_name,
                 'updated_at': fields.Datetime.now()
             })
             logger.info(f'Successfully updated document name to: {new_name} (ID: {self.knowledge_id})')

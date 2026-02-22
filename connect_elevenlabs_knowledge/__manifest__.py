@@ -3,7 +3,7 @@
     'description': """Integrate Elelvenlabs Knowledge""",
     'currency': 'EUR',
     'price': '0',
-    'version': '1.0.1',
+    'version': '1.0.2',
     'category': 'pHONE',
     'live_test_url': 'https://connect-demo-18.oduist.com/',
     'author': 'Oduist',
@@ -19,6 +19,7 @@
         # Views
         'views/agent.xml',
         'views/knowledge.xml',
+        'views/settings.xml',
     ],
     'demo': [],
     'images': ['static/description/logo.png'],
