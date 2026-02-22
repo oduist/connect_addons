@@ -17,10 +17,9 @@ class Call(models.Model):
     def _get_recording_data(self):
         super(Call, self)._get_recording_data()
         for rec in self:
-            # Also show recording icons on Agent calls.
-            if rec.elevenlabs_agent:
+            # Also show recording icons on Agent calls when recording exists.
+            if rec.elevenlabs_agent and rec.recording:
                 rec.recording_icon = '<span class="fa fa-file-sound-o"/>'
-                # No need for else condition as it's already set in super().
 
     def elevenlabs_agent_get_call_data(self):
         self.ensure_one()
