@@ -4,6 +4,7 @@ import json
 import logging
 import re
 from urllib.parse import urljoin
+from markupsafe import Markup
 import uuid
 from datetime import timedelta
 from odoo import fields, models, api, release, SUPERUSER_ID, tools
@@ -58,6 +59,17 @@ class Call(models.Model):
     called_users = fields.Many2many('res.users', readonly=True)
     answered_user = fields.Many2one('res.users', ondelete='set null', string='Answered User', readonly=True)
     answered_user_img = fields.Binary(related='answered_user.image_1920', string='Answered User Avatar')
+    # Transfer tracking fields
+    transferred_users = fields.Many2many('res.users', 'connect_call_transfer_rel', 'call_id', 'user_id', string='Transferred Users', readonly=True)
+    completed_by_user = fields.Many2one('res.users', ondelete='set null', string='Completed By', readonly=True)
+    if release.version_info[0] > 15.0:
+        transfer_context = fields.Json(string='Transfer Context', readonly=True, help='Temporary storage for transfer targets during webhook processing')
+    else:
+        transfer_context = fields.Text(string='Transfer Context', readonly=True, help='Temporary storage for transfer targets during webhook processing')
+    call_pattern = fields.Selection([
+        ('ring_group', 'Ring Group (Multiple Users)'),
+        ('direct_call', 'Direct Call (Single User)')
+    ], string='Call Pattern', readonly=True, help='Detected call pattern: ring group vs direct call')
     # Scheduled fields.
     scheduled_datetime = fields.Datetime()
     # Voicemail fields
@@ -83,12 +95,35 @@ class Call(models.Model):
     def _get_name(self):
         for rec in self:
             try:
-                started = fields.Datetime.context_timestamp(rec, rec.create_date)
-                formatted_time = fields.Datetime.to_string(started)
-                rec.name = '{} {} call at {}'.format(rec.status, rec.direction, formatted_time).capitalize()
+                is_missed_call = (
+                    (rec.direction == 'incoming' and
+                     rec.status in ['no-answer', 'busy', 'failed'] and
+                     not rec.answered_user)
+                    or
+                    (rec.transferred_users and not rec.completed_by_user)
+                )
+                if is_missed_call:
+                    caller_name = None
+                    caller_number = rec.caller
+                    if rec.partner:
+                        caller_name = rec.partner.name
+                    elif rec.caller_user:
+                        caller_name = rec.caller_user.name
+                    if caller_name and caller_number:
+                        caller_display = f"{caller_name} ({caller_number})"
+                    elif caller_name:
+                        caller_display = caller_name
+                    elif caller_number:
+                        caller_display = caller_number
+                    else:
+                        caller_display = "Unknown"
+                    rec.name = f"Missed call from {caller_display}"
+                else:
+                    started = fields.Datetime.context_timestamp(rec, rec.create_date)
+                    formatted_time = fields.Datetime.to_string(started)
+                    rec.name = '{} {} call at {}'.format(rec.status, rec.direction, formatted_time).capitalize()
             except Exception:
                 logger.exception('Call name compute error:')
-                # Show just call ID if we failed to render the name above.
                 rec.name = str(rec.id)
 
     def _get_ref(self):
@@ -151,8 +186,489 @@ class Call(models.Model):
                 record.duration_minutes = 0
                 record.duration_human = "00:00"
 
-    def write(self, vals):
+    def _detect_call_pattern(self):
+        """
+        Detect the call pattern from explicit channel tagging.
+        Returns:
+            'ring_group': Multiple users rang simultaneously
+            'direct_call': Single user called initially
+        """
+        self.ensure_one()
+        if self.call_pattern:
+            return self.call_pattern
+        if not self.channels:
+            return None
+        child_channels = self.channels.filtered(lambda c: c.parent_channel and c.called_pbx_user)
+        if not child_channels:
+            return None
+        ring_group_channels = child_channels.filtered(lambda c: c.call_source == 'ring_group')
+        direct_call_channels = child_channels.filtered(lambda c: c.call_source == 'direct_call')
+        if ring_group_channels:
+            pattern = 'ring_group'
+        elif direct_call_channels:
+            pattern = 'direct_call'
+        else:
+            return self._detect_call_pattern_fallback()
+        return pattern
+
+    def _detect_call_pattern_fallback(self):
+        """Fallback pattern detection using timing-based logic."""
+        child_channels = self.channels.filtered(lambda c: c.parent_channel and c.called_pbx_user)
+        initial_called_users = set()
+        for channel in child_channels:
+            if channel.called_pbx_user and channel.called_pbx_user.user:
+                initial_called_users.add(channel.called_pbx_user.user.id)
+        pattern = 'ring_group' if len(initial_called_users) > 1 else 'direct_call'
+        return pattern
+
+    def _finalize_call_details(self):
+        """
+        Called once when all channels are closed to do final call processing.
+        """
+        self.ensure_one()
+        logger.info(f"=== FINALIZING CALL DETAILS FOR CALL {self.id} ===")
+        if not self.call_pattern:
+            detected_pattern = self._detect_call_pattern()
+            if detected_pattern:
+                self.call_pattern = detected_pattern
+                logger.info(f"Call {self.id}: Set call pattern to '{detected_pattern}'")
+        if self.call_pattern == 'direct_call':
+            self._populate_user_fields_direct_call()
+        elif self.call_pattern == 'ring_group':
+            self._populate_user_fields_ring_group()
+        else:
+            logger.warning(f"Call {self.id}: Unknown call pattern '{self.call_pattern}', using fallback logic")
+            self._populate_user_fields_fallback()
+        self._set_final_call_status()
+        logger.info(f"Call {self.id}: Final status='{self.status}', answered_user='{self.answered_user.login if self.answered_user else None}', completed_by_user='{self.completed_by_user.login if self.completed_by_user else None}', transferred_users={len(self.transferred_users)}")
+
+    def _set_final_call_status(self):
+        """Simplified call status logic based on answered_user field."""
+        self.ensure_one()
+        if self.direction == 'outgoing':
+            self.status = 'completed'
+            logger.info(f"Call {self.id}: Status set to 'completed' (outgoing call)")
+        elif self.answered_user:
+            self.status = 'completed'
+            logger.info(f"Call {self.id}: Status set to 'completed' (answered by {self.answered_user.login})")
+        else:
+            channel_statuses = self.channels.mapped('status')
+            if 'failed' in channel_statuses:
+                self.status = 'failed'
+                logger.info(f"Call {self.id}: Status set to 'failed' (channel failed)")
+            elif 'no-answer' in channel_statuses:
+                self.status = 'no-answer'
+                logger.info(f"Call {self.id}: Status set to 'no-answer' (at least one channel rang)")
+            elif 'busy' in channel_statuses:
+                self.status = 'busy'
+                logger.info(f"Call {self.id}: Status set to 'busy' (all channels busy)")
+            else:
+                self.status = 'no-answer'
+                logger.info(f"Call {self.id}: Status set to 'no-answer' (default)")
+
+    def _populate_user_fields_direct_call(self):
+        """Populate user fields for direct call pattern."""
+        self.ensure_one()
+        logger.info(f"Call {self.id}: Populating user fields for direct call pattern")
+        if self.direction == 'outgoing':
+            self._populate_outgoing_call_user_fields()
+            return
+        user_channels = self.channels.filtered(lambda c: c.called_pbx_user and c.called_pbx_user.user)
+        if not user_channels:
+            logger.warning(f"Call {self.id}: No channels with users found for direct call")
+            return
+        user_channels_by_time = user_channels.sorted('create_date')
+        completed_channels = user_channels.filtered(lambda c: c.status == 'completed')
+        if self.transferred_users and completed_channels:
+            initial_answered_channels = completed_channels.filtered(
+                lambda c: c.called_pbx_user.user not in self.transferred_users
+            )
+            if initial_answered_channels:
+                if len(initial_answered_channels) > 1:
+                    answered_channel = initial_answered_channels.sorted('id')[0]
+                else:
+                    answered_channel = initial_answered_channels[0]
+                self.answered_user = answered_channel.called_pbx_user.user
+                self.answered_pbx_user = answered_channel.called_pbx_user
+                logger.info(f"Call {self.id}: answered_user set to {self.answered_user.login} (initial answerer, excluding transfers)")
+            else:
+                logger.info(f"Call {self.id}: No initial answerer found (all completed channels are transfers)")
+        elif completed_channels:
+            if len(completed_channels) > 1:
+                answered_channel = completed_channels.sorted('id')[0]
+            else:
+                answered_channel = completed_channels[0]
+            self.answered_user = answered_channel.called_pbx_user.user
+            self.answered_pbx_user = answered_channel.called_pbx_user
+            logger.info(f"Call {self.id}: answered_user set to {self.answered_user.login} (completed channel, no transfers)")
+        else:
+            logger.info(f"Call {self.id}: No completed channels found - leaving answered_user empty")
+        if self.transferred_users:
+            if not self.completed_by_user:
+                all_user_channels = self.channels.filtered(lambda c: c.called_pbx_user and c.called_pbx_user.user)
+                completed_channels = all_user_channels.filtered(lambda c: c.status == 'completed')
+                transfer_completed_channels = completed_channels.filtered(
+                    lambda c: c.called_pbx_user.user in self.transferred_users
+                )
+                if transfer_completed_channels:
+                    if len(transfer_completed_channels) > 1:
+                        final_channel = transfer_completed_channels.sorted('id')[-1]
+                    else:
+                        final_channel = transfer_completed_channels[0]
+                    self.completed_by_user = final_channel.called_pbx_user.user
+                    logger.info(f"Call {self.id}: completed_by_user set to transfer recipient {self.completed_by_user.login} (from channel)")
+                else:
+                    logger.info(f"Call {self.id}: Transfer failed - completed_by_user left empty for missed call notifications")
+            else:
+                logger.info(f"Call {self.id}: completed_by_user already set by extension handler: {self.completed_by_user.login}")
+        else:
+            self.completed_by_user = self.answered_user
+            if self.completed_by_user:
+                logger.info(f"Call {self.id}: completed_by_user set to original answerer {self.completed_by_user.login} (no transfer)")
+
+    def _populate_outgoing_call_user_fields(self):
+        """Populate user fields for outgoing calls."""
+        self.ensure_one()
+        logger.info(f"Call {self.id}: Populating user fields for outgoing call")
+        outbound_channel = None
+        for channel in self.channels:
+            if channel.technical_direction == 'outbound-dial':
+                outbound_channel = channel
+                break
+        if outbound_channel:
+            external_number = outbound_channel.called_number
+            if outbound_channel.partner and outbound_channel.partner.user_id:
+                self.called_users = [(4, outbound_channel.partner.user_id.id)]
+                logger.info(f"Call {self.id}: called_users set to Odoo contact {outbound_channel.partner.name}")
+            else:
+                self.called_users = [(5,)]
+                logger.info(f"Call {self.id}: External party {external_number} has no Odoo user - called_users cleared")
+            external_answered = (outbound_channel.status in ['in-progress', 'completed'] and
+                               outbound_channel.duration and outbound_channel.duration > 0)
+            if external_answered:
+                if outbound_channel.partner and outbound_channel.partner.user_id:
+                    self.answered_user = outbound_channel.partner.user_id
+                    logger.info(f"Call {self.id}: answered_user set to Odoo contact {outbound_channel.partner.name}")
+                else:
+                    logger.info(f"Call {self.id}: External party {external_number} answered, but no Odoo contact found")
+            else:
+                logger.info(f"Call {self.id}: External party didn't answer (status: {outbound_channel.status})")
+        internal_channels = self.channels.filtered(lambda c: c.called_pbx_user and c.called_pbx_user.user)
+        if internal_channels:
+            completed_internal = internal_channels.filtered(lambda c: c.status == 'completed')
+            if completed_internal:
+                if len(completed_internal) > 1:
+                    completed_channel = completed_internal.sorted('id')[-1]
+                else:
+                    completed_channel = completed_internal[0]
+                self.completed_by_user = completed_channel.called_pbx_user.user
+                logger.info(f"Call {self.id}: completed_by_user set to transfer recipient {self.completed_by_user.login}")
+            else:
+                logger.info(f"Call {self.id}: Transfer attempted but no transfer recipient completed - completed_by_user remains empty")
+        else:
+            self._set_original_caller_as_completer()
+
+    def _set_original_caller_as_completer(self):
+        """Helper to set original caller as completed_by_user for outgoing calls"""
+        caller_channel = None
+        for channel in self.channels:
+            if channel.caller_pbx_user and channel.caller_pbx_user.user:
+                caller_channel = channel
+                break
+        if caller_channel:
+            self.completed_by_user = caller_channel.caller_pbx_user.user
+            logger.info(f"Call {self.id}: completed_by_user set to original caller {self.completed_by_user.login}")
+        else:
+            logger.warning(f"Call {self.id}: Could not identify original caller for outgoing call")
+
+    def _populate_user_fields_ring_group(self):
+        """Populate user fields for ring group pattern."""
+        self.ensure_one()
+        logger.info(f"Call {self.id}: Populating user fields for ring group pattern")
+        ring_group_channels = self.channels.filtered(lambda c: c.call_source == 'ring_group' and c.called_pbx_user and c.called_pbx_user.user)
+        if not ring_group_channels:
+            logger.warning(f"Call {self.id}: No ring_group channels with users found")
+            return
+        completed_ring_channels = ring_group_channels.filtered(lambda c: c.status == 'completed')
+        if not completed_ring_channels:
+            logger.info(f"Call {self.id}: No completed ring_group channels found - no one answered")
+            return
+        if self.transferred_users:
+            genuine_ring_answered = completed_ring_channels.filtered(
+                lambda c: c.called_pbx_user.user not in self.transferred_users
+            )
+            if genuine_ring_answered:
+                completed_ring_channels = genuine_ring_answered
+        if len(completed_ring_channels) > 1:
+            answered_channel = completed_ring_channels.sorted('id')[0]
+        else:
+            answered_channel = completed_ring_channels[0]
+        self.answered_user = answered_channel.called_pbx_user.user
+        self.answered_pbx_user = answered_channel.called_pbx_user
+        logger.info(f"Call {self.id}: answered_user set to {self.answered_user.login} (answered from ring group)")
+        if self.transferred_users:
+            if not self.completed_by_user:
+                transfer_completed_channels = []
+                for user in self.transferred_users:
+                    user_channels = self.channels.filtered(lambda c: c.called_user and c.called_user.id == user.id and c.status == 'completed')
+                    transfer_completed_channels.extend(user_channels)
+                if transfer_completed_channels:
+                    latest_channel = sorted(transfer_completed_channels, key=lambda c: c.id)[-1]
+                    self.completed_by_user = latest_channel.called_user
+                    logger.info(f"Call {self.id}: completed_by_user set to transfer recipient {self.completed_by_user.login} (from channel)")
+                else:
+                    logger.info(f"Call {self.id}: Transfer failed - completed_by_user left empty for missed call notifications")
+            else:
+                logger.info(f"Call {self.id}: completed_by_user already set by extension handler: {self.completed_by_user.login}")
+        else:
+            self.completed_by_user = self.answered_user
+            logger.info(f"Call {self.id}: completed_by_user set to answerer {self.answered_user.login} (no transfer)")
+
+    def _populate_user_fields_fallback(self):
+        """Fallback user field population when pattern detection fails."""
+        self.ensure_one()
+        logger.info(f"Call {self.id}: Using fallback user field population")
+        completed_channels = self.channels.filtered(lambda c: c.status == 'completed' and c.called_pbx_user and c.called_pbx_user.user)
+        if completed_channels:
+            sorted_channels = completed_channels.sorted('write_date')
+            first_channel = sorted_channels[0]
+            self.answered_user = first_channel.called_pbx_user.user
+            self.answered_pbx_user = first_channel.called_pbx_user
+            last_channel = sorted_channels[-1]
+            self.completed_by_user = last_channel.called_pbx_user.user
+            logger.info(f"Call {self.id}: Fallback - answered_user={self.answered_user.login}, completed_by_user={self.completed_by_user.login}")
+
+    def add_transferred_user(self, user):
+        """Add a user to the transferred_users field when a transfer is initiated."""
+        self.ensure_one()
+        if user and hasattr(user, 'id'):
+            current_transfer_ids = self.transferred_users.ids
+            if user.id not in current_transfer_ids:
+                self.transferred_users = [(4, user.id)]
+                if hasattr(self.__class__, '_webhook_expectations'):
+                    call_key = f"call_{self.id}"
+                    expectations = self.__class__._webhook_expectations.get(call_key, {})
+                    if 'ring_group' in expectations:
+                        ring_expectation = expectations['ring_group']
+                        current_expected = ring_expectation.get('expected_count', 0)
+                        if current_expected > 1:
+                            new_expected = current_expected - 1
+                            ring_expectation['expected_count'] = new_expected
+                            logger.info(f"Call {self.id}: Reduced ring_group expectation from {current_expected} to {new_expected} due to transfer")
+                            all_call_sids = list(ring_expectation.get('call_sid_states', {}).keys())
+                            terminal_sids = [sid for sid, state in ring_expectation.get('call_sid_states', {}).items() if state.get('terminal', False)]
+                            if len(all_call_sids) >= new_expected and len(terminal_sids) >= new_expected:
+                                logger.info(f"Call {self.id}: ring_group expectation now fulfilled with reduced count - clearing expectation")
+                                del expectations['ring_group']
+                                if not expectations:
+                                    del self.__class__._webhook_expectations[call_key]
+                self._set_webhook_expectation('transfer', {
+                    'expected_count': 1,
+                    'received_count': 0,
+                    'target_user_id': user.id,
+                    'target_user_login': user.login
+                })
+                logger.info(f"Call {self.id}: Transfer initiated to {user.login} (added to transferred_users)")
+                if not self.call_pattern:
+                    detected_pattern = self._detect_call_pattern()
+                    if detected_pattern:
+                        self.call_pattern = detected_pattern
+
+    def store_transfer_context(self, dial_call_sid, target_user):
+        """Store temporary transfer context for webhook processing."""
+        self.ensure_one()
+        if not dial_call_sid or not target_user:
+            return
+        current_context = self.transfer_context or {}
+        current_context[dial_call_sid] = {
+            'user_id': target_user.id,
+            'user_login': target_user.login
+        }
+        self.transfer_context = current_context
+        logger.info(f"Call {self.id}: Stored transfer context for {dial_call_sid} -> {target_user.login}")
+
+    def get_transfer_target(self, dial_call_sid):
+        """Get transfer target from temporary context storage."""
+        self.ensure_one()
+        if not self.transfer_context or not dial_call_sid:
+            return None
+        context_data = self.transfer_context.get(dial_call_sid)
+        if context_data and 'user_id' in context_data:
+            user = self.env['res.users'].sudo().browse(context_data['user_id'])
+            if user.exists():
+                logger.info(f"Call {self.id}: Retrieved transfer target from context: {user.login}")
+                return user
+        return None
+
+    def store_external_call_leg(self, external_call_sid):
+        """Store external call leg SID for outgoing call transfers."""
+        self.ensure_one()
+        if not external_call_sid:
+            return
+        current_context = self.transfer_context or {}
+        current_context['_external_leg'] = external_call_sid
+        self.transfer_context = current_context
+        logger.info(f"Call {self.id}: Stored external call leg SID: {external_call_sid}")
+
+    def get_external_call_leg(self):
+        """Get external call leg SID for outgoing call transfers."""
+        self.ensure_one()
+        if not self.transfer_context:
+            return None
+        external_leg = self.transfer_context.get('_external_leg')
+        if external_leg:
+            logger.info(f"Call {self.id}: Retrieved external call leg SID: {external_leg}")
+            return external_leg
+        return None
+
+    def clear_transfer_context(self):
+        """Clear temporary transfer context after call processing is complete."""
+        self.ensure_one()
+        if self.transfer_context:
+            logger.info(f"Call {self.id}: Clearing transfer context")
+            self.transfer_context = None
+
+    @classmethod
+    def _cleanup_old_webhook_expectations(cls):
+        """Clean up old expectations (older than 10 minutes)"""
+        import datetime
+        if not hasattr(cls, '_webhook_expectations'):
+            return
+        cutoff = fields.Datetime.now() - datetime.timedelta(minutes=10)
+        to_remove = []
+        for call_key, expectations in cls._webhook_expectations.items():
+            empty_expectations = []
+            for source, data in expectations.items():
+                if data['timestamp'] < cutoff:
+                    empty_expectations.append(source)
+            for source in empty_expectations:
+                del expectations[source]
+            if not expectations:
+                to_remove.append(call_key)
+        for call_key in to_remove:
+            del cls._webhook_expectations[call_key]
+        if to_remove:
+            logger.info(f"Cleaned up webhook expectations for {len(to_remove)} completed calls")
+
+    def _set_webhook_expectation(self, source, data):
+        """Set expectation for incoming webhook data with per-CallSid tracking"""
+        import datetime
+        import random
+        if random.randint(1, 50) == 1:
+            self.__class__._cleanup_old_webhook_expectations()
+        if not hasattr(self.__class__, '_webhook_expectations'):
+            self.__class__._webhook_expectations = {}
+        call_key = f"call_{self.id}"
+        if call_key not in self.__class__._webhook_expectations:
+            self.__class__._webhook_expectations[call_key] = {}
+        expected_call_sids = data.get('expected_call_sids', [])
+        self.__class__._webhook_expectations[call_key][source] = {
+            'timestamp': fields.Datetime.now(),
+            'expected_count': data.get('expected_count', 1),
+            'received_count': 0,
+            'expected_call_sids': expected_call_sids,
+            'call_sid_states': {},
+            **{k: v for k, v in data.items() if k not in ['expected_count', 'received_count', 'expected_call_sids']}
+        }
+        if expected_call_sids:
+            logger.info(f"Call {self.id}: Set {source} webhook expectation - expecting CallSids: {expected_call_sids}")
+        else:
+            logger.info(f"Call {self.id}: Set {source} webhook expectation - expecting {data.get('expected_count', 1)} channels")
+
+    def _update_webhook_expectation_callsid(self, source, call_sid, call_status):
+        """Update CallSid state and check if expectation is complete based on terminal states"""
+        if not hasattr(self.__class__, '_webhook_expectations'):
+            return
+        call_key = f"call_{self.id}"
+        if call_key not in self.__class__._webhook_expectations:
+            return
+        expectations = self.__class__._webhook_expectations[call_key]
+        if source not in expectations:
+            return
+        expectation = expectations[source]
+        is_terminal = call_status in CALL_END_STATUSES
+        expectation['call_sid_states'][call_sid] = {
+            'status': call_status,
+            'terminal': is_terminal
+        }
+        logger.info(f"Call {self.id}: {source} CallSid tracking - {call_sid} status: {call_status} (terminal: {is_terminal})")
+        expected_count = expectation.get('expected_count', 1)
+        all_call_sids = list(expectation['call_sid_states'].keys())
+        terminal_sids = [sid for sid, state in expectation['call_sid_states'].items() if state['terminal']]
+        logger.info(f"Call {self.id}: {source} CallSids seen: {len(all_call_sids)}, terminal: {len(terminal_sids)}, expected: {expected_count}")
+        if len(all_call_sids) >= expected_count and len(terminal_sids) >= expected_count:
+            logger.info(f"Call {self.id}: {source} expectation fulfilled - all expected CallSids reached terminal states")
+            del expectations[source]
+            if not expectations:
+                logger.info(f"Call {self.id}: All webhook expectations complete - removing call from tracking")
+                del self.__class__._webhook_expectations[call_key]
+        else:
+            if len(all_call_sids) < expected_count:
+                reason = f"waiting for {expected_count - len(all_call_sids)} more CallSids"
+            else:
+                non_terminal = expected_count - len(terminal_sids)
+                reason = f"waiting for {non_terminal} CallSids to reach terminal state"
+            logger.info(f"Call {self.id}: {source} expectation not yet fulfilled - {reason}")
+
+    def _has_pending_webhooks(self):
+        """Check if we're still expecting webhook data"""
+        if not hasattr(self.__class__, '_webhook_expectations'):
+            return False
+        call_key = f"call_{self.id}"
+        if call_key not in self.__class__._webhook_expectations:
+            return False
+        expectations = self.__class__._webhook_expectations[call_key]
+        if not expectations:
+            return False
+        import datetime
+        cutoff = fields.Datetime.now() - datetime.timedelta(seconds=60)
+        active_expectations = False
+        timed_out_sources = []
+        for source, data in expectations.items():
+            timestamp = data['timestamp']
+            if timestamp > cutoff:
+                active_expectations = True
+            else:
+                timed_out_sources.append(source)
+        for source in timed_out_sources:
+            logger.warning(f"Call {self.id}: {source} expectation timed out after 60 seconds")
+            del expectations[source]
+        if not expectations:
+            del self.__class__._webhook_expectations[call_key]
+        if timed_out_sources and not active_expectations:
+            logger.warning(f"Call {self.id}: All webhook expectations timed out, proceeding with finalization")
+        return active_expectations
+
+    def _clear_webhook_expectations(self, source=None):
+        """Clear webhook expectations for this call, optionally for a specific source"""
+        if not hasattr(self.__class__, '_webhook_expectations'):
+            return
+        call_key = f"call_{self.id}"
+        if call_key not in self.__class__._webhook_expectations:
+            return
+        if source:
+            expectations = self.__class__._webhook_expectations[call_key]
+            if source in expectations:
+                logger.info(f"Call {self.id}: Clearing {source} webhook expectation due to pattern change")
+                del expectations[source]
+                if not expectations:
+                    del self.__class__._webhook_expectations[call_key]
+        else:
+            logger.info(f"Call {self.id}: Clearing all webhook expectations")
+            del self.__class__._webhook_expectations[call_key]
+
+    def write(self, vals: dict):
+        if release.version_info[0] <= 15.0 and 'transfer_context' in vals:
+            vals['transfer_context'] = json.dumps(vals['transfer_context'])
         return super().write(vals)
+
+    def read(self, fields=None):
+        records = super().read(fields)
+        if release.version_info[0] <= 15.0 and 'transfer_context' in (fields or []):
+            for record in records:
+                if record.get('transfer_context'):
+                    record['transfer_context'] = json.loads(record['transfer_context'])
+        return records
 
     @api.model
     def on_call_status(self, params):
@@ -180,6 +696,8 @@ class Call(models.Model):
                 # Default
                 debug(self, 'Setting default call direction to outgoing.')
                 direction = 'outgoing'
+            # Set call pattern for outgoing and internal calls (always direct_call since they're one-to-one)
+            call_pattern = 'direct_call' if direction in ('outgoing', 'internal') else False
             call = self.with_context(tracking_disable=True).create({
                 'partner': channel.partner.id,
                 'called': channel.called_number,
@@ -189,54 +707,103 @@ class Call(models.Model):
                 'caller_user': channel.caller_user.id,
                 'direction': direction,
                 'call_type': channel.call_type or 'phone',
+                'call_pattern': call_pattern,
             })
             channel.call = call
         elif channel.parent_channel and channel.parent_channel.call:
             # Secondary channel, assign the call from the parent.
             channel.call = channel.parent_channel.call
+            # Detect internal calls: both sides are PBX users (extension-to-extension).
+            # This also reclassifies outgoing→internal when the child channel reveals the called user.
             if channel.caller_pbx_user and channel.parent_channel.called_pbx_user:
                 channel.call.direction = 'internal'
             elif channel.called_pbx_user and channel.parent_channel.caller_pbx_user:
-                channel.call.direction = 'internal'
-        # Set call status from the last channel
-        channel.call.status = channel.call.channels.sorted(key='id', reverse=True)[0].status
-        # Set call duration from the first channel
-        channel.call.duration = channel.call.channels.sorted(key='id', reverse=False)[0].duration
+                if not channel.call.transferred_users:
+                    channel.call.direction = 'internal'
         # Set called from 2nd call leg for click2call external calls.
-        if channel.parent_channel.technical_direction == 'outbound-api':
+        if channel.parent_channel and channel.parent_channel.technical_direction == 'outbound-api':
             channel.call.called = channel.called_number
-        # Set called users (avoid duplicates to prevent serialization errors)
-        if channel.called_user and channel.called_user not in channel.call.called_users:
-            channel.call.called_users = [(4, channel.called_user.id)]
-        if channel.called_pbx_user and channel.called_pbx_user not in channel.call.called_pbx_users:
+        # User processing moved to earlier in webhook processing to prevent race conditions
+        if channel.called_pbx_user:
             channel.call.called_pbx_users = [(4, channel.called_pbx_user.id)]
-        # Set the answered user
-        if channel.call.status == 'completed':
-            # Set call answered user from the last channel
-            answered_user = channel.call.channels[0].called_pbx_user
-            channel.call.answered_pbx_user = answered_user
-            channel.call.answered_user = answered_user.user
         # Check if we need to set a partner from child channel
         if not channel.call.partner and channel.partner:
             channel.call.partner = channel.partner
+        # Update call duration based on all channels
+        if channel.call:
+            if channel.call.channels:
+                total_duration = sum(channel.call.channels.mapped('duration') or [0])
+                channel.call.duration = total_duration
+            # Pattern detection from explicit tagging
+            if not channel.call.call_pattern:
+                detected_pattern = channel.call._detect_call_pattern()
+                if detected_pattern:
+                    channel.call.call_pattern = detected_pattern
+                    logger.info(f"Call {channel.call.id}: Pattern detection set to '{detected_pattern}'")
         if (channel.call.direction == 'incoming' and params.get('CallStatus') == 'initiated' and
                 params.get('To').startswith('sip:')):
             # Desktop notification only for SIP calls.
             channel.connect_notify()
-        # Register call when ALL channels have ended (not just the latest one).
-        # This prevents false "no-answer" notifications when one dial attempt fails
-        # but another is still active.
-        if params.get('CallStatus') in CALL_END_STATUSES:
-            # Check if all channels have ended
-            all_channels_ended = all(
-                ch.status in CALL_END_STATUSES
-                for ch in channel.call.channels
-            )
-            if all_channels_ended:
+        # DATABASE LOCKING: Acquire exclusive lock on call record to prevent concurrent modifications
+        self.env.cr.execute("SELECT id FROM connect_call WHERE id = %s FOR UPDATE", (channel.call.id,))
+        # Set called users - all called users including transfer recipients
+        if channel.called_user:
+            if channel.called_user.id not in channel.call.called_users.ids:
+                channel.call.called_users = [(4, channel.called_user.id)]
+                logger.info(f"Added {channel.called_user.login} to called_users (call_source: {getattr(channel, 'call_source', 'None')}) for call {channel.call.id}")
+        # Update webhook expectations for child call webhooks
+        if params.get('ParentCallSid'):
+            call_status = params.get('CallStatus')
+            call_sid = params.get('CallSid')
+            if hasattr(channel, 'call_source') and channel.call_source:
+                expectation_source = channel.call_source
+            else:
+                expectation_source = 'ring_group'
+            channel.call._update_webhook_expectation_callsid(expectation_source, call_sid, call_status)
+        # Determine finalization authority
+        is_parent_call_webhook = not params.get('ParentCallSid')
+        if channel.call.direction == 'outgoing':
+            if params.get('ParentCallSid'):
+                parent_completed = any(ch.sid == params.get('ParentCallSid') and ch.status in CALL_END_STATUSES
+                                     for ch in channel.call.channels)
+                can_trigger_finalization = parent_completed
+            else:
+                can_trigger_finalization = True
+        else:
+            can_trigger_finalization = is_parent_call_webhook
+        # Register call only when ALL channels have ended AND no pending webhook expectations AND can trigger finalization
+        all_channels_ended = all(ch.status in CALL_END_STATUSES for ch in channel.call.channels)
+        has_pending_webhooks = channel.call._has_pending_webhooks()
+        if (all_channels_ended and
+            params.get('CallStatus') in CALL_END_STATUSES and
+            not has_pending_webhooks and
+            can_trigger_finalization):
+            current_called_users = set(channel.call.called_users.ids)
+            current_status = channel.call.status
+            logger.info(f"Call {channel.call.id}: All conditions met for finalization")
+            channel.call._finalize_call_details()
+            new_called_users = set(channel.call.called_users.ids)
+            status_changed = channel.call.status != current_status
+            users_changed = current_called_users != new_called_users
+            if users_changed or current_status != 'busy':
                 self.register_call(channel, params)
             # Fetch call price if enabled in settings
             if self.env['connect.settings'].sudo().get_param('fetch_call_prices'):
                 self.save_call_price(channel.call, params)
+        else:
+            if not all_channels_ended:
+                reason = "channels still active"
+            elif has_pending_webhooks:
+                reason = "pending webhook expectations"
+            elif not can_trigger_finalization:
+                reason = "child call webhook (parent call authority)"
+            else:
+                reason = "channel not ending"
+            logger.info(f"Call {channel.call.id}: Finalization deferred - {reason}")
+            # Still fetch call price even when finalization is deferred
+            if params.get('CallStatus') in CALL_END_STATUSES:
+                if self.env['connect.settings'].sudo().get_param('fetch_call_prices'):
+                    self.save_call_price(channel.call, params)
         # Reload call view
         self.env['connect.settings'].connect_reload_view('connect.call')
         if params.get('ErrorCode') and params.get('ErrorCode') not in IGNORE_ERROR_CODES:
@@ -277,7 +844,116 @@ class Call(models.Model):
     @api.model
     def on_call_action(self, params):
         debug(self, 'On call action: %s' % params)
+        # Check if this is a Dial action webhook with transfer completion data
+        if 'DialCallSid' in params and 'DialCallStatus' in params:
+            try:
+                self._process_transfer_completion(params)
+                logger.info(f"Successfully processed transfer completion")
+            except Exception as e:
+                logger.error(f"Failed to process transfer completion: {e}")
         return '<Response><Hangup/></Response>'
+
+    def _process_transfer_completion(self, params):
+        """
+        Process Dial action webhook to update existing transfer recipient channel.
+        """
+        dial_call_sid = params.get('DialCallSid')
+        dial_status = params.get('DialCallStatus')
+        original_call_sid = params.get('CallSid')
+        original_channel = self.env['connect.channel'].search([('sid', '=', original_call_sid)], limit=1)
+        if not original_channel or not original_channel.call:
+            logger.warning(f"Could not find original channel for transfer CallSid: {original_call_sid}")
+            return
+        call = original_channel.call
+        recipient_channel = None
+        if call.call_pattern == 'ring_group':
+            child_channels = call.channels.filtered(lambda c: c.parent_channel)
+            if child_channels:
+                potential_recipients = child_channels.filtered(lambda c: c.status in ['no-answer', 'ringing', 'in-progress'])
+                if potential_recipients:
+                    recipient_channel = potential_recipients.sorted('id', reverse=True)[0]
+                else:
+                    logger.error(f"No suitable recipient channels found for ring group call {call.id}")
+                    return
+            else:
+                logger.error(f"No child channels found for ring group call {call.id}")
+                return
+        elif call.call_pattern == 'direct_call':
+            recipient_channel = self._create_missing_transfer_channel(call, dial_call_sid, dial_status, params)
+            if recipient_channel:
+                logger.info(f"Created missing transfer channel {recipient_channel.id}")
+            else:
+                logger.error(f"Could not create missing transfer channel for call {call.id}")
+                return
+        else:
+            logger.error(f"Cannot process transfer completion for call {call.id} with unknown pattern '{call.call_pattern}'")
+            return
+        if recipient_channel and recipient_channel.called_pbx_user:
+            if dial_status == 'completed':
+                new_status = 'completed'
+                duration = int(params.get('DialCallDuration', 0))
+            elif dial_status == 'busy':
+                new_status = 'busy'
+                duration = 0
+            elif dial_status == 'no-answer':
+                new_status = 'no-answer'
+                duration = 0
+            elif dial_status == 'failed':
+                new_status = 'failed'
+                duration = 0
+            else:
+                new_status = dial_status
+                duration = int(params.get('DialCallDuration', 0))
+            recipient_channel.write({
+                'status': new_status,
+                'duration': duration,
+            })
+        else:
+            logger.warning(f"Could not identify transfer recipient channel or PBX user")
+
+    def _create_missing_transfer_channel(self, call, dial_call_sid, dial_status, params):
+        """Create a missing transfer channel for direct calls."""
+        try:
+            parent_channel = call.channels.filtered(lambda c: not c.parent_channel)
+            if not parent_channel:
+                logger.warning(f"No parent channel found for call {call.id}")
+                return None
+            parent_channel = parent_channel[0]
+            target_user = None
+            target_user = call.get_transfer_target(dial_call_sid)
+            if not target_user:
+                original_call_sid = params.get('CallSid')
+                if original_call_sid:
+                    target_user = call.get_transfer_target(original_call_sid)
+            if not target_user:
+                call_with_sudo = call.sudo()
+                if call_with_sudo.transferred_users:
+                    target_user = call_with_sudo.transferred_users[-1]
+            if not target_user:
+                logger.error(f"Cannot determine transfer target for call {call.id}")
+                return None
+            pbx_user = self.env['connect.user'].sudo().search([('user', '=', target_user.id)], limit=1)
+            if not pbx_user:
+                logger.warning(f"Could not find PBX user for {target_user.login}")
+                return None
+            channel_data = {
+                'sid': dial_call_sid,
+                'call': call.id,
+                'parent_channel': parent_channel.id,
+                'technical_direction': 'outbound-dial',
+                'status': dial_status,
+                'duration': int(params.get('DialCallDuration', 0)),
+                'called_pbx_user': pbx_user.id,
+                'called_user': target_user.id,
+                'call_source': 'transfer',
+                'caller': parent_channel.caller,
+                'called': pbx_user.uri
+            }
+            recipient_channel = self.env['connect.channel'].create(channel_data)
+            return recipient_channel
+        except Exception as e:
+            logger.error(f"Failed to create missing transfer channel: {e}", exc_info=True)
+            return None
 
     def save_call_price(self, call, params):
         """Mark call as needing price fetch (will be processed by cron job)"""
@@ -286,14 +962,14 @@ class Call(models.Model):
             if not call_sid:
                 debug(self, 'No CallSid in webhook params, cannot store for price fetching')
                 return
-                
+
             # Store CallSid in call record for later price fetching by cron
             call.write({
                 'call_sid': call_sid,
                 'is_price_fetched': False,
             })
             debug(self, f'Marked call {call.id} (CallSid: {call_sid}) for price fetching by cron job')
-            
+
         except Exception as e:
             logger.error(f'Error in save_call_price: {e}')
 
@@ -336,7 +1012,7 @@ class Call(models.Model):
         if not self.env['connect.settings'].sudo().get_param('fetch_call_prices'):
             debug(self, 'Call price fetching is disabled in settings')
             return
-            
+
         # Find calls that need price fetching (completed calls without price)
         calls_to_fetch = self.search([
             ('is_price_fetched', '=', False),
@@ -344,9 +1020,9 @@ class Call(models.Model):
             ('status', 'in', CALL_END_STATUSES),
             ('create_date', '>=', fields.Datetime.now() - timedelta(days=30))  # Only last 30 days
         ])
-        
+
         debug(self, f'Found {len(calls_to_fetch)} calls needing price fetch')
-        
+
         for call in calls_to_fetch:
             try:
                 success = self._fetch_call_price_from_api(call, call.call_sid)
@@ -357,13 +1033,64 @@ class Call(models.Model):
                     debug(self, f'Price not yet available for call {call.id}, will retry next time')
             except Exception as e:
                 logger.error(f'Error fetching price for call {call.id}: {e}')
-        
+
         debug(self, f'Batch price fetch completed')
+
+    def _format_missed_call_message(self, channel):
+        """Create a clean missed call message format."""
+        caller_name = None
+        caller_number = None
+        if channel.call.direction == 'incoming':
+            caller_number = channel.call.caller
+            if channel.call.partner:
+                caller_name = channel.call.partner.name
+            elif channel.call.caller_user:
+                caller_name = channel.call.caller_user.name
+        else:
+            caller_number = channel.call.called
+            if channel.call.partner:
+                caller_name = channel.call.partner.name
+        if caller_name and caller_number:
+            caller_display = f"{caller_name} ({caller_number})"
+        elif caller_name:
+            caller_display = caller_name
+        elif caller_number:
+            caller_display = caller_number
+        else:
+            caller_display = "Unknown"
+        call_link = f" <a href='/web#id={channel.call.id}&model=connect.call&view_type=form'>Click to view the call details</a>."
+        transfer_info = ""
+        if channel.call.answered_user:
+            transfer_info = f" Call transferred to you by {channel.call.answered_user.name}."
+        body = Markup(f"You missed a call from {caller_display}.{transfer_info}{call_link}")
+        subject = f"Missed call from {caller_display}"
+        return subject, body
+
+    def get_notification_users(self):
+        """Gets all users who should receive missed call notifications for this call."""
+        notify_users = []
+        # Rule 1: called_users only (no other fields) - everyone gets notification
+        if (self.called_users and
+            not self.answered_user and
+            not self.transferred_users and
+            not self.completed_by_user):
+            for user in self.called_users:
+                connect_user = user.connect_user
+                if connect_user and connect_user[0].missed_calls_notify:
+                    notify_users.append(user)
+        # Rule 3: transferred_users + NO completed_by_user - only transferred users get notification
+        elif (self.transferred_users and
+              not self.completed_by_user):
+            for user in self.transferred_users:
+                connect_user = user.connect_user
+                if connect_user and connect_user[0].missed_calls_notify:
+                    notify_users.append(user)
+        return notify_users
 
     def register_call(self, channel, params):
         try:
             notify_users = []
-            # Construct message from lines
+            # Construct base message
             message = [channel.call.status.capitalize(), channel.call.direction,
                        'call at {}, '.format(channel.create_date.strftime('%Y-%m-%d %H:%M:%S'))]
             if channel.call.caller_user:
@@ -374,10 +1101,8 @@ class Call(models.Model):
                 message.append('answered by: {}, '.format(channel.call.answered_user.name))
             if channel.call.called_users:
                 message.append('dialed users: {}, '.format(', '.join(k.name for k in channel.call.called_users)))
-                # Missed call notification, filter users who have it enabled.
-                for user in channel.call.called_users:
-                    if user.connect_user[0].missed_calls_notify:
-                        notify_users.append(user)
+            # Use extracted notification method
+            notify_users = channel.call.get_notification_users()
             # Register call at partner.
             if channel.call.partner:
                 message.insert(3, 'partner: {}, '.format(channel.call.partner.name))
@@ -386,20 +1111,25 @@ class Call(models.Model):
                     final_message = final_message[:-2] + '.'
                 channel.call.register_call_post_message(
                     channel.call.partner, body=final_message, subtype_xmlid='mail.mt_note')
-            # Register call to users
-            statuses = ['completed']
-            if channel.call.direction == 'incoming' and channel.call.status not in statuses and notify_users:
+            # Send notifications if any users were identified
+            if notify_users:
+                logger.info(f"Sending notifications to {len(notify_users)} users: {[u.login for u in notify_users]}")
+                # Deduplicate
+                original_count = len(notify_users)
+                notify_users = list(set(notify_users))
+                if len(notify_users) < original_count:
+                    logger.warning(f"Removed {original_count - len(notify_users)} duplicate users from notification list")
                 debug(self, 'Missed call notification to users: {}'.format(notify_users))
-                final_message = ' '.join(message)
-                if final_message.endswith(', '):
-                    final_message = final_message[:-2] + '.'
+                notify_subject, notify_body = self._format_missed_call_message(channel)
                 channel.call.register_call_post_message(
                     channel.call,
                     subtype_xmlid='mail.mt_comment',
-                    subject=channel.call.name,
-                    body=final_message,
+                    subject=notify_subject,
+                    body=notify_body,
                     partner_ids=[k.partner_id.id for k in notify_users]
                 )
+            # Clear temporary transfer context after call processing is complete
+            channel.call.clear_transfer_context()
         except Exception as e:
             logger.exception('Register call error:', e)
 
@@ -538,6 +1268,9 @@ class Call(models.Model):
             call_data = call.read(read_fields)[0]
             if call.called_users:
                 call_data.update({'called_users': list(call.called_users.read(['id', 'name'])[0].values())})
+            # Add notification users for phone UI highlighting
+            notification_users = call.get_notification_users()
+            call_data.update({'notification_user_ids': [user.id for user in notification_users]})
             payload.append(call_data)
         return payload
 
@@ -550,5 +1283,10 @@ class Call(models.Model):
             "called_users",
             "partner",
             "create_date",
-            "direction"
+            "direction",
+            "status",
+            "answered_user",
+            "completed_by_user",
+            "transferred_users",
+            "call_pattern"
         ]
