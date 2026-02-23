@@ -662,8 +662,8 @@ class Call(models.Model):
             vals['transfer_context'] = json.dumps(vals['transfer_context'])
         return super().write(vals)
 
-    def read(self, fields=None):
-        records = super().read(fields)
+    def read(self, fields=None, **kwargs):
+        records = super().read(fields, **kwargs)
         if release.version_info[0] <= 15.0 and 'transfer_context' in (fields or []):
             for record in records:
                 if record.get('transfer_context'):
