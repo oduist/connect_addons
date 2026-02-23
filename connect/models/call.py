@@ -62,7 +62,10 @@ class Call(models.Model):
     # Transfer tracking fields
     transferred_users = fields.Many2many('res.users', 'connect_call_transfer_rel', 'call_id', 'user_id', string='Transferred Users', readonly=True)
     completed_by_user = fields.Many2one('res.users', ondelete='set null', string='Completed By', readonly=True)
-    transfer_context = fields.Json(string='Transfer Context', readonly=True, help='Temporary storage for transfer targets during webhook processing')
+    if release.version_info[0] > 15.0:
+        transfer_context = fields.Json(string='Transfer Context', readonly=True, help='Temporary storage for transfer targets during webhook processing')
+    else:
+        transfer_context = fields.Text(string='Transfer Context', readonly=True, help='Temporary storage for transfer targets during webhook processing')
     call_pattern = fields.Selection([
         ('ring_group', 'Ring Group (Multiple Users)'),
         ('direct_call', 'Direct Call (Single User)')
@@ -93,9 +96,9 @@ class Call(models.Model):
         for rec in self:
             try:
                 is_missed_call = (
-                    (rec.direction == 'incoming' and 
-                     rec.status in ['no-answer', 'busy', 'failed'] and 
-                     not rec.answered_user) 
+                    (rec.direction == 'incoming' and
+                     rec.status in ['no-answer', 'busy', 'failed'] and
+                     not rec.answered_user)
                     or
                     (rec.transferred_users and not rec.completed_by_user)
                 )
@@ -654,8 +657,18 @@ class Call(models.Model):
             logger.info(f"Call {self.id}: Clearing all webhook expectations")
             del self.__class__._webhook_expectations[call_key]
 
-    def write(self, vals):
+    def write(self, vals: dict):
+        if release.version_info[0] <= 15.0 and 'transfer_context' in vals:
+            vals['transfer_context'] = json.dumps(vals['transfer_context'])
         return super().write(vals)
+
+    def read(self, fields=None):
+        records = super().read(fields)
+        if release.version_info[0] <= 15.0 and 'transfer_context' in (fields or []):
+            for record in records:
+                if record.get('transfer_context'):
+                    record['transfer_context'] = json.loads(record['transfer_context'])
+        return records
 
     @api.model
     def on_call_status(self, params):
@@ -949,14 +962,14 @@ class Call(models.Model):
             if not call_sid:
                 debug(self, 'No CallSid in webhook params, cannot store for price fetching')
                 return
-                
+
             # Store CallSid in call record for later price fetching by cron
             call.write({
                 'call_sid': call_sid,
                 'is_price_fetched': False,
             })
             debug(self, f'Marked call {call.id} (CallSid: {call_sid}) for price fetching by cron job')
-            
+
         except Exception as e:
             logger.error(f'Error in save_call_price: {e}')
 
@@ -999,7 +1012,7 @@ class Call(models.Model):
         if not self.env['connect.settings'].sudo().get_param('fetch_call_prices'):
             debug(self, 'Call price fetching is disabled in settings')
             return
-            
+
         # Find calls that need price fetching (completed calls without price)
         calls_to_fetch = self.search([
             ('is_price_fetched', '=', False),
@@ -1007,9 +1020,9 @@ class Call(models.Model):
             ('status', 'in', CALL_END_STATUSES),
             ('create_date', '>=', fields.Datetime.now() - timedelta(days=30))  # Only last 30 days
         ])
-        
+
         debug(self, f'Found {len(calls_to_fetch)} calls needing price fetch')
-        
+
         for call in calls_to_fetch:
             try:
                 success = self._fetch_call_price_from_api(call, call.call_sid)
@@ -1020,7 +1033,7 @@ class Call(models.Model):
                     debug(self, f'Price not yet available for call {call.id}, will retry next time')
             except Exception as e:
                 logger.error(f'Error fetching price for call {call.id}: {e}')
-        
+
         debug(self, f'Batch price fetch completed')
 
     def _format_missed_call_message(self, channel):
