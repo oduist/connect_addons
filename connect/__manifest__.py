@@ -13,7 +13,7 @@
     'category': 'Phone',
     'summary': 'Twilio and Odoo integration application',
     'description': '',
-    'depends': ['mail', 'contacts', 'sms'],
+    'depends': ['mail', 'contacts', 'sms', 'resource'],
     'external_dependencies': {
         'python': ['twilio', 'openai'],
     },
@@ -75,6 +75,7 @@
             '/connect/static/src/services/actions/*',
             '/connect/static/src/services/active_calls/*',
             '/connect/static/src/services/mail/*',
+            '/connect/static/src/core/common/*',
         ],
     },
 }

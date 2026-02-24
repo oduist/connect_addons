@@ -20,6 +20,11 @@ from .twiml import pretty_xml
 
 logger = logging.getLogger(__name__)
 
+AUTO_ANSWER_HEADERS = [
+    ('X-AUTOANSWER=TRUE', 'X-AUTOANSWER=TRUE'),
+    ('Call-Info=answer-after%3D0', 'Call-Info=answer-after=0'),
+    ('Call-Info=Auto%20Answer', 'Call-Info=Auto Answer'),
+]
 
 SIP_TWILIO_EDGES = TWILIO_EDGES.copy()
 SIP_TWILIO_EDGES.insert(0, ['roaming', 'Global Low-latency Roaming'])
@@ -77,6 +82,12 @@ class User(models.Model):
     whatsapp_sender_id = fields.Many2one('connect.whatsapp_sender', string='WhatsApp Sender', ondelete='set null',
         domain="[('no_sync', '=', False), ('status', '=', 'ONLINE')]")
     missed_calls_notify = fields.Boolean(default=False, help='Notify user on missed calls.')
+    auto_answer_header = fields.Selection(AUTO_ANSWER_HEADERS)
+    fallback_destination = fields.Selection([
+        ('mobile', 'Mobile'),
+    ])
+    fallback_destination_mobile = fields.Char('Mobile Phone')
+    fallback_destination_exten = fields.Many2one('connect.exten')
     call_popup_is_enabled = fields.Boolean(default=True, string='Enable Call Notifications', help='Enable notifications for call events')
     call_popup_is_sticky = fields.Boolean(default=False, string='Sticky Call Notifications', help='Require manual dismissal of call notifications?')
     greeting_message = fields.Char()
@@ -725,6 +736,53 @@ class User(models.Model):
             self._manage_channel_callflow('client', True)
         else:
             self._manage_channel_callflow('client', False)
+
+    def render_fallback_destination(self, response, request, params):
+        if self.fallback_destination:
+            api_url = self.env['connect.settings'].sudo().get_param('api_url')
+            record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus')
+            status_url = urljoin(api_url, 'twilio/webhook/callstatus')
+            dial_action_url = urljoin(api_url, 'twilio/webhook/connect.user/call_action/{}'.format(self.id))
+            if self.fallback_destination == 'mobile':
+                dial_mobile_kwargs = {
+                    'timeout': 60,
+                    'callerId': self.outgoing_callerid.number,
+                }
+                if params.get('dial_action_url'):
+                    dial_mobile_kwargs['action'] = params['dial_action_url']
+                else:
+                    dial_mobile_kwargs['action'] = dial_action_url
+                if self.record_calls:
+                    dial_mobile_kwargs.update({
+                        'recordingStatusCallback': record_status_url,
+                        'record': 'record-from-answer-dual'
+                    })
+                dial = Dial('+{}'.format(strip_number(
+                    self.fallback_destination_mobile)), **dial_mobile_kwargs)
+                response.say('Connecting...')
+                response.append(dial)
+            elif self.fallback_destination == 'exten':
+                raise Exception('Not implemented')
+
+    @api.onchange('fallback_destination')
+    def _set_fallback_destination_mobile(self):
+        if self.fallback_destination == 'mobile' and not self.fallback_destination_mobile:
+            self.fallback_destination_mobile = self.user.partner_id.mobile
+
+    @api.constrains('fallback_destination')
+    def _manage_fallback_destination_callflow(self):
+        if self.fallback_destination:
+            if not self.env['connect.user_callflow'].search(
+                    [('user', '=', self.id), ('callflow_type', '=', 'fallback_destination')]):
+                self.env['connect.user_callflow'].create({
+                    'user': self.id,
+                    'prio': 5,
+                    'callflow_type': 'fallback_destination',
+                    'method': 'render_fallback_destination'
+                })
+        else:
+            self.env['connect.user_callflow'].search(
+                [('user', '=', self.id), ('callflow_type', '=', 'fallback_destination')]).unlink()
 
     @api.constrains('voicemail_enabled')
     def _manage_voicemail_enabled(self):
