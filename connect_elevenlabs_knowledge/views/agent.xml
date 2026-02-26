@@ -9,13 +9,13 @@
             <page name="llm" position="after">
                 <page name="knowledge_base" string="Knowledge Base">
                     <field name="knowledge_base" nolabel="1">
-                        <list>
+                        <tree>
                             <field name="name"/>
                             <field name="document_type"/>
                             <field name="state" decoration-success="state == 'active'" decoration-danger="state == 'error'"/>
                             <field name="document_size" optional="show"/>
                             <field name="updated_at" optional="show"/>
-                        </list>
+                        </tree>
                     </field>
                 </page>
             </page>
