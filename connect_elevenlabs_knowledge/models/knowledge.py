@@ -18,8 +18,8 @@ class ElevenlabsKnowledge(models.Model):
 
     name = fields.Char(required=True)
     knowledge_id = fields.Char()
-    type = fields.Selection(selection=[('url', 'URL'), ('file', 'File'), ('text', 'Text')], required=True,
-                            default='url')
+    document_type = fields.Selection(selection=[('url', 'URL'), ('file', 'File'), ('text', 'Text')], required=True,
+                                     default='url')
     file_name = fields.Char()
     file = fields.Binary(attachment=True)
     url = fields.Char()
@@ -128,12 +128,12 @@ class ElevenlabsKnowledge(models.Model):
 
         try:
             client = self.env['connect.settings'].get_elevenlabs_client()
-            if self.type == 'url':
+            if self.document_type == 'url':
                 knowledge_base = client.conversational_ai.knowledge_base.documents.create_from_url(
                     name=self.name,
                     url=self.url,
                 )
-            elif self.type == 'text':
+            elif self.document_type == 'text':
                 knowledge_base = client.conversational_ai.knowledge_base.documents.create_from_text(
                     name=self.name,
                     text=self.text
@@ -227,7 +227,7 @@ class ElevenlabsKnowledge(models.Model):
                     self.with_context(skip_elevenlabs=True).create({
                         'name': doc.name,
                         'knowledge_id': doc.id,
-                        'type': 'url',  # Default type, may need adjustment
+                        'document_type': 'url',  # Default type, may need adjustment
                         'state': 'active',
                         'description': getattr(doc, 'description', ''),
                         'document_size': getattr(doc, 'size', 0),
