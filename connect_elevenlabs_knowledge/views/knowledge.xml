@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <list string="Knowledge Base">
                 <field name="name"/>
-                <field name="type"/>
+                <field name="document_type"/>
                 <field name="state" decoration-success="state == 'active'" decoration-danger="state == 'error'" decoration-warning="state == 'creating'"/>
                 <field name="agent_count" string="Agents"/>
                 <field name="document_size" optional="show"/>
@@ -51,7 +51,7 @@
                     </div>
                     <group>
                         <group name="document_info">
-                            <field name="type"/>
+                            <field name="document_type"/>
                             <field name="knowledge_id" string="Document ID" readonly="1" invisible="not knowledge_id"/>
                             <field name="document_size" readonly="1" invisible="document_size == 0"/>
                         </group>
@@ -62,12 +62,12 @@
                         </group>
                     </group>
                     <group name="content" string="Content">
-                        <field name="url" invisible="type != 'url'" required="type == url"/>
+                        <field name="url" invisible="document_type != 'url'" required="document_type == url"/>
                         <field name="file_name" invisible="1"/>
-                        <field name="file" filename="file_name" 
-                               invisible="type != 'file'" required="type == 'file'"/>
-                        <field name="text" string="Text Content" 
-                               invisible="type != 'text'" required="type == 'text'"/>
+                        <field name="file" filename="file_name"
+                               invisible="document_type != 'file'" required="document_type == 'file'"/>
+                        <field name="text" string="Text Content"
+                               invisible="document_type != 'text'" required="document_type == 'text'"/>
                         <field name="description" placeholder="Document description..."/>
                     </group>
                     <group name="error_info" string="Error Information" 
