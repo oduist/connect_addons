@@ -199,6 +199,7 @@ class CallFlow(models.Model):
         response = VoiceResponse()
         # Check the partner by number
         partner = self.env['res.partner'].get_partner_by_number(request['Caller'])
+        params.update({'no_ring_contact_manager': True})
         if not (partner and partner.user_id):
             debug(self, 'Contact Manager for number {} not found.'.format(request['Caller']))
             return self.render(request, params)
