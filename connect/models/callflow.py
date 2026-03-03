@@ -201,7 +201,7 @@ class CallFlow(models.Model):
         partner = self.env['res.partner'].get_partner_by_number(request['Caller'])
         if not (partner and partner.user_id):
             debug(self, 'Contact Manager for number {} not found.'.format(request['Caller']))
-            return super(CallFlow, self).render(request, params)
+            return self.render(request, params)
         else:
             debug(self, 'Found partner {}[{}] for number {}.'.format(partner.name, partner.id, request['Caller']))
         # Check partner's PBX user.
@@ -209,7 +209,7 @@ class CallFlow(models.Model):
         if not connect_user:
             debug(self, 'Connect User for Sale Manager {}[{}] is not configured.'.format(
                 partner.user_id.name, partner.user_id.id))
-            return super(CallFlow, self).render(request, params)
+            return self.render(request, params)
         # Render connect user
         debug(self, 'Connect caller to Manager {}[{}].'.format(partner.user_id.name, partner.user_id.id))
         return connect_user.render(request, params={'dial_action_url': action_url})
