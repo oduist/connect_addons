@@ -145,7 +145,7 @@ class Partner(models.Model):
         a) If partners belong to same company, return company record.
         b) If partners belong to different companies return False.
         """
-        found = self.sudo().search([('phone_mobile_search', '=', number)])
+        found = self.sudo().search([('phone_sanitized', '=', number)])
         debug(self, '{} belongs to partners: {}'.format(
             number, found.mapped('id')
         ))
