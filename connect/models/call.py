@@ -91,6 +91,20 @@ class Call(models.Model):
     price_currency = fields.Char(string='Price Currency', readonly=True, default='USD')
     call_sid = fields.Char(string='Twilio Call SID', readonly=True, index=True, help='Twilio CallSid for fetching price information')
     is_price_fetched = fields.Boolean(string='Price Fetched', default=False, readonly=True, index=True, help='Indicates if call price has been fetched from Twilio API')
+    pbx_group_user_ids = fields.Many2many(
+        'res.users', 'connect_call_pbx_group_users_rel',
+        string='PBX Group Users',
+        compute='_compute_pbx_group_user_ids', store=True)
+
+    @api.depends('caller_user', 'answered_user')
+    def _compute_pbx_group_user_ids(self):
+        for rec in self:
+            users = self.env['res.users']
+            for u in (rec.caller_user, rec.answered_user):
+                if u and u.connect_user:
+                    for group in u.connect_user.pbx_group_ids:
+                        users |= group.user_ids
+            rec.pbx_group_user_ids = users
 
     def _get_name(self):
         for rec in self:

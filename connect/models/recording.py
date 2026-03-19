@@ -41,6 +41,10 @@ class Recording(models.Model):
         recording_widget = fields.Html(compute='_get_recording_widget', string='Recording', sanitize=False)
     else:
         recording_widget = fields.Char(compute='_get_recording_widget', string='Recording')
+    pbx_group_user_ids = fields.Many2many(
+        'res.users', 'connect_recording_pbx_group_users_rel',
+        string='PBX Group Users',
+        compute='_compute_pbx_group_user_ids', store=True)
     ############## TRANSCRIPTION FIELDS ######################################
     transcript = fields.Text()
     transcription_token = fields.Char()
@@ -48,6 +52,16 @@ class Recording(models.Model):
     transcription_price = fields.Char()
     summary = fields.Html()
     list_view_summary = fields.Html(compute='_get_list_view_summary')
+
+    @api.depends('caller_user', 'called_user')
+    def _compute_pbx_group_user_ids(self):
+        for rec in self:
+            users = self.env['res.users']
+            for u in (rec.caller_user, rec.called_user):
+                if u and u.connect_user:
+                    for group in u.connect_user.pbx_group_ids:
+                        users |= group.user_ids
+            rec.pbx_group_user_ids = users
 
     ############## TRANSCRIPTION METHODS #####################################
 
