@@ -63,6 +63,7 @@
                             </div>
                             <field name="voice" placeholder="man"/>
                             <field name="ring_users" widget="many2many_tags"/>
+                            <field name="ring_timeout"/>
                             <field name="record_calls"/>
                             <field name="voicemail_enabled"/>
                             <field name="voicemail_prompt"
