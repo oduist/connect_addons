@@ -241,6 +241,17 @@
     <field name="perm_unlink" eval="1"/>
   </record>
 
+  <!-- PBX Group -->
+  <record id="connect_pbx_group_admin" model="ir.model.access">
+    <field name="name">connect_pbx_group_admin</field>
+    <field name="model_id" ref="connect.model_connect_pbx_group"/>
+    <field name="group_id" ref="connect.group_connect_admin"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="1"/>
+    <field name="perm_create" eval="1"/>
+    <field name="perm_unlink" eval="1"/>
+  </record>
+
   <!-- Documentation access -->
   <record model="ir.model.access" id="access_connect_documentation">
       <field name="name">connect.documentation</field>
