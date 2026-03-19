@@ -55,6 +55,20 @@ class Channel(models.Model):
     ], string='Call Source', help='How this channel was created', tracking=True)
     # Webhook sequence tracking for duplicate filtering
     sequence_number = fields.Integer(string='Sequence Number', default=0, help='Twilio webhook sequence number for duplicate filtering')
+    pbx_group_user_ids = fields.Many2many(
+        'res.users', 'connect_channel_pbx_group_users_rel',
+        string='PBX Group Users',
+        compute='_compute_pbx_group_user_ids', store=True)
+
+    @api.depends('caller_user', 'called_user')
+    def _compute_pbx_group_user_ids(self):
+        for rec in self:
+            users = self.env['res.users']
+            for u in (rec.caller_user, rec.called_user):
+                if u and u.connect_user:
+                    for group in u.connect_user.pbx_group_ids:
+                        users |= group.user_ids
+            rec.pbx_group_user_ids = users
 
     @api.depends('caller', 'called')
     def _get_channel_numbers(self):
