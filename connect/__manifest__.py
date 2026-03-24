@@ -2,7 +2,7 @@
 
 {
     "name": "Connect",
-    "version": "2.0.1",
+    "version": "2.0.2",
     "author": "Oduist",
     "maintainer": "Oduist",
     "live_test_url": "https://connect-demo.oduist.com/",
@@ -13,7 +13,7 @@
     "category": "Phone",
     "summary": "Twilio and Odoo integration application",
     "description": "",
-    "depends": ["mail", "contacts", "sms"],
+    "depends": ["mail", "contacts", "sms", "resource"],
     "external_dependencies": {
         "python": ["twilio", "openai", "PyJWT"],
     },
@@ -78,6 +78,7 @@
             "/connect/static/src/services/actions/*",
             "/connect/static/src/services/active_calls/*",
             "/connect/static/src/services/mail/*",
+            "/connect/static/src/core/common/*",
         ],
     },
     "post_init_hook": "post_init_hook",

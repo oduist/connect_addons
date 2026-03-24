@@ -66,6 +66,11 @@ class Recording(models.Model):
     ############## TRANSCRIPTION METHODS #####################################
 
     def transcribe_recording(self, openai_api_key, summary_prompt):
+        # Check users summary prompt
+        if self.caller_user and self.caller_user.connect_user and self.caller_user.connect_user.summary_prompt:
+            summary_prompt = self.caller_user.connect_user.summary_prompt
+        elif self.called_user and self.called_user.connect_user and self.called_user.connect_user.summary_prompt:
+            summary_prompt = self.called_user.connect_user.summary_prompt
         result = {}
         temp_file_path = None
         try:
@@ -135,6 +140,11 @@ class Recording(models.Model):
 
     def get_transcript(self, fail_silently=False):
         self.ensure_one()
+        # Check if the call matches the transcription rules.
+        if fail_silently and not self.env['connect.transcription_rule'].sudo().check_rules(
+                self.call.caller, self.call.called):
+            debug(self, 'No transcription rules matched.')
+            return False
         openai_key = self.env['connect.settings'].sudo().get_param('openai_api_key')
         if not openai_key:
             if fail_silently:
