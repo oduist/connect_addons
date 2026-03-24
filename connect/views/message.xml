@@ -118,6 +118,7 @@
                             <field name="media_url" invisible="1"/>
                             <field name="media_widget" widget="html" attrs="{'invisible': [('media_url', '=', False)]}"/>
                             <field name="error_message" attrs="{'invisible': [('error_message', '=', False)]}"/>
+                            <field name="transcription_error" attrs="{'invisible': [('transcription_error', '=', False)]}"/>
                         </group>
                     </group>
                     <notebook>
