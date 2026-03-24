@@ -131,14 +131,6 @@ class ConnectController(Controller):
         request.env['connect.whatsapp_sender'].with_user(request.env.ref("connect.user_connect_webhook")).update_message_status(kw)
         return 'OK'
 
-    @route('/twilio/webhook/connect_callflow_ring_contact_manager_action/<int:record_id>', methods=['POST'], type='http', auth='public', csrf=False)
-    def callflow_ring_contact_manager_action(self, record_id, **kw):
-        if not self.check_signature(kw):
-            return '<Response><Say>Invalid Twilio request!</Say></Response>'
-        model = request.env['connect.callflow'].with_user(request.env.ref("connect.user_connect_webhook"))
-        res = model.on_ring_contact_manager_action(record_id, kw)
-        return f'{res}'
-
     @route('/twilio/webhook/transfer_continuation', methods=['POST'], type='http', auth='public', csrf=False)
     def transfer_continuation_webhook(self, **kw):
         if not self.check_signature(kw):

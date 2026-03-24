@@ -1,12 +1,7 @@
 import ast
 import logging
-import os
-from tempfile import NamedTemporaryFile
 from urllib.parse import urljoin
-
-import openai
 import phonenumbers
-import requests
 from markupsafe import Markup
 from phonenumbers import parse, format_number, PhoneNumberFormat
 from twilio.twiml.messaging_response import MessagingResponse
@@ -62,7 +57,6 @@ class ConnectMessage(models.Model):
     parent_message = fields.Many2one('connect.message', string='In Reply To', readonly=True)
     media_url = fields.Char()
     media_content_type = fields.Char()
-    transcription_error = fields.Char()
     if release.version_info[0] >= 17.0:
         media_widget = fields.Html(compute='_get_media_widget', string='Media', sanitize=False)
     else:
@@ -177,33 +171,8 @@ class ConnectMessage(models.Model):
             else:
                 record.name = f"New {record.message_type}"
 
-    def transcribe_voice_message(self, openai_api_key, media_url):
-        result = {}
-        try:
-            client = openai.OpenAI(api_key=openai_api_key)
-            response = requests.get(media_url, stream=True)
-            response.raise_for_status()
-            with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        temp_file.write(chunk)
-                temp_file_path = temp_file.name
-            with open(temp_file_path, 'rb') as audio_file:
-                transcript = client.audio.transcriptions.create(
-                    model="whisper-1", file=audio_file,
-                    response_format='verbose_json', timestamp_granularities=["segment"])
-            segments = ''
-            for s in transcript.segments:
-                segments += '{}\n'.format(s.text)
-            result['body'] = segments.strip()
-        except Exception as e:
-            logger.exception('Transcribe error:')
-            result['transcription_error'] = str(e)
-        finally:
-            return result
-
     def get_receive_message_values(self, params):
-        values = {
+        return {
             'message_sid': params.get('MessageSid'),
             'from_number': params.get('From'),
             'to_number': params.get('To'),
@@ -219,15 +188,6 @@ class ConnectMessage(models.Model):
             'media_content_type': params.get('MediaContentType0'),
             'media_url': params.get('MediaUrl0'),
         }
-        if params.get('MessageType') == 'audio':
-            transcript_voice_message = self.env['connect.settings'].sudo().get_param('transcript_voice_message')
-            openai_key = self.env['connect.settings'].sudo().get_param('openai_api_key')
-            if transcript_voice_message and openai_key:
-                transcription = self.transcribe_voice_message(openai_key, params.get('MediaUrl0'))
-                values.update(transcription)
-            elif transcript_voice_message and not openai_key:
-                logger.warning('OpenAI key is not set! Transcription will not be available.')
-        return values
 
     @api.model
     def receive(self, params):

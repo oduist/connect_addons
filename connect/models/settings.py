@@ -139,10 +139,6 @@ class Settings(models.Model):
     register_summary = fields.Boolean(
         default=True, help="Register summary at partner of reference chat."
     )
-    transcription_rules = fields.One2many('connect.transcription_rule', 'settings')
-    transcript_voice_message = fields.Boolean(default=True)
-    chatter_message_generate_prompt = fields.Text(
-        default='Continue the conversation naturally!', string='Message Generate Prompt')
     fetch_call_prices = fields.Boolean(
         default=False,
         string="Fetch Call Prices",
@@ -714,10 +710,7 @@ class Settings(models.Model):
             rec.mobile = rec._normalize_phone(rec.mobile)
 
     def compute_sip_uri(self, user):
-        uri = "sip:{}".format(self.env.user.connect_user.uri)
-        if user.connect_user.auto_answer_header:
-            uri = f'{uri}?{user.connect_user.auto_answer_header}'
-        return uri
+        return "sip:{}".format(self.env.user.connect_user.uri)
 
     def get_external_call_route(self, number, callerId, status_url,
             record='do-not-record', record_status_url=None):

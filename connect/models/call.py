@@ -2,17 +2,11 @@
 
 import json
 import logging
-import os
 import re
-from tempfile import NamedTemporaryFile
 from urllib.parse import urljoin
 from markupsafe import Markup
 import uuid
 from datetime import timedelta
-
-import openai
-import requests
-
 from odoo import fields, models, api, release, SUPERUSER_ID, tools
 from odoo.exceptions import ValidationError
 from twilio.twiml.voice_response import VoiceResponse, Say, Dial, Conference, Client, Number, Sip
@@ -86,8 +80,6 @@ class Call(models.Model):
         voicemail_widget = fields.Html(compute='_get_voicemail_widget', string='VoiceMail', sanitize=False)
     else:
         voicemail_widget = fields.Char(compute='_get_voicemail_widget', string='VoiceMail')
-    voicemail_transcript = fields.Text()
-    voicemail_transcription_error = fields.Char()
     # Reference, to submit call history and summary.
     ref = fields.Reference(selection=[('res.partner', 'Partner')], compute='_get_ref')
     has_error = fields.Boolean(index=True)
@@ -195,44 +187,6 @@ class Call(models.Model):
                 rec.voicemail_icon = '<span class="fa fa-envelope-o"/>'
             else:
                 rec.voicemail_icon = ''
-
-    @api.constrains('voicemail_url')
-    def _transcribe_voicemail(self):
-        self.ensure_one()
-        openai_key = self.env['connect.settings'].sudo().get_param('openai_api_key')
-        if not openai_key:
-            logger.warning('OpenAI key is not set! Transcription will not be available.')
-            return False
-        if self.voicemail_url:
-            self.transcribe_voicemail(openai_key)
-        else:
-            logger.warning('Voicemail is not available yet!')
-
-    def transcribe_voicemail(self, openai_api_key):
-        result = {}
-        try:
-            client = openai.OpenAI(api_key=openai_api_key)
-            response = requests.get(self.voicemail_url, stream=True)
-            response.raise_for_status()
-            with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        temp_file.write(chunk)
-                temp_file_path = temp_file.name
-            with open(temp_file_path, 'rb') as audio_file:
-                transcript = client.audio.transcriptions.create(
-                    model="whisper-1", file=audio_file,
-                    response_format='verbose_json', timestamp_granularities=["segment"])
-            segments = ''
-            for s in transcript.segments:
-                segments += '{}\n'.format(s.text)
-            result['voicemail_transcript'] = segments.strip()
-            result['voicemail_transcription_error'] = False
-        except Exception as e:
-            logger.exception('Voicemail transcribe error:')
-            result['voicemail_transcription_error'] = str(e)
-        finally:
-            self.write(result)
 
     @api.depends('duration')
     def _get_duration_human(self):

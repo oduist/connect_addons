@@ -11,7 +11,6 @@ from . import message_configuration
 from . import number
 from . import outgoing_callerid
 from . import recording
-from . import recording_transcription_rules
 from . import res_partner
 from . import res_users
 from . import settings
