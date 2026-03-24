@@ -64,6 +64,7 @@ class User(models.Model):
     client_priority = fields.Selection([('1', '1'),('2', '2')], required=True, default='1')
     name = fields.Char(compute='_get_name')
     user = fields.Many2one('res.users', string='Odoo User', domain=[('share', '=', False)])
+    pbx_group_ids = fields.Many2many('connect.pbx_group', string='PBX Groups')
     domain = fields.Many2one('connect.domain', required=True, ondelete='cascade',
                             default=lambda x: x.env['connect.domain'].search([('subdomain', 'not like', 'byoc')], limit=1))
     username = fields.Char(required=True)

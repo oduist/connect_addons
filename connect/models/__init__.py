@@ -18,6 +18,7 @@ from . import settings
 from . import sms_sms
 from . import twiml
 from . import user
+from . import pbx_group
 from . import documentation
 from . import whatsapp_sender
 from . import message_content_template

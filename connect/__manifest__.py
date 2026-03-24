@@ -44,6 +44,7 @@
         'views/callflow.xml',
         'views/channel.xml',
         'views/outgoing_callerid.xml',
+        'views/pbx_group.xml',
         'views/recording.xml',
         'views/number.xml',
         'views/favorite.xml',
