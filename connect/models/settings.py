@@ -149,6 +149,8 @@ class Settings(models.Model):
     register_summary = fields.Boolean(
         default=True, help="Register summary at partner of reference chat."
     )
+    chatter_message_generate_prompt = fields.Text(
+        default='Continue the conversation naturally!', string='Message Generate Prompt')
     fetch_call_prices = fields.Boolean(
         default=False,
         string="Fetch Call Prices",
