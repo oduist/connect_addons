@@ -118,8 +118,9 @@ export class Contacts extends Component {
             self.orm.searchRead(
                 "res.partner",
                 [
-                    ['phone_mobile_search', '=ilike', `%${self.searchQuery}%`],
+                    '|', ['phone_mobile_search', '=ilike', `%${self.searchQuery}%`],
                     ['name', '=ilike', `%${self.searchQuery}%`],
+                    ['phone_sanitized', '!=', false]
                 ],
                 ['id', 'name', 'email', 'phone_sanitized'],
                 {order: 'name asc', limit: 10}

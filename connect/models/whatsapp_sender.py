@@ -1,4 +1,13 @@
 # -*- coding: utf-8 -*-
+"""
+ODUIST PROPRIETARY LICENSE
+Copyright (c) 2025 Oduist
+
+This file contains license validation logic.
+Modification is prohibited under Oduist Proprietary License.
+See LICENSE and COPYRIGHT files for full terms.
+"""
+
 import json
 import logging
 from datetime import datetime, timedelta
@@ -12,6 +21,7 @@ if release.version_info[0] >= 19:
     from odoo.models import Constraint
 from odoo.exceptions import ValidationError
 from .settings import debug
+from .res_partner import strip_number
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +83,7 @@ class ConnectWhatsappSender(models.Model):
     @api.onchange('number')
     def _onchange_number(self):
         for rec in self:
-            num = self.env['connect.settings'].strip_number(rec.number) if hasattr(self.env['connect.settings'], 'strip_number') else rec.number
+            num = strip_number(rec.number)
             candidate = f"+{num}" if num and not str(num).startswith('+') else num
             linked = self.env['connect.number'].search([('phone_number', '=', candidate)], limit=1)
             rec.number_id = linked.id if linked else False
@@ -237,6 +247,7 @@ class ConnectWhatsappSender(models.Model):
         Returns:
             connect.message record or False on error when raise_on_error=False
         """
+        self.env['oduist.license'].check_license('connect', silent=False)
         self.ensure_one()
         if not self.number:
             raise ValidationError('WhatsApp sender has no number configured.')

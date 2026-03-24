@@ -84,7 +84,6 @@
                                                    attrs="{'invisible': [('partner', '=', False)]}"/>
                                             <div attrs="{'invisible': [('partner', '=', False)]}">Partner</div>
                                         </div>
-                                        <field name="caller_user" attrs="{'invisible': 1}"/>
                                         <div class="d-flex flex-column" calspan="1" style="flex: 1"
                                              attrs="{'invisible': [('caller_user', '=', False)]}">
                                             <field name="caller_user"/>

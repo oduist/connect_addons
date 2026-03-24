@@ -27,5 +27,6 @@
         'web.assets_backend': [
             '/connect_helpdesk/static/src/services/active_calls/*',
         ],
-    }
+    },
+    'post_init_hook': 'post_init_hook',
 }
