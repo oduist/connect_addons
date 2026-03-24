@@ -145,6 +145,8 @@
                               attrs="{'invisible': [('voicemail_widget', '=', '')]}">
                             <group>
                                 <field name="voicemail_widget" widget="html"/>
+                                <field name="voicemail_transcript" string="Transcript"/>
+                                <field name="voicemail_transcription_error" attrs="{'invisible': [('voicemail_transcription_error', '=', False)]}" string="Transcript Error"/>
                             </group>
                         </page>
                         <page name="channels" string="Channels" groups="base.group_no_one">
