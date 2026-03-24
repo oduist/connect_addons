@@ -207,6 +207,7 @@ class ElevenlabsAgent(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        self.env['oduist.license'].check_license('connect_elevenlabs', silent=False)
         res = super().create(vals_list)
         if not self.env.context.get("skip_elevenlabs"):
             for rec in res:
@@ -214,7 +215,8 @@ class ElevenlabsAgent(models.Model):
         return res
 
     def write(self, vals):
-        if vals.get("exten"):
+        self.env['oduist.license'].check_license('connect_elevenlabs', silent=False)
+        if vals.get('exten'):
             # Skip all syncing.
             return super().write(vals)
         res = super().write(vals)
@@ -233,6 +235,8 @@ class ElevenlabsAgent(models.Model):
                 )
         if not self.env.context.get("skip_elevenlabs"):
             self.update_elevenlabs_agent()
+            if not self.knowledge_base_note and self.knowledge_base_id:
+                self.delete_elevenlabs_knowledge_base()
         return res
 
     def unlink(self):
@@ -289,6 +293,8 @@ class ElevenlabsAgent(models.Model):
 
     def render(self, request, params={}):
         self.ensure_one()
+        if not self.env["oduist.license"].check_license('connect_elevenlabs'):
+            return "<Response><Pause length='1'/><Say>This is Oduist Connect. Your trial period is over. Please buy a license to continue.</Say><Pause length='1'/></Response>"
         channel_sid = request.get("CallSid")
         call_id = (
             self.env["connect.channel"]

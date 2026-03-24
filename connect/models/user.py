@@ -15,7 +15,7 @@ if release.version_info[0] >= 19:
 from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 from twilio.twiml.voice_response import Client, Dial, VoiceResponse
-from .settings import format_connect_response, debug, strip_number, TWILIO_EDGES
+from .settings import format_connect_response, debug, TWILIO_EDGES
 from .twiml import pretty_xml
 
 logger = logging.getLogger(__name__)

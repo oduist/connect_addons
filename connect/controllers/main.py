@@ -356,7 +356,7 @@ class ConnectController(http.Controller):
 
     @http.route('/connect/health/<string:uid>/', methods=['GET', 'POST'], type='http', auth='public', csrf=False)
     def health_check(self, uid):
-        instance_uid = http.request.env['connect.settings'].sudo().get_param('instance_uid')
+        instance_uid = http.request.env['oduist.license'].sudo().get_param('instance_uid')
         if uid == instance_uid:
             return "True"
         else:

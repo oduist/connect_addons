@@ -224,8 +224,8 @@ class TwiML(models.Model):
         self.ensure_one()
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
         edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
-        recording_voice_status_url = urljoin(api_url, 'app/connect/webhook/recordingstatus#e={}'.format(edge))
-        call_voice_status_url = urljoin(api_url, 'app/connect/webhook/callstatus#e={}'.format(edge))
+        recording_voice_status_url = urljoin(api_url, 'connect/webhook/recordingstatus#e={}'.format(edge))
+        call_voice_status_url = urljoin(api_url, 'connect/webhook/callstatus#e={}'.format(edge))
         params.update({
             'recording_voice_status_url': recording_voice_status_url,
             'call_voice_status_url': call_voice_status_url,
