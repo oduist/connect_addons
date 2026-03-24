@@ -8,8 +8,11 @@ import uuid
 from elevenlabs import ElevenLabs
 
 from odoo import fields, models
+from odoo.addons.connect.models.license import ODUIST_MODULES
 from odoo.addons.connect.models.settings import PROTECTED_FIELDS
 from odoo.exceptions import ValidationError
+
+ODUIST_MODULES.append('connect_elevenlabs')
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +94,8 @@ class Elevenlabsettings(models.Model):
         self.connect_notify('Tools sync done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)
 
     def elevenlabs_sync(self):
+        if not self.env['oduist.license'].check_license('connect_elevenlabs', silent=True):
+            return False
         self.elevenlabs_get_voices()
         self.connect_notify('Voices sync done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)
         self.elevenlabs_reset_token()

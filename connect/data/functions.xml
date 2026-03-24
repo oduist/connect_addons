@@ -1,3 +1,0 @@
-<odoo>
-    <function name="set_defaults" model="connect.settings"/>
-</odoo>

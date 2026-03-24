@@ -19,6 +19,8 @@ class Domain(models.Model):
         if not self.env.user.has_group('connect.group_connect_webhook'):
             logger.error('Access to Twilio webhook is denied!')
             return '<Response><Say>You must select a default number for caller ID!</Say></Response>'
+        if not self.env["oduist.license"].check_license('connect_website'):
+            return "<Response><Pause length='1'/><Say>This is Oduist Connect. Your trial period is over. Please buy a license to continue.</Say><Pause length='1'/></Response>"
         re_call_uri = re.compile(r'^(?:sip|client):([^\s@]+)@[^\s;]+(?:;[^&\s]+(?:&[^&\s]+)*)?')
         found_uri = re_call_uri.search(request.get('Called'))
         called = ''
@@ -64,8 +66,7 @@ class Domain(models.Model):
 
             dial_client = Dial(timeout=10, callerId=caller_id)
             api_url = self.env['connect.settings'].sudo().get_param('api_url')
-            instance_uid = self.env['connect.settings'].sudo().get_param('instance_uid')
-            status_url = urljoin(api_url, 'app/connect/webhook/{}/callstatus'.format(instance_uid))
+            status_url = urljoin(api_url, 'connect/webhook/callstatus')
 
             client = Client(
                 statusCallbackEvent='initiated answered completed',

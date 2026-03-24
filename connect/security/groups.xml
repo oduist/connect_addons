@@ -5,7 +5,7 @@
         <field name="sequence">20</field>
         <field name="description">Connect Security</field>
     </record>
-    
+
     <record id="module_connect_privilege" model="res.groups.privilege" >
         <field name="name">Connect</field>
         <field name="sequence">9</field>

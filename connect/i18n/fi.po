@@ -1443,11 +1443,6 @@ msgid "Installation Date"
 msgstr "Asennuspäivä"
 
 #. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_settings__instance_uid
-msgid "Instance UID"
-msgstr "Instanssin UID"
-
-#. module: connect
 #: model:ir.model.fields,field_description:connect.field_connect_callflow__invalid_input_message
 #: model:ir.model.fields,field_description:connect.field_connect_callout__invalid_input_message
 msgid "Invalid Input Message"
@@ -1459,11 +1454,6 @@ msgstr "Virheellinen syöttöviesti"
 #: model:ir.model.fields,field_description:connect.field_connect_recording__message_is_follower
 msgid "Is Follower"
 msgstr "On seuraaja"
-
-#. module: connect
-#: model:ir.model.fields,field_description:connect.field_connect_settings__is_registered
-msgid "Is Registered"
-msgstr "On rekisteröity"
 
 #. module: connect
 #. odoo-javascript
