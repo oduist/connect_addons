@@ -2,19 +2,11 @@
 
 import logging
 import phonenumbers
-import re
 from phonenumbers import phonenumberutil
 from odoo import models, fields, api, release
-from .settings import debug
+from .settings import debug, strip_number
 
 logger = logging.getLogger(__name__)
-
-def strip_number(number):
-    """Strip number formating"""
-    if not isinstance(number, str):
-        return number
-    pattern = r'[\s\(\)\-\+]'
-    return re.sub(pattern, '', number).lstrip('0')
 
 
 def format_number(self, number, country=None, format_type='e164'):

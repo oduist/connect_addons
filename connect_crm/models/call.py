@@ -25,6 +25,8 @@ class CrmCall(models.Model):
 
     @api.model
     def on_call_status(self, params):
+        if not self.env['oduist.license'].check_license('connect_crm', silent=True):
+            return super().on_call_status(params)
         call_id = super().on_call_status(params)
         if not call_id:
             debug(self, 'CRM on_call_status error, no call.')
@@ -169,6 +171,7 @@ class CrmCall(models.Model):
             return True
 
     def create_lead_button(self):
+        self.env['oduist.license'].check_license('connect_crm', silent=False)
         self.ensure_one()
         name_number = self.caller if self.direction == 'incoming' else self.called
         context = {
@@ -202,6 +205,8 @@ class CrmCall(models.Model):
 
     @api.constrains('summary')
     def register_crm_lead_call_summary(self):
+        if not self.env['oduist.license'].check_license('connect_crm', silent=True):
+            return False
         reload_view = False
         register_summary = self.env['connect.settings'].sudo().get_param('register_summary')
         if not register_summary:
@@ -214,4 +219,3 @@ class CrmCall(models.Model):
         if reload_view:
             # Reload the view of res.partner
             self.env['connect.settings'].connect_reload_view('crm.lead')
-
