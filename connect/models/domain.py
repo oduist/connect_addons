@@ -1,4 +1,12 @@
 # -*- coding: utf-8 -*-
+"""
+ODUIST PROPRIETARY LICENSE
+Copyright (c) 2025 Oduist
+
+This file contains license validation logic.
+Modification is prohibited under Oduist Proprietary License.
+See LICENSE and COPYRIGHT files for full terms.
+"""
 
 import logging
 import re
@@ -507,6 +515,8 @@ class Domain(models.Model):
     @api.model
     def route_call(self, request, params={}):
         debug(self, "Domain call to %s" % request.get("To"))
+        if not self.env["oduist.license"].check_license('connect'):
+            return "<Response><Pause length='1'/><Say>This is Oduist Connect. Your trial period is over. Please buy a license to continue.</Say><Pause length='1'/></Response>"
         # Create call + channel
         self.env["connect.call"].on_call_status(request)
         to_val = request.get("To") or ''
