@@ -46,6 +46,8 @@ class CallFlow(models.Model):
     choices = fields.One2many('connect.callflow_choice', 'callflow')
     gather_action_url = fields.Char(compute='_get_gather_action_url')
     ring_users = fields.Many2many('connect.user')
+    ring_timeout = fields.Integer(string='Ring Timeout', default=30,
+        help='Number of seconds to ring users before timeout. Default is 30 seconds.')
     record_calls = fields.Boolean()
     voicemail_prompt = fields.Text()
     voicemail_enabled = fields.Boolean()
@@ -114,10 +116,10 @@ class CallFlow(models.Model):
                     response.say('Your must configure a default number for caller ID!')
                     return response
             if self.record_calls:
-                dial = Dial(callerId=callerId, action=action_url,
+                dial = Dial(callerId=callerId, action=action_url, timeout=self.ring_timeout,
                         record='record-from-answer-dual', recordingStatusCallback=record_status_url)
             else:
-                dial = Dial(callerId=callerId, action=action_url)
+                dial = Dial(callerId=callerId, action=action_url, timeout=self.ring_timeout)
             for user in self.ring_users:
                 callflows = self.env['connect.user_callflow'].sudo().search(
                     [('callflow_type', 'in', ['sip', 'client']), ('user', '=', user.id)], order='prio')
@@ -173,7 +175,7 @@ class CallFlow(models.Model):
                 edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
                 record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
                 response.pause(length=1)
-                response.say(callflow.voicemail_prompt, language=callflow.language, voice=callflow.voice)
+                callflow.get_voicemail_prompt_message(response)
                 response.record(
                     maxLength=120,
                     finishOnKey='#',

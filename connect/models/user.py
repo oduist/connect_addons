@@ -6,6 +6,7 @@ import logging
 import random
 import re
 import string
+from datetime import timedelta
 from urllib.parse import urljoin
 from odoo import fields, models, api, release
 from odoo.exceptions import ValidationError
@@ -58,6 +59,7 @@ class User(models.Model):
     client_priority = fields.Selection([('1', '1'),('2', '2')], required=True, default='1')
     name = fields.Char(compute='_get_name')
     user = fields.Many2one('res.users', string='Odoo User', domain=[('share', '=', False)])
+    pbx_group_ids = fields.Many2many('connect.pbx_group', string='PBX Groups')
     domain = fields.Many2one('connect.domain', required=True, ondelete='cascade',
                             default=lambda x: x.env['connect.domain'].search([('subdomain', 'not like', 'byoc')], limit=1))
     username = fields.Char(required=True)
@@ -73,8 +75,11 @@ class User(models.Model):
     callerid_number = fields.Many2one('connect.number', ondelete='restrict') # TODO: Remove after 1.0
     outgoing_callerid = fields.Many2one('connect.outgoing_callerid', ondelete='set null',
         domain=['|',('status', '=', 'validated'),('callerid_type', '=', 'number')])
-    whatsapp_sender_id = fields.Many2one('connect.whatsapp_sender', string='WhatsApp Sender', ondelete='set null')
+    whatsapp_sender_id = fields.Many2one('connect.whatsapp_sender', string='WhatsApp Sender', ondelete='set null',
+        domain="[('no_sync', '=', False), ('status', '=', 'ONLINE')]")
     missed_calls_notify = fields.Boolean(default=False, help='Notify user on missed calls.')
+    call_popup_is_enabled = fields.Boolean(default=True, string='Enable Call Notifications', help='Enable notifications for call events')
+    call_popup_is_sticky = fields.Boolean(default=False, string='Sticky Call Notifications', help='Require manual dismissal of call notifications?')
     greeting_message = fields.Char()
     summary_prompt = fields.Char()
     twilio_edge = fields.Selection(selection=SIP_TWILIO_EDGES, required=True, default='roaming')
@@ -338,12 +343,25 @@ class User(models.Model):
             callerId = request.get('Caller')
         return callerId
 
+    def _get_transferring_pbx_user(self, call):
+        """Find the PBX user who is transferring the call (the last user who answered before transfer)."""
+        if call.answered_pbx_user:
+            return call.answered_pbx_user
+        # answered_pbx_user not yet set (finalization hasn't run), find from channels
+        completed_channels = call.channels.filtered(
+            lambda c: c.called_pbx_user and c.status in ('completed', 'in-progress')
+                      and c.called_pbx_user.user not in call.transferred_users
+        )
+        if completed_channels:
+            return completed_channels.sorted('id')[0].called_pbx_user
+        return None
+
     def _get_caller_name(self, request, params):
         caller_user = self.env['connect.user'].get_user_by_uri(request.get('Caller'))
         caller_name = params.get('CallerName', False)
         if caller_user:
             caller_name = caller_user.name
-
+        return caller_name
 
     def render_client(self, response, request, params):
         caller_name = self._get_caller_name(request, params)
@@ -353,6 +371,18 @@ class User(models.Model):
         record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus#e={}'.format(edge))
         status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
         dial_action_url = urljoin(api_url, 'twilio/webhook/connect.user/call_action/{}#e={}'.format(self.id, edge))
+        # For transfer redirects, use dial_complete for completion tracking
+        if params.get('_is_transfer_redirect'):
+            dial_action_url = urljoin(api_url, 'connect/dial_complete#e={}'.format(edge))
+        # For transfers, show the original caller to the transfer recipient
+        channel = self.env['connect.channel'].search([('sid', '=', request.get('CallSid'))])
+        call = channel.call if channel else None
+        if call and call.transferred_users:
+            if call.caller_pbx_user and call.caller_pbx_user.exten:
+                callerId = call.caller_pbx_user.exten.number or callerId
+                caller_name = call.caller_pbx_user.name or caller_name
+            elif call.caller:
+                callerId = call.caller or callerId
         dial_client_kwargs = {'timeout': self.client_ring_timeout, 'callerId': callerId}
         # Check for action callback URL.
         if params.get('dial_action_url'):
@@ -371,8 +401,9 @@ class User(models.Model):
         client.identity(self.get_client_identity())
         if caller_name:
             client.parameter(name='CallerName', value=caller_name)
-        channel = self.env['connect.channel'].search([('sid', '=', request.get('CallSid'))])
-        call = channel.call
+        if not channel:
+            channel = self.env['connect.channel'].search([('sid', '=', request.get('CallSid'))])
+            call = channel.call if channel else None
         if call and call.partner:
             partner_id = call.partner.id
             if not caller_name:
@@ -392,6 +423,16 @@ class User(models.Model):
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
         edge = self.env['connect.settings'].get_param('twilio_edge')
         dial_action_url = urljoin(api_url, 'twilio/webhook/connect.user/call_action/{}#e={}'.format(self.id, edge))
+        # For transfer redirects, use dial_complete for completion tracking
+        if params.get('_is_transfer_redirect'):
+            dial_action_url = urljoin(api_url, 'connect/dial_complete#e={}'.format(edge))
+        # For transfers, use the transferring user's caller ID instead of the original caller
+        channel = self.env['connect.channel'].search([('sid', '=', request.get('CallSid'))])
+        call = channel.call if channel else None
+        if call and call.transferred_users:
+            transferring_user = self._get_transferring_pbx_user(call)
+            if transferring_user:
+                callerId = transferring_user.exten.number or callerId
         record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus#e={}'.format(edge))
         status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
         dial_sip_kwargs = {'timeout': self.sip_ring_timeout, 'callerId': callerId}
@@ -429,6 +470,17 @@ class User(models.Model):
         channel = self.env['connect.channel'].search(
             [('sid', '=', request.get('CallSid'))], order='id desc')
         call = channel.call
+        # TRANSFER DETECTION
+        is_transfer_redirect = self._detect_transfer_redirect(request, params, call)
+        if is_transfer_redirect:
+            original_call = self._find_original_call_for_transfer(request, params)
+            if original_call:
+                if self.user:
+                    original_call.add_transferred_user(self.user)
+                    original_call.store_transfer_context(request.get('CallSid'), self.user)
+        if is_transfer_redirect:
+            params = dict(params)
+            params['_is_transfer_redirect'] = True
         response = VoiceResponse()
         # Check if this is real a call or dialplan view render.
         if call:
@@ -533,29 +585,54 @@ class User(models.Model):
 
     @api.model
     def on_call_action(self, record_id, request):
-        # Was used for VoiceMail. Left for future features.
+        response = VoiceResponse()
         user = self.browse(record_id)
-        call_status = request.get('CallStatus')
-        if not call_status:
-            # VoiceMail
-            call_status = request.get('DialCallStatus')
-        if call_status != 'completed':
-            dialplan = user.render(request)
-            return dialplan
-        else:
-            response = VoiceResponse()
+        
+        if request.get('DialCallStatus') == 'completed':
             response.hangup()
-            return response.to_xml()
+        else:
+            if user.voicemail_enabled:
+                api_url = self.env['connect.settings'].sudo().get_param('api_url')
+                edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
+                record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
+                response.pause(length=1)
+                if user.voicemail_prompt:
+                    personalized_prompt = user.render_voicemail_prompt()
+                    system_voice = self.env['connect.settings'].get_system_voice()
+                    processed_text = self.env['connect.settings'].process_pronunciation(personalized_prompt)
+                    response.say(processed_text, voice=system_voice)
+                else:
+                    generic_prompt = f'{user.name} is not available. Please leave a message.'
+                    system_voice = self.env['connect.settings'].get_system_voice()
+                    processed_text = self.env['connect.settings'].process_pronunciation(generic_prompt)
+                    response.say(processed_text, voice=system_voice)
+                response.record(
+                    maxLength=120,
+                    finishOnKey='#',
+                    playBeep=True,
+                    recordingStatusCallback=record_status_url)
+            else:
+                system_voice = self.env['connect.settings'].get_system_voice()
+                processed_text = self.env['connect.settings'].process_pronunciation('Sorry, there is no voicemail set up. Please try again later. Goodbye!')
+                response.say(processed_text, voice=system_voice)
+                response.pause(length=1)
+                response.hangup()
+        
+        debug(self, pretty_xml(str(response)))
+        return response
 
     def get_greeting_message(self, response):
-        # Override in Elevenlabs module.
         self.ensure_one()
-        response.say(self.greeting_message)
+        system_voice = self.env['connect.settings'].get_system_voice()
+        processed_text = self.env['connect.settings'].process_pronunciation(self.greeting_message)
+        response.say(processed_text, voice=system_voice)
 
     def get_voicemail_prompt(self, response):
         self.ensure_one()
         voicemail_prompt = self.render_voicemail_prompt()
-        response.say(voicemail_prompt)
+        system_voice = self.env['connect.settings'].get_system_voice()
+        processed_text = self.env['connect.settings'].process_pronunciation(voicemail_prompt)
+        response.say(processed_text, voice=system_voice)
 
     def render_voicemail_prompt(self):
         self.ensure_one()
@@ -563,6 +640,48 @@ class User(models.Model):
         environment = jinja2.Environment()
         template = environment.from_string(self.voicemail_prompt)
         return template.render({'user': self})
+
+    def _detect_transfer_redirect(self, request, params, call):
+        call_sid = request.get('CallSid')
+        if not call_sid:
+            return False
+        if call:
+            return False
+        recent_transfers = self.env['connect.call'].search([
+            ('transferred_users', '!=', False),
+            ('create_date', '>=', fields.Datetime.now() - timedelta(minutes=5))
+        ])
+        if recent_transfers:
+            return True
+        return False
+
+    def _find_original_call_for_transfer(self, request, params):
+        call_sid = request.get('CallSid')
+        if self.user:
+            potential_calls = self.env['connect.call'].search([
+                ('transferred_users', 'in', [self.user.id]),
+                ('create_date', '>=', fields.Datetime.now() - timedelta(minutes=5))
+            ])
+            for call in potential_calls:
+                existing_channel = call.channels.filtered(lambda c: c.sid == call_sid)
+                if not existing_channel:
+                    return call
+        recent_calls = self.env['connect.call'].search([
+            ('transferred_users', '!=', False),
+            ('create_date', '>=', fields.Datetime.now() - timedelta(minutes=5)),
+            ('status', 'not in', ['completed', 'failed', 'busy', 'no-answer'])
+        ])
+        for call in recent_calls:
+            transfer_completed = False
+            for user in call.transferred_users:
+                user_channels = call.channels.filtered(lambda c: c.called_user and c.called_user.id == user.id)
+                if user_channels.filtered(lambda c: c.status == 'completed'):
+                    transfer_completed = True
+                    break
+            if not transfer_completed:
+                return call
+        logger.warning(f'Could not find original call for transfer redirect SID {call_sid}')
+        return None
 
     @api.onchange('domain')
     def _restrict_sip_domain_change(self):

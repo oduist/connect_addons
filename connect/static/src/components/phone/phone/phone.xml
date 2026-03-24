@@ -115,11 +115,8 @@
                     <button t-if="state.phone_status === status.accepted" aria-label="DTMF" t-attf-class="flex-item {{ state.isKeypad ? 'active' : '' }}" title="DTMF" t-on-click="_onClickKeypad">
                         <i class="icon-dialpad fa"/>
                     </button>
-<!--                    <button t-if="state.phone_status === status.accepted" aria-label="Transfer" t-attf-class="flex-item{{ state.isTransfer ? ' active' : '' }} {{ state.phone_status === status.accepted ? '' : 'o_hide' }} " title="Transfer" t-on-click="_onClickTransfer">-->
-<!--                        <i class="fa fa-exchange"/>-->
-<!--                    </button>-->
                     <button t-if="state.phone_status === status.accepted" aria-label="Forward" t-attf-class="flex-item {{ state.isForward ? 'active' : '' }}" title="Forward" t-on-click="_onClickForward">
-                        <i class="fa icon-redo2"/>
+                        <i class="fa fa-exchange"/>
                     </button>
                     <button t-if="state.phone_status !== status.accepted" aria-label="Mute Sound" class="flex-item" t-attf-title="{{ state.isSoundMute ? 'Unmute Sound' : 'Mute Sound' }}" t-on-click="_onClickSoundMute">
                         <i t-attf-class="fa {{ state.isSoundMute ? 'icon-volume_off' : 'icon-volume_up'}}"/>

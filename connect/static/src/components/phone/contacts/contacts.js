@@ -118,8 +118,9 @@ export class Contacts extends Component {
             self.orm.searchRead(
                 "res.partner",
                 [
-                    ['phone_mobile_search', '=ilike', `%${self.searchQuery}%`],
+                    '|', ['phone_sanitized', '=ilike', `%${self.searchQuery}%`],
                     ['name', '=ilike', `%${self.searchQuery}%`],
+                    ['phone_sanitized', '!=', false]
                 ],
                 ['id', 'name', 'email', 'phone_sanitized'],
                 {order: 'name asc', limit: 10}
@@ -156,11 +157,12 @@ export class Contacts extends Component {
     }
 
     _onClickMakeTransfer(phoneNumber) {
-        this.bus.trigger('busPhoneMakeTransfer', phoneNumber)
+        this.bus.trigger('busPhoneMakeTransfer', {phoneNumber})
     }
 
     _onClickMakeForward(phoneNumber) {
-        this.bus.trigger('busPhoneMakeForward', phoneNumber.replace('+', ''))
+        const normalized = phoneNumber ? phoneNumber.replace('+', '') : phoneNumber
+        this.bus.trigger('busPhoneMakeForward', {phoneNumber: normalized})
     }
 
     _openPartner(id) {

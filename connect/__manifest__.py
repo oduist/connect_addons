@@ -46,6 +46,7 @@
         "views/callflow.xml",
         "views/channel.xml",
         "views/outgoing_callerid.xml",
+        "views/pbx_group.xml",
         "views/recording.xml",
         "views/number.xml",
         "views/favorite.xml",
@@ -54,6 +55,7 @@
         "views/message_configuration.xml",
         "views/message_content_template.xml",
         "views/whatsapp_sender.xml",
+        "views/versions.xml",
         "views/documentation.xml",
         # Wizard
         "wizard/transfer.xml",

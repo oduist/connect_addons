@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
+import json
 import re
 import urllib.parse
+import logging
 
 from odoo import models, fields, api, release
 from odoo.exceptions import ValidationError
+from elevenlabs import ToolRequestModel
+from elevenlabs.core.api_error import ApiError
+
+logger = logging.getLogger(__name__)
 if release.version_info[0] >= 19:
     from odoo.models import Constraint
 
@@ -11,10 +17,11 @@ if release.version_info[0] >= 19:
 class ElevenlabsAgentTool(models.Model):
     _name = 'connect.elevenlabs_agent_tool'
     _description = 'Elevenlabs Agent Tool'
-    _order = 'name'
+    _order = 'name ASC'
 
     name = fields.Char(required=True)
-    is_enabled = fields.Boolean(default=True, string='Enabled')
+    tool_id = fields.Char()
+    synced = fields.Boolean(default=False, string='Synced to ElevenLabs')
     description = fields.Text(required=True)
     tool_type = fields.Selection(
         [('client', 'Client'), ('webhook', 'Webhook'), ('system', 'System')], default='webhook', required=True)
@@ -24,7 +31,7 @@ class ElevenlabsAgentTool(models.Model):
         [('GET', 'GET'), ('POST', 'POST'), ('PATCH', 'PATCH'), ('PUT', 'PUT'), ('DELETE', 'DELETE')],
         default='POST', required=True)
     params = fields.One2many('connect.agent_tool_params', 'tool', string='Parameters')
-    body_params_description = fields.Char(string='Parameters Description')
+    body_params_description = fields.Text(string='Parameters Description')
     response_timeout_secs = fields.Integer(required=True, default=20, string='Response Timeout')
     param_type = fields.Selection([
         # ('query', 'Query'),
@@ -33,6 +40,12 @@ class ElevenlabsAgentTool(models.Model):
     ], default='body', required=True)
     client_expects_response = fields.Boolean(string='Expects Response',
                                              help='If true, calling this tool should block the conversation until the client responds with some response which is passed to the llm. If false then we will continue the conversation without waiting for the client to respond, this is useful to show content to a user but not block the conversation')
+    disable_interruptions = fields.Boolean(default=False,
+                                           help='If true, user cannot interrupt the agent while this tool is being executed')
+    voicemail_message = fields.Text(string='Voicemail Message',
+                                    help='Message to play when voicemail is detected. Leave empty for no message.')
+    use_out_of_band_dtmf = fields.Boolean(string='Out of Band DTMF', default=False,
+                                          help='Use out-of-band DTMF tones instead of in-band audio tones')
 
     # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
     if release.version_info[0] >= 19:
@@ -72,14 +85,244 @@ class ElevenlabsAgentTool(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        return super().create(vals_list)
+        res = super().create(vals_list)
+        if res.tool_type != 'system' and not self.env.context.get('install_mode'):
+            res._sync_to_elevenlabs()
+        return res
+
+    def compute_agent_tools_config(self):
+        """Compute tool configuration using plain dictionaries (fallback method)"""
+        try:
+            dynamic_variable_placeholders = {}
+            if self.tool_type == 'client':
+                # Build client tool configuration
+                parameters = {}
+                required = []
+
+                for param in self.params:
+                    parameters[param.name] = {
+                        'type': param.data_type,
+                        'description': param.description if param.value_type == 'description' else param.name
+                    }
+                    if param.required:
+                        required.append(param.name)
+
+
+                tool_config = {
+                    'name': self.name,
+                    'description': self.description,
+                    'type': self.tool_type,
+                    'expects_response': self.client_expects_response,
+                    'parameters': {
+                        'type': 'object',
+                        'properties': parameters,
+                        'required': required
+                    } if parameters else {},
+                    'response_timeout_secs': self.response_timeout_secs,
+                }
+
+
+            elif self.tool_type == 'webhook':
+                # Build webhook tool configuration
+                agent_token = self.env['connect.settings'].sudo().get_param('elevenlabs_agent_token')
+                api_schema = {
+                    'method': self.method,
+                    'url': self.get_tool_url(),
+                    'request_headers': {
+                        'x-elevenlabs-agent-token': agent_token,
+                    },
+                }
+
+                # Add request body schema for body parameters
+                if self.param_type == 'body':
+                    properties = {}
+                    required = []
+
+                    if self.params:
+                        for param in self.params:
+                            properties[param.name] = {
+                                'type': param.data_type,
+                            }
+                            if param.value_type == 'dynamic_variable':
+                                properties[param.name].update({'dynamic_variable': param.name})
+                                dynamic_variable_placeholders.update({param.name: "default"})
+                            else:
+                                properties[param.name].update({
+                                    'description': param.description if param.value_type == 'description' else param.name
+                                })
+                            if param.required:
+                                required.append(param.name)
+
+                    request_body_schema = {
+                        'type': 'object',
+                        'properties': properties,
+                        'required': required
+                    }
+                    if self.body_params_description:
+                        request_body_schema['description'] = self.body_params_description
+                    api_schema['request_body_schema'] = request_body_schema
+
+                tool_config = {
+                    'name': self.name,
+                    'description': self.description,
+                    'type': self.tool_type,
+                    'api_schema': api_schema,
+                    'response_timeout_secs': self.response_timeout_secs,
+                    'dynamic_variables': dynamic_variable_placeholders,
+                }
+
+            else:
+                # System tools or other types
+                tool_config = {
+                    'name': self.name,
+                    'description': self.description,
+                    'type': self.tool_type,
+                }
+
+
+            logger.info(f'Dict-based tool config: {json.dumps(tool_config, indent=2)}')
+            return tool_config
+
+        except Exception as e:
+            logger.error(f'Error creating dict-based tool config: {e}')
+            raise ValidationError(f'Failed to create tool configuration: {str(e)}')
+
+    def write(self, vals):
+        """Override write to update tool in ElevenLabs when changed"""
+        result = super().write(vals)
+        if not self.env.context.get('skip_elevenlabs') and not self.env.context.get('install_mode'):
+            for record in self:
+                if record.tool_type == 'system':
+                    record._sync_system_tool_to_agents()
+                elif record.synced and record.tool_id:
+                    try:
+                        record.update_elevenlabs_tool()
+                    except Exception as e:
+                        logger.warning(f'Failed to update ElevenLabs tool {record.name}: {e}')
+        return result
+
+    def _sync_system_tool_to_agents(self):
+        """System tools are part of agent config, sync by updating all agents that use this tool"""
+        agents = self.env['connect.elevenlabs_agent'].search([('tools', 'in', self.id)])
+        for agent in agents:
+            try:
+                agent.update_elevenlabs_agent()
+            except Exception as e:
+                logger.warning(f'Failed to update agent {agent.name} after system tool change: {e}')
+
+    def unlink(self):
+        """Override unlink to delete tool from ElevenLabs"""
+        for record in self:
+            if record.tool_id:
+                try:
+                    record.delete_elevenlabs_tool()
+                except Exception as e:
+                    logger.warning(f'Failed to delete ElevenLabs tool {record.name}: {e}')
+                    # Continue with deletion even if ElevenLabs deletion fails
+
+        return super().unlink()
+
+    def update_elevenlabs_tool(self):
+        """Update tool in ElevenLabs"""
+        if not self.tool_id:
+            return
+
+        client = self.env['connect.settings'].get_elevenlabs_client()
+
+        try:
+            # Try model-based approach first
+            tool_config = self.compute_agent_tools_config()
+
+            response = client.conversational_ai.tools.update(
+                tool_id=self.tool_id,
+                request=ToolRequestModel(tool_config=tool_config)
+            )
+
+            logger.info(f'Successfully updated ElevenLabs tool: {self.name}')
+
+        except ApiError as e:
+            if e.status_code == 404:
+                logger.warning(f'Tool {self.name} not found in ElevenLabs, recreating...')
+                self.with_context(skip_elevenlabs=True).write({'tool_id': False, 'synced': False})
+                self._sync_to_elevenlabs()
+            else:
+                logger.error(f'Error updating ElevenLabs tool {self.name}: {e}')
+                raise ValidationError(f'Failed to update ElevenLabs tool: {str(e)}')
+        except Exception as e:
+            logger.error(f'Error updating ElevenLabs tool {self.name}: {e}')
+            raise ValidationError(f'Failed to update ElevenLabs tool: {str(e)}')
+
+    def delete_elevenlabs_tool(self):
+        """Delete tool from ElevenLabs"""
+        if not self.tool_id:
+            return
+
+        client = self.env['connect.settings'].get_elevenlabs_client()
+
+        try:
+            client.conversational_ai.tools.delete(tool_id=self.tool_id)
+            logger.info(f'Successfully deleted ElevenLabs tool: {self.name}')
+
+        except Exception as e:
+            logger.error(f'Error deleting ElevenLabs tool {self.name}: {e}')
+            raise ValidationError(f'Failed to delete ElevenLabs tool: {str(e)}')
+
+    def _sync_to_elevenlabs(self):
+        """Internal method to sync tool to ElevenLabs"""
+        client = self.env['connect.settings'].get_elevenlabs_client()
+        try:
+            tool_config = self.compute_agent_tools_config()
+            tool = client.conversational_ai.tools.create(
+                request=ToolRequestModel(tool_config=tool_config)
+            )
+            self.write({'tool_id': tool.id, 'synced': True})
+            logger.info(f'Successfully synced tool: {self.name} with ID: {tool.id}')
+        except Exception as e:
+            logger.error(f'Error syncing tool {self.name}: {e}')
+            raise ValidationError(f'Failed to sync ElevenLabs tool: {str(e)}')
+
+    def remove_all_from_elevenlabs(self):
+        """Delete all tools from ElevenLabs and mark all Odoo tools as not synced"""
+        client = self.env['connect.settings'].get_elevenlabs_client()
+        deleted_count = 0
+        failed_tools = []
+        try:
+            response = client.conversational_ai.tools.list()
+            elevenlabs_tools = response.tools if hasattr(response, 'tools') else []
+        except Exception as e:
+            logger.error(f'Failed to fetch tools from ElevenLabs: {e}')
+            raise ValidationError(f'Failed to fetch tools from ElevenLabs: {str(e)}')
+        for tool in elevenlabs_tools:
+            tool_id = tool.id if hasattr(tool, 'id') else tool.get('id')
+            tool_name = tool_id
+            try:
+                client.conversational_ai.tools.delete(tool_id=tool_id)
+                deleted_count += 1
+            except Exception as e:
+                failed_tools.append(f"{tool_name}: {str(e)}")
+                logger.warning(f'Failed to delete ElevenLabs tool {tool_name}: {e}')
+        self.search([]).with_context(skip_elevenlabs=True).write({'synced': False, 'tool_id': False})
+        message = f'Deleted {deleted_count} tool(s) from ElevenLabs'
+        msg_type = 'success'
+        if failed_tools:
+            message += f'. Failed: {", ".join(failed_tools)}'
+            msg_type = 'warning' if deleted_count > 0 else 'danger'
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Remove All Tools',
+                'message': message,
+                'type': msg_type,
+            }
+        }
 
 
 class ElevenlabsAgentToolparams(models.Model):
     _name = 'connect.agent_tool_params'
     _description = 'Elevenlabs Agent Tool Parameters'
 
-    name = fields.Char(name='Identifier')
+    name = fields.Char(string='Identifier')
     data_type = fields.Selection(
         [('string', 'String'), ('boolean', 'Boolean'), ('integer', 'Integer')], default='string', required=True)
     required = fields.Boolean()
@@ -88,7 +331,7 @@ class ElevenlabsAgentToolparams(models.Model):
         default='description', required=True)
     constant_value = fields.Char()
     dynamic_variable = fields.Char()
-    description = fields.Char()
+    description = fields.Text()
     tool = fields.Many2one('connect.elevenlabs_agent_tool')
 
     @api.onchange('name')

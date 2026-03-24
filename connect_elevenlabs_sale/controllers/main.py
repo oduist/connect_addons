@@ -2,6 +2,9 @@
 
 import json
 import logging
+
+from werkzeug.exceptions import Unauthorized
+
 from odoo import http, release
 from odoo.addons.connect_elevenlabs.controllers.main import ConnectElevenlabsController
 
@@ -17,7 +20,8 @@ class ConnectElevenlabsSaleController(ConnectElevenlabsController):
     @http.route('/connect_elevenlabs_sale/create_partner', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
     def create_partner(self):
-        self.check_agent_request()
+        if not self.check_tool_token():
+            raise Unauthorized()
         data = json.loads(http.request.httprequest.get_data(as_text=True))
         logger.info('Agent data: %s', data)
         call = http.request.env['connect.call'].sudo().browse(int(data['call_id']))
@@ -42,7 +46,8 @@ class ConnectElevenlabsSaleController(ConnectElevenlabsController):
     @http.route('/connect_elevenlabs_sale/get_products', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
     def get_products(self):
-        self.check_agent_request()
+        if not self.check_tool_token():
+            raise Unauthorized()
         data = json.loads(http.request.httprequest.get_data(as_text=True))
         logger.info('Agent data: %s', data)
         products = http.request.env['product.template'].sudo().search([])
@@ -61,7 +66,8 @@ class ConnectElevenlabsSaleController(ConnectElevenlabsController):
     @http.route('/connect_elevenlabs_sale/create_order', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
     def create_order(self):
-        self.check_agent_request()
+        if not self.check_tool_token():
+            raise Unauthorized()
         data = json.loads(http.request.httprequest.get_data(as_text=True))
         logger.info('Agent data: %s', data)
         # Create the sale order
@@ -93,7 +99,8 @@ class ConnectElevenlabsSaleController(ConnectElevenlabsController):
     @http.route('/connect_elevenlabs_sale/get_order', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
     def get_order(self):
-        self.check_agent_request()
+        if not self.check_tool_token():
+            raise Unauthorized()
         data = json.loads(http.request.httprequest.get_data(as_text=True))
         logger.info('Agent data: %s', data)
         call = http.request.env['connect.call'].sudo().browse(int(data['call_id']))
@@ -135,8 +142,9 @@ class ConnectElevenlabsSaleController(ConnectElevenlabsController):
     @http.route('/connect_elevenlabs_sale/get_orders', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
     def get_orders(self):
+        if not self.check_tool_token():
+            raise Unauthorized()
         data = json.loads(http.request.httprequest.get_data(as_text=True))
-        self.check_agent_request()
         logger.info('Agent data: %s', data)
         call = http.request.env['connect.call'].sudo().browse(int(data['call_id']))
         if call.direction == 'outgoing':

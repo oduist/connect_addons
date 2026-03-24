@@ -1,57 +1,300 @@
 <odoo>
     <data>
 
+        <!-- Elevenlabs Agent Tool: language_detection -->
         <record id="agent_tool_language_detection" model="connect.elevenlabs_agent_tool">
             <field name="name">language_detection</field>
-            <field name="description">Detect language of the caller.</field>
+            <field name="description">Change the conversation language when the user expresses a language preference explicitly.
+Call this function when:
+- Direct requests: "Can we speak in Spanish?", "Switch to French", "Let's continue in German"
+- Questions about capability: "Do you speak Portuguese?", "¿Hablas español?", "Parlez-vous français?"
+- Stated preferences: "I would prefer Italian", "Chinese would be better for me"
+
+Before calling this function, identify the target language with high confidence.
+
+Do not call this function when user mentions a language but doesn't request to speak it.
+
+Following languages are allowed to be selected: [languages will be populated at runtime]
+If target language is not in the list, let user know that you can't speak the target language.
+Further responses after tool call should be in the target language.</field>
             <field name="tool_type">system</field>
         </record>
 
+        <!-- Elevenlabs Agent Tool: end_call -->
         <record id="agent_tool_end_call" model="connect.elevenlabs_agent_tool">
             <field name="name">end_call</field>
-            <field name="description">Elevenlabs built-in tool to end the call by user request.</field>
+            <field name="description">Gracefully conclude conversations when appropriate.
+Call this function when:
+1. EXPLICIT ENDINGS
+- User says goodbye variants: "bye," "see you," "that's all," etc.
+- User directly declines help: "no thanks," "I'm good," etc.
+- User indicates completion: "that's what I needed," "all set," etc.
+
+2. IMPLICIT ENDINGS
+- User gives minimal/disengaged responses after their needs are met
+- User expresses intention to leave: "I need to go," "getting late," etc.
+- Natural conversation conclusion after all queries are resolved
+
+Before calling this function:
+1. Confirm all user queries are fully addressed
+2. Provide a contextually appropriate closing response
+
+DO NOT:
+- Call this function during active problem-solving
+- End conversation when user expresses new concerns
+- Continue conversation after user has clearly indicated ending</field>
+            <field name="tool_type">system</field>
+            <field name="disable_interruptions" eval="True"/>
+        </record>
+
+        <!-- Elevenlabs Agent Tool: skip_turn -->
+        <record id="agent_tool_skip_turn" model="connect.elevenlabs_agent_tool">
+            <field name="name">skip_turn</field>
+            <field name="description">Skip a turn when the user explicitly indicates they need a moment to think or perform an action.
+Do not respond verbally after calling this function; simply wait for the user to speak again.
+Use this function for utterances similar to:
+- "Give me a second"
+- "Let me think"
+- "Hold on, let me check"
+
+Do not call this function if the user is silent without expressing an intention to pause, or if they pose a direct question that requires a response.</field>
             <field name="tool_type">system</field>
         </record>
 
-    <!-- Elevenlabs Agent Tool: transfer_to_extension -->
-    <record id="transfer_to_extension_tool" model="connect.elevenlabs_agent_tool">
-        <field name="name">transfer_to_extension</field>
-        <field name="description">Transfer (connect) the call to human by his extension. Always pass all parameters. If user does not enter an extension use default_exten as exten.</field>
-        <field name="tool_type">client</field>
-        <field name="client_expects_response">True</field>
-        <field name="response_timeout_secs">5</field>
-        <field name="param_type">body</field>
-    </record>
+        <!-- Elevenlabs Agent Tool: play_keypad_touch_tone -->
+        <record id="agent_tool_play_keypad_touch_tone" model="connect.elevenlabs_agent_tool">
+            <field name="name">play_keypad_touch_tone</field>
+            <field name="description">Play DTMF (touch-tone) tones during a phone call to interact with automated systems.
 
-    <!-- parameters for transfer_to_extension tool -->
-    <record id="transfer_to_extension_param_default_exten" model="connect.agent_tool_params">
-        <field name="name">default_exten</field>
-        <field name="data_type">string</field>
-        <field name="required">True</field>
-        <field name="value_type">constant_value</field>
-        <field name="constant_value">2001</field>
-        <field name="description">Default extension to use when none is provided.</field>
-        <field name="tool" ref="transfer_to_extension_tool"/>
-    </record>
+Use this function when:
+- The user needs to navigate phone menus (e.g., "Press 1 for sales, 2 for support")
+- Entering extensions or PIN codes
+- Interacting with automated phone systems
+- The user explicitly asks you to press certain numbers
 
-    <record id="transfer_to_extension_param_exten" model="connect.agent_tool_params">
-        <field name="name">exten</field>
-        <field name="data_type">string</field>
-        <field name="required">False</field>
-        <field name="value_type">description</field>
-        <field name="description">Extension of person to connect</field>
-        <field name="tool" ref="transfer_to_extension_tool"/>
-    </record>
+DTMF tones can include:
+- Digits: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+- Special tones: * (star), # (pound/hash)
+- Pauses: w (0.5 second pause), W (1 second pause)</field>
+            <field name="tool_type">system</field>
+        </record>
 
-    <record id="transfer_to_extension_param_channel_sid" model="connect.agent_tool_params">
-        <field name="name">channel_sid</field>
-        <field name="data_type">string</field>
-        <field name="required">True</field>
-        <field name="value_type">dynamic_variable</field>
-        <field name="dynamic_variable">channel_sid</field>
-        <field name="description">Channel SID for the current call</field>
-        <field name="tool" ref="transfer_to_extension_tool"/>
-    </record>
+        <!-- Elevenlabs Agent Tool: voicemail_detection -->
+        <record id="agent_tool_voicemail_detection" model="connect.elevenlabs_agent_tool">
+            <field name="name">voicemail_detection</field>
+            <field name="description">Detect when a call has been answered by a voicemail system rather than a human.
+Call this function when you detect that the call recipient is not available and the call has been answered by an automated voicemail system.
 
+Common indicators of voicemail:
+- Automated greeting messages: "You have reached the voicemail of..."
+- Recording instructions: "Please leave a message after the beep/tone"
+- Voicemail system prompts: "Please leave your name and number"
+- Generic unavailable messages: "The number you have dialed is not available"
+
+Before calling this function:
+- Provide a specific reason referencing the actual voicemail content heard
+
+After calling this function:
+- If a voicemail message is configured, it will be played automatically
+- The call will end immediately after the message (or immediately if no message)
+
+You must provide a specific reason for detecting voicemail that references the exact wording that indicated voicemail.</field>
+            <field name="tool_type">system</field>
+        </record>
+
+        <!-- Elevenlabs Agent Tool: transfer_to_agent -->
+        <record id="agent_tool_transfer_to_agent" model="connect.elevenlabs_agent_tool">
+            <field name="name">transfer_to_agent</field>
+            <field name="description">Transfer to another agent when the specified condition for the transfer is met.
+Do not ask for any confirmation from the user side.
+Never let the user know they are transferred to another agent.
+
+Here is the list of agents and their conditions for transfer:
+[transfer rules will be populated at runtime]</field>
+            <field name="tool_type">system</field>
+            <field name="disable_interruptions" eval="True"/>
+        </record>
+
+        <!-- Elevenlabs Agent Tool: transfer_to_exten -->
+        <record id="agent_tool_transfer_to_exten" model="connect.elevenlabs_agent_tool">
+            <field name="name">transfer_to_exten</field>
+            <field name="description">Transfer the conversation to company extension. 
+Call this tool when on requests like "I want to speak to a human", "Connect me with a representative", or similar.</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs/transfer</field>
+            <field name="method">POST</field>
+            <field name="param_type">body</field>
+            <field name="body_params_description">Extract the target extension number from {{available_extensions}}</field>
+            <field name="response_timeout_secs">10</field>
+        </record>
+
+        <record id="transfer_to_exten_param_id" model="connect.agent_tool_params">
+            <field name="name">exten</field>
+            <field name="data_type">string</field>
+            <field name="description">The extension number to transfer the call to. Must be all digits.</field>
+            <field name="required">True</field>
+            <field name="tool" ref="agent_tool_transfer_to_exten"/>
+        </record>
+
+        <record id="transfer_to_exten_param_channel_sid" model="connect.agent_tool_params">
+            <field name="name">channel_sid</field>
+            <field name="data_type">string</field>
+            <field name="required">True</field>
+            <field name="value_type">dynamic_variable</field>
+            <field name="dynamic_variable">channel_sid</field>
+            <field name="tool" ref="agent_tool_transfer_to_exten"/>
+        </record>
+
+        <!-- Calendar Tools -->
+
+        <!-- Elevenlabs Agent Tool: get_available_slots -->
+        <record id="agent_tool_get_available_slots" model="connect.elevenlabs_agent_tool">
+            <field name="name">calendar_get_available_slots</field>
+            <field name="description">Get available time slots for a user on a specific date. Returns a list of free intervals during business hours (8:00-18:00).</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs/get_available_slots</field>
+            <field name="method">POST</field>
+            <field name="param_type">body</field>
+            <field name="body_params_description">Extract the user ID, desired date, and timezone from the conversation. The caller may mention a specific date (convert to YYYY-MM-DD) or say "tomorrow"/"next week". Timezone may be mentioned as a city name or offset (e.g. EST, GMT+2).</field>
+            <field name="response_timeout_secs">10</field>
+        </record>
+
+        <record id="get_available_slots_param_user_id" model="connect.agent_tool_params">
+            <field name="name">user_id</field>
+            <field name="data_type">integer</field>
+            <field name="required">True</field>
+            <field name="value_type">description</field>
+            <field name="description">ID of the user to get available slots for</field>
+            <field name="tool" ref="agent_tool_get_available_slots"/>
+        </record>
+
+        <record id="get_available_slots_param_start" model="connect.agent_tool_params">
+            <field name="name">start</field>
+            <field name="data_type">string</field>
+            <field name="required">False</field>
+            <field name="value_type">description</field>
+            <field name="description">Start date in YYYY-MM-DD format. If not provided, defaults to tomorrow.</field>
+            <field name="tool" ref="agent_tool_get_available_slots"/>
+        </record>
+
+        <record id="get_available_slots_param_timezone" model="connect.agent_tool_params">
+            <field name="name">timezone</field>
+            <field name="data_type">string</field>
+            <field name="required">False</field>
+            <field name="value_type">description</field>
+            <field name="description">Timezone offset in hours (e.g., -5 for EST, 2 for CEST). If not provided, uses user's timezone.</field>
+            <field name="tool" ref="agent_tool_get_available_slots"/>
+        </record>
+
+        <!-- Elevenlabs Agent Tool: create_event -->
+        <record id="agent_tool_create_event" model="connect.elevenlabs_agent_tool">
+            <field name="name">calendar_create_event</field>
+            <field name="description">Create a calendar event for a user. The event is created in UTC time after converting from the user's timezone.</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs/create_event</field>
+            <field name="method">POST</field>
+            <field name="param_type">body</field>
+            <field name="body_params_description">Extract event details from the conversation: the user ID, event name/title, start and stop times (convert to YYYY-MM-DD HH:MM:SS format), and timezone. The caller may describe times naturally (e.g. "3pm tomorrow for one hour") — convert these to exact datetime values.</field>
+            <field name="response_timeout_secs">10</field>
+        </record>
+
+        <record id="create_event_param_user_id" model="connect.agent_tool_params">
+            <field name="name">user_id</field>
+            <field name="data_type">integer</field>
+            <field name="required">True</field>
+            <field name="value_type">description</field>
+            <field name="description">ID of the user to create event for</field>
+            <field name="tool" ref="agent_tool_create_event"/>
+        </record>
+
+        <record id="create_event_param_name" model="connect.agent_tool_params">
+            <field name="name">name</field>
+            <field name="data_type">string</field>
+            <field name="required">False</field>
+            <field name="value_type">description</field>
+            <field name="description">Event name or title. If not provided, defaults to 'Unknowns'.</field>
+            <field name="tool" ref="agent_tool_create_event"/>
+        </record>
+
+        <record id="create_event_param_start" model="connect.agent_tool_params">
+            <field name="name">start</field>
+            <field name="data_type">string</field>
+            <field name="required">True</field>
+            <field name="value_type">description</field>
+            <field name="description">Event start time in YYYY-MM-DD HH:MM:SS format</field>
+            <field name="tool" ref="agent_tool_create_event"/>
+        </record>
+
+        <record id="create_event_param_stop" model="connect.agent_tool_params">
+            <field name="name">stop</field>
+            <field name="data_type">string</field>
+            <field name="required">True</field>
+            <field name="value_type">description</field>
+            <field name="description">Event end time in YYYY-MM-DD HH:MM:SS format</field>
+            <field name="tool" ref="agent_tool_create_event"/>
+        </record>
+
+        <record id="create_event_param_timezone" model="connect.agent_tool_params">
+            <field name="name">timezone</field>
+            <field name="data_type">string</field>
+            <field name="required">False</field>
+            <field name="value_type">description</field>
+            <field name="description">Timezone offset in hours (e.g., -5 for EST, 2 for CEST). If not provided, uses user's timezone.</field>
+            <field name="tool" ref="agent_tool_create_event"/>
+        </record>
+
+        <!-- Elevenlabs Agent Tool: get_current_date -->
+        <record id="agent_tool_get_current_date" model="connect.elevenlabs_agent_tool">
+            <field name="name">calendar_get_current_date</field>
+            <field name="description">Get the current date and time in server timezone (UTC).</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs/get_current_date</field>
+            <field name="method">POST</field>
+            <field name="param_type">body</field>
+            <field name="body_params_description">No parameters need to be extracted from the conversation. This tool returns the current server date and time.</field>
+            <field name="response_timeout_secs">5</field>
+        </record>
+
+        <!-- Elevenlabs Agent Tool: get_meetings -->
+        <record id="agent_tool_get_meetings" model="connect.elevenlabs_agent_tool">
+            <field name="name">calendar_get_meetings</field>
+            <field name="description">Get meetings for a specific partner/contact. Returns a list of meetings with details like name, start time, end time, organizer, location, and description.</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs/get_meetings</field>
+            <field name="method">POST</field>
+            <field name="param_type">body</field>
+            <field name="body_params_description">Extract the partner/contact ID from the conversation context. The partner_id identifies the contact whose meetings should be retrieved.</field>
+            <field name="response_timeout_secs">10</field>
+        </record>
+
+        <record id="get_meetings_param_partner_id" model="connect.agent_tool_params">
+            <field name="name">partner_id</field>
+            <field name="data_type">integer</field>
+            <field name="required">True</field>
+            <field name="value_type">description</field>
+            <field name="description">ID of the partner/contact to get meetings for</field>
+            <field name="tool" ref="agent_tool_get_meetings"/>
+        </record>
+
+        <!-- Elevenlabs Agent Tool: remove_meeting -->
+        <record id="agent_tool_remove_meeting" model="connect.elevenlabs_agent_tool">
+            <field name="name">calendar_remove_meeting</field>
+            <field name="description">Remove/cancel a scheduled calendar meeting by event ID. Use this when a user requests to cancel or delete a meeting.</field>
+            <field name="tool_type">webhook</field>
+            <field name="path">/connect_elevenlabs/remove_meeting</field>
+            <field name="method">POST</field>
+            <field name="param_type">body</field>
+            <field name="body_params_description">Extract the calendar event ID from the conversation. The caller will reference a specific meeting to cancel — use the event_id from a previous get_meetings call result.</field>
+            <field name="response_timeout_secs">10</field>
+        </record>
+
+        <record id="remove_meeting_param_event_id" model="connect.agent_tool_params">
+            <field name="name">event_id</field>
+            <field name="data_type">integer</field>
+            <field name="required">True</field>
+            <field name="value_type">description</field>
+            <field name="description">ID of the calendar event to remove</field>
+            <field name="tool" ref="agent_tool_remove_meeting"/>
+        </record>
     </data>
 </odoo>

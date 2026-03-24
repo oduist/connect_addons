@@ -12,6 +12,8 @@ import json
 import logging
 from urllib.parse import urljoin
 from odoo import fields, models, api, release
+if release.version_info[0] >= 19:
+    from odoo.models import Constraint
 from odoo.exceptions import ValidationError
 from .settings import format_connect_response, debug
 
@@ -43,10 +45,15 @@ class Number(models.Model):
     callflow = fields.Many2one('connect.callflow', ondelete='set null')
     user = fields.Many2one('connect.user', ondelete='set null')
 
-    _sql_constrains = [
-        ('sid_unique', 'UNIQUE(sid)', 'This SID is already used!'),
-        ('phone_number_unique', 'UNIQUE(phone_number)', 'This phone number is already used!'),
-    ]
+    # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
+    if release.version_info[0] >= 19:
+        _sid_unique = Constraint('UNIQUE(sid)', 'This SID is already used!')
+        _phone_number_unique = Constraint('UNIQUE(phone_number)', 'This phone number is already used!')
+    else:
+        _sql_constraints = [
+            ('sid_unique', 'UNIQUE(sid)', 'This SID is already used!'),
+            ('phone_number_unique', 'UNIQUE(phone_number)', 'This phone number is already used!'),
+        ]
 
     def _get_twilio_urls(self):
         api_url = self.env['connect.settings'].get_param('api_url')
@@ -55,13 +62,9 @@ class Number(models.Model):
         for rec in self:
             rec.voice_status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
             rec.voice_url = urljoin(api_url, 'twilio/webhook/number#e={}'.format(edge))
-            if self.env['connect.settings'].get_param('twilio_region') == 'us1':
-                # Messages are supported only in US region.
-                rec.message_url = urljoin(api_url, 'twilio/webhook/message#e={}'.format(edge))
-                rec.message_fallback_url = urljoin(api_url, 'twilio/webhook/message#e={}'.format(edge))
-            else:
-                rec.message_url = ''
-                rec.message_fallback_url = ''
+            # Messages are supported only in US region and don't use edges.
+            rec.message_url = urljoin(api_url, 'twilio/webhook/message')
+            rec.message_fallback_url = ''
             if fallback_url:
                 rec.voice_fallback_url = urljoin(fallback_url, 'twilio/webhook/number#e={}'.format(edge))
             else:
@@ -73,16 +76,25 @@ class Number(models.Model):
             debug(self, 'Ignoring number {} update.'.format(self.phone_number))
             return
         try:
-            # Update phone number configuration
             number = client.incoming_phone_numbers(self.sid)
             number.update(
                 friendly_name=self.friendly_name,
                 voice_url=self.voice_url,
                 voice_fallback_url=self.voice_fallback_url,
-                sms_url=self.message_url,
-                sms_fallback_url=self.message_fallback_url,
                 status_callback=self.voice_status_url
             )
+            region = self.env['connect.settings'].sudo().get_param('twilio_region')
+            if region and region != 'us1':
+                us_client = self.env['connect.settings'].get_client(region=False)
+                us_client.incoming_phone_numbers(self.sid).update(
+                    sms_url=self.message_url,
+                    sms_fallback_url=self.message_fallback_url,
+                )
+            else:
+                number.update(
+                    sms_url=self.message_url,
+                    sms_fallback_url=self.message_fallback_url,
+                )
             debug(self, 'Number {} updated.'.format(self.phone_number))
         except Exception as e:
             logger.exception('Number Update Exception:')
@@ -132,7 +144,7 @@ class Number(models.Model):
         # Additionally, ensure all existing numbers have correct routing region
         if region:
             debug(self, 'Updating routing region to {} for all phone numbers during sync.'.format(region))
-            all_numbers = self.search([('sid', '!=', False)])  # Only numbers with SID (not BYOC)
+            all_numbers = self.search([('sid', '!=', False), ('is_ignored', '=', False)])  # Only numbers with SID (not BYOC), skip ignored
             for rec in all_numbers:
                 try:
                     client.routes.v2.phone_numbers(rec.phone_number).update(voice_region=region)

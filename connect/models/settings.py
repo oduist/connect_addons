@@ -160,12 +160,40 @@ class Settings(models.Model):
     twilio_verify_requests = fields.Boolean(
         default=True, string="Verify Twilio Requests"
     )
-    is_registered = (
-        fields.Boolean()
-    )  # TODO: Remove after upgrades, not needed any more.
-
-    call_duration_limit = fields.Integer(
-        compute="_get_instance_data", string="Call Duration Limit (seconds)"
+    # Registration fields
+    customer_code = fields.Char()
+    registration_number = fields.Char(compute="_get_instance_data")
+    registration_key = fields.Char("API Key", compute="_get_instance_data")
+    is_registered = fields.Boolean()
+    i_agree_to_register = fields.Boolean()
+    i_agree_to_contact = fields.Boolean()
+    i_agree_to_receive = fields.Boolean()
+    installation_date = fields.Datetime(compute="_get_instance_data")
+    module_version = fields.Char(compute="_get_instance_data")
+    odoo_version = fields.Char(compute="_get_instance_data")
+    admin_name = fields.Char()
+    admin_phone = fields.Char(
+        help=’It is required to contact this instance’s administrator in case any critical vulnerabilities are found in the application.’)
+    admin_email = fields.Char(
+        help=’It is required to contact this instance administrator by email in case any non-critical vulnerabilities are found in the application.’)
+    company_name = fields.Char(help=’Company name of this instance.’)
+    company_country = fields.Many2one(‘res.country’,
+                                      help=’We use the company’s country information for statistical tracking of our product installations by country.’)
+    web_base_url = fields.Char(compute="_get_instance_data", string="Odoo URL")
+    call_duration_limit = fields.Integer(compute="_get_instance_data", string="Call Duration Limit (seconds)")
+    latest_versions = fields.Html(readonly=True)
+    # Voice settings
+    system_voice = fields.Selection([
+        (‘Polly.Danielle-Generative’, ‘Danielle Generative (en-US)’),
+        (‘Polly.Joanna-Generative’, ‘Joanna Generative (en-US)’),
+        (‘Polly.Matthew-Generative’, ‘Matthew Generative (en-US)’),
+        (‘Polly.Ruth-Generative’, ‘Ruth Generative (en-US)’),
+        (‘Polly.Stephen-Generative’, ‘Stephen Generative (en-US)’)
+    ], string=’System Voice’, default=’Polly.Ruth-Generative’, required=True,
+       help=’Voice used for all system prompts (callflow messages, voicemail, transfers, etc.)’)
+    pronunciation_rules = fields.Text(
+        string=’Pronunciation Rules’,
+        help=’JSON map of text to pronunciation substitutions (e.g., {"3CHI": "3-chee", "CEO": "C-E-O"})’
     )
 
     def _get_instance_data(self):
@@ -323,6 +351,45 @@ class Settings(models.Model):
         else:
             self.clear_caches()
         return res
+
+    @api.model
+    def get_system_voice(self):
+        """Get the system-wide voice setting for all TwiML say() calls"""
+        voice = self.sudo().get_param('system_voice', 'Polly.Ruth-Generative')
+        return voice
+
+    @api.model
+    def process_pronunciation(self, text):
+        """Process text to apply SSML pronunciation substitutions"""
+        if not text:
+            return text
+
+        try:
+            rules_json = self.sudo().get_param('pronunciation_rules')
+            if not rules_json:
+                return text
+
+            rules = json.loads(rules_json)
+            processed_text = text
+            has_substitutions = False
+
+            for original, pronunciation in rules.items():
+                pattern = re.compile(re.escape(original), re.IGNORECASE)
+                if pattern.search(processed_text):
+                    def replace_func(match):
+                        return f'<sub alias="{pronunciation}">{match.group(0)}</sub>'
+
+                    processed_text = pattern.sub(replace_func, processed_text)
+                    has_substitutions = True
+
+            if has_substitutions:
+                processed_text = f'<speak>{processed_text}</speak>'
+
+            return processed_text
+
+        except (json.JSONDecodeError, Exception) as e:
+            logger.warning(f'Error processing pronunciation rules: {e}')
+            return text
 
     @api.model
     def get_client(self, region=True):

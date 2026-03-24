@@ -29,6 +29,7 @@ class Elevenlabsettings(models.Model):
     elevenlabs_voice = fields.Many2one('connect.elevenlabs_voice', ondelete='set null', string='Selected Voice')
     elevenlabs_enabled = fields.Boolean()
     elevenlabs_agent_url = fields.Char(string='Agent URL', required=True, default='https://elevenlabs-agent.ngrok.io')
+    elevenlabs_agent_parameters = fields.Text(string='Agent Parameters')
     elevenlabs_post_call_webhook_url = fields.Char(compute='_get_post_call_webhook_url')
     display_elevenlabs_post_call_webhook_secret = fields.Char()
     elevenlabs_post_call_webhook_secret = fields.Char(groups="base.group_erp_manager")
@@ -81,14 +82,39 @@ class Elevenlabsettings(models.Model):
         self.set_param('elevenlabs_agent_token', str(uuid.uuid4()))
 
 
+    def elevenlabs_sync_tools(self):
+        """Sync all tools to ElevenLabs (create or update).
+        System tools are excluded — they are managed via agent config (PATCH agent)."""
+        tools = self.env['connect.elevenlabs_agent_tool'].search([('tool_type', '!=', 'system')])
+        for tool in tools:
+            if tool.tool_id:
+                tool.update_elevenlabs_tool()
+            else:
+                tool._sync_to_elevenlabs()
+        self.connect_notify('Tools sync done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)
+
     def elevenlabs_sync(self):
         if not self.env['oduist.license'].check_license('connect_elevenlabs', silent=True):
             return False
         self.elevenlabs_get_voices()
+        self.connect_notify('Voices sync done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)
         self.elevenlabs_reset_token()
+        # Sync tools (create new + update existing with new token)
+        self.elevenlabs_sync_tools()
+
         for agent in self.env['connect.elevenlabs_agent'].search([]):
             agent.update_elevenlabs_agent()
         self.connect_notify('Sync done', title='Elevenlabs Agent', notify_uid=self.env.user.id)
+
+    def elevenlabs_unbind_account(self):
+        """Sync with new ElevenLabs account: clear agent and tool IDs"""
+        # Clear all agent UIDs
+        self.env['connect.elevenlabs_agent'].with_context(skip_elevenlabs=True).search([]).write({'agent_uid': None})
+        # Clear all tool IDs
+        self.env['connect.elevenlabs_agent_tool'].with_context(skip_elevenlabs=True).search([]).write(
+            {'tool_id': None, 'synced': False})
+
+        self.connect_notify('Unbind done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)
 
     def ping_agent(self):
         self.ensure_one()

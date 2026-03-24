@@ -121,5 +121,20 @@ class ConnectController(Controller):
     def message_status_webhook(self, **kw):
         if not self.check_signature(kw, region=False):
             return Response("Twilio request is not valid!", status=500)
+        request.env['connect.message'].with_user(request.env.ref("connect.user_connect_webhook")).update_message_status(kw)
+        return 'OK'
+
+    @route('/twilio/webhook/whatsapp_message_status', methods=['POST'], type='http', auth='public', csrf=False)
+    def whatsapp_message_status_webhook(self, **kw):
+        if not self.check_signature(kw, region=False):
+            return Response("Twilio request is not valid!", status=500)
         request.env['connect.whatsapp_sender'].with_user(request.env.ref("connect.user_connect_webhook")).update_message_status(kw)
         return 'OK'
+
+    @route('/twilio/webhook/transfer_continuation', methods=['POST'], type='http', auth='public', csrf=False)
+    def transfer_continuation_webhook(self, **kw):
+        if not self.check_signature(kw):
+            return '<Response><Say>Invalid Twilio request!</Say></Response>'
+        transfer_wizard = request.env['connect.transfer_wizard'].with_user(request.env.ref("connect.user_connect_webhook"))
+        res = transfer_wizard.handle_transfer_continuation(kw)
+        return f'{res}'
