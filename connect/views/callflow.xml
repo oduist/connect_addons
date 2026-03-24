@@ -21,6 +21,7 @@
                 <field name="name"/>
                 <field name="exten_number" string="Exten"/>
                 <field name="record_calls"/>
+                <field name="ring_contact_manager" string="Contact Manager"/>
             </list>
         </field>
     </record>
@@ -56,12 +57,17 @@
                                     <field name="speech"/>
                                 </list>
                             </field>
+                            <field name="calendar"/>
+                            <field name="off_calendar_callflow" invisible="calendar == False" required="calendar != False" domain="[('id', '!=', id)]"/>
                         </group>
                         <group>
                             <div id="see_more" colspan="2">
                                 <small>See available voices <a target="_new" href="https://www.twilio.com/docs/voice/twiml/say/text-speech#available-voices-and-languages">here</a></small>
                             </div>
                             <field name="voice" placeholder="man"/>
+                            <field name="ring_contact_manager"/>
+                            <field name="ring_contact_manager_timeout" invisible="ring_contact_manager != True"/>
+                            <field name="ring_contact_manager_prompt" invisible="ring_contact_manager != True"/>
                             <field name="ring_users" widget="many2many_tags"/>
                             <field name="record_calls"/>
                             <field name="voicemail_enabled"/>
