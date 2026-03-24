@@ -160,28 +160,9 @@ class Settings(models.Model):
     twilio_verify_requests = fields.Boolean(
         default=True, string="Verify Twilio Requests"
     )
-    # Registration fields
-    customer_code = fields.Char()
-    registration_number = fields.Char(compute="_get_instance_data")
-    registration_key = fields.Char("API Key", compute="_get_instance_data")
-    is_registered = fields.Boolean()
-    i_agree_to_register = fields.Boolean()
-    i_agree_to_contact = fields.Boolean()
-    i_agree_to_receive = fields.Boolean()
-    installation_date = fields.Datetime(compute="_get_instance_data")
-    module_version = fields.Char(compute="_get_instance_data")
-    odoo_version = fields.Char(compute="_get_instance_data")
-    admin_name = fields.Char()
-    admin_phone = fields.Char(
-        help=’It is required to contact this instance’s administrator in case any critical vulnerabilities are found in the application.’)
-    admin_email = fields.Char(
-        help=’It is required to contact this instance administrator by email in case any non-critical vulnerabilities are found in the application.’)
-    company_name = fields.Char(help=’Company name of this instance.’)
-    company_country = fields.Many2one(‘res.country’,
-                                      help=’We use the company’s country information for statistical tracking of our product installations by country.’)
-    web_base_url = fields.Char(compute="_get_instance_data", string="Odoo URL")
-    call_duration_limit = fields.Integer(compute="_get_instance_data", string="Call Duration Limit (seconds)")
-    latest_versions = fields.Html(readonly=True)
+    call_duration_limit = fields.Integer(
+        default=7200, string="Call Duration Limit (seconds)"
+    )
     # Voice settings
     system_voice = fields.Selection([
         (‘Polly.Danielle-Generative’, ‘Danielle Generative (en-US)’),
@@ -212,11 +193,6 @@ class Settings(models.Model):
                 password = generate_password()
                 user.write({'password': password})
             rec.api_url = api_url
-            rec.call_duration_limit = int(
-                self.env["ir.config_parameter"]
-                .sudo()
-                .get_param("connect.call_duration_limit", "7200")
-            )
 
     @api.model
     def connect_notify(
