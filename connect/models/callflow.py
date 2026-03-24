@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import logging
+from datetime import datetime
 from urllib.parse import urljoin
+from pytz import utc
 from odoo import fields, models, api, release
 from twilio.twiml.voice_response import Gather, VoiceResponse, Say, Client, Sip, Dial
 from .twiml import pretty_xml
@@ -47,6 +49,13 @@ class CallFlow(models.Model):
     gather_action_url = fields.Char(compute='_get_gather_action_url')
     ring_users = fields.Many2many('connect.user')
     record_calls = fields.Boolean()
+    ring_contact_manager = fields.Boolean(string='Connect to Manager', default=False)
+    ring_contact_manager_timeout = fields.Integer(string='Connect Timeout', default=15, required=True)
+    ring_contact_manager_prompt = fields.Text(string='Connect Manager Prompt',
+        default='Please wait while I connect you to your account manager...',
+        help='If not set the caller will hear a standard ringing tone.')
+    calendar = fields.Many2one('resource.calendar', string='Calendar')
+    off_calendar_callflow = fields.Many2one('connect.callflow', string='Off Calendar Callflow')
     voicemail_prompt = fields.Text()
     voicemail_enabled = fields.Boolean()
     # fallback_extension
@@ -75,8 +84,29 @@ class CallFlow(models.Model):
             return callflow.render(request=request, params={'invalid_input': True})
         return choice[0].exten.render(request=request)
 
-    def render(self, request={}, params={}):
+    def render(self, request={}, params={}, fallback_effort=0):
         self.ensure_one()
+        # If a calendar is set for this call flow, check if the current time is within business hours.
+        if self.calendar:
+            now_utc = datetime.now(utc)
+            end_time = now_utc.replace(hour=23, minute=59, second=59)
+            intervals = self.calendar.sudo()._work_intervals_batch(now_utc, end_time)[False]
+            is_working_time = any(start <= now_utc < end for start, end, meta in intervals)
+            if not is_working_time:
+                if self.off_calendar_callflow:
+                    debug(self, 'Outside of calendar hours, rendering off-calendar callflow.')
+                    return self.off_calendar_callflow.render(request, params, fallback_effort+1)
+                else:
+                    debug(self, 'Outside of calendar hours, no off-calendar callflow, hanging up.')
+                    response = VoiceResponse()
+                    response.say('Outside of calendar hours! Goodbye!')
+                    response.hangup()
+                    return response
+
+        if self.ring_contact_manager and not params.get('no_ring_contact_manager'):
+            response = self.render_ring_contact_manager(request, params=params)
+            return response
+
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
         edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
         voicemail_record_status_url = urljoin(api_url,
@@ -161,6 +191,39 @@ class CallFlow(models.Model):
 
     def get_voicemail_prompt_message(self, response):
         response.say(self.voicemail_prompt, language=self.language, voice=self.voice)
+
+    def render_ring_contact_manager(self, request, params={}):
+        self.ensure_one()
+        api_url = self.env['connect.settings'].sudo().get_param('api_url')
+        action_url = urljoin(api_url, 'twilio/webhook/connect_callflow_ring_contact_manager_action/{}'.format(self.id))
+        response = VoiceResponse()
+        # Check the partner by number
+        partner = self.env['res.partner'].get_partner_by_number(request['Caller'])
+        params.update({'no_ring_contact_manager': True})
+        if not (partner and partner.user_id):
+            debug(self, 'Contact Manager for number {} not found.'.format(request['Caller']))
+            return self.render(request, params)
+        else:
+            debug(self, 'Found partner {}[{}] for number {}.'.format(partner.name, partner.id, request['Caller']))
+        # Check partner's PBX user.
+        connect_user = partner.user_id.connect_user
+        if not connect_user:
+            debug(self, 'Connect User for Sale Manager {}[{}] is not configured.'.format(
+                partner.user_id.name, partner.user_id.id))
+            return self.render(request, params)
+        # Render connect user
+        debug(self, 'Connect caller to Manager {}[{}].'.format(partner.user_id.name, partner.user_id.id))
+        return connect_user.render(request, params={'dial_action_url': action_url})
+
+    def on_ring_contact_manager_action(self, flow_id, request):
+        if request['DialCallStatus'] != 'completed':
+            debug(self, 'Contact Manager dial status: {}, fallback on the callflow.'.format(request['DialCallStatus']))
+            return self.browse(flow_id).render(request, params={'no_ring_contact_manager': True})
+        else:
+            debug(self, 'Contact Manager successfully answered the call. Hangup.')
+            response = VoiceResponse()
+            response.hangup()
+            return response
 
     @api.model
     def on_call_action(self, flow_id, request):
