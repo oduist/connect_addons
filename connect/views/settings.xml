@@ -86,8 +86,25 @@
                              invisible="transcript_calls == False"/>
                       <field name="register_summary"
                              invisible="transcript_calls == False"/>
+                      <field name="transcript_voice_message" string="Transcribe Voice Messages"/>
+                   </group>
+                    <group string="Transcribe Rules"
+                           invisible="transcript_calls == False">
+                        <field name="transcription_rules" nolabel="1" colspan="2">
+                            <list editable="bottom">
+                                <field name="calling_number"/>
+                                <field name="called_number"/>
+                            </list>
+                        </field>
                     </group>
                   </group>
+                </page>
+                <page name="chatter" string="Chatter" invisible="is_registered == False">
+                    <group>
+                        <group>
+                            <field name="chatter_message_generate_prompt"/>
+                        </group>
+                    </group>
                 </page>
                 <page string="Development" groups="base.group_no_one"
                       invisible="is_registered == False">
