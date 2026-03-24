@@ -165,16 +165,16 @@ class Settings(models.Model):
     )
     # Voice settings
     system_voice = fields.Selection([
-        (‘Polly.Danielle-Generative’, ‘Danielle Generative (en-US)’),
-        (‘Polly.Joanna-Generative’, ‘Joanna Generative (en-US)’),
-        (‘Polly.Matthew-Generative’, ‘Matthew Generative (en-US)’),
-        (‘Polly.Ruth-Generative’, ‘Ruth Generative (en-US)’),
-        (‘Polly.Stephen-Generative’, ‘Stephen Generative (en-US)’)
-    ], string=’System Voice’, default=’Polly.Ruth-Generative’, required=True,
-       help=’Voice used for all system prompts (callflow messages, voicemail, transfers, etc.)’)
+        ('Polly.Danielle-Generative', 'Danielle Generative (en-US)'),
+        ('Polly.Joanna-Generative', 'Joanna Generative (en-US)'),
+        ('Polly.Matthew-Generative', 'Matthew Generative (en-US)'),
+        ('Polly.Ruth-Generative', 'Ruth Generative (en-US)'),
+        ('Polly.Stephen-Generative', 'Stephen Generative (en-US)')
+    ], string='System Voice', default='Polly.Ruth-Generative', required=True,
+       help='Voice used for all system prompts (callflow messages, voicemail, transfers, etc.)')
     pronunciation_rules = fields.Text(
-        string=’Pronunciation Rules’,
-        help=’JSON map of text to pronunciation substitutions (e.g., {"3CHI": "3-chee", "CEO": "C-E-O"})’
+        string='Pronunciation Rules',
+        help='JSON map of text to pronunciation substitutions (e.g., {"3CHI": "3-chee", "CEO": "C-E-O"})'
     )
 
     def _get_instance_data(self):
