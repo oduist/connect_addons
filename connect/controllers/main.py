@@ -2,11 +2,14 @@
 
 import json
 import logging
+import os
+from datetime import timedelta
 
+import openai
 import requests
 from werkzeug.exceptions import NotFound
 
-from odoo import http, release
+from odoo import fields, http, release, tools
 from odoo.api import SUPERUSER_ID
 from odoo.exceptions import UserError
 
@@ -61,3 +64,44 @@ class ConnectController(http.Controller):
             return res
         else:
             raise UserError("Failed to download the media. Status code: %s" % response.status_code)
+
+    @http.route("/connect/ai_completion", type=route_type, auth="user")
+    def ai_completion(self, model, res_id):
+        openai_api_key = http.request.env["connect.settings"].sudo().get_param("openai_api_key")
+        if not openai_api_key:
+            return {"status": "fail", "error_message": "Missing OpenAI API key!"}
+        records = (
+            http.request.env["mail.message"]
+            .sudo()
+            .search([("res_id", "=", res_id), ("model", "=", model)], order="id desc")
+        )
+        data = []
+        for rec in records:
+            if rec.message_type == "notification":
+                continue
+            data.append(f"{rec.author_id.name or 'Anonymous'}: {tools.html2plaintext(rec.body)}")
+        segments = "\n".join(data)
+
+        client = openai.OpenAI(api_key=openai_api_key)
+
+        default_prompt = "Continue the conversation naturally!"
+        prompt = http.request.env["connect.settings"].sudo().get_param("chatter_message_generate_prompt")
+
+        response = client.chat.completions.create(
+            model=os.environ.get("OPENAI_COMPLETION_MODEL", "gpt-4o"),
+            messages=[
+                {"role": "user", "content": f"{prompt or default_prompt} \nOmit dialog name from final message!"},
+                {
+                    "role": "user",
+                    "content": segments,
+                },
+            ],
+            temperature=float(os.environ.get("OPENAI_COMPLETION_TEMPERATURE", 0.5)),
+            max_tokens=int(os.environ.get("OPENAI_COMPLETION_MAX_TOKENS", 4096)),
+            top_p=float(os.environ.get("OPENAI_COMPLETION_TOP_P", 1.0)),
+            frequency_penalty=float(os.environ.get("OPENAI_COMPLETION_FREQUENCY_PENALTY", 0.0)),
+            presence_penalty=float(os.environ.get("OPENAI_COMPLETION_PRESENSE_PENALTY", 0.0)),
+        )
+        logger.info("%s", response.usage)
+        message = response.choices[0].message.content.strip("\n\n")
+        return {"status": "ok", "message": message}
