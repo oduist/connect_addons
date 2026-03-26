@@ -82,6 +82,16 @@
                              attrs="{'invisible': [('transcript_calls', '=', False)]}"/>
                       <field name="register_summary"
                              attrs="{'invisible': [('transcript_calls', '=', False)]}"/>
+                      <field name="transcript_voice_message" string="Transcribe Voice Messages"/>
+                   </group>
+                    <group string="Transcribe Rules"
+                           attrs="{'invisible': [('transcript_calls', '=', False)]}">
+                        <field name="transcription_rules" nolabel="1" colspan="2">
+                            <list editable="bottom">
+                                <field name="calling_number"/>
+                                <field name="called_number"/>
+                            </list>
+                        </field>
                     </group>
                   </group>
                 </page>
