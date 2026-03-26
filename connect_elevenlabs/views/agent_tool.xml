@@ -20,7 +20,7 @@
             <tree>
                 <field name="name"/>
                 <field name="tool_type"/>
-                <field name="is_enabled"/>
+                <field name="synced"/>
             </tree>
         </field>
     </record>
@@ -33,32 +33,46 @@
                 <sheet>
                     <group>
                         <group>
-                            <field name="name"/>
+                            <field name="name"
+                                   attrs="{'readonly': [('tool_type', '=', 'system')]}"/>
                             <field name="description"/>
-                            <field name="tool_type"/>
+                            <field name="tool_type"
+                                   attrs="{'readonly': [('tool_type', '=', 'system')]}"/>
+                            <field name="tool_id" readonly="1"
+                                   attrs="{'invisible': [('tool_type', '=', 'system')]}"
+                                   groups="base.group_no_one"/>
+                            <field name="synced" readonly="1"
+                                   attrs="{'invisible': [('tool_type', '=', 'system')]}"/>
                             <field name="param_type" string="Parameters Type"
                                    attrs="{'invisible': [('tool_type', '!=', 'webhook')]}"/>
                         </group>
                         <group>
-                            <field name="is_enabled"/>
                             <field name="path"
-                                   attrs="{'invisible': [('tool_type', '!=', 'webhook'), ('url', '!=', False)]}"/>
+                                   attrs="{'invisible': [('tool_type', '!=', 'webhook')]}"/>
                             <field name="url"
-                                   attrs="{'invisible': [('tool_type', '!=', 'webhook'), ('path', '!=', False)]}"/>
+                                   attrs="{'invisible': [('tool_type', '!=', 'webhook')]}"/>
                             <field name="method"
                                    attrs="{'invisible': [('tool_type', '!=', 'webhook')]}"/>
                             <field name="client_expects_response"
                                    attrs="{'invisible': [('tool_type', '!=', 'client')]}"/>
-                            <field name="response_timeout_secs"/>
+                            <field name="response_timeout_secs"
+                                   attrs="{'invisible': [('tool_type', '=', 'system')]}"/>
+                            <field name="disable_interruptions"
+                                   attrs="{'invisible': [('tool_type', '!=', 'system')]}"/>
+                            <field name="voicemail_message"
+                                   attrs="{'invisible': [('name', '!=', 'voicemail_detection')]}"/>
+                            <field name="use_out_of_band_dtmf"
+                                   attrs="{'invisible': [('name', '!=', 'play_keypad_touch_tone')]}"/>
                         </group>
                     </group>
                     <group string="Parameters"
                            attrs="{'invisible': [('tool_type', '=', 'system')]}">
                         <field name="body_params_description"
-                                   attrs="{'invisible': ['|', ('param_type', '!=', 'body'), ('tool_type', 'not in', ['webhook','client'])]}"/>
+                               attrs="{'invisible': [('param_type', '!=', 'body')]}"
+                               string="Body Parameters Description"/>
+                        <field name="params" nolabel="1"
+                               attrs="{'invisible': [('tool_type', '=', 'system')]}"/>
                     </group>
-                    <field name="params" nolabel="1"
-                           attrs="{'invisible': [('tool_type', '=', 'system')]}"/>
                 </sheet>
             </form>
         </field>
