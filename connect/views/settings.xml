@@ -87,10 +87,10 @@
                     <group string="Transcribe Rules"
                            invisible="transcript_calls == False">
                         <field name="transcription_rules" nolabel="1" colspan="2">
-                            <list editable="bottom">
+                            <tree editable="bottom">
                                 <field name="calling_number"/>
                                 <field name="called_number"/>
-                            </list>
+                            </tree>
                         </field>
                     </group>
                   </group>
