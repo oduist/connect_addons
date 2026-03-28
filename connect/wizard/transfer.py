@@ -261,8 +261,9 @@ class CallForwardHandler(models.TransientModel):
             else:
                 # External number - use TwiML approach with announcement
                 response = VoiceResponse()
+                system_voice = self.env['connect.settings'].get_system_voice()
                 processed_text = self.env['connect.settings'].process_pronunciation('Transferring your call now.')
-                response.say(processed_text)
+                response.say(processed_text, voice=system_voice)
                 dial = Dial(timeout=30)
                 dial.number(target_number)
                 response.append(dial)
@@ -448,17 +449,19 @@ class CallForwardHandler(models.TransientModel):
         if outgoing_call and outgoing_call.direction == 'outgoing':
             # For outgoing calls, return minimal TwiML and handle via bridge method
             response = VoiceResponse()
+            system_voice = self.env['connect.settings'].get_system_voice()
             processed_text = self.env['connect.settings'].process_pronunciation('Transferring your call now.')
-            response.say(processed_text)
-
+            response.say(processed_text, voice=system_voice)
+            
             twiml_output = str(response)
             return twiml_output
         
         # For incoming calls, use the standard TwiML approach
         response = VoiceResponse()
+        system_voice = self.env['connect.settings'].get_system_voice()
         processed_text = self.env['connect.settings'].process_pronunciation('Transferring your call now.')
-        response.say(processed_text)
-
+        response.say(processed_text, voice=system_voice)
+        
         # Get the base URL for webhook callbacks
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
         edge = self.env['connect.settings'].get_param('twilio_edge')
@@ -481,8 +484,9 @@ class CallForwardHandler(models.TransientModel):
         response.append(dial)
         
         # Critical: Add continuation TwiML that executes AFTER the dial completes
+        system_voice = self.env['connect.settings'].get_system_voice()
         processed_text = self.env['connect.settings'].process_pronunciation('Call could not be completed. Please try again.')
-        response.say(processed_text)
+        response.say(processed_text, voice=system_voice)
         response.hangup()
         
         twiml_output = str(response)
@@ -510,8 +514,9 @@ class CallForwardHandler(models.TransientModel):
                 
                 # Play transfer message to external caller, then redirect
                 transfer_response = VoiceResponse()
+                system_voice = self.env['connect.settings'].get_system_voice()
                 processed_text = self.env['connect.settings'].process_pronunciation('Transferring your call now.')
-                transfer_response.say(processed_text)
+                transfer_response.say(processed_text, voice=system_voice)
                 transfer_response.pause(length=1)
                 transfer_response.redirect(extension_url, method='GET')
                 
@@ -534,8 +539,9 @@ class CallForwardHandler(models.TransientModel):
                 
                 # Play transfer message, then redirect to extension
                 transfer_response = VoiceResponse()
+                system_voice = self.env['connect.settings'].get_system_voice()
                 processed_text = self.env['connect.settings'].process_pronunciation('Transferring your call now.')
-                transfer_response.say(processed_text)
+                transfer_response.say(processed_text, voice=system_voice)
                 transfer_response.pause(length=1)
                 transfer_response.redirect(extension_url, method='GET')
                 
@@ -588,8 +594,9 @@ class CallForwardHandler(models.TransientModel):
     def _create_attended_transfer_twiml(self, user, target_call_sid):
         """Create TwiML for attended transfer"""
         response = VoiceResponse()
+        system_voice = self.env['connect.settings'].get_system_voice()
         processed_text = self.env['connect.settings'].process_pronunciation('Setting up consultation call.')
-        response.say(processed_text)
+        response.say(processed_text, voice=system_voice)
         
         dial = Dial(timeout=30)
         from twilio.twiml.voice_response import Client
