@@ -609,23 +609,20 @@ class User(models.Model):
                 response.pause(length=1)
                 if user.voicemail_prompt:
                     personalized_prompt = user.render_voicemail_prompt()
-                    system_voice = self.env['connect.settings'].get_system_voice()
                     processed_text = self.env['connect.settings'].process_pronunciation(personalized_prompt)
-                    response.say(processed_text, voice=system_voice)
+                    response.say(processed_text)
                 else:
                     generic_prompt = f'{user.name} is not available. Please leave a message.'
-                    system_voice = self.env['connect.settings'].get_system_voice()
                     processed_text = self.env['connect.settings'].process_pronunciation(generic_prompt)
-                    response.say(processed_text, voice=system_voice)
+                    response.say(processed_text)
                 response.record(
                     maxLength=120,
                     finishOnKey='#',
                     playBeep=True,
                     recordingStatusCallback=record_status_url)
             else:
-                system_voice = self.env['connect.settings'].get_system_voice()
                 processed_text = self.env['connect.settings'].process_pronunciation('Sorry, there is no voicemail set up. Please try again later. Goodbye!')
-                response.say(processed_text, voice=system_voice)
+                response.say(processed_text)
                 response.pause(length=1)
                 response.hangup()
         
@@ -634,16 +631,14 @@ class User(models.Model):
 
     def get_greeting_message(self, response):
         self.ensure_one()
-        system_voice = self.env['connect.settings'].get_system_voice()
         processed_text = self.env['connect.settings'].process_pronunciation(self.greeting_message)
-        response.say(processed_text, voice=system_voice)
+        response.say(processed_text)
 
     def get_voicemail_prompt(self, response):
         self.ensure_one()
         voicemail_prompt = self.render_voicemail_prompt()
-        system_voice = self.env['connect.settings'].get_system_voice()
         processed_text = self.env['connect.settings'].process_pronunciation(voicemail_prompt)
-        response.say(processed_text, voice=system_voice)
+        response.say(processed_text)
 
     def render_voicemail_prompt(self):
         self.ensure_one()

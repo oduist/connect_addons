@@ -118,28 +118,23 @@ class ConnectController(http.Controller):
 
                         if pbx_user and pbx_user.voicemail_enabled and pbx_user.voicemail_prompt:
                             personalized_prompt = pbx_user.render_voicemail_prompt()
-                            system_voice = http.request.env['connect.settings'].get_system_voice()
                             processed_text = http.request.env['connect.settings'].process_pronunciation(personalized_prompt)
-                            response.say(processed_text, voice=system_voice)
+                            response.say(processed_text)
                         else:
-                            system_voice = http.request.env['connect.settings'].get_system_voice()
                             processed_text = http.request.env['connect.settings'].process_pronunciation('Please leave a message after the tone.')
-                            response.say(processed_text, voice=system_voice)
+                            response.say(processed_text)
                     else:
                         logger.warning(f'Could not find transfer recipient for personalized voicemail')
-                        system_voice = http.request.env['connect.settings'].get_system_voice()
                         processed_text = http.request.env['connect.settings'].process_pronunciation('Please leave a message after the tone.')
-                        response.say(processed_text, voice=system_voice)
+                        response.say(processed_text)
                 else:
                     logger.warning(f'Could not find original call for personalized voicemail')
-                    system_voice = http.request.env['connect.settings'].get_system_voice()
                     processed_text = http.request.env['connect.settings'].process_pronunciation('Please leave a message after the tone.')
-                    response.say(processed_text, voice=system_voice)
+                    response.say(processed_text)
             except Exception as e:
                 logger.error(f'Error setting up personalized voicemail: {e}')
-                system_voice = http.request.env['connect.settings'].get_system_voice()
                 processed_text = http.request.env['connect.settings'].process_pronunciation('Please leave a message after the tone.')
-                response.say(processed_text, voice=system_voice)
+                response.say(processed_text)
 
             response.record(maxLength=120, finishOnKey='#', playBeep=True)
 
