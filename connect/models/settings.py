@@ -169,12 +169,14 @@ class Settings(models.Model):
     )
     # Voice settings
     system_voice = fields.Selection([
+        ('man', 'Man'),
+        ('woman', 'Woman'),
         ('Polly.Danielle-Generative', 'Danielle Generative (en-US)'),
         ('Polly.Joanna-Generative', 'Joanna Generative (en-US)'),
         ('Polly.Matthew-Generative', 'Matthew Generative (en-US)'),
         ('Polly.Ruth-Generative', 'Ruth Generative (en-US)'),
         ('Polly.Stephen-Generative', 'Stephen Generative (en-US)')
-    ], string='System Voice', default='Polly.Ruth-Generative', required=True,
+    ], string='System Voice', default='man', required=True,
        help='Voice used for all system prompts (callflow messages, voicemail, transfers, etc.)')
     pronunciation_rules = fields.Text(
         string='Pronunciation Rules',
@@ -335,7 +337,7 @@ class Settings(models.Model):
     @api.model
     def get_system_voice(self):
         """Get the system-wide voice setting for all TwiML say() calls"""
-        voice = self.sudo().get_param('system_voice', 'Polly.Ruth-Generative')
+        voice = self.sudo().get_param('system_voice', 'man')
         return voice
 
     @api.model
