@@ -49,6 +49,136 @@ TWILIO_EDGES = [
     ("singapore", "Singapore"),
 ]
 
+SYSTEM_VOICE_CHOICES = [
+    # Basic voices (no SSML support, free)
+    ('man', 'Man (Basic)'),
+    ('woman', 'Woman (Basic)'),
+    # Amazon Polly - Arabic
+    ('Polly.Zeina', 'Zeina (ar)'),
+    ('Polly.Hala-Neural', 'Hala Neural (ar-AE)'),
+    # Amazon Polly - Catalan
+    ('Polly.Arlet-Neural', 'Arlet Neural (ca-ES)'),
+    # Amazon Polly - Chinese
+    ('Polly.Hiujin-Neural', 'Hiujin Neural (yue-CN)'),
+    ('Polly.Zhiyu-Neural', 'Zhiyu Neural (cmn-CN)'),
+    # Amazon Polly - Czech
+    ('Polly.Jitka-Neural', 'Jitka Neural (cs-CZ)'),
+    # Amazon Polly - Danish
+    ('Polly.Sofie-Neural', 'Sofie Neural (da-DK)'),
+    # Amazon Polly - Dutch
+    ('Polly.Laura-Generative', 'Laura Generative (nl-NL)'),
+    ('Polly.Lisa-Generative', 'Lisa Generative (nl-BE)'),
+    # Amazon Polly - English (AU)
+    ('Polly.Olivia-Long-Form', 'Olivia Long-Form (en-AU)'),
+    # Amazon Polly - English (GB)
+    ('Polly.Amy-Generative', 'Amy Generative (en-GB)'),
+    ('Polly.Brian-Neural', 'Brian Neural (en-GB)'),
+    # Amazon Polly - English (IN)
+    ('Polly.Aditi-Generative', 'Aditi Generative (en-IN)'),
+    # Amazon Polly - English (IE)
+    ('Polly.Niamh-Generative', 'Niamh Generative (en-IE)'),
+    # Amazon Polly - English (NZ)
+    ('Polly.Aria-Generative', 'Aria Generative (en-NZ)'),
+    # Amazon Polly - English (SG)
+    ('Polly.Jasmine-Generative', 'Jasmine Generative (en-SG)'),
+    # Amazon Polly - English (ZA)
+    ('Polly.Ayanda-Generative', 'Ayanda Generative (en-ZA)'),
+    # Amazon Polly - English (US)
+    ('Polly.Danielle-Generative', 'Danielle Generative (en-US)'),
+    ('Polly.Gregory-Generative', 'Gregory Generative (en-US)'),
+    ('Polly.Joanna-Generative', 'Joanna Generative (en-US)'),
+    ('Polly.Matthew-Generative', 'Matthew Generative (en-US)'),
+    ('Polly.Ruth-Neural', 'Ruth Neural (en-US)'),
+    ('Polly.Salli-Generative', 'Salli Generative (en-US)'),
+    ('Polly.Stephen-Neural', 'Stephen Neural (en-US)'),
+    # Amazon Polly - English (Welsh)
+    ('Polly.Geraint', 'Geraint (en-WL)'),
+    # Amazon Polly - Finnish
+    ('Polly.Suvi-Neural', 'Suvi Neural (fi-FI)'),
+    # Amazon Polly - French
+    ('Polly.Lea-Generative', 'Léa Generative (fr-FR)'),
+    ('Polly.Remi-Generative', 'Rémi Generative (fr-FR)'),
+    # Amazon Polly - French (Belgian)
+    ('Polly.Isabelle-Generative', 'Isabelle Generative (fr-BE)'),
+    # Amazon Polly - French (Canadian)
+    ('Polly.Gabrielle-Neural', 'Gabrielle Neural (fr-CA)'),
+    ('Polly.Liam-Neural', 'Liam Neural (fr-CA)'),
+    # Amazon Polly - German
+    ('Polly.Vicki-Generative', 'Vicki Generative (de-DE)'),
+    ('Polly.Daniel-Generative', 'Daniel Generative (de-DE)'),
+    # Amazon Polly - German (Austrian)
+    ('Polly.Hannah-Generative', 'Hannah Generative (de-AT)'),
+    # Amazon Polly - German (Swiss)
+    ('Polly.Sabrina-Generative', 'Sabrina Generative (de-CH)'),
+    # Amazon Polly - Hindi (Kajal also supports en-IN)
+    ('Polly.Kajal-Neural', 'Kajal Neural (hi-IN)'),
+    # Amazon Polly - Icelandic
+    ('Polly.Dora-Neural', 'Dóra Neural (is-IS)'),
+    ('Polly.Karl-Neural', 'Karl Neural (is-IS)'),
+    # Amazon Polly - Italian
+    ('Polly.Bianca-Generative', 'Bianca Generative (it-IT)'),
+    ('Polly.Adriano-Neural', 'Adriano Neural (it-IT)'),
+    # Amazon Polly - Japanese
+    ('Polly.Kazuha-Neural', 'Kazuha Neural (ja-JP)'),
+    ('Polly.Tomoko-Neural', 'Tomoko Neural (ja-JP)'),
+    # Amazon Polly - Korean
+    ('Polly.Seoyeon-Generative', 'Seoyeon Generative (ko-KR)'),
+    # Amazon Polly - Norwegian
+    ('Polly.Liv-Neural', 'Liv Neural (nb-NO)'),
+    # Amazon Polly - Polish
+    ('Polly.Ola-Generative', 'Ola Generative (pl-PL)'),
+    # Amazon Polly - Portuguese (BR)
+    ('Polly.Camila-Generative', 'Camila Generative (pt-BR)'),
+    ('Polly.Thiago-Neural', 'Thiago Neural (pt-BR)'),
+    # Amazon Polly - Portuguese (EU)
+    ('Polly.Ines-Neural', 'Inês Neural (pt-PT)'),
+    # Amazon Polly - Romanian
+    ('Polly.Carmen', 'Carmen (ro-RO)'),
+    # Amazon Polly - Russian
+    ('Polly.Tatyana', 'Tatyana (ru-RU)'),
+    ('Polly.Maxim', 'Maxim (ru-RU)'),
+    # Amazon Polly - Spanish (Spain)
+    ('Polly.Lucia-Generative', 'Lucia Generative (es-ES)'),
+    ('Polly.Sergio-Generative', 'Sergio Generative (es-ES)'),
+    # Amazon Polly - Spanish (Mexican)
+    ('Polly.Mia-Generative', 'Mia Generative (es-MX)'),
+    ('Polly.Andres-Generative', 'Andrés Generative (es-MX)'),
+    # Amazon Polly - Spanish (US)
+    ('Polly.Lupe-Generative', 'Lupe Generative (es-US)'),
+    ('Polly.Pedro-Neural', 'Pedro Neural (es-US)'),
+    # Amazon Polly - Swedish
+    ('Polly.Astrid-Neural', 'Astrid Neural (sv-SE)'),
+    # Amazon Polly - Turkish
+    ('Polly.Burcu-Neural', 'Burcu Neural (tr-TR)'),
+    # Amazon Polly - Welsh
+    ('Polly.Gwyneth', 'Gwyneth (cy-GB)'),
+    # Google Chirp3-HD - languages not covered by Polly
+    ('Google.bg-BG-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (bg-BG)'),
+    ('Google.bn-IN-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (bn-IN)'),
+    ('Google.et-EE-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (et-EE)'),
+    ('Google.hr-HR-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (hr-HR)'),
+    # Google Chirp3-HD - popular languages (alternative to Polly)
+    ('Google.en-US-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (en-US)'),
+    ('Google.en-GB-Chirp3-HD-Fenrir', 'Fenrir Chirp3-HD (en-GB)'),
+    ('Google.de-DE-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (de-DE)'),
+    ('Google.fr-FR-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (fr-FR)'),
+    ('Google.es-ES-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (es-ES)'),
+    ('Google.it-IT-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (it-IT)'),
+    ('Google.ja-JP-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (ja-JP)'),
+    ('Google.ko-KR-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (ko-KR)'),
+    ('Google.nl-NL-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (nl-NL)'),
+    ('Google.pl-PL-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (pl-PL)'),
+    ('Google.pt-BR-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (pt-BR)'),
+    ('Google.ru-RU-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (ru-RU)'),
+    ('Google.sv-SE-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (sv-SE)'),
+    ('Google.tr-TR-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (tr-TR)'),
+    ('Google.da-DK-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (da-DK)'),
+    ('Google.fi-FI-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (fi-FI)'),
+    ('Google.nb-NO-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (nb-NO)'),
+    ('Google.yue-HK-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (yue-HK)'),
+    ('Google.cs-CZ-Chirp3-HD-Aoede', 'Aoede Chirp3-HD (cs-CZ)'),
+]
+
 
 def debug(rec, message, level="info"):
     caller_module = inspect.stack()[1][3]
@@ -164,18 +294,11 @@ class Settings(models.Model):
     twilio_verify_requests = fields.Boolean(
         default=True, string="Verify Twilio Requests"
     )
-    is_registered = fields.Boolean()  # TODO: Remove after upgrades
     call_duration_limit = fields.Integer(
         default=7200, string="Call Duration Limit (seconds)"
     )
     # Voice settings
-    system_voice = fields.Selection([
-        ('Polly.Danielle-Generative', 'Danielle Generative (en-US)'),
-        ('Polly.Joanna-Generative', 'Joanna Generative (en-US)'),
-        ('Polly.Matthew-Generative', 'Matthew Generative (en-US)'),
-        ('Polly.Ruth-Generative', 'Ruth Generative (en-US)'),
-        ('Polly.Stephen-Generative', 'Stephen Generative (en-US)')
-    ], string='System Voice', default='Polly.Ruth-Generative', required=True,
+    system_voice = fields.Selection(SYSTEM_VOICE_CHOICES, string='System Voice', default='man', required=True,
        help='Voice used for all system prompts (callflow messages, voicemail, transfers, etc.)')
     pronunciation_rules = fields.Text(
         string='Pronunciation Rules',
@@ -336,7 +459,7 @@ class Settings(models.Model):
     @api.model
     def get_system_voice(self):
         """Get the system-wide voice setting for all TwiML say() calls"""
-        voice = self.sudo().get_param('system_voice', 'Polly.Ruth-Generative')
+        voice = self.sudo().get_param('system_voice', 'man')
         return voice
 
     @api.model
@@ -352,18 +475,22 @@ class Settings(models.Model):
 
             rules = json.loads(rules_json)
             processed_text = text
+            voice = self.get_system_voice()
+            use_ssml = voice not in ('man', 'woman')
             has_substitutions = False
 
             for original, pronunciation in rules.items():
                 pattern = re.compile(re.escape(original), re.IGNORECASE)
                 if pattern.search(processed_text):
-                    def replace_func(match):
-                        return f'<sub alias="{pronunciation}">{match.group(0)}</sub>'
-
-                    processed_text = pattern.sub(replace_func, processed_text)
+                    if use_ssml:
+                        def replace_func(match):
+                            return f'<sub alias="{pronunciation}">{match.group(0)}</sub>'
+                        processed_text = pattern.sub(replace_func, processed_text)
+                    else:
+                        processed_text = pattern.sub(pronunciation, processed_text)
                     has_substitutions = True
 
-            if has_substitutions:
+            if has_substitutions and use_ssml:
                 processed_text = f'<speak>{processed_text}</speak>'
 
             return processed_text

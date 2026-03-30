@@ -313,7 +313,7 @@ class ConnectController(http.Controller):
         except Exception as e:
             logger.error(f'Failed to store external termination context: {e}')
 
-    @http.route("/connect/ai_completion", type=route_type, auth="user")
+    @http.route("/connect/ai_completion", type="json", auth="user")
     def ai_completion(self, model, res_id):
         openai_api_key = http.request.env["connect.settings"].sudo().get_param("openai_api_key")
         if not openai_api_key:
