@@ -69,6 +69,7 @@
                             <field name="ring_contact_manager_timeout" invisible="ring_contact_manager != True"/>
                             <field name="ring_contact_manager_prompt" invisible="ring_contact_manager != True"/>
                             <field name="ring_users" widget="many2many_tags"/>
+                            <field name="ring_timeout"/>
                             <field name="record_calls"/>
                             <field name="voicemail_enabled"/>
                             <field name="voicemail_prompt"

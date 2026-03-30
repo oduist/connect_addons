@@ -48,6 +48,8 @@ class CallFlow(models.Model):
     choices = fields.One2many('connect.callflow_choice', 'callflow')
     gather_action_url = fields.Char(compute='_get_gather_action_url')
     ring_users = fields.Many2many('connect.user')
+    ring_timeout = fields.Integer(string='Ring Timeout', default=30,
+        help='Number of seconds to ring users before timeout. Default is 30 seconds.')
     record_calls = fields.Boolean()
     ring_contact_manager = fields.Boolean(string='Connect to Manager', default=False)
     ring_contact_manager_timeout = fields.Integer(string='Connect Timeout', default=15, required=True)
@@ -144,10 +146,10 @@ class CallFlow(models.Model):
                     response.say('Your must configure a default number for caller ID!')
                     return response
             if self.record_calls:
-                dial = Dial(callerId=callerId, action=action_url,
+                dial = Dial(callerId=callerId, action=action_url, timeout=self.ring_timeout,
                         record='record-from-answer-dual', recordingStatusCallback=record_status_url)
             else:
-                dial = Dial(callerId=callerId, action=action_url)
+                dial = Dial(callerId=callerId, action=action_url, timeout=self.ring_timeout)
             for user in self.ring_users:
                 callflows = self.env['connect.user_callflow'].sudo().search(
                     [('callflow_type', 'in', ['sip', 'client']), ('user', '=', user.id)], order='prio')

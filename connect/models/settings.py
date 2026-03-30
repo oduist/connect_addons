@@ -165,6 +165,9 @@ class Settings(models.Model):
         default=True, string="Verify Twilio Requests"
     )
     is_registered = fields.Boolean()  # TODO: Remove after upgrades
+    call_duration_limit = fields.Integer(
+        default=7200, string="Call Duration Limit (seconds)"
+    )
     # Voice settings
     system_voice = fields.Selection([
         ('Polly.Danielle-Generative', 'Danielle Generative (en-US)'),
@@ -176,11 +179,7 @@ class Settings(models.Model):
        help='Voice used for all system prompts (callflow messages, voicemail, transfers, etc.)')
     pronunciation_rules = fields.Text(
         string='Pronunciation Rules',
-        help='JSON map of text to pronunciation substitutions'
-    )
-
-    call_duration_limit = fields.Integer(
-        compute="_get_instance_data", string="Call Duration Limit (seconds)"
+        help='JSON map of text to pronunciation substitutions (e.g., {"3CHI": "3-chee", "CEO": "C-E-O"})'
     )
 
     def _get_instance_data(self):
@@ -199,11 +198,6 @@ class Settings(models.Model):
                 password = generate_password()
                 user.write({'password': password})
             rec.api_url = api_url
-            rec.call_duration_limit = int(
-                self.env["ir.config_parameter"]
-                .sudo()
-                .get_param("connect.call_duration_limit", "7200")
-            )
 
     @api.model
     def connect_notify(
@@ -338,6 +332,45 @@ class Settings(models.Model):
         else:
             self.clear_caches()
         return res
+
+    @api.model
+    def get_system_voice(self):
+        """Get the system-wide voice setting for all TwiML say() calls"""
+        voice = self.sudo().get_param('system_voice', 'Polly.Ruth-Generative')
+        return voice
+
+    @api.model
+    def process_pronunciation(self, text):
+        """Process text to apply SSML pronunciation substitutions"""
+        if not text:
+            return text
+
+        try:
+            rules_json = self.sudo().get_param('pronunciation_rules')
+            if not rules_json:
+                return text
+
+            rules = json.loads(rules_json)
+            processed_text = text
+            has_substitutions = False
+
+            for original, pronunciation in rules.items():
+                pattern = re.compile(re.escape(original), re.IGNORECASE)
+                if pattern.search(processed_text):
+                    def replace_func(match):
+                        return f'<sub alias="{pronunciation}">{match.group(0)}</sub>'
+
+                    processed_text = pattern.sub(replace_func, processed_text)
+                    has_substitutions = True
+
+            if has_substitutions:
+                processed_text = f'<speak>{processed_text}</speak>'
+
+            return processed_text
+
+        except (json.JSONDecodeError, Exception) as e:
+            logger.warning(f'Error processing pronunciation rules: {e}')
+            return text
 
     @api.model
     def get_client(self, region=True):

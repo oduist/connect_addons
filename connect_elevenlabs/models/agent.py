@@ -216,7 +216,7 @@ class ElevenlabsAgent(models.Model):
 
     def write(self, vals):
         self.env['oduist.license'].check_license('connect_elevenlabs', silent=False)
-        if vals.get("exten"):
+        if vals.get('exten'):
             # Skip all syncing.
             return super().write(vals)
         res = super().write(vals)
@@ -235,6 +235,8 @@ class ElevenlabsAgent(models.Model):
                 )
         if not self.env.context.get("skip_elevenlabs"):
             self.update_elevenlabs_agent()
+            if not self.knowledge_base_note and self.knowledge_base_id:
+                self.delete_elevenlabs_knowledge_base()
         return res
 
     def unlink(self):
