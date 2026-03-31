@@ -62,6 +62,7 @@
                 <page name="calls" string="Calls">
                   <group>
                     <group >
+                      <field name="system_voice"/>
                       <field name="proxy_recordings"/>
                       <small colspan="2">If you disable it remove the HTTP AUTH in Twilio. Read <a target="new" href="https://help.twilio.com/articles/15827821586843">more</a>.</small>
                       <field name="fetch_call_prices"/>
