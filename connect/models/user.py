@@ -446,7 +446,8 @@ class User(models.Model):
                 callerId = transferring_user.exten.number or callerId
         record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus#e={}'.format(edge))
         status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
-        dial_sip_kwargs = {'timeout': self.sip_ring_timeout, 'callerId': callerId}
+        refer_url = urljoin(api_url, 'twilio/webhook/sip_refer#e={}'.format(edge))
+        dial_sip_kwargs = {'timeout': self.sip_ring_timeout, 'callerId': callerId, 'referUrl': refer_url}
         # Check for action callback URL.
         if params.get('dial_action_url'):
             dial_sip_kwargs['action'] = params['dial_action_url']
@@ -574,6 +575,31 @@ class User(models.Model):
         search_fields = ['id', 'name', 'exten_number', 'user']
         user = self.sudo().search_read(domain, search_fields, limit=1, order='exten_number asc')
         return user[0] if user else False
+
+    @api.model
+    def handle_sip_refer(self, request):
+        """Handle SIP REFER webhook from Twilio.
+
+        When a SIP phone initiates a transfer, Twilio sends a webhook with
+        ReferTransferTarget containing the SIP URI of the transfer target.
+        """
+        refer_target = request.get('ReferTransferTarget', '')
+        logger.info('SIP REFER received: ReferTransferTarget=%s, CallSid=%s', refer_target, request.get('CallSid'))
+        # Parse extension from SIP URI: sip:1002@domain.sip.twilio.com
+        # or <sip:1002@domain.sip.twilio.com?Replaces=...>
+        found = re.search(r'sip:([^@]+)@', refer_target)
+        if not found:
+            logger.warning('SIP REFER: could not parse target from %s', refer_target)
+            return '<Response><Say>Transfer target not found.</Say></Response>'
+        target_number = found.group(1)
+        logger.info('SIP REFER: parsed target extension %s', target_number)
+
+        exten = self.env['connect.exten'].sudo().search([('number', '=', target_number)], limit=1)
+        if not exten:
+            logger.warning('SIP REFER: extension %s not found', target_number)
+            return '<Response><Say>Extension not found.</Say></Response>'
+
+        return exten.render(request=request, params={})
 
     @api.model
     def get_user_by_uri(self, userinfo):

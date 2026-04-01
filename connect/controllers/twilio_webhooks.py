@@ -139,6 +139,15 @@ class ConnectController(Controller):
         res = model.on_ring_contact_manager_action(record_id, kw)
         return f'{res}'
 
+    @route('/twilio/webhook/sip_refer', methods=['POST'], type='http', auth='public', csrf=False)
+    def sip_refer_webhook(self, **kw):
+        if not self.check_signature(kw):
+            return '<Response><Say>Invalid Twilio request!</Say></Response>'
+        res = request.env['connect.user'].with_user(
+            request.env.ref("connect.user_connect_webhook")
+        ).handle_sip_refer(kw)
+        return f'{res}'
+
     @route('/twilio/webhook/transfer_continuation', methods=['POST'], type='http', auth='public', csrf=False)
     def transfer_continuation_webhook(self, **kw):
         if not self.check_signature(kw):
