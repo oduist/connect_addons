@@ -108,6 +108,7 @@ class Call(models.Model):
     price_currency = fields.Char(string='Price Currency', readonly=True, default='USD')
     call_sid = fields.Char(string='Twilio Call SID', readonly=True, index=True, help='Twilio CallSid for fetching price information')
     is_price_fetched = fields.Boolean(string='Price Fetched', default=False, readonly=True, index=True, help='Indicates if call price has been fetched from Twilio API')
+    price_fetch_attempts = fields.Integer(string='Price Fetch Attempts', default=0, readonly=True)
     pbx_group_user_ids = fields.Many2many(
         'res.users', 'connect_call_pbx_group_users_rel',
         string='PBX Group Users',
@@ -858,7 +859,7 @@ class Call(models.Model):
             users_changed = current_called_users != new_called_users
             if users_changed or current_status != 'busy':
                 self.register_call(channel, params)
-            # Fetch call price if enabled in settings
+            # Mark call for price fetching by cron (no immediate API call)
             if self.env['connect.settings'].sudo().get_param('fetch_call_prices'):
                 self.save_call_price(channel.call, params)
         else:
@@ -871,10 +872,6 @@ class Call(models.Model):
             else:
                 reason = "channel not ending"
             logger.info(f"Call {channel.call.id}: Finalization deferred - {reason}")
-            # Still fetch call price even when finalization is deferred
-            if params.get('CallStatus') in CALL_END_STATUSES:
-                if self.env['connect.settings'].sudo().get_param('fetch_call_prices'):
-                    self.save_call_price(channel.call, params)
         # Reload call view
         self.env['connect.settings'].connect_reload_view('connect.call')
         if params.get('ErrorCode') and params.get('ErrorCode') not in IGNORE_ERROR_CODES:
@@ -1077,6 +1074,8 @@ class Call(models.Model):
 
         return False
 
+    PRICE_FETCH_MAX_ATTEMPTS = 10
+
     @api.model
     def fetch_call_prices_batch(self):
         """Cron job method to fetch prices for calls that don't have them yet"""
@@ -1084,24 +1083,30 @@ class Call(models.Model):
             debug(self, 'Call price fetching is disabled in settings')
             return
 
-        # Find calls that need price fetching (completed calls without price)
+        # Find calls that need price fetching (completed calls without price,
+        # not exceeding max retry attempts)
         calls_to_fetch = self.search([
             ('is_price_fetched', '=', False),
             ('call_sid', '!=', False),
             ('status', 'in', CALL_END_STATUSES),
-            ('create_date', '>=', fields.Datetime.now() - timedelta(days=30))  # Only last 30 days
+            ('price_fetch_attempts', '<', self.PRICE_FETCH_MAX_ATTEMPTS),
+            ('create_date', '>=', fields.Datetime.now() - timedelta(days=30))
         ])
 
         debug(self, f'Found {len(calls_to_fetch)} calls needing price fetch')
 
         for call in calls_to_fetch:
             try:
+                call.write({'price_fetch_attempts': call.price_fetch_attempts + 1})
                 success = self._fetch_call_price_from_api(call, call.call_sid)
                 if success:
                     call.write({'is_price_fetched': True})
                     debug(self, f'Successfully fetched price for call {call.id}')
                 else:
-                    debug(self, f'Price not yet available for call {call.id}, will retry next time')
+                    if call.price_fetch_attempts >= self.PRICE_FETCH_MAX_ATTEMPTS:
+                        logger.warning(f'Call {call.id}: max price fetch attempts ({self.PRICE_FETCH_MAX_ATTEMPTS}) reached, giving up')
+                    else:
+                        debug(self, f'Price not yet available for call {call.id}, attempt {call.price_fetch_attempts}/{self.PRICE_FETCH_MAX_ATTEMPTS}')
             except Exception as e:
                 logger.error(f'Error fetching price for call {call.id}: {e}')
 
