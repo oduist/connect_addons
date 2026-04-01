@@ -586,7 +586,8 @@ class User(models.Model):
         refer_target = request.get('ReferTransferTarget', '')
         logger.info('SIP REFER received: ReferTransferTarget=%s, CallSid=%s', refer_target, request.get('CallSid'))
         # Parse extension from SIP URI: sip:1002@domain.sip.twilio.com
-        found = re.search(r'^sip:([^@]+)@', refer_target)
+        # or <sip:1002@domain.sip.twilio.com?Replaces=...>
+        found = re.search(r'sip:([^@]+)@', refer_target)
         if not found:
             logger.warning('SIP REFER: could not parse target from %s', refer_target)
             return '<Response><Say>Transfer target not found.</Say></Response>'
