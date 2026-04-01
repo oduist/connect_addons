@@ -53,6 +53,8 @@ class Channel(models.Model):
         ('transfer', 'Transfer'),
         ('external_dial', 'External Dial')
     ], string='Call Source', help='How this channel was created', tracking=True)
+    # SIP Call-ID for matching SIP REFER Replaces header
+    sip_call_id = fields.Char('SIP Call-ID', index=True)
     # Webhook sequence tracking for duplicate filtering
     sequence_number = fields.Integer(string='Sequence Number', default=0, help='Twilio webhook sequence number for duplicate filtering')
     pbx_group_user_ids = fields.Many2many(
@@ -204,6 +206,9 @@ class Channel(models.Model):
                 'call_type': call_type,
                 'sequence_number': sequence_number,
             }
+            # Store SIP Call-ID for attended transfer matching
+            if params.get('SipCallId'):
+                data['sip_call_id'] = params['SipCallId']
             # Check if channel has parent_sid without channel
             if channel.parent_sid:
                 parent_channel = self.search([('sid', '=', channel.parent_sid)])

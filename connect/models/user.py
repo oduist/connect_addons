@@ -582,6 +582,8 @@ class User(models.Model):
 
         When a SIP phone initiates a transfer, Twilio sends a webhook with
         ReferTransferTarget containing the SIP URI of the transfer target.
+        For attended transfers, the Replaces parameter identifies the
+        consultation call that must be terminated.
         """
         refer_target = request.get('ReferTransferTarget', '')
         logger.info('SIP REFER received: ReferTransferTarget=%s, CallSid=%s', refer_target, request.get('CallSid'))
@@ -594,12 +596,43 @@ class User(models.Model):
         target_number = found.group(1)
         logger.info('SIP REFER: parsed target extension %s', target_number)
 
+        # For attended transfers, terminate the consultation call identified
+        # by the Replaces SipCallId so the transferring agent is released.
+        replaces_match = re.search(r'Replaces=([^%;&>]+)', refer_target)
+        if replaces_match:
+            replaces_sip_call_id = replaces_match.group(1)
+            logger.info('SIP REFER: attended transfer, Replaces SipCallId=%s', replaces_sip_call_id)
+            self._terminate_consultation_call(replaces_sip_call_id)
+
         exten = self.env['connect.exten'].sudo().search([('number', '=', target_number)], limit=1)
         if not exten:
             logger.warning('SIP REFER: extension %s not found', target_number)
             return '<Response><Say>Extension not found.</Say></Response>'
 
         return exten.render(request=request, params={})
+
+    @api.model
+    def _terminate_consultation_call(self, sip_call_id):
+        """Terminate the consultation call by its SipCallId.
+
+        During attended transfer, the transferring agent's consultation call
+        must be ended so their SIP phone is released.
+        We find the channel by matching SipCallId stored during creation.
+        """
+        try:
+            channel = self.env['connect.channel'].sudo().search([
+                ('sip_call_id', '=', sip_call_id),
+                ('status', 'not in', ['completed', 'canceled', 'busy', 'no-answer', 'failed']),
+            ], limit=1)
+            if channel:
+                logger.info('SIP REFER: found consultation channel %s (CallSid=%s), terminating',
+                            channel.id, channel.sid)
+                client = self.env['connect.settings'].get_client()
+                client.calls(channel.sid).update(status='completed')
+                return
+            logger.warning('SIP REFER: consultation call with SipCallId=%s not found', sip_call_id)
+        except Exception as e:
+            logger.error('SIP REFER: failed to terminate consultation call: %s', e)
 
     @api.model
     def get_user_by_uri(self, userinfo):
