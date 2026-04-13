@@ -1464,3 +1464,86 @@ class Call(models.Model):
             "transferred_users",
             "call_pattern"
         ]
+
+    PARK_SLOTS = range(701, 711)  # Parking slots 701-710 (Asterisk-style)
+
+    @api.model
+    def park_call(self, request, params):
+        """Park a call into a free parking slot (701-710).
+
+        Called via SIP REFER when agent dials 700.
+        In referUrl context, CallSid = parent call (customer's inbound call).
+        The returned TwiML applies to the customer's call.
+        """
+        self = self.sudo()
+        customer_call_sid = request.get('CallSid')
+        debug(self, 'park_call: CallSid=%s' % customer_call_sid)
+
+        # Find a free parking slot via Twilio REST API
+        client = self.env['connect.settings'].get_client()
+        occupied_slots = set()
+        try:
+            queues = client.queues.list()
+            for q in queues:
+                if q.friendly_name.startswith('park-') and q.current_size > 0:
+                    try:
+                        slot_num = int(q.friendly_name.split('-')[1])
+                        if slot_num in self.PARK_SLOTS:
+                            occupied_slots.add(slot_num)
+                    except (ValueError, IndexError):
+                        pass
+        except Exception as e:
+            logger.error('park_call: Failed to list queues: %s', e)
+
+        free_slot = None
+        for slot in self.PARK_SLOTS:
+            if slot not in occupied_slots:
+                free_slot = slot
+                break
+
+        if not free_slot:
+            response = VoiceResponse()
+            response.say('All parking slots are busy.', language='en-US')
+            return response
+
+        # Find the agent's channel to announce the slot number
+        customer_channel = self.env['connect.channel'].search(
+            [('sid', '=', customer_call_sid)], limit=1)
+        if customer_channel and customer_channel.call:
+            agent_channels = customer_channel.call.channels.filtered(
+                lambda c: c.sid != customer_call_sid and c.status not in CALL_END_STATUSES
+            )
+            if agent_channels:
+                try:
+                    slot_digits = ' '.join(str(free_slot))
+                    announce = VoiceResponse()
+                    announce.say('Parked on %s' % slot_digits, language='en-US')
+                    announce.hangup()
+                    client.calls(agent_channels[0].sid).update(twiml=str(announce))
+                    debug(self, 'park_call: Announced slot %s to agent channel %s' % (
+                        free_slot, agent_channels[0].sid))
+                except Exception as e:
+                    logger.error('park_call: Failed to announce to agent: %s', e)
+
+        # Return TwiML for the customer's call: enqueue into parking slot
+        response = VoiceResponse()
+        response.enqueue('park-%s' % free_slot)
+        debug(self, 'park_call: Parking customer %s in slot %s' % (customer_call_sid, free_slot))
+        return response
+
+    @api.model
+    def unpark_call(self, request, params):
+        """Unpark (retrieve) a call from a parking slot.
+
+        Called when someone dials extension 701-710.
+        params['ExtenNumber'] contains the slot number.
+        """
+        slot = params.get('ExtenNumber', '')
+        debug(self, 'unpark_call: Retrieving from slot %s' % slot)
+
+        response = VoiceResponse()
+        dial = Dial()
+        dial.queue('park-%s' % slot)
+        response.append(dial)
+        response.say('No parked call on this slot.', language='en-US')
+        return response
