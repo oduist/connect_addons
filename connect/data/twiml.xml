@@ -32,7 +32,7 @@
         <field name="code_type">model_method</field>
         <field name="model">connect.call</field>
         <field name="method">park_call</field>
-        <field name="description">Parks the current call into a free parking slot (701-710)</field>
+        <field name="description">Parks the current call into a specific parking slot (*701-*710)</field>
     </record>
 
     <record id="twiml_unpark_call" model="connect.twiml">
@@ -43,8 +43,53 @@
         <field name="description">Retrieves a parked call from the specified parking slot</field>
     </record>
 
-    <record id="exten_park" model="connect.exten">
-        <field name="number">700</field>
+    <record id="exten_park_701" model="connect.exten">
+        <field name="number">*701</field>
+        <field name="model">connect.twiml</field>
+        <field name="res_id" ref="twiml_park_call"/>
+    </record>
+    <record id="exten_park_702" model="connect.exten">
+        <field name="number">*702</field>
+        <field name="model">connect.twiml</field>
+        <field name="res_id" ref="twiml_park_call"/>
+    </record>
+    <record id="exten_park_703" model="connect.exten">
+        <field name="number">*703</field>
+        <field name="model">connect.twiml</field>
+        <field name="res_id" ref="twiml_park_call"/>
+    </record>
+    <record id="exten_park_704" model="connect.exten">
+        <field name="number">*704</field>
+        <field name="model">connect.twiml</field>
+        <field name="res_id" ref="twiml_park_call"/>
+    </record>
+    <record id="exten_park_705" model="connect.exten">
+        <field name="number">*705</field>
+        <field name="model">connect.twiml</field>
+        <field name="res_id" ref="twiml_park_call"/>
+    </record>
+    <record id="exten_park_706" model="connect.exten">
+        <field name="number">*706</field>
+        <field name="model">connect.twiml</field>
+        <field name="res_id" ref="twiml_park_call"/>
+    </record>
+    <record id="exten_park_707" model="connect.exten">
+        <field name="number">*707</field>
+        <field name="model">connect.twiml</field>
+        <field name="res_id" ref="twiml_park_call"/>
+    </record>
+    <record id="exten_park_708" model="connect.exten">
+        <field name="number">*708</field>
+        <field name="model">connect.twiml</field>
+        <field name="res_id" ref="twiml_park_call"/>
+    </record>
+    <record id="exten_park_709" model="connect.exten">
+        <field name="number">*709</field>
+        <field name="model">connect.twiml</field>
+        <field name="res_id" ref="twiml_park_call"/>
+    </record>
+    <record id="exten_park_710" model="connect.exten">
+        <field name="number">*710</field>
         <field name="model">connect.twiml</field>
         <field name="res_id" ref="twiml_park_call"/>
     </record>
