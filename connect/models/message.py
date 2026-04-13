@@ -336,10 +336,10 @@ class ConnectMessage(models.Model):
                                           f"<br/>{message.media_widget}</div>")
 
                         # Post as a comment to notify subscribed followers similar to incoming mail
-                        mt_note = self.env.ref('mail.mt_note').id
+                        mt_comment = self.env.ref('mail.mt_comment').id
                         kwargs = {
                             'body': body,
-                            'subtype_id': mt_note,
+                            'subtype_id': mt_comment,
                             'message_type': message.message_type
                         }
                         if partner:
