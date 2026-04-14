@@ -1471,15 +1471,38 @@ class Call(models.Model):
 
         Called via SIP REFER when agent dials *701-*710.
         The slot number is derived from the extension number (e.g. *701 -> 701).
-        In referUrl context, CallSid = parent call (customer's inbound call).
-        The returned TwiML applies to the customer's call.
+
+        In referUrl context, CallSid = the child call (agent's SIP leg).
+        The returned TwiML applies to the child call.
+        We must redirect the parent call (customer) to Enqueue via REST API
+        and hang up the agent's SIP leg.
         """
         exten = params.get('ExtenNumber', '')
         slot = exten.lstrip('*')
-        debug(self, 'park_call: Parking CallSid=%s on slot %s' % (request.get('CallSid'), slot))
+        call_sid = request.get('CallSid')
+        parent_call_sid = request.get('ParentCallSid')
+        debug(self, 'park_call: CallSid=%s ParentCallSid=%s slot=%s' % (call_sid, parent_call_sid, slot))
 
+        # Redirect the parent call (customer) to the parking queue
+        if parent_call_sid:
+            try:
+                client = self.env['connect.settings'].get_client()
+                enqueue_twiml = VoiceResponse()
+                enqueue_twiml.enqueue('park-%s' % slot)
+                client.calls(parent_call_sid).update(twiml=str(enqueue_twiml))
+                debug(self, 'park_call: Redirected parent %s to park-%s' % (parent_call_sid, slot))
+            except Exception as e:
+                logger.error('park_call: Failed to redirect parent call: %s', e)
+        else:
+            # No parent call — this is a direct call to *701, just enqueue it
+            debug(self, 'park_call: No ParentCallSid, enqueueing CallSid=%s' % call_sid)
+            response = VoiceResponse()
+            response.enqueue('park-%s' % slot)
+            return response
+
+        # Hang up the agent's SIP leg
         response = VoiceResponse()
-        response.enqueue('park-%s' % slot)
+        response.hangup()
         return response
 
     @api.model
