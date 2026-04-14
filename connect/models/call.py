@@ -1464,3 +1464,37 @@ class Call(models.Model):
             "transferred_users",
             "call_pattern"
         ]
+
+    @api.model
+    def park_call(self, request, params):
+        """Park a call into a specific parking slot.
+
+        Called via SIP REFER when agent dials *701-*710.
+        The slot number is derived from the extension number (e.g. *701 -> 701).
+        In referUrl context, CallSid = parent call (customer's inbound call).
+        The returned TwiML applies to the customer's call.
+        """
+        exten = params.get('ExtenNumber', '')
+        slot = exten.lstrip('*')
+        debug(self, 'park_call: Parking CallSid=%s on slot %s' % (request.get('CallSid'), slot))
+
+        response = VoiceResponse()
+        response.enqueue('park-%s' % slot)
+        return response
+
+    @api.model
+    def unpark_call(self, request, params):
+        """Unpark (retrieve) a call from a parking slot.
+
+        Called when someone dials extension 701-710.
+        params['ExtenNumber'] contains the slot number.
+        """
+        slot = params.get('ExtenNumber', '')
+        debug(self, 'unpark_call: Retrieving from slot %s' % slot)
+
+        response = VoiceResponse()
+        dial = Dial(timeout=1)
+        dial.queue('park-%s' % slot)
+        response.append(dial)
+        response.say('No parked call on this slot.', language='en-US')
+        return response
