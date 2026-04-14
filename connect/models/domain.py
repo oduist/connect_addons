@@ -542,7 +542,7 @@ class Domain(models.Model):
             matching_extensions = all_extensions.filtered(
                 lambda x: re.match(
                     r"^{}$".format(
-                        "\\" + x.number if x.number.startswith("+") else x.number
+                        "\\" + x.number if x.number.startswith(("+", "*")) else x.number
                     ),
                     found_num,
                 )
