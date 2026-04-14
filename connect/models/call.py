@@ -1496,5 +1496,4 @@ class Call(models.Model):
         dial = Dial(timeout=1)
         dial.queue('park-%s' % slot)
         response.append(dial)
-        response.say('No parked call on this slot.', language='en-US')
         return response
