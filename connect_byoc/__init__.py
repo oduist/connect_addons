@@ -1,7 +1,8 @@
 from . import models
 
 import logging
-from odoo import fields, api, SUPERUSER_ID
+from odoo import fields, api
+from odoo.api import SUPERUSER_ID
 
 _logger = logging.getLogger(__name__)
 def post_init_hook(*args):
