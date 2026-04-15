@@ -25,7 +25,7 @@
                 </sheet>
                 <footer>
                     <button string="Proceed to Checkout" type="object"
-                            name="action_proceed" class="btn-primary oe_highlight"/>
+                            name="action_proceed" class="btn-primary oe_highlight" close="1"/>
                     <button string="Cancel" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
