@@ -61,6 +61,7 @@
         "wizard/sms_composer_views.xml",
         "wizard/whatsapp_composer_views.xml",
         "wizard/originate_to_wizard_views.xml",
+        "wizard/purchase_confirm_views.xml",
     ],
     "demo": [],
     "installable": True,
