@@ -116,6 +116,7 @@ class CallFlow(models.Model):
         status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
         action_url = urljoin(api_url, 'twilio/webhook/connect.callflow/call_action/{}#e={}'.format(self.id, edge))
         record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus#e={}'.format(edge))
+        refer_url = urljoin(api_url, 'twilio/webhook/sip_refer#e={}'.format(edge))
         invalid_input = params.get('invalid_input')
         response = VoiceResponse()
         if invalid_input:
@@ -147,9 +148,11 @@ class CallFlow(models.Model):
                     return response
             if self.record_calls:
                 dial = Dial(callerId=callerId, action=action_url, timeout=self.ring_timeout,
-                        record='record-from-answer-dual', recordingStatusCallback=record_status_url)
+                        record='record-from-answer-dual', recordingStatusCallback=record_status_url,
+                        referUrl=refer_url)
             else:
-                dial = Dial(callerId=callerId, action=action_url, timeout=self.ring_timeout)
+                dial = Dial(callerId=callerId, action=action_url, timeout=self.ring_timeout,
+                        referUrl=refer_url)
             for user in self.ring_users:
                 callflows = self.env['connect.user_callflow'].sudo().search(
                     [('callflow_type', 'in', ['sip', 'client']), ('user', '=', user.id)], order='prio')
