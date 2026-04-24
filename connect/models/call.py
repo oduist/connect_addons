@@ -1481,6 +1481,18 @@ class Call(models.Model):
         slot = exten.lstrip('*')
         call_sid = request.get('CallSid')
         parent_call_sid = request.get('ParentCallSid')
+        # Twilio omits ParentCallSid for SIP REFER fired from a Dial inside a
+        # callflow path. Fall back to our channel records, where the parent
+        # relation is stored from prior status webhooks.
+        if not parent_call_sid and call_sid:
+            channel = self.env['connect.channel'].sudo().search(
+                [('sid', '=', call_sid)], limit=1)
+            root = channel
+            while root.parent_channel:
+                root = root.parent_channel
+            if root and root.sid and root.sid != call_sid:
+                parent_call_sid = root.sid
+                debug(self, 'park_call: resolved parent via channel: %s' % parent_call_sid)
         debug(self, 'park_call: CallSid=%s ParentCallSid=%s slot=%s' % (call_sid, parent_call_sid, slot))
 
         # Redirect the parent call (customer) to the parking queue
