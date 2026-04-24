@@ -1482,17 +1482,24 @@ class Call(models.Model):
         call_sid = request.get('CallSid')
         parent_call_sid = request.get('ParentCallSid')
         # Twilio omits ParentCallSid for SIP REFER fired from a Dial inside a
-        # callflow path. Fall back to our channel records, where the parent
-        # relation is stored from prior status webhooks.
+        # callflow path. Resolve it via REST API (always knows the parent leg);
+        # fall back to our channel records if the API call fails.
         if not parent_call_sid and call_sid:
-            channel = self.env['connect.channel'].sudo().search(
-                [('sid', '=', call_sid)], limit=1)
-            root = channel
-            while root.parent_channel:
-                root = root.parent_channel
-            if root and root.sid and root.sid != call_sid:
-                parent_call_sid = root.sid
-                debug(self, 'park_call: resolved parent via channel: %s' % parent_call_sid)
+            try:
+                client = self.env['connect.settings'].get_client()
+                parent_call_sid = client.calls(call_sid).fetch().parent_call_sid
+                debug(self, 'park_call: resolved parent via Twilio API: %s' % parent_call_sid)
+            except Exception as e:
+                logger.warning('park_call: Twilio API parent lookup failed: %s', e)
+            if not parent_call_sid:
+                channel = self.env['connect.channel'].sudo().search(
+                    [('sid', '=', call_sid)], limit=1)
+                root = channel
+                while root.parent_channel:
+                    root = root.parent_channel
+                if root and root.sid and root.sid != call_sid:
+                    parent_call_sid = root.sid
+                    debug(self, 'park_call: resolved parent via channel: %s' % parent_call_sid)
         debug(self, 'park_call: CallSid=%s ParentCallSid=%s slot=%s' % (call_sid, parent_call_sid, slot))
 
         # Redirect the parent call (customer) to the parking queue
