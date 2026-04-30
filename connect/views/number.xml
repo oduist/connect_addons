@@ -58,6 +58,7 @@
                             </group>
                             <group>
                                 <field name="is_ignored"/>
+                                <field name="sip_trunk"/>
                             </group>
                         </group>
                 </sheet>

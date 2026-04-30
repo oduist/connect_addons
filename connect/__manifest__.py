@@ -49,6 +49,7 @@
         "views/pbx_group.xml",
         "views/recording.xml",
         "views/number.xml",
+        "views/sip_trunk.xml",
         "views/favorite.xml",
         "views/res_partner.xml",
         "views/message.xml",

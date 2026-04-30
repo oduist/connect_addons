@@ -44,6 +44,9 @@ class Number(models.Model):
     ], ondelete='set null')
     callflow = fields.Many2one('connect.callflow', ondelete='set null')
     user = fields.Many2one('connect.user', ondelete='set null')
+    sip_trunk = fields.Many2one(
+        'connect.sip_trunk', string='SIP Trunk', ondelete='set null',
+        help='Twilio Elastic SIP Trunk this number is attached to.')
 
     # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
     if release.version_info[0] >= 19:
@@ -105,6 +108,9 @@ class Number(models.Model):
             for field in ['user', 'callflow', 'twiml']:
                 if field != vals['destination']:
                     vals.update({field: None})
+        # Snapshot previous trunk to detect (un)assignment after super().write.
+        trunk_changed = 'sip_trunk' in vals
+        prev_trunks = {rec.id: rec.sip_trunk for rec in self} if trunk_changed else {}
         res = super().write(vals)
         # Check if twilio_auto_sync is disabled
         if not self.env["connect.settings"].get_param("twilio_auto_sync"):
@@ -114,7 +120,35 @@ class Number(models.Model):
         for rec in self:
             if not self.env.context.get('skip_twilio_sync'):
                 rec.update_twilio_number(client)
+                if trunk_changed:
+                    rec._sync_sip_trunk_membership(client, prev_trunks.get(rec.id))
         return res
+
+    def _sync_sip_trunk_membership(self, client, previous_trunk):
+        """Attach/detach this number on the Twilio Elastic SIP Trunk."""
+        self.ensure_one()
+        if not self.sid:
+            return
+        # Detach from previous trunk
+        if previous_trunk and previous_trunk.sid and previous_trunk != self.sip_trunk:
+            try:
+                client.trunking.v1.trunks(
+                    previous_trunk.sid).phone_numbers(self.sid).delete()
+            except Exception as e:
+                if 'not found' not in str(e).lower():
+                    logger.warning('Detach number %s from trunk %s: %s',
+                                   self.phone_number, previous_trunk.sid, e)
+        # Attach to new trunk (only if it actually changed)
+        if (self.sip_trunk and self.sip_trunk.sid
+                and previous_trunk != self.sip_trunk):
+            try:
+                client.trunking.v1.trunks(
+                    self.sip_trunk.sid).phone_numbers.create(
+                        phone_number_sid=self.sid)
+            except Exception as e:
+                if 'already' not in str(e).lower():
+                    logger.warning('Attach number %s to trunk %s: %s',
+                                   self.phone_number, self.sip_trunk.sid, e)
 
     @api.model
     def sync(self):
