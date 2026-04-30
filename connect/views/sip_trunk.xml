@@ -20,8 +20,8 @@
             <list>
                 <field name="friendly_name"/>
                 <field name="domain_name"/>
-                <field name="auth_type"/>
                 <field name="transfer_mode"/>
+                <field name="recording_mode"/>
                 <field name="number_count" string="Numbers"/>
             </list>
         </field>
@@ -52,22 +52,41 @@
                             <field name="domain_name"
                                    placeholder="auto-generated, e.g. mycorp.pstn.twilio.com"/>
                             <field name="secure"/>
-                            <field name="auth_type"/>
-                        </group>
-                        <group string="Behaviour">
-                            <field name="transfer_mode"/>
-                            <field name="recording_mode"/>
                             <field name="cnam_lookup_enabled"/>
                         </group>
-                    </group>
-                    <group string="Disaster Recovery">
-                        <field name="disaster_recovery_url"
-                               placeholder="https://your-fallback.example.com/twiml"/>
-                        <field name="disaster_recovery_method"/>
+                        <group string="Call Behaviour">
+                            <field name="transfer_mode"/>
+                            <field name="transfer_caller_id"/>
+                            <field name="recording_mode"/>
+                            <field name="recording_trim"
+                                   invisible="recording_mode == 'do-not-record'"/>
+                        </group>
                     </group>
                     <notebook>
-                        <page string="Credentials"
-                              invisible="auth_type != 'credentials'">
+                        <page string="Origination URLs">
+                            <p class="text-muted">
+                                Where Twilio sends inbound PSTN calls
+                                destined for numbers on this trunk. Lower
+                                priority wins; weight load-shares within
+                                the same priority.
+                            </p>
+                            <field name="origination_url_ids"
+                                   invisible="id == False">
+                                <list editable="bottom">
+                                    <field name="friendly_name"/>
+                                    <field name="sip_url"
+                                           placeholder="sip:pbx.example.com:5060"/>
+                                    <field name="priority"/>
+                                    <field name="weight"/>
+                                    <field name="enabled"/>
+                                    <field name="origination_url_sid" readonly="1"/>
+                                </list>
+                            </field>
+                            <p class="text-muted" invisible="id != False">
+                                Save the trunk first, then add origination URLs.
+                            </p>
+                        </page>
+                        <page string="Credentials">
                             <field name="credential_ids"
                                    invisible="id == False">
                                 <list editable="bottom">
@@ -80,8 +99,7 @@
                                 Save the trunk first, then add credentials.
                             </p>
                         </page>
-                        <page string="IP Access Control"
-                              invisible="auth_type != 'ip_acl'">
+                        <page string="IP Access Control">
                             <field name="ip_acl_ids"
                                    invisible="id == False">
                                 <list editable="bottom">
@@ -93,6 +111,13 @@
                             <p class="text-muted" invisible="id != False">
                                 Save the trunk first, then add IP entries.
                             </p>
+                        </page>
+                        <page string="Disaster Recovery">
+                            <group>
+                                <field name="disaster_recovery_url"
+                                       placeholder="https://your-fallback.example.com/twiml"/>
+                                <field name="disaster_recovery_method"/>
+                            </group>
                         </page>
                         <page string="Numbers" invisible="id == False">
                             <field name="number_ids" readonly="1">

@@ -36,9 +36,14 @@ RECORDING_MODE = [
     ('record-from-answer-dual', 'Record from answer (dual)'),
 ]
 
-AUTH_TYPE = [
-    ('credentials', 'SIP Credentials'),
-    ('ip_acl', 'IP Access Control List'),
+RECORDING_TRIM = [
+    ('trim-silence', 'Trim silence'),
+    ('do-not-trim', 'Do not trim'),
+]
+
+TRANSFER_CALLER_ID = [
+    ('from-transferee', 'From Transferee'),
+    ('from-transferor', 'From Transferor'),
 ]
 
 DR_METHOD = [
@@ -64,10 +69,14 @@ class SipTrunk(models.Model):
     cnam_lookup_enabled = fields.Boolean('CNAM Lookup', default=False)
     transfer_mode = fields.Selection(
         TRANSFER_MODE, string='Call Transfer', default='disable-all')
+    transfer_caller_id = fields.Selection(
+        TRANSFER_CALLER_ID, string='Transfer Caller ID',
+        default='from-transferee',
+        help='Whose CallerID to present after a SIP REFER transfer.')
     recording_mode = fields.Selection(
         RECORDING_MODE, string='Recording', default='do-not-record')
-    auth_type = fields.Selection(
-        AUTH_TYPE, string='Authentication', default='credentials')
+    recording_trim = fields.Selection(
+        RECORDING_TRIM, string='Recording Trim', default='do-not-trim')
     disaster_recovery_url = fields.Char('Disaster Recovery URL')
     disaster_recovery_method = fields.Selection(
         DR_METHOD, string='DR Method', default='POST')
@@ -76,6 +85,9 @@ class SipTrunk(models.Model):
         'connect.sip_trunk_credential', 'sip_trunk', string='SIP Credentials')
     ip_acl_ids = fields.One2many(
         'connect.sip_trunk_ip_acl', 'sip_trunk', string='IP ACL')
+    origination_url_ids = fields.One2many(
+        'connect.sip_trunk_origination_url', 'sip_trunk',
+        string='Origination URLs')
     number_ids = fields.One2many(
         'connect.number', 'sip_trunk', string='Phone Numbers')
     number_count = fields.Integer(compute='_compute_number_count')
@@ -131,6 +143,8 @@ class SipTrunk(models.Model):
                     secure=rec.secure,
                     cnam_lookup_enabled=rec.cnam_lookup_enabled,
                     transfer_mode=rec.transfer_mode,
+                    transfer_caller_id=rec.transfer_caller_id,
+                    recording=rec._build_recording_payload(),
                     disaster_recovery_url=rec.disaster_recovery_url or None,
                     disaster_recovery_method=rec.disaster_recovery_method,
                 )
@@ -141,13 +155,22 @@ class SipTrunk(models.Model):
             debug(self, 'SIP Trunk {} created in Twilio.'.format(rec.friendly_name))
         return recs
 
+    def _build_recording_payload(self):
+        self.ensure_one()
+        return {
+            'mode': self.recording_mode or 'do-not-record',
+            'trim': self.recording_trim or 'do-not-trim',
+        }
+
     def write(self, vals):
         res = super().write(vals)
         if self.env.context.get('skip_twilio_sync'):
             return res
         twilio_fields = {
             'friendly_name', 'domain_name', 'secure', 'cnam_lookup_enabled',
-            'transfer_mode', 'disaster_recovery_url', 'disaster_recovery_method',
+            'transfer_mode', 'transfer_caller_id', 'recording_mode',
+            'recording_trim', 'disaster_recovery_url',
+            'disaster_recovery_method',
         }
         if not (twilio_fields & set(vals.keys())):
             return res
@@ -162,6 +185,8 @@ class SipTrunk(models.Model):
                     secure=rec.secure,
                     cnam_lookup_enabled=rec.cnam_lookup_enabled,
                     transfer_mode=rec.transfer_mode,
+                    transfer_caller_id=rec.transfer_caller_id,
+                    recording=rec._build_recording_payload(),
                     disaster_recovery_url=rec.disaster_recovery_url or None,
                     disaster_recovery_method=rec.disaster_recovery_method,
                 )
@@ -316,9 +341,29 @@ class SipTrunk(models.Model):
             'context': {'default_sip_trunk': self.id},
         }
 
+    @staticmethod
+    def _read_recording(twilio_trunk):
+        """Extract (mode, trim) from a Twilio Trunk recording attribute.
+
+        Twilio returns recording as a dict, but defensively handle obj-style.
+        """
+        rec = getattr(twilio_trunk, 'recording', None) or {}
+        if hasattr(rec, 'get'):
+            mode = rec.get('mode')
+            trim = rec.get('trim')
+        else:
+            mode = getattr(rec, 'mode', None)
+            trim = getattr(rec, 'trim', None)
+        return mode or 'do-not-record', trim or 'do-not-trim'
+
     @api.model
     def sync(self):
-        """Pull SIP trunks from Twilio into Odoo (mirror)."""
+        """Pull SIP trunks from Twilio into Odoo (mirror).
+
+        Mirrors the trunk and its sub-resources: origination URLs and
+        attached phone numbers. Credentials and IP ACL contents are not
+        pulled here — they are managed from Odoo.
+        """
         if not self.env['connect.settings'].sudo().get_param('twilio_auto_sync'):
             return False
         try:
@@ -331,20 +376,28 @@ class SipTrunk(models.Model):
         for tr in twilio_trunks:
             seen_sids.add(tr.sid)
             rec = self.search([('sid', '=', tr.sid)])
+            rec_mode, rec_trim = self._read_recording(tr)
             vals = {
                 'friendly_name': tr.friendly_name or tr.sid,
                 'domain_name': tr.domain_name or '',
                 'secure': bool(tr.secure),
                 'cnam_lookup_enabled': bool(tr.cnam_lookup_enabled),
                 'transfer_mode': tr.transfer_mode or 'disable-all',
+                'transfer_caller_id': (
+                    getattr(tr, 'transfer_caller_id', None)
+                    or 'from-transferee'),
+                'recording_mode': rec_mode,
+                'recording_trim': rec_trim,
                 'disaster_recovery_url': tr.disaster_recovery_url or '',
                 'disaster_recovery_method': tr.disaster_recovery_method or 'POST',
             }
             if not rec:
                 vals['sid'] = tr.sid
-                self.with_context(skip_twilio_sync=True).create(vals)
+                rec = self.with_context(skip_twilio_sync=True).create(vals)
             else:
                 rec.with_context(skip_twilio_sync=True).write(vals)
+            rec._sync_origination_urls(client)
+            rec._sync_phone_numbers(client)
         if seen_sids:
             stale = self.search(
                 [('sid', 'not in', list(seen_sids)), ('sid', '!=', False)])
@@ -353,6 +406,71 @@ class SipTrunk(models.Model):
         if stale:
             stale.with_context(skip_twilio_sync=True).unlink()
         return True
+
+    def _sync_origination_urls(self, client):
+        """Mirror Twilio trunk's OriginationUrls into Odoo records."""
+        self.ensure_one()
+        if not self.sid:
+            return
+        try:
+            twilio_urls = list(client.trunking.v1.trunks(
+                self.sid).origination_urls.list())
+        except Exception:
+            logger.warning(
+                'Cannot list origination URLs for trunk %s', self.sid)
+            return
+        OUrl = self.env['connect.sip_trunk_origination_url']
+        seen = set()
+        for ou in twilio_urls:
+            seen.add(ou.sid)
+            rec = OUrl.search([('origination_url_sid', '=', ou.sid)], limit=1)
+            vals = {
+                'sip_trunk': self.id,
+                'friendly_name': ou.friendly_name or '',
+                'sip_url': ou.sip_url,
+                'priority': (
+                    ou.priority if ou.priority is not None else 10),
+                'weight': ou.weight if ou.weight is not None else 10,
+                'enabled': bool(ou.enabled),
+            }
+            if not rec:
+                vals['origination_url_sid'] = ou.sid
+                OUrl.with_context(skip_twilio_sync=True).create(vals)
+            else:
+                rec.with_context(skip_twilio_sync=True).write(vals)
+        stale = OUrl.search([
+            ('sip_trunk', '=', self.id),
+            ('origination_url_sid', '!=', False),
+            ('origination_url_sid', 'not in', list(seen) or [False]),
+        ])
+        if stale:
+            stale.with_context(skip_twilio_sync=True).unlink()
+
+    def _sync_phone_numbers(self, client):
+        """Mirror trunk's PhoneNumbers membership onto connect.number.sip_trunk."""
+        self.ensure_one()
+        if not self.sid:
+            return
+        try:
+            twilio_pns = list(client.trunking.v1.trunks(
+                self.sid).phone_numbers.list())
+        except Exception:
+            logger.warning(
+                'Cannot list phone_numbers for trunk %s', self.sid)
+            return
+        seen_sids = {pn.sid for pn in twilio_pns}
+        Number = self.env['connect.number']
+        for pn_sid in seen_sids:
+            num = Number.search([('sid', '=', pn_sid)], limit=1)
+            if num and num.sip_trunk.id != self.id:
+                num.with_context(skip_twilio_sync=True).sip_trunk = self.id
+        detach = Number.search([
+            ('sip_trunk', '=', self.id),
+            ('sid', '!=', False),
+            ('sid', 'not in', list(seen_sids) or [False]),
+        ])
+        if detach:
+            detach.with_context(skip_twilio_sync=True).write({'sip_trunk': False})
 
 
 class SipTrunkCredential(models.Model):
@@ -507,6 +625,113 @@ class SipTrunkIpAcl(models.Model):
                     client.sip.ip_access_control_lists(
                         rec.ip_acl_sid
                     ).ip_addresses(rec.ip_address_sid).delete()
+                except Exception as e:
+                    if 'not found' not in str(e).lower():
+                        raise ValidationError(format_connect_response(e))
+        return super().unlink()
+
+
+class SipTrunkOriginationUrl(models.Model):
+    _name = 'connect.sip_trunk_origination_url'
+    _description = 'SIP Trunk Origination URL'
+    _rec_name = 'sip_url'
+    _order = 'priority, weight desc, id'
+
+    sip_trunk = fields.Many2one(
+        'connect.sip_trunk', required=True, ondelete='cascade')
+    friendly_name = fields.Char()
+    sip_url = fields.Char(
+        required=True,
+        help='sip: or sips: URI of your PBX/SBC '
+             '(e.g. sip:pbx.example.com:5060).')
+    priority = fields.Integer(
+        default=10, help='0-65535. Lower wins.')
+    weight = fields.Integer(
+        default=10,
+        help='1-65535. Load-share within the same priority.')
+    enabled = fields.Boolean(default=True)
+    origination_url_sid = fields.Char(readonly=True)
+
+    @api.constrains('sip_url')
+    def _check_sip_url(self):
+        for rec in self:
+            if not rec.sip_url:
+                continue
+            scheme = rec.sip_url.split(':', 1)[0].lower()
+            if scheme not in ('sip', 'sips'):
+                raise ValidationError(
+                    'Origination URL must start with sip: or sips:')
+
+    @api.constrains('priority', 'weight')
+    def _check_priority_weight(self):
+        for rec in self:
+            if not 0 <= rec.priority <= 65535:
+                raise ValidationError('Priority must be between 0 and 65535.')
+            if not 1 <= rec.weight <= 65535:
+                raise ValidationError('Weight must be between 1 and 65535.')
+
+    def _twilio_payload(self):
+        self.ensure_one()
+        return {
+            'sip_url': self.sip_url,
+            'friendly_name': self.friendly_name or self.sip_url,
+            'priority': self.priority,
+            'weight': self.weight,
+            'enabled': self.enabled,
+        }
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        recs = super().create(vals_list)
+        if self.env.context.get('skip_twilio_sync'):
+            return recs
+        client = self.env['connect.settings'].get_client()
+        for rec in recs:
+            if not rec.sip_trunk.sid:
+                continue
+            try:
+                ou = client.trunking.v1.trunks(
+                    rec.sip_trunk.sid).origination_urls.create(
+                        **rec._twilio_payload())
+            except Exception as e:
+                logger.exception('OriginationUrl create failed:')
+                raise ValidationError(format_connect_response(e))
+            rec.with_context(skip_twilio_sync=True).write(
+                {'origination_url_sid': ou.sid})
+        return recs
+
+    def write(self, vals):
+        res = super().write(vals)
+        if self.env.context.get('skip_twilio_sync'):
+            return res
+        twilio_fields = {
+            'sip_url', 'friendly_name', 'priority', 'weight', 'enabled'}
+        if not (twilio_fields & set(vals.keys())):
+            return res
+        client = self.env['connect.settings'].get_client()
+        for rec in self:
+            if not (rec.sip_trunk.sid and rec.origination_url_sid):
+                continue
+            try:
+                client.trunking.v1.trunks(
+                    rec.sip_trunk.sid
+                ).origination_urls(rec.origination_url_sid).update(
+                    **rec._twilio_payload())
+            except Exception as e:
+                logger.exception('OriginationUrl update failed:')
+                raise ValidationError(format_connect_response(e))
+        return res
+
+    def unlink(self):
+        if not self.env.context.get('skip_twilio_sync'):
+            client = self.env['connect.settings'].get_client()
+            for rec in self:
+                if not (rec.sip_trunk.sid and rec.origination_url_sid):
+                    continue
+                try:
+                    client.trunking.v1.trunks(
+                        rec.sip_trunk.sid
+                    ).origination_urls(rec.origination_url_sid).delete()
                 except Exception as e:
                     if 'not found' not in str(e).lower():
                         raise ValidationError(format_connect_response(e))
