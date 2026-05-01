@@ -158,7 +158,6 @@ class SipTrunk(models.Model):
                     cnam_lookup_enabled=rec.cnam_lookup_enabled,
                     transfer_mode=rec.transfer_mode,
                     transfer_caller_id=rec.transfer_caller_id,
-                    recording=rec._build_recording_payload(),
                     disaster_recovery_url=rec.disaster_recovery_url or None,
                     disaster_recovery_method=rec.disaster_recovery_method,
                 )
@@ -166,15 +165,28 @@ class SipTrunk(models.Model):
                 logger.exception('SIP Trunk Create Exception:')
                 raise ValidationError(format_connect_response(e))
             rec.with_context(skip_twilio_sync=True).write({'sid': trunk.sid})
+            rec._push_recording_to_twilio(client)
             debug(self, 'SIP Trunk {} created in Twilio.'.format(rec.friendly_name))
         return recs
 
-    def _build_recording_payload(self):
+    def _push_recording_to_twilio(self, client):
+        """Push recording_mode/trim via the dedicated Recording sub-resource.
+
+        Twilio doesn't accept `recording` on Trunk create/update; the only
+        way to set it is POST /Trunks/{sid}/Recording. Calling with the
+        defaults is a harmless no-op.
+        """
         self.ensure_one()
-        return {
-            'mode': self.recording_mode or 'do-not-record',
-            'trim': self.recording_trim or 'do-not-trim',
-        }
+        if not self.sid:
+            return
+        try:
+            client.trunking.v1.trunks(self.sid).recordings.update(
+                mode=self.recording_mode or 'do-not-record',
+                trim=self.recording_trim or 'do-not-trim',
+            )
+        except Exception as e:
+            logger.exception('SIP Trunk Recording update failed:')
+            raise ValidationError(format_connect_response(e))
 
     def write(self, vals):
         res = super().write(vals)
@@ -182,32 +194,35 @@ class SipTrunk(models.Model):
             return res
         twilio_fields = {
             'friendly_name', 'domain_name', 'secure', 'cnam_lookup_enabled',
-            'transfer_mode', 'transfer_caller_id', 'recording_mode',
-            'recording_trim', 'disaster_recovery_url',
+            'transfer_mode', 'transfer_caller_id', 'disaster_recovery_url',
             'disaster_recovery_method',
         }
-        if not (twilio_fields & set(vals.keys())):
+        recording_changed = bool(
+            {'recording_mode', 'recording_trim'} & set(vals.keys()))
+        if not (twilio_fields & set(vals.keys())) and not recording_changed:
             return res
         client = self.env['connect.settings'].get_client()
         for rec in self:
             if not rec.sid:
                 continue
             try:
-                client.trunking.v1.trunks(rec.sid).update(
-                    friendly_name=rec.friendly_name,
-                    domain_name=rec.domain_name,
-                    secure=rec.secure,
-                    cnam_lookup_enabled=rec.cnam_lookup_enabled,
-                    transfer_mode=rec.transfer_mode,
-                    transfer_caller_id=rec.transfer_caller_id,
-                    recording=rec._build_recording_payload(),
-                    disaster_recovery_url=rec.disaster_recovery_url or None,
-                    disaster_recovery_method=rec.disaster_recovery_method,
-                )
-                debug(self, 'SIP Trunk {} updated.'.format(rec.friendly_name))
+                if twilio_fields & set(vals.keys()):
+                    client.trunking.v1.trunks(rec.sid).update(
+                        friendly_name=rec.friendly_name,
+                        domain_name=rec.domain_name,
+                        secure=rec.secure,
+                        cnam_lookup_enabled=rec.cnam_lookup_enabled,
+                        transfer_mode=rec.transfer_mode,
+                        transfer_caller_id=rec.transfer_caller_id,
+                        disaster_recovery_url=rec.disaster_recovery_url or None,
+                        disaster_recovery_method=rec.disaster_recovery_method,
+                    )
+                    debug(self, 'SIP Trunk {} updated.'.format(rec.friendly_name))
             except Exception as e:
                 logger.exception('SIP Trunk Update Exception:')
                 raise ValidationError(format_connect_response(e))
+            if recording_changed:
+                rec._push_recording_to_twilio(client)
         return res
 
     def unlink(self):
