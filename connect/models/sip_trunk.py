@@ -180,7 +180,10 @@ class SipTrunk(models.Model):
         if not self.sid:
             return
         try:
-            client.trunking.v1.trunks(self.sid).recordings.update(
+            # `recordings()` invokes RecordingList.__call__ to get a
+            # RecordingContext; `.recordings.update` would AttributeError
+            # because the list itself has no update method.
+            client.trunking.v1.trunks(self.sid).recordings().update(
                 mode=self.recording_mode or 'do-not-record',
                 trim=self.recording_trim or 'do-not-trim',
             )
