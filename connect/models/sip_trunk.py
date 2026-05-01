@@ -22,6 +22,20 @@ from .settings import debug, format_connect_response
 logger = logging.getLogger(__name__)
 
 
+def _should_skip_twilio_sync(env):
+    """Skip Twilio API calls when explicitly requested or when no creds.
+
+    Used by SIP-trunk-related models so that data records loaded at module
+    install time (or on Odoo instances that don't have Twilio configured)
+    do not crash with HTTP 401 when Twilio credentials are blank.
+    """
+    if env.context.get('skip_twilio_sync'):
+        return True
+    settings = env['connect.settings'].sudo()
+    return not (settings.get_param('account_sid')
+                and settings.get_param('auth_token'))
+
+
 TRANSFER_MODE = [
     ('disable-all', 'Disabled'),
     ('enable-all', 'Enabled (PSTN + SIP)'),
@@ -129,7 +143,7 @@ class SipTrunk(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         recs = super().create(vals_list)
-        if self.env.context.get('skip_twilio_sync'):
+        if _should_skip_twilio_sync(self.env):
             return recs
         client = self.env['connect.settings'].get_client()
         for rec in recs:
@@ -164,7 +178,7 @@ class SipTrunk(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        if self.env.context.get('skip_twilio_sync'):
+        if _should_skip_twilio_sync(self.env):
             return res
         twilio_fields = {
             'friendly_name', 'domain_name', 'secure', 'cnam_lookup_enabled',
@@ -197,7 +211,7 @@ class SipTrunk(models.Model):
         return res
 
     def unlink(self):
-        if not self.env.context.get('skip_twilio_sync'):
+        if not _should_skip_twilio_sync(self.env):
             client = self.env['connect.settings'].get_client()
             for rec in self:
                 if not rec.sid:
@@ -366,6 +380,9 @@ class SipTrunk(models.Model):
         """
         if not self.env['connect.settings'].sudo().get_param('twilio_auto_sync'):
             return False
+        if _should_skip_twilio_sync(self.env):
+            logger.info('SIP trunk sync skipped: Twilio not configured.')
+            return False
         try:
             client = self.env['connect.settings'].get_client()
         except Exception:
@@ -488,7 +505,7 @@ class SipTrunkCredential(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         recs = super().create(vals_list)
-        if self.env.context.get('skip_twilio_sync'):
+        if _should_skip_twilio_sync(self.env):
             return recs
         client = self.env['connect.settings'].get_client()
         for rec in recs:
@@ -516,7 +533,7 @@ class SipTrunkCredential(models.Model):
         if is_real_pw:
             vals['password'] = '*' * len(new_password)
         res = super().write(vals)
-        if self.env.context.get('skip_twilio_sync') or not is_real_pw:
+        if not is_real_pw or _should_skip_twilio_sync(self.env):
             return res
         client = self.env['connect.settings'].get_client()
         for rec in self:
@@ -531,7 +548,7 @@ class SipTrunkCredential(models.Model):
         return res
 
     def unlink(self):
-        if not self.env.context.get('skip_twilio_sync'):
+        if not _should_skip_twilio_sync(self.env):
             client = self.env['connect.settings'].get_client()
             for rec in self:
                 if not (rec.credential_sid and rec.credential_list_sid):
@@ -574,7 +591,7 @@ class SipTrunkIpAcl(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         recs = super().create(vals_list)
-        if self.env.context.get('skip_twilio_sync'):
+        if _should_skip_twilio_sync(self.env):
             return recs
         client = self.env['connect.settings'].get_client()
         for rec in recs:
@@ -596,7 +613,7 @@ class SipTrunkIpAcl(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        if self.env.context.get('skip_twilio_sync'):
+        if _should_skip_twilio_sync(self.env):
             return res
         if not ({'ip_address', 'friendly_name', 'cidr_prefix_length'} & set(vals.keys())):
             return res
@@ -616,7 +633,7 @@ class SipTrunkIpAcl(models.Model):
         return res
 
     def unlink(self):
-        if not self.env.context.get('skip_twilio_sync'):
+        if not _should_skip_twilio_sync(self.env):
             client = self.env['connect.settings'].get_client()
             for rec in self:
                 if not (rec.ip_acl_sid and rec.ip_address_sid):
@@ -683,7 +700,7 @@ class SipTrunkOriginationUrl(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         recs = super().create(vals_list)
-        if self.env.context.get('skip_twilio_sync'):
+        if _should_skip_twilio_sync(self.env):
             return recs
         client = self.env['connect.settings'].get_client()
         for rec in recs:
@@ -702,7 +719,7 @@ class SipTrunkOriginationUrl(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        if self.env.context.get('skip_twilio_sync'):
+        if _should_skip_twilio_sync(self.env):
             return res
         twilio_fields = {
             'sip_url', 'friendly_name', 'priority', 'weight', 'enabled'}
@@ -723,7 +740,7 @@ class SipTrunkOriginationUrl(models.Model):
         return res
 
     def unlink(self):
-        if not self.env.context.get('skip_twilio_sync'):
+        if not _should_skip_twilio_sync(self.env):
             client = self.env['connect.settings'].get_client()
             for rec in self:
                 if not (rec.sip_trunk.sid and rec.origination_url_sid):

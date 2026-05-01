@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!--
+            Pre-configured Twilio Elastic SIP Trunk for ElevenLabs
+            Conversational AI ingress.
+
+            On install:
+              * if Twilio credentials are set in connect.settings, the trunk
+                and its origination URL are created in Twilio immediately;
+              * if Twilio is not configured yet, only the local Odoo records
+                are written. Press SYNC TWILIO ACCOUNT once creds are set
+                and the records will be pushed up.
+        -->
+        <record id="el_trunk_default" model="connect.sip_trunk">
+            <field name="friendly_name">ElevenLabs ConvAI</field>
+            <field name="secure" eval="True"/>
+            <field name="cnam_lookup_enabled" eval="False"/>
+            <field name="transfer_mode">disable-all</field>
+            <field name="transfer_caller_id">from-transferee</field>
+            <field name="recording_mode">do-not-record</field>
+            <field name="recording_trim">do-not-trim</field>
+        </record>
+
+        <record id="el_origination_url_default"
+                model="connect.sip_trunk_origination_url">
+            <field name="sip_trunk" ref="el_trunk_default"/>
+            <field name="friendly_name">ElevenLabs SIP Ingress (TLS)</field>
+            <field name="sip_url">sip:sip.rtc.elevenlabs.io;transport=tls</field>
+            <field name="priority">10</field>
+            <field name="weight">10</field>
+            <field name="enabled" eval="True"/>
+        </record>
+
+    </data>
+</odoo>
