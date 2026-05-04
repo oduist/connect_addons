@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <record id="elevenlabs_sip_trunk_form" model="ir.ui.view">
+    <field name="name">elevenlabs_sip_trunk_form</field>
+    <field name="model">connect.sip_trunk</field>
+    <field name="inherit_id" ref="connect.connect_sip_trunk_form"/>
+    <field name="arch" type="xml">
+      <!-- Add ElevenLabs page before Technical page -->
+      <xpath expr="//page[last()]" position="before">
+        <page string="ElevenLabs">
+          <p class="text-muted">
+            When an agent is assigned here, all phone numbers on this trunk
+            are automatically registered in ElevenLabs and routed to that agent.
+          </p>
+          <group string="Agent">
+            <field name="elevenlabs_agent"/>
+          </group>
+          <group string="Inbound Allowed IPs">
+            <field name="el_inbound_allowed_ips"
+                   nolabel="1"
+                   placeholder="One IP/CIDR per line, e.g.&#10;54.172.60.0/23"
+                   widget="text"/>
+          </group>
+        </page>
+      </xpath>
+    </field>
+  </record>
+
+</odoo>
