@@ -13,7 +13,7 @@
   </record>
 
   <record id="elevenlabs_number_form" model="ir.ui.view">
-    <field name="name">elevenlabs_number_list</field>
+    <field name="name">elevenlabs_number_form</field>
     <field name="model">connect.number</field>
     <field name="inherit_id" ref="connect.connect_number_form"/>
     <field name="arch" type="xml">
@@ -21,6 +21,19 @@
         <field name="elevenlabs_agent"
                invisible="destination != 'elevenlabs_agent'"
                required="destination == 'elevenlabs_agent'"/>
+      </field>
+      <!-- ElevenLabs SIP trunk sync: shown after sip_trunk field -->
+      <field name="sip_trunk" position="after">
+        <field name="el_phone_number_uid"
+               groups="base.group_erp_manager"
+               readonly="1"
+               string="ElevenLabs Phone ID"/>
+        <button name="action_sync_el_phone_number"
+                type="object"
+                string="Sync to ElevenLabs"
+                class="btn-secondary"
+                groups="base.group_erp_manager"
+                invisible="not sip_trunk"/>
       </field>
     </field>
   </record>
