@@ -1,4 +1,8 @@
+import logging
+
 from odoo import models, fields, release, api
+
+logger = logging.getLogger(__name__)
 
 
 class Call(models.Model):
@@ -76,6 +80,59 @@ class Call(models.Model):
         # Link call to the Agent.
         call.elevenlabs_agent = agent.id
         return call.elevenlabs_agent_get_call_data()
+
+    @api.model
+    def create_from_elevenlabs_inbound(self, data):
+        conversation_id = data.get('conversation_id', '')
+        if conversation_id:
+            existing = self.sudo().search(
+                [('elevenlabs_conversation_id', '=', conversation_id)], limit=1)
+            if existing:
+                logger.info('EL inbound: call already exists for conversation_id=%s, skipping', conversation_id)
+                return existing
+
+        meta = data.get('metadata', {})
+        phone_call = meta.get('phone_call', {})
+        caller = phone_call.get('external_number', '')
+        called = phone_call.get('agent_number', '')
+        call_sid = phone_call.get('call_sid', '')
+        phone_number_id = phone_call.get('phone_number_id', '')
+        duration = meta.get('call_duration_secs', 0)
+
+        analysis = data.get('analysis', {})
+        status = 'completed' if analysis.get('call_successful') == 'success' else 'failed'
+
+        number = False
+        if phone_number_id:
+            number = self.env['connect.number'].sudo().search(
+                [('el_phone_number_uid', '=', phone_number_id)], limit=1)
+        if not number and called:
+            number = self.env['connect.number'].sudo().search(
+                [('phone_number', '=', called)], limit=1)
+        if not number:
+            logger.warning('EL inbound: connect.number not found for phone_number_id=%s / called=%s',
+                           phone_number_id, called)
+
+        partner = self.env['res.partner'].sudo().get_partner_by_number(caller) if caller else False
+        agent_id = data.get('agent_id', '')
+        agent = self.env['connect.elevenlabs_agent'].sudo().search(
+            [('agent_uid', '=', agent_id)], limit=1) if agent_id else False
+
+        call = self.sudo().create({
+            'caller': caller,
+            'called': called,
+            'direction': 'inbound',
+            'status': status,
+            'duration': duration,
+            'call_sid': call_sid,
+            'elevenlabs_conversation_id': conversation_id,
+            'elevenlabs_summary': analysis.get('transcript_summary', ''),
+            'partner': partner.id if partner else False,
+            'elevenlabs_agent': agent.id if agent else False,
+        })
+        logger.info('EL inbound: created connect.call id=%s for conversation_id=%s caller=%s',
+                    call.id, conversation_id, caller)
+        return call
 
     def _get_elevenlabs_recording_data(self):
         # Make one query to get all records.
