@@ -49,6 +49,10 @@ class ElevenlabsSipTrunk(models.Model):
         needs_resync = bool(el_fields & set(vals.keys()))
         agent_removed = "elevenlabs_agent" in vals and not vals["elevenlabs_agent"]
 
+        old_agents = {}
+        if "elevenlabs_agent" in vals and not self.env.context.get("skip_agent_sync"):
+            old_agents = {rec.id: rec.elevenlabs_agent for rec in self}
+
         res = super().write(vals)
 
         if needs_resync and not self.env.context.get("skip_el_sync"):
@@ -61,6 +65,17 @@ class ElevenlabsSipTrunk(models.Model):
                             num._delete_el_phone_number_safe()
                     else:
                         num._sync_el_phone_number_safe()
+
+        if old_agents:
+            for rec in self:
+                old_agent = old_agents[rec.id]
+                new_agent = rec.elevenlabs_agent
+                if old_agent != new_agent:
+                    if old_agent:
+                        old_agent.with_context(skip_sip_trunk_sync=True).write({"sip_trunk": False})
+                    if new_agent:
+                        new_agent.with_context(skip_sip_trunk_sync=True).write({"sip_trunk": rec.id})
+
         return res
 
     def _ensure_el_origination_url(self):
