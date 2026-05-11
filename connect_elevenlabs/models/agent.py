@@ -183,6 +183,7 @@ class ElevenlabsAgent(models.Model):
     silence_end_call_timeout = fields.Integer(required=True, default=10)
     exten = fields.Many2one("connect.exten", ondelete="set null", readonly=True)
     exten_number = fields.Char(related="exten.number")
+    sip_trunk = fields.Many2one("connect.sip_trunk", string="SIP Trunk", ondelete="set null")
     template = fields.Many2one("connect.elevenlabs_agent_template", ondelete="set null")
     transfer_to_agent = fields.One2many("connect.elevenlabs_agent_transfer", "agent")
     has_transfer_tool = fields.Boolean(compute="_compute_has_transfer_tool")
@@ -219,7 +220,19 @@ class ElevenlabsAgent(models.Model):
         if vals.get('exten'):
             # Skip all syncing.
             return super().write(vals)
+        old_trunks = {}
+        if "sip_trunk" in vals and not self.env.context.get("skip_sip_trunk_sync"):
+            old_trunks = {rec.id: rec.sip_trunk for rec in self}
         res = super().write(vals)
+        if old_trunks:
+            for rec in self:
+                old_trunk = old_trunks[rec.id]
+                new_trunk = rec.sip_trunk
+                if old_trunk != new_trunk:
+                    if old_trunk:
+                        old_trunk.with_context(skip_agent_sync=True).write({"elevenlabs_agent": False})
+                    if new_trunk:
+                        new_trunk.with_context(skip_agent_sync=True).write({"elevenlabs_agent": rec.id})
         if "prompt" in vals and "active_prompt_version" not in vals:
             for rec in self:
                 version_count = len(rec.prompt_version_ids)
@@ -235,8 +248,6 @@ class ElevenlabsAgent(models.Model):
                 )
         if not self.env.context.get("skip_elevenlabs"):
             self.update_elevenlabs_agent()
-            if not self.knowledge_base_note and self.knowledge_base_id:
-                self.delete_elevenlabs_knowledge_base()
         return res
 
     def unlink(self):
