@@ -255,9 +255,6 @@ class ElevenlabsNumber(models.Model):
         res = super().route_call(request)
         number = self.search([("phone_number", "=", request["Called"])])
         agent = number._resolve_el_agent() if number else False
-        if agent and (
-            number.destination == "elevenlabs_agent"
-            or (number.sip_trunk and number.sip_trunk.elevenlabs_agent)
-        ):
+        if agent and number.destination == "elevenlabs_agent":
             return agent.render(request)
         return res

@@ -59,6 +59,8 @@ class ElevenlabsSipTrunk(models.Model):
             for rec in self:
                 if not agent_removed:
                     rec._ensure_el_origination_url()
+                else:
+                    rec._remove_el_origination_url()
                 for num in rec.number_ids:
                     if agent_removed and not num.elevenlabs_agent:
                         if num.el_phone_number_uid:
@@ -74,7 +76,10 @@ class ElevenlabsSipTrunk(models.Model):
                     if old_agent:
                         old_agent.with_context(skip_sip_trunk_sync=True).write({"sip_trunk": False})
                     if new_agent:
+                        prev_trunk = new_agent.sip_trunk
                         new_agent.with_context(skip_sip_trunk_sync=True).write({"sip_trunk": rec.id})
+                        if prev_trunk and prev_trunk != rec:
+                            prev_trunk.with_context(skip_agent_sync=True).write({"elevenlabs_agent": False})
 
         return res
 
@@ -95,3 +100,12 @@ class ElevenlabsSipTrunk(models.Model):
             "weight": 10,
             "enabled": True,
         })
+
+    def _remove_el_origination_url(self):
+        """Remove the ElevenLabs SIP origination URL from this trunk."""
+        self.ensure_one()
+        el_urls = self.origination_url_ids.filtered(
+            lambda u: "elevenlabs.io" in (u.sip_url or "")
+        )
+        if el_urls:
+            el_urls.unlink()
