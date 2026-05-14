@@ -2,6 +2,7 @@
 import logging
 
 from odoo import api, fields, models
+from odoo.addons.connect.models.sip_trunk import _should_skip_twilio_sync
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,13 @@ class ElevenlabsSipTrunk(models.Model):
              "ElevenLabs will accept SIP INVITEs from. Defaults to Twilio's "
              "published SIP signaling ranges. Leave empty to allow all sources.",
     )
+    el_virtual_number_uid = fields.Char(
+        string="ElevenLabs Virtual Number ID",
+        readonly=True,
+        groups="base.group_erp_manager",
+        help="ElevenLabs phone_number entity ID for agent_uid-based routing "
+             "(used when no real phone number is attached to this trunk).",
+    )
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -44,6 +52,15 @@ class ElevenlabsSipTrunk(models.Model):
             for rec in recs:
                 if rec.elevenlabs_agent:
                     rec._ensure_el_origination_url()
+                    if not self.env.context.get('skip_agent_sync'):
+                        prev_trunk = rec.elevenlabs_agent.sip_trunk
+                        rec.elevenlabs_agent.with_context(
+                            skip_sip_trunk_sync=True, skip_elevenlabs=True
+                        ).write({"sip_trunk": rec.id})
+                        if prev_trunk and prev_trunk != rec:
+                            prev_trunk.with_context(skip_agent_sync=True).write(
+                                {"elevenlabs_agent": False}
+                            )
         return recs
 
     def unlink(self):
@@ -108,6 +125,12 @@ class ElevenlabsSipTrunk(models.Model):
     def _ensure_el_origination_url(self):
         """Add or update the ElevenLabs SIP origination URL on this trunk."""
         self.ensure_one()
+        if not self.render_sip_url and self.elevenlabs_agent and self.elevenlabs_agent.agent_uid:
+            self.with_context(skip_twilio_sync=True).render_sip_url = (
+                "sip:{}@sip.rtc.elevenlabs.io:5060;transport=tcp".format(
+                    self.elevenlabs_agent.agent_uid
+                )
+            )
         target_url = self._el_origination_url()
         if not target_url:
             return
@@ -117,8 +140,10 @@ class ElevenlabsSipTrunk(models.Model):
         if existing:
             if existing[0].sip_url == target_url:
                 return
-            existing.unlink()
-        self.env["connect.sip_trunk_origination_url"].create({
+            existing.with_context(skip_twilio_sync=True).unlink()
+        new_url = self.env["connect.sip_trunk_origination_url"].with_context(
+            skip_twilio_sync=True
+        ).create({
             "sip_trunk": self.id,
             "friendly_name": "ElevenLabs SIP Ingress",
             "sip_url": target_url,
@@ -126,8 +151,21 @@ class ElevenlabsSipTrunk(models.Model):
             "weight": 10,
             "enabled": True,
         })
-        if not self.render_sip_url:
-            self.with_context(skip_twilio_sync=True).render_sip_url = target_url
+        if not _should_skip_twilio_sync(self.env) and self.sid:
+            try:
+                client = self.env["connect.settings"].get_client()
+                ou = client.trunking.v1.trunks(self.sid).origination_urls.create(
+                    sip_url=target_url,
+                    friendly_name="ElevenLabs SIP Ingress",
+                    priority=10,
+                    weight=10,
+                    enabled=True,
+                )
+                new_url.with_context(skip_twilio_sync=True).write(
+                    {"origination_url_sid": ou.sid}
+                )
+            except Exception as e:
+                logger.warning("EL origination URL Twilio create failed: %s", e)
 
     def _remove_el_origination_url(self):
         """Remove the ElevenLabs SIP origination URL from this trunk."""
@@ -135,5 +173,16 @@ class ElevenlabsSipTrunk(models.Model):
         el_urls = self.origination_url_ids.filtered(
             lambda u: "elevenlabs.io" in (u.sip_url or "")
         )
-        if el_urls:
-            el_urls.unlink()
+        if not el_urls:
+            return
+        if not _should_skip_twilio_sync(self.env) and self.sid:
+            try:
+                client = self.env["connect.settings"].get_client()
+                for url in el_urls:
+                    if url.origination_url_sid:
+                        client.trunking.v1.trunks(self.sid).origination_urls(
+                            url.origination_url_sid
+                        ).delete()
+            except Exception as e:
+                logger.warning("EL origination URL Twilio delete failed: %s", e)
+        el_urls.with_context(skip_twilio_sync=True).unlink()
