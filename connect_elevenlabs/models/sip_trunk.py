@@ -126,6 +126,8 @@ class ElevenlabsSipTrunk(models.Model):
             "weight": 10,
             "enabled": True,
         })
+        if not self.render_sip_url:
+            self.with_context(skip_twilio_sync=True).render_sip_url = target_url
 
     def _remove_el_origination_url(self):
         """Remove the ElevenLabs SIP origination URL from this trunk."""

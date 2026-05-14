@@ -95,6 +95,14 @@ class SipTrunk(models.Model):
     disaster_recovery_method = fields.Selection(
         DR_METHOD, string='DR Method', default='POST')
 
+    render_sip_url = fields.Char(
+        'Dial SIP URI',
+        help='SIP URI dialed when this trunk is used as an extension destination '
+             '(e.g. sip:+19789814066@sip.rtc.elevenlabs.io:5060;transport=tcp). '
+             'Leave blank to say "not configured".',
+    )
+    exten = fields.Many2one('connect.exten', string='Extension', ondelete='set null')
+
     credential_ids = fields.One2many(
         'connect.sip_trunk_credential', 'sip_trunk', string='SIP Credentials')
     ip_acl_ids = fields.One2many(
@@ -361,6 +369,18 @@ class SipTrunk(models.Model):
 
         self.with_context(skip_twilio_sync=True).ip_acl_sid = acl_sid
         return acl_sid
+
+    def render(self, request={}, params={}):
+        from twilio.twiml.voice_response import Dial, VoiceResponse
+        self.ensure_one()
+        response = VoiceResponse()
+        if not self.render_sip_url:
+            response.say('SIP trunk is not configured for dialing.')
+            return response
+        dial = Dial()
+        dial.sip(self.render_sip_url)
+        response.append(dial)
+        return response
 
     def action_view_numbers(self):
         self.ensure_one()
