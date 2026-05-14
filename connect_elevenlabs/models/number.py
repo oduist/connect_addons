@@ -224,10 +224,19 @@ class ElevenlabsNumber(models.Model):
 
         res = super().write(vals)
 
+        trunk_assigned = (
+            "sip_trunk" in vals and vals.get("sip_trunk") and not trunk_detached
+        )
+
         if needs_el_sync:
             for rec in self:
                 if rec.sip_trunk and rec._resolve_el_agent():
                     rec._sync_el_phone_number_safe()
+
+        if trunk_assigned and not self.env.context.get("skip_el_sync"):
+            trunks = self.mapped("sip_trunk").filtered("elevenlabs_agent")
+            for trunk in trunks:
+                trunk._ensure_el_origination_url()
 
         return res
 

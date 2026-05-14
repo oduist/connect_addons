@@ -246,7 +246,9 @@ class ElevenlabsAgent(models.Model):
                 rec.with_context(skip_elevenlabs=True).write(
                     {"active_prompt_version": version.id}
                 )
-        if not self.env.context.get("skip_elevenlabs"):
+        _el_skip_fields = {'sip_trunk', 'active_prompt_version', 'exten', 'agent_uid'}
+        if (not self.env.context.get("skip_elevenlabs")
+                and set(vals.keys()) - _el_skip_fields):
             self.update_elevenlabs_agent()
         return res
 

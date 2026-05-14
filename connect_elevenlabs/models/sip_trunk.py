@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from odoo import fields, models
+from odoo import api, fields, models
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,15 @@ class ElevenlabsSipTrunk(models.Model):
              "ElevenLabs will accept SIP INVITEs from. Defaults to Twilio's "
              "published SIP signaling ranges. Leave empty to allow all sources.",
     )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        recs = super().create(vals_list)
+        if not self.env.context.get('skip_el_sync'):
+            for rec in recs:
+                if rec.elevenlabs_agent:
+                    rec._ensure_el_origination_url()
+        return recs
 
     def unlink(self):
         for rec in self:
@@ -74,28 +83,45 @@ class ElevenlabsSipTrunk(models.Model):
                 new_agent = rec.elevenlabs_agent
                 if old_agent != new_agent:
                     if old_agent:
-                        old_agent.with_context(skip_sip_trunk_sync=True).write({"sip_trunk": False})
+                        old_agent.with_context(skip_sip_trunk_sync=True, skip_elevenlabs=True).write({"sip_trunk": False})
                     if new_agent:
                         prev_trunk = new_agent.sip_trunk
-                        new_agent.with_context(skip_sip_trunk_sync=True).write({"sip_trunk": rec.id})
+                        new_agent.with_context(skip_sip_trunk_sync=True, skip_elevenlabs=True).write({"sip_trunk": rec.id})
                         if prev_trunk and prev_trunk != rec:
                             prev_trunk.with_context(skip_agent_sync=True).write({"elevenlabs_agent": False})
 
         return res
 
-    def _ensure_el_origination_url(self):
-        """Add the ElevenLabs SIP origination URL to this trunk if not present."""
+    def _el_origination_url(self):
+        """Build the ElevenLabs origination SIP URL for this trunk.
+
+        Returns None if the trunk has no phone numbers yet (URL requires the
+        registered number so ElevenLabs can route to the correct agent).
+        """
         self.ensure_one()
-        EL_ORIGIN_URL = "sip:sip.rtc.elevenlabs.io;transport=tls"
+        number = self.number_ids[:1]
+        if not number:
+            return None
+        return "sip:{}@sip.rtc.elevenlabs.io:5060;transport=tcp".format(
+            number.phone_number)
+
+    def _ensure_el_origination_url(self):
+        """Add or update the ElevenLabs SIP origination URL on this trunk."""
+        self.ensure_one()
+        target_url = self._el_origination_url()
+        if not target_url:
+            return
         existing = self.origination_url_ids.filtered(
             lambda u: "elevenlabs.io" in (u.sip_url or "")
         )
         if existing:
-            return
+            if existing[0].sip_url == target_url:
+                return
+            existing.unlink()
         self.env["connect.sip_trunk_origination_url"].create({
             "sip_trunk": self.id,
-            "friendly_name": "ElevenLabs SIP Ingress (TLS)",
-            "sip_url": EL_ORIGIN_URL,
+            "friendly_name": "ElevenLabs SIP Ingress",
+            "sip_url": target_url,
             "priority": 10,
             "weight": 10,
             "enabled": True,
