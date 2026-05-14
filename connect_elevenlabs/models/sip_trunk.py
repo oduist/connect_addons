@@ -70,6 +70,8 @@ class ElevenlabsSipTrunk(models.Model):
 
     def unlink(self):
         for rec in self:
+            if rec.el_virtual_number_uid:
+                rec._remove_el_virtual_number()
             for num in rec.number_ids:
                 if num.el_phone_number_uid:
                     num._delete_el_phone_number_safe()
@@ -130,15 +132,14 @@ class ElevenlabsSipTrunk(models.Model):
     def _ensure_el_origination_url(self):
         """Add or update the ElevenLabs SIP origination URL on this trunk."""
         self.ensure_one()
-        if not self.render_sip_url and self.elevenlabs_agent and self.elevenlabs_agent.agent_uid:
-            self.with_context(skip_twilio_sync=True).render_sip_url = (
-                "sip:{}@sip.rtc.elevenlabs.io:5060;transport=tcp".format(
-                    self.elevenlabs_agent.agent_uid
-                )
-            )
         target_url = self._el_origination_url()
         if not target_url:
+            # No real phone number — register virtual EL number by agent_uid.
+            self._ensure_el_virtual_number()
             return
+        # Real phone number exists — remove any virtual number first.
+        if self.el_virtual_number_uid:
+            self._remove_el_virtual_number()
         existing = self.origination_url_ids.filtered(
             lambda u: "elevenlabs.io" in (u.sip_url or "")
         )
@@ -171,10 +172,13 @@ class ElevenlabsSipTrunk(models.Model):
                 )
             except Exception as e:
                 logger.warning("EL origination URL Twilio create failed: %s", e)
+        if not self.render_sip_url:
+            self.with_context(skip_twilio_sync=True).render_sip_url = target_url
 
     def _remove_el_origination_url(self):
         """Remove the ElevenLabs SIP origination URL from this trunk."""
         self.ensure_one()
+        self._remove_el_virtual_number()
         el_urls = self.origination_url_ids.filtered(
             lambda u: "elevenlabs.io" in (u.sip_url or "")
         )
