@@ -3,6 +3,11 @@ import logging
 
 from odoo import api, fields, models
 from odoo.addons.connect.models.sip_trunk import _should_skip_twilio_sync
+from elevenlabs.conversational_ai.phone_numbers.types import (
+    PhoneNumbersCreateRequestBody_SipTrunk,
+)
+from elevenlabs.core.api_error import ApiError
+from elevenlabs.types import InboundSipTrunkConfigRequestModel
 
 logger = logging.getLogger(__name__)
 
@@ -186,3 +191,106 @@ class ElevenlabsSipTrunk(models.Model):
             except Exception as e:
                 logger.warning("EL origination URL Twilio delete failed: %s", e)
         el_urls.with_context(skip_twilio_sync=True).unlink()
+
+    def _ensure_el_virtual_number(self):
+        """Register agent_uid as a virtual EL phone number for Exten-only routing.
+
+        Called when the trunk has an ElevenLabs agent but no real phone numbers.
+        ElevenLabs requires any SIP identifier to be registered before it will
+        accept INVITEs for that identifier.
+        """
+        self.ensure_one()
+        agent = self.elevenlabs_agent
+        if not agent or not agent.agent_uid:
+            return
+        identifier = agent.agent_uid
+        target_url = "sip:{}@sip.rtc.elevenlabs.io:5060;transport=tcp".format(identifier)
+
+        try:
+            client = self.env["connect.settings"].get_elevenlabs_client()
+        except Exception as e:
+            logger.warning("EL client unavailable for virtual number sync: %s", e)
+            return
+
+        if self.el_virtual_number_uid:
+            try:
+                client.conversational_ai.phone_numbers.update(
+                    self.el_virtual_number_uid,
+                    agent_id=agent.agent_uid,
+                )
+                if not self.render_sip_url:
+                    self.with_context(skip_twilio_sync=True).render_sip_url = target_url
+                return
+            except ApiError as e:
+                if e.status_code != 404:
+                    logger.warning("EL virtual number update failed: %s", e)
+                    return
+                self.with_context(skip_twilio_sync=True).el_virtual_number_uid = False
+
+        allowed_text = self.el_inbound_allowed_ips or ""
+        allowed = [
+            ip.strip()
+            for ip in allowed_text.replace("\n", ",").split(",")
+            if ip.strip()
+        ]
+        inbound_cfg = InboundSipTrunkConfigRequestModel(
+            allowed_addresses=allowed if allowed else None,
+        )
+
+        try:
+            result = client.conversational_ai.phone_numbers.create(
+                request=PhoneNumbersCreateRequestBody_SipTrunk(
+                    provider="sip_trunk",
+                    phone_number=identifier,
+                    label="ElevenLabs Exten Route ({})".format(identifier[:12]),
+                    inbound_trunk_config=inbound_cfg,
+                )
+            )
+            uid = result.phone_number_id
+        except ApiError as e:
+            if e.status_code == 409:
+                uid = None
+                try:
+                    for pn in client.conversational_ai.phone_numbers.list():
+                        if getattr(pn, "phone_number", None) == identifier:
+                            uid = getattr(pn, "phone_number_id", None)
+                            break
+                except Exception as list_err:
+                    logger.warning("EL phone number list failed: %s", list_err)
+                if not uid:
+                    logger.warning("EL virtual number conflict but could not find uid")
+                    return
+            else:
+                logger.warning("EL virtual number create failed: %s", e)
+                return
+
+        try:
+            client.conversational_ai.phone_numbers.update(uid, agent_id=agent.agent_uid)
+        except Exception as e:
+            logger.warning("EL virtual number agent assign failed: %s", e)
+
+        self.with_context(skip_twilio_sync=True).write({
+            "el_virtual_number_uid": uid,
+            "render_sip_url": target_url if not self.render_sip_url else self.render_sip_url,
+        })
+        logger.info("EL virtual number registered: %s -> agent %s", identifier, agent.agent_uid)
+
+    def _remove_el_virtual_number(self):
+        """Delete the virtual EL phone number registration from ElevenLabs."""
+        self.ensure_one()
+        if not self.el_virtual_number_uid:
+            return
+        try:
+            client = self.env["connect.settings"].get_elevenlabs_client()
+            client.conversational_ai.phone_numbers.delete(self.el_virtual_number_uid)
+            logger.info("EL virtual number deleted: %s", self.el_virtual_number_uid)
+        except ApiError as e:
+            if e.status_code != 404:
+                logger.warning("EL virtual number delete failed: %s", e)
+        except Exception as e:
+            logger.warning("EL virtual number delete failed: %s", e)
+        finally:
+            self.with_context(skip_twilio_sync=True).write({
+                "el_virtual_number_uid": False,
+                "render_sip_url": False,
+            })
