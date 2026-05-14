@@ -290,7 +290,7 @@ class ElevenlabsSipTrunk(models.Model):
         except Exception as e:
             logger.warning("EL virtual number delete failed: %s", e)
         finally:
-            self.with_context(skip_twilio_sync=True).write({
-                "el_virtual_number_uid": False,
-                "render_sip_url": False,
-            })
+            vals = {"el_virtual_number_uid": False}
+            if self.render_sip_url and "elevenlabs.io" in self.render_sip_url:
+                vals["render_sip_url"] = False
+            self.with_context(skip_twilio_sync=True).write(vals)
