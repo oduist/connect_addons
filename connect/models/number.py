@@ -41,6 +41,7 @@ class Number(models.Model):
         ('user', 'User'),
         ('callflow', 'CallFlow'),
         ('twiml', 'TwiML'),
+        ('sip_trunk', 'SIP Trunk'),
     ], ondelete='set null')
     callflow = fields.Many2one('connect.callflow', ondelete='set null')
     user = fields.Many2one('connect.user', ondelete='set null')
@@ -108,9 +109,13 @@ class Number(models.Model):
             for field in ['user', 'callflow', 'twiml']:
                 if field != vals['destination']:
                     vals.update({field: None})
-        # Snapshot previous trunk to detect (un)assignment after super().write.
-        trunk_changed = 'sip_trunk' in vals
-        prev_trunks = {rec.id: rec.sip_trunk for rec in self} if trunk_changed else {}
+        # Snapshot previous (trunk, destination) — both can flip the desired
+        # Twilio binding state (see _sync_sip_trunk_membership).
+        binding_affected = 'sip_trunk' in vals or 'destination' in vals
+        prev_state = {
+            rec.id: (rec.sip_trunk, rec.destination)
+            for rec in self
+        } if binding_affected else {}
         res = super().write(vals)
         # Check if twilio_auto_sync is disabled
         if not self.env["connect.settings"].get_param("twilio_auto_sync"):
@@ -120,35 +125,44 @@ class Number(models.Model):
         for rec in self:
             if not self.env.context.get('skip_twilio_sync'):
                 rec.update_twilio_number(client)
-                if trunk_changed:
-                    rec._sync_sip_trunk_membership(client, prev_trunks.get(rec.id))
+                if rec.id in prev_state:
+                    prev_trunk, prev_dest = prev_state[rec.id]
+                    rec._sync_sip_trunk_membership(client, prev_trunk, prev_dest)
         return res
 
-    def _sync_sip_trunk_membership(self, client, previous_trunk):
-        """Attach/detach this number on the Twilio Elastic SIP Trunk."""
+    def _sync_sip_trunk_membership(self, client, previous_trunk, previous_destination):
+        """Attach/detach this number on the Twilio Elastic SIP Trunk.
+
+        When destination='sip_trunk' the number routes inbound via TwiML
+        <Dial><Sip> (Programmable Voice) — Twilio's native trunk binding
+        must stay detached so status_callback / voice_url fire.
+        """
         self.ensure_one()
         if not self.sid:
             return
-        # Detach from previous trunk
-        if previous_trunk and previous_trunk.sid and previous_trunk != self.sip_trunk:
+        want_trunk = (self.sip_trunk if self.sip_trunk and self.destination != 'sip_trunk'
+                      else self.env['connect.sip_trunk'])
+        was_trunk = (previous_trunk if previous_trunk and previous_destination != 'sip_trunk'
+                     else self.env['connect.sip_trunk'])
+        # Detach old binding if it changed
+        if was_trunk and was_trunk != want_trunk and was_trunk.sid:
             try:
                 client.trunking.v1.trunks(
-                    previous_trunk.sid).phone_numbers(self.sid).delete()
+                    was_trunk.sid).phone_numbers(self.sid).delete()
             except Exception as e:
                 if 'not found' not in str(e).lower():
                     logger.warning('Detach number %s from trunk %s: %s',
-                                   self.phone_number, previous_trunk.sid, e)
-        # Attach to new trunk (only if it actually changed)
-        if (self.sip_trunk and self.sip_trunk.sid
-                and previous_trunk != self.sip_trunk):
+                                   self.phone_number, was_trunk.sid, e)
+        # Attach new binding if it changed
+        if want_trunk and want_trunk != was_trunk and want_trunk.sid:
             try:
                 client.trunking.v1.trunks(
-                    self.sip_trunk.sid).phone_numbers.create(
+                    want_trunk.sid).phone_numbers.create(
                         phone_number_sid=self.sid)
             except Exception as e:
                 if 'already' not in str(e).lower():
                     logger.warning('Attach number %s to trunk %s: %s',
-                                   self.phone_number, self.sip_trunk.sid, e)
+                                   self.phone_number, want_trunk.sid, e)
 
     @api.model
     def sync(self):
@@ -214,6 +228,8 @@ class Number(models.Model):
             return self.user.render(request)
         elif self.destination == 'callflow' and self.callflow:
             return self.callflow.render(request)
+        elif self.destination == 'sip_trunk' and self.sip_trunk:
+            return self.sip_trunk.render(request)
         else:
             return '<Response><Say>Number not configured. Goodbye!</Say></Response>'
 
