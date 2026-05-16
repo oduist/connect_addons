@@ -60,6 +60,15 @@
                 </div>
                 <field name="elevenlabs_post_call_webhook_url" string="Post Call Webhook URL"/>
                 <field name="display_elevenlabs_post_call_webhook_secret" string="Post Call Webhook Secret" password="True"/>
+                <field name="elevenlabs_conversation_initiation_webhook_url"
+                       string="Conversation Initiation Webhook URL"/>
+                <div colspan="2">
+                  <small class="text-muted">
+                    For the Conversation Initiation webhook, configure EL to send header
+                    <code>x-elevenlabs-agent-token</code> with the Agent Token from the
+                    settings (used by tool/transfer webhooks too).
+                  </small>
+                </div>
             </group>
             <group>
             </group>

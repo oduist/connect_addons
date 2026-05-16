@@ -542,6 +542,78 @@ class ElevenlabsAgent(models.Model):
         client.calls(channel_sid).update(twiml=twiml)
         return "Transfer Successful"
 
+    @api.model
+    def build_initiation_payload(self, caller="", called="", agent_uid="", call_sid=""):
+        """Build the JSON envelope EL expects from the conversation_initiation webhook.
+
+        Looks up the in-flight connect.call and its partner to populate
+        dynamic_variables referenced by the agent prompt
+        (`{{previous_topics}}`, `{{available_extensions}}`, etc).
+        """
+        agent = self.search([("agent_uid", "=", agent_uid)], limit=1) if agent_uid else self.browse()
+        call = self.env["connect.call"]
+        if call_sid:
+            channel = self.env["connect.channel"].sudo().search(
+                [("sid", "=", call_sid)], limit=1)
+            if channel and channel.call:
+                call = channel.call
+                if agent and not call.elevenlabs_agent:
+                    call.sudo().elevenlabs_agent = agent.id
+
+        partner = call.partner if call else self.env["res.partner"]
+        if not partner and caller:
+            partner = self.env["res.partner"].sudo().get_partner_by_number(caller) or partner
+        if not partner and call and call.direction in ("outgoing", "internal"):
+            partner = call.caller_user.partner_id
+
+        dyn = {
+            "caller_number": caller or (call.caller if call else ""),
+            "called_number": called or (call.called if call else ""),
+            "partner_name": partner.name if partner else "Not registered",
+            "existing_partner": "Yes" if partner else "No",
+            "partner_phone": partner.phone if partner else "",
+            "partner_id": str(partner.id) if partner else "",
+            "partner_tz": partner.tz if partner else "",
+            "greeting": partner.name if partner else "Dear customer",
+            "previous_conversation_id": "",
+            "previous_topics": "",
+            "available_extensions": "",
+        }
+        users = self.env["connect.user"].sudo().search([])
+        dyn["users_directory"] = ", ".join(
+            "{} <{}>".format(u.user.name, u.exten.number)
+            for u in users if u.user and u.exten
+        )
+
+        if caller and called:
+            prev = self.env["connect.call"].sudo().search([
+                ("caller", "=", caller),
+                ("called", "=", called),
+                ("elevenlabs_conversation_id", "!=", False),
+            ], order="id desc", limit=1)
+            if prev:
+                dyn["previous_conversation_id"] = prev.elevenlabs_conversation_id or ""
+                dyn["previous_topics"] = prev.elevenlabs_summary or ""
+
+        published_extens = self.env["connect.exten"].sudo().search(
+            [("is_published", "=", True)])
+        if published_extens:
+            dyn["available_extensions"] = ", ".join(
+                '<{}> "{}"'.format(e.number, e.dst.display_name if e.dst else "")
+                for e in published_extens
+            )
+
+        payload = {
+            "type": "conversation_initiation_client_data",
+            "dynamic_variables": dyn,
+        }
+        # Language override if partner has a language preference (EL expects
+        # short codes; pt_BR → pt-br is the documented exception).
+        if partner and partner.lang:
+            lang = "pt-br" if partner.lang == "pt_BR" else partner.lang.split("_")[0]
+            payload["conversation_config_override"] = {"agent": {"language": lang}}
+        return payload
+
     def create_elevenlabs_agent(self):
         client = self.env["connect.settings"].get_elevenlabs_client()
         try:

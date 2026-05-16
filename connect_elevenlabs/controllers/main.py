@@ -74,6 +74,35 @@ class ConnectElevenlabsController(http.Controller):
         res = agent.transfer(**data)
         return res
 
+    @http.route('/connect_elevenlabs/conversation_initiation', methods=['POST'],
+                type='http', auth='public', csrf=False)
+    def conversation_initiation_webhook(self):
+        """EL fetches per-call context before opening the conversation.
+
+        Always returns a valid JSON envelope — any internal error becomes an
+        empty-vars response so EL doesn't kill the call.
+        """
+        logger.info('Incoming request: /connect_elevenlabs/conversation_initiation')
+        if not self.check_tool_token():
+            raise Unauthorized()
+        try:
+            data = json.loads(http.request.httprequest.get_data(as_text=True) or '{}')
+        except Exception as e:
+            logger.warning('Conversation initiation: bad JSON body: %s', e)
+            data = {}
+        try:
+            payload = http.request.env['connect.elevenlabs_agent'].sudo().build_initiation_payload(
+                caller=data.get('caller_id') or '',
+                called=data.get('called_number') or '',
+                agent_uid=data.get('agent_id') or '',
+                call_sid=data.get('call_sid') or '',
+            )
+        except Exception as e:
+            logger.exception('Conversation initiation payload build failed: %s', e)
+            payload = {"type": "conversation_initiation_client_data",
+                       "dynamic_variables": {}}
+        return json.dumps(payload)
+
 
     def _create_el_recording(self, call, data, transcript, summary, user):
         conversation_id = data.get('conversation_id')
