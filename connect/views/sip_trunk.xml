@@ -23,6 +23,7 @@
                 <field name="transfer_mode"/>
                 <field name="recording_mode"/>
                 <field name="number_count" string="Numbers"/>
+                <field name="exten_number" string="Exten"/>
             </list>
         </field>
     </record>
@@ -32,7 +33,10 @@
         <field name="model">connect.sip_trunk</field>
         <field name="arch" type="xml">
             <form string="SIP Trunk">
-                <header/>
+                <header>
+                    <button name="create_extension" type="object" string="Extension"
+                            class="btn btn-primary" invisible="id == False"/>
+                </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_numbers"
@@ -60,6 +64,9 @@
                             <field name="recording_mode"/>
                             <field name="recording_trim"
                                    invisible="recording_mode == 'do-not-record'"/>
+                            <field name="exten"
+                                   options="{'no_create': True}"
+                                   help="Internal extension that, when dialed, routes through this trunk's Dial SIP URI."/>
                         </group>
                     </group>
                     <notebook>

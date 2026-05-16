@@ -102,6 +102,7 @@ class SipTrunk(models.Model):
              'Leave blank to say "not configured".',
     )
     exten = fields.Many2one('connect.exten', string='Extension', ondelete='set null')
+    exten_number = fields.Char(related='exten.number', store=True)
 
     credential_ids = fields.One2many(
         'connect.sip_trunk_credential', 'sip_trunk', string='SIP Credentials')
@@ -201,6 +202,14 @@ class SipTrunk(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
+        if 'exten' in vals:
+            for rec in self:
+                if rec.exten and (rec.exten.model != rec._name
+                                  or rec.exten.res_id != rec.id):
+                    rec.exten.with_context(skip_twilio_sync=True).write({
+                        'model': rec._name,
+                        'res_id': rec.id,
+                    })
         if _should_skip_twilio_sync(self.env):
             return res
         twilio_fields = {
@@ -381,6 +390,10 @@ class SipTrunk(models.Model):
         dial.sip(self.render_sip_url)
         response.append(dial)
         return response
+
+    def create_extension(self):
+        self.ensure_one()
+        return self.env['connect.exten'].create_extension(self, 'sip_trunk')
 
     def action_view_numbers(self):
         self.ensure_one()
