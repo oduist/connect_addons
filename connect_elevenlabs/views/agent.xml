@@ -78,7 +78,18 @@
                                     <field name="agent_concurrency_limit"/>
                                     <field name="daily_limit"/>
                                     <field name="exten_number" string="Exten"/>
-                                    <field name="sip_trunk"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="sip" string="SIP" groups="base.group_erp_manager">
+                            <group>
+                                <group>
+                                    <field name="el_virtual_number_uid" readonly="1"/>
+                                </group>
+                                <group>
+                                    <field name="el_inbound_allowed_ips"
+                                           widget="text"
+                                           placeholder="One IP/CIDR per line, e.g.&#10;54.172.60.0/23"/>
                                 </group>
                             </group>
                         </page>

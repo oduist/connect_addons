@@ -25,62 +25,6 @@ class Call(models.Model):
             if rec.elevenlabs_agent and rec.recording:
                 rec.recording_icon = '<span class="fa fa-file-sound-o"/>'
 
-    def elevenlabs_agent_get_call_data(self):
-        self.ensure_one()
-        users = self.env['connect.user'].search([])
-        partner = self.partner
-        if not partner:
-            # Test outgoing call:
-            if self.direction in ['outgoing', 'internal']:
-                partner = self.caller_user.partner_id
-        data = {
-            'id': self.id,
-            'caller_number': self.caller,
-            'called_number': self.called,
-            'partner_name': partner.name or 'Not registered',
-            'existing_partner': 'Yes' if partner else 'No',
-            'partner_phone': partner.phone,
-            'partner_id': partner.id,
-            'partner_tz': partner.tz,
-            'greeting': partner.name or 'Dear customer',
-            'users_directory': ', '.join(['{} <{}>'.format(k.user.name, k.exten.number) for k in users]),
-            'previous_conversation_id': '',
-            'previous_topics': '',
-        }
-        if partner.lang:
-            # Workaround for pt-br option for the language.
-            if partner.lang == 'pt_BR':
-                data['partner_language'] = 'pt-br' # Format that Elevenlabs accepts for this.
-            else:
-                data['partner_language'] = partner.lang.split('_')[0]
-
-        previous_conversations = self.env['connect.call'].sudo().search([
-            ('caller', '=', self.caller), ('called', '=', self.called), ('elevenlabs_conversation_id', '!=', False)])
-        if previous_conversations:
-            data.update({
-                'previous_conversation_id': previous_conversations[0].elevenlabs_conversation_id,
-                'previous_topics': previous_conversations[0].elevenlabs_summary,
-            })
-        # Get published extensions for transfer
-        published_extens = self.env['connect.exten'].search([('is_published', '=', True)])
-        if published_extens:
-            data['available_extensions'] = ', '.join(
-                ['<{}> "{}"'.format(k.number, k.dst.display_name if k.dst else '') for k in published_extens]
-            )
-
-        return data
-
-    @api.model
-    def elevenlabs_agent_start_call_event(self, params):
-        call_id=params['call_id']
-        agent_uid=params['agent_uid']
-        # aio_odoorpc cannot pass positional args?
-        call = self.sudo().browse(int(call_id))
-        agent = self.env['connect.elevenlabs_agent'].sudo().search([('agent_uid', '=', agent_uid)])
-        # Link call to the Agent.
-        call.elevenlabs_agent = agent.id
-        return call.elevenlabs_agent_get_call_data()
-
     @api.model
     def create_from_elevenlabs_inbound(self, data):
         conversation_id = data.get('conversation_id', '')

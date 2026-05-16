@@ -1,6 +1,5 @@
 from . import agent
 from . import agent_prompt
-from . import sip_trunk
 from . import agent_tool
 from . import agent_template
 from . import agent_transfer
