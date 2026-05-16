@@ -386,10 +386,26 @@ class SipTrunk(models.Model):
         if not self.render_sip_url:
             response.say('SIP trunk is not configured for dialing.')
             return response
-        dial = Dial()
+        dial = Dial(callerId=self._resolve_caller_id(request))
         dial.sip(self.render_sip_url)
         response.append(dial)
         return response
+
+    def _resolve_caller_id(self, request):
+        # Twilio rejects Dial->SIP with non-E.164 callerId chars (e.g. the
+        # 'client:admin@...' From of JS-SDK callers triggers error 13247).
+        # Pick the first sane source.
+        self.ensure_one()
+        caller = (request or {}).get('Caller') or ''
+        if caller.startswith('+') and caller[1:].isdigit():
+            return caller
+        default = self.env['connect.outgoing_callerid'].sudo().search(
+            [('is_default', '=', True)], limit=1)
+        if default and default.number:
+            return default.number
+        if self.number_ids:
+            return self.number_ids[0].phone_number
+        return 'anonymous'
 
     def create_extension(self):
         self.ensure_one()
