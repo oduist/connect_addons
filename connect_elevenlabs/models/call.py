@@ -65,7 +65,7 @@ class Call(models.Model):
         published_extens = self.env['connect.exten'].search([('is_published', '=', True)])
         if published_extens:
             data['available_extensions'] = ', '.join(
-                ['<{}> "{}"'.format(k.number, k.dst.name if k.dst else '') for k in published_extens]
+                ['<{}> "{}"'.format(k.number, k.dst.display_name if k.dst else '') for k in published_extens]
             )
 
         return data

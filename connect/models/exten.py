@@ -45,7 +45,7 @@ class Exten(models.Model):
     def _get_name(self):
         for rec in self:
             try:
-                rec.name = "{} <{}>".format(rec.number, rec.dst.name if rec.dst else '')
+                rec.name = "{} <{}>".format(rec.number, rec.dst.display_name if rec.dst else '')
             except Exception as e:
                 logger.exception('Exten name error:')
                 rec.name = 'See Odoo Error Log'
