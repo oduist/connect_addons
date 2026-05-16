@@ -85,7 +85,7 @@ class Exten(models.Model):
 
     def unlink(self):
         for rec in self:
-            if hasattr(rec.dst, 'exten'):
+            if hasattr(rec.dst, 'exten') and rec.dst.exten == rec:
                 rec.dst.exten = False
         return super().unlink()
 
