@@ -85,7 +85,7 @@ class Recording(models.Model):
                 temp_file_path = temp_file.name
             file_size = os.path.getsize(temp_file_path)
             if file_size > 26214400:
-                error_msg = 'File exceeds size limit (26MB). Please use the Elevenlabs module for larger files.'
+                error_msg = 'File exceeds Twilio recording size limit (26MB).'
                 logger.error(error_msg)
                 result['transcription_error'] = error_msg
                 return
