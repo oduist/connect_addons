@@ -79,6 +79,10 @@ class Number(models.Model):
         if self.is_ignored:
             debug(self, 'Ignoring number {} update.'.format(self.phone_number))
             return
+        if self.destination == 'sip_trunk' and self.sip_trunk:
+            debug(self, 'Skipping voice_url update for trunk-attached number {}.'.format(
+                self.phone_number))
+            return
         try:
             number = client.incoming_phone_numbers(self.sid)
             number.update(
@@ -133,18 +137,22 @@ class Number(models.Model):
     def _sync_sip_trunk_membership(self, client, previous_trunk, previous_destination):
         """Attach/detach this number on the Twilio Elastic SIP Trunk.
 
-        When destination='sip_trunk' the number routes inbound via TwiML
-        <Dial><Sip> (Programmable Voice) — Twilio's native trunk binding
-        must stay detached so status_callback / voice_url fire.
+        When destination='sip_trunk' the number is natively attached to
+        the trunk and Twilio forwards inbound calls directly to the
+        trunk's Origination URLs. The number's voice_url is bypassed
+        in that state, so Odoo-side call logging via webhook does not
+        fire — that is by design; the receiving PBX is the call-record
+        source.
         """
         self.ensure_one()
         if not self.sid:
             return
-        want_trunk = (self.sip_trunk if self.sip_trunk and self.destination != 'sip_trunk'
+        want_trunk = (self.sip_trunk
+                      if self.destination == 'sip_trunk' and self.sip_trunk
                       else self.env['connect.sip_trunk'])
-        was_trunk = (previous_trunk if previous_trunk and previous_destination != 'sip_trunk'
+        was_trunk = (previous_trunk
+                     if previous_destination == 'sip_trunk' and previous_trunk
                      else self.env['connect.sip_trunk'])
-        # Detach old binding if it changed
         if was_trunk and was_trunk != want_trunk and was_trunk.sid:
             try:
                 client.trunking.v1.trunks(
@@ -153,7 +161,6 @@ class Number(models.Model):
                 if 'not found' not in str(e).lower():
                     logger.warning('Detach number %s from trunk %s: %s',
                                    self.phone_number, was_trunk.sid, e)
-        # Attach new binding if it changed
         if want_trunk and want_trunk != was_trunk and want_trunk.sid:
             try:
                 client.trunking.v1.trunks(
@@ -228,8 +235,9 @@ class Number(models.Model):
             return self.user.render(request)
         elif self.destination == 'callflow' and self.callflow:
             return self.callflow.render(request)
-        elif self.destination == 'sip_trunk' and self.sip_trunk:
-            return self.sip_trunk.render(request)
+        elif self.destination == 'sip_trunk':
+            return ('<Response><Say>Number routed natively via SIP '
+                    'Trunk.</Say></Response>')
         else:
             return '<Response><Say>Number not configured. Goodbye!</Say></Response>'
 
