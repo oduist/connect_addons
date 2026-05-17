@@ -95,12 +95,6 @@ class SipTrunk(models.Model):
     disaster_recovery_method = fields.Selection(
         DR_METHOD, string='DR Method', default='POST')
 
-    render_sip_url = fields.Char(
-        'Dial SIP URI',
-        help='SIP URI dialed when this trunk is used as an extension destination '
-             '(e.g. sip:+19789814066@sip.rtc.elevenlabs.io:5060;transport=tcp). '
-             'Leave blank to say "not configured".',
-    )
     effective_sip_url = fields.Char(
         compute='_compute_effective_sip_url',
         help='Outbound SIP target derived from the first enabled '
@@ -406,11 +400,11 @@ class SipTrunk(models.Model):
         from twilio.twiml.voice_response import Dial, VoiceResponse
         self.ensure_one()
         response = VoiceResponse()
-        if not self.render_sip_url:
-            response.say('SIP trunk is not configured for dialing.')
+        if not self.effective_sip_url:
+            response.say('SIP trunk has no enabled origination URL.')
             return response
         dial = Dial(callerId=self._resolve_caller_id(request))
-        dial.sip(self.render_sip_url)
+        dial.sip(self.effective_sip_url)
         response.append(dial)
         return response
 
