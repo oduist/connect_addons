@@ -59,7 +59,9 @@
                             <group>
                                 <field name="is_ignored"/>
                                 <field name="sip_trunk"
-                                       required="destination == 'sip_trunk'"/>
+                                       required="destination == 'sip_trunk'"
+                                       options="{'no_create': True}"
+                                       help="When destination is 'SIP Trunk', this number is natively attached to the trunk: Twilio routes inbound calls directly to the trunk's Origination URLs and Odoo call logging via webhook is bypassed."/>
                             </group>
                         </group>
                 </sheet>
