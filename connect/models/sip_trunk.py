@@ -112,6 +112,9 @@ class SipTrunk(models.Model):
     origination_url_ids = fields.One2many(
         'connect.sip_trunk_origination_url', 'sip_trunk',
         string='Origination URLs')
+    recording_rule_ids = fields.One2many(
+        'connect.sip_trunk_recording_rule', 'sip_trunk',
+        string='Recording Rules')
     number_ids = fields.One2many(
         'connect.number', 'sip_trunk', string='Phone Numbers')
     number_count = fields.Integer(compute='_compute_number_count')
@@ -510,6 +513,7 @@ class SipTrunk(models.Model):
                 rec.with_context(skip_twilio_sync=True).write(vals)
             rec._sync_origination_urls(client)
             rec._sync_phone_numbers(client)
+            rec._sync_recording_rules(client)
         if seen_sids:
             stale = self.search(
                 [('sid', 'not in', list(seen_sids)), ('sid', '!=', False)])
@@ -583,6 +587,41 @@ class SipTrunk(models.Model):
         ])
         if detach:
             detach.with_context(skip_twilio_sync=True).write({'sip_trunk': False})
+
+    def _sync_recording_rules(self, client):
+        """Mirror Twilio trunk's RecordingRules into Odoo."""
+        self.ensure_one()
+        if not self.sid:
+            return
+        try:
+            twilio_rules = list(client.trunking.v1.trunks(
+                self.sid).recording_rules.list())
+        except Exception:
+            logger.warning(
+                'Cannot list recording_rules for trunk %s', self.sid)
+            return
+        Rule = self.env['connect.sip_trunk_recording_rule']
+        seen = set()
+        for tr in twilio_rules:
+            seen.add(tr.sid)
+            rec = Rule.search([('rule_sid', '=', tr.sid)], limit=1)
+            vals = {
+                'sip_trunk': self.id,
+                'recording_type': getattr(tr, 'type', None) or 'do-not-record',
+                'start_condition': getattr(tr, 'filter', None) or False,
+            }
+            if not rec:
+                vals['rule_sid'] = tr.sid
+                Rule.with_context(skip_twilio_sync=True).create(vals)
+            else:
+                rec.with_context(skip_twilio_sync=True).write(vals)
+        stale = Rule.search([
+            ('sip_trunk', '=', self.id),
+            ('rule_sid', '!=', False),
+            ('rule_sid', 'not in', list(seen) or [False]),
+        ])
+        if stale:
+            stale.with_context(skip_twilio_sync=True).unlink()
 
 
 class SipTrunkCredential(models.Model):
@@ -884,6 +923,91 @@ class SipTrunkOriginationUrl(models.Model):
                     client.trunking.v1.trunks(
                         rec.sip_trunk.sid
                     ).origination_urls(rec.origination_url_sid).delete()
+                except Exception as e:
+                    if 'not found' not in str(e).lower():
+                        raise ValidationError(format_connect_response(e))
+        return super().unlink()
+
+
+class SipTrunkRecordingRule(models.Model):
+    _name = 'connect.sip_trunk_recording_rule'
+    _description = 'SIP Trunk Recording Rule'
+    _rec_name = 'rule_sid'
+    _order = 'id'
+
+    sip_trunk = fields.Many2one(
+        'connect.sip_trunk', required=True, ondelete='cascade')
+    trunk_sid = fields.Char(
+        related='sip_trunk.sid', store=True, readonly=True)
+    rule_sid = fields.Char(readonly=True)
+    recording_type = fields.Selection([
+        ('record-from-ringing', 'Record from ringing'),
+        ('record-from-answer', 'Record from answer'),
+        ('do-not-record', 'Do not record'),
+    ], required=True, default='record-from-answer')
+    start_condition = fields.Char(
+        help='Twilio SIP-header filter expression that gates this rule, '
+             'e.g. \'X-Recording-Required = "true"\'. Leave blank to '
+             'apply to all calls on the trunk.')
+
+    def _twilio_payload(self):
+        self.ensure_one()
+        payload = {'type': self.recording_type}
+        if self.start_condition:
+            payload['filter'] = self.start_condition
+        return payload
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        recs = super().create(vals_list)
+        if _should_skip_twilio_sync(self.env):
+            return recs
+        client = self.env['connect.settings'].get_client()
+        for rec in recs:
+            if not rec.sip_trunk.sid:
+                continue
+            try:
+                rule = client.trunking.v1.trunks(
+                    rec.sip_trunk.sid).recording_rules.create(
+                        **rec._twilio_payload())
+            except Exception as e:
+                logger.exception('RecordingRule create failed:')
+                raise ValidationError(format_connect_response(e))
+            rec.with_context(skip_twilio_sync=True).write(
+                {'rule_sid': rule.sid})
+        return recs
+
+    def write(self, vals):
+        res = super().write(vals)
+        if _should_skip_twilio_sync(self.env):
+            return res
+        twilio_fields = {'recording_type', 'start_condition'}
+        if not (twilio_fields & set(vals.keys())):
+            return res
+        client = self.env['connect.settings'].get_client()
+        for rec in self:
+            if not (rec.sip_trunk.sid and rec.rule_sid):
+                continue
+            try:
+                client.trunking.v1.trunks(
+                    rec.sip_trunk.sid
+                ).recording_rules(rec.rule_sid).update(
+                    **rec._twilio_payload())
+            except Exception as e:
+                logger.exception('RecordingRule update failed:')
+                raise ValidationError(format_connect_response(e))
+        return res
+
+    def unlink(self):
+        if not _should_skip_twilio_sync(self.env):
+            client = self.env['connect.settings'].get_client()
+            for rec in self:
+                if not (rec.sip_trunk.sid and rec.rule_sid):
+                    continue
+                try:
+                    client.trunking.v1.trunks(
+                        rec.sip_trunk.sid
+                    ).recording_rules(rec.rule_sid).delete()
                 except Exception as e:
                     if 'not found' not in str(e).lower():
                         raise ValidationError(format_connect_response(e))
