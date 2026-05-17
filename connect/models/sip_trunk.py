@@ -101,6 +101,13 @@ class SipTrunk(models.Model):
              '(e.g. sip:+19789814066@sip.rtc.elevenlabs.io:5060;transport=tcp). '
              'Leave blank to say "not configured".',
     )
+    effective_sip_url = fields.Char(
+        compute='_compute_effective_sip_url',
+        help='Outbound SIP target derived from the first enabled '
+             'Origination URL of this trunk (ordered by priority asc, '
+             'weight desc, id asc). Used when an Odoo Extension dials '
+             'this trunk.',
+    )
     exten = fields.Many2one('connect.exten', string='Extension', ondelete='set null')
     exten_number = fields.Char(related='exten.number', store=True)
 
@@ -126,6 +133,22 @@ class SipTrunk(models.Model):
             ('sid_unique', 'UNIQUE(sid)',
              'This Twilio Trunk SID is already used!'),
         ]
+
+    @api.depends('origination_url_ids.enabled',
+                 'origination_url_ids.priority',
+                 'origination_url_ids.weight',
+                 'origination_url_ids.sip_url')
+    def _compute_effective_sip_url(self):
+        for rec in self:
+            candidates = rec.origination_url_ids.filtered(lambda o: o.enabled)
+            if not candidates:
+                rec.effective_sip_url = False
+                continue
+            winner = sorted(
+                candidates,
+                key=lambda o: (o.priority, -o.weight, o.id),
+            )[0]
+            rec.effective_sip_url = winner.sip_url
 
     def _compute_number_count(self):
         for rec in self:
