@@ -15,7 +15,6 @@ ODUIST_MODULES.append('connect_elevenlabs')
 logger = logging.getLogger(__name__)
 
 PROTECTED_FIELDS.append('display_elevenlabs_api_key')
-PROTECTED_FIELDS.append('display_elevenlabs_post_call_webhook_secret')
 
 class Elevenlabsettings(models.Model):
     _inherit = 'connect.settings'
@@ -26,11 +25,8 @@ class Elevenlabsettings(models.Model):
     display_elevenlabs_api_key = fields.Char()
     elevenlabs_voice = fields.Many2one('connect.elevenlabs_voice', ondelete='set null', string='Selected Voice')
     elevenlabs_enabled = fields.Boolean()
-    elevenlabs_post_call_webhook_url = fields.Char(compute='_get_post_call_webhook_url')
     elevenlabs_conversation_initiation_webhook_url = fields.Char(
         compute='_get_conversation_initiation_webhook_url')
-    display_elevenlabs_post_call_webhook_secret = fields.Char()
-    elevenlabs_post_call_webhook_secret = fields.Char(groups="base.group_erp_manager")
     # Transcript elevenlabs webhook
     transcript_provider = fields.Selection(
         selection_add=[('elevenlabs', 'Elevenlabs')], ondelete={'elevenlabs': 'set default'})
@@ -50,10 +46,6 @@ class Elevenlabsettings(models.Model):
             'view_id': self.env.ref('connect_elevenlabs.connect_elevenlabs_settings_form').id,
             'target': 'current',
         }
-
-    def _get_post_call_webhook_url(self):
-        api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        self.elevenlabs_post_call_webhook_url = urljoin(api_url, 'connect_elevenlabs/post_call')
 
     def _get_conversation_initiation_webhook_url(self):
         api_url = self.env['connect.settings'].sudo().get_param('api_url')

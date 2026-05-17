@@ -55,11 +55,6 @@
           <page name="webhook" string="Webhook"
               invisible="not elevenlabs_enabled or not display_elevenlabs_api_key">
             <group>
-                <div colspan="2">
-                  <small><strong>Add Elevenlabs post call webhook URL in <a href="https://elevenlabs.io/app/conversational-ai/settings" target="_blank">Elevenlabs Settings</a></strong>.</small>
-                </div>
-                <field name="elevenlabs_post_call_webhook_url" string="Post Call Webhook URL"/>
-                <field name="display_elevenlabs_post_call_webhook_secret" string="Post Call Webhook Secret" password="True"/>
                 <field name="elevenlabs_conversation_initiation_webhook_url"
                        string="Conversation Initiation Webhook URL"/>
                 <field name="elevenlabs_agent_token"
