@@ -66,7 +66,7 @@
                                    invisible="recording_mode == 'do-not-record'"/>
                             <field name="exten"
                                    options="{'no_create': True}"
-                                   help="Internal extension that, when dialed, routes through this trunk's Dial SIP URI."/>
+                                   help="Internal extension that, when dialed, routes the call through this trunk's first enabled Origination URL."/>
                             <field name="effective_sip_url" readonly="1"
                                    help="SIP URI used when Odoo Extension dials this trunk; derived from the first enabled Origination URL."/>
                         </group>
