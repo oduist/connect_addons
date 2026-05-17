@@ -109,7 +109,6 @@ llm_list = [
     # ElevenLabs hosted (open-source)
     ("glm-4.5-air", "GLM 4.5 Air"),
     ("qwen3-30b-a3b", "Qwen3 30B A3B"),
-    # Другие (если поддерживаются)
     ("grok-beta", "Grok Beta"),
 ]
 

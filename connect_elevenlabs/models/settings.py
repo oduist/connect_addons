@@ -59,6 +59,36 @@ class Elevenlabsettings(models.Model):
             raise ValidationError('Elevenlabs API key not set!')
         return ElevenLabs(api_key=key)
 
+    def _push_elevenlabs_initiation_webhook(self):
+        """Push the Conversation Initiation Client Data Webhook to EL workspace settings.
+
+        This is the workspace-level webhook (PATCH /v1/convai/settings) — one
+        config for all agents in the account. URL and token come from this
+        record; agent-level overrides are intentionally not used.
+        """
+        rec = self.sudo()
+        if not rec.elevenlabs_enabled:
+            return
+        url = rec.elevenlabs_conversation_initiation_webhook_url
+        token = rec.elevenlabs_agent_token
+        if not url or not token:
+            return
+        try:
+            client = rec.get_elevenlabs_client()
+        except ValidationError:
+            return
+        try:
+            client.conversational_ai.settings.update(
+                conversation_initiation_client_data_webhook={
+                    "url": url,
+                    "request_headers": {
+                        "x-elevenlabs-agent-token": token,
+                    },
+                },
+            )
+            logger.info("EL initiation webhook pushed: %s", url)
+        except Exception as e:
+            logger.exception("EL initiation webhook push failed: %s", e)
 
     def elevenlabs_get_voices(self):
         self.env['connect.elevenlabs_voice'].get_voices()
@@ -75,6 +105,7 @@ class Elevenlabsettings(models.Model):
     def elevenlabs_reset_token(self):
         # Generate new token.
         self.set_param('elevenlabs_agent_token', str(uuid.uuid4()))
+        self._push_elevenlabs_initiation_webhook()
 
 
     def elevenlabs_sync_tools(self):
