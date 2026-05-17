@@ -26,7 +26,6 @@ class Elevenlabsettings(models.Model):
     display_elevenlabs_api_key = fields.Char()
     elevenlabs_voice = fields.Many2one('connect.elevenlabs_voice', ondelete='set null', string='Selected Voice')
     elevenlabs_enabled = fields.Boolean()
-    elevenlabs_agent_parameters = fields.Text(string='Agent Parameters')
     elevenlabs_post_call_webhook_url = fields.Char(compute='_get_post_call_webhook_url')
     elevenlabs_conversation_initiation_webhook_url = fields.Char(
         compute='_get_conversation_initiation_webhook_url')

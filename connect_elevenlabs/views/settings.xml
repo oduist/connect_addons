@@ -62,23 +62,26 @@
                 <field name="display_elevenlabs_post_call_webhook_secret" string="Post Call Webhook Secret" password="True"/>
                 <field name="elevenlabs_conversation_initiation_webhook_url"
                        string="Conversation Initiation Webhook URL"/>
+                <field name="elevenlabs_agent_token"
+                       string="Agent Token"
+                       groups="base.group_erp_manager"
+                       readonly="1"/>
                 <div colspan="2">
                   <small class="text-muted">
-                    For the Conversation Initiation webhook, configure EL to send header
-                    <code>x-elevenlabs-agent-token</code> with the Agent Token from the
-                    settings (used by tool/transfer webhooks too).
+                    The <strong>Agent Token</strong> is sent by EL as header
+                    <code>x-elevenlabs-agent-token</code> on every webhook
+                    (transfer, calendar tools, conversation initiation).
+                    Configure it in EL: <em>Workspace → Secrets</em>, then attach to each
+                    webhook as a custom header.
                   </small>
                 </div>
+                <button name="elevenlabs_reset_token" type="object"
+                        string="Reset Agent Token"
+                        class="btn-secondary"
+                        groups="base.group_erp_manager"
+                        confirm="Reset the Agent Token? You'll need to update EL with the new value or webhooks will start failing."/>
             </group>
             <group>
-            </group>
-          </page>
-          <page name="agent" string="Agent"
-              invisible="not elevenlabs_enabled or not display_elevenlabs_api_key">
-            <group>
-              <group>
-                <field name="elevenlabs_agent_parameters" placeholder="param=value"/>
-              </group>
             </group>
           </page>
         </notebook>
