@@ -766,13 +766,53 @@ class SipTrunkOriginationUrl(models.Model):
 
     @api.constrains('sip_url')
     def _check_sip_url(self):
+        # Lightweight SIP URI grammar: scheme:[user@]host[:port][;params]
+        # Accepts sip:/sips: schemes, IPv4 or FQDN host, optional port
+        # 1..65535, and optional `transport=` parameter restricted to
+        # udp / tcp / tls.
+        pattern = re.compile(
+            r'^(?P<scheme>sips?):'
+            r'(?:[^\s@]+@)?'
+            r'(?P<host>[A-Za-z0-9][A-Za-z0-9\-.]*[A-Za-z0-9]|\d{1,3}(?:\.\d{1,3}){3})'
+            r'(?::(?P<port>\d{1,5}))?'
+            r'(?P<params>(?:;[A-Za-z0-9_.\-]+=[A-Za-z0-9_.\-]+)*)$'
+        )
+        transport_re = re.compile(
+            r'(?:^|;)transport=(?P<t>[A-Za-z]+)(?:;|$)')
         for rec in self:
             if not rec.sip_url:
                 continue
-            scheme = rec.sip_url.split(':', 1)[0].lower()
-            if scheme not in ('sip', 'sips'):
+            m = pattern.match(rec.sip_url.strip())
+            if not m:
                 raise ValidationError(
-                    'Origination URL must start with sip: or sips:')
+                    'Invalid SIP URI: {!r}. Expected '
+                    'sip[s]:[user@]host[:port][;param=value...]'.format(
+                        rec.sip_url))
+            port = m.group('port')
+            if port is not None and not (1 <= int(port) <= 65535):
+                raise ValidationError(
+                    'Invalid SIP URI port {} in {!r}; must be 1..65535.'.format(
+                        port, rec.sip_url))
+            tm = transport_re.search(m.group('params') or '')
+            if tm and tm.group('t').lower() not in ('udp', 'tcp', 'tls'):
+                raise ValidationError(
+                    'Invalid SIP URI transport={!r} in {}; must be one of '
+                    'udp, tcp, tls.'.format(tm.group('t'), rec.sip_url))
+
+    @api.constrains('sip_trunk', 'sip_url')
+    def _check_unique_within_trunk(self):
+        for rec in self:
+            if not rec.sip_url or not rec.sip_trunk:
+                continue
+            same = self.search([
+                ('sip_trunk', '=', rec.sip_trunk.id),
+                ('sip_url', '=', rec.sip_url),
+                ('id', '!=', rec.id),
+            ], limit=1)
+            if same:
+                raise ValidationError(
+                    'Origination URL {!r} already exists on trunk {}.'.format(
+                        rec.sip_url, rec.sip_trunk.friendly_name))
 
     @api.constrains('priority', 'weight')
     def _check_priority_weight(self):
