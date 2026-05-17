@@ -67,6 +67,8 @@
                             <field name="exten"
                                    options="{'no_create': True}"
                                    help="Internal extension that, when dialed, routes through this trunk's Dial SIP URI."/>
+                            <field name="effective_sip_url" readonly="1"
+                                   help="SIP URI used when Odoo Extension dials this trunk; derived from the first enabled Origination URL."/>
                         </group>
                     </group>
                     <notebook>
@@ -77,6 +79,11 @@
                                 priority wins; weight load-shares within
                                 the same priority.
                             </p>
+                            <group>
+                                <field name="effective_sip_url" readonly="1"
+                                       string="Effective SIP URL"
+                                       help="The first enabled origination URL (priority asc, weight desc) — what Odoo Extensions and the Twilio routing will use."/>
+                            </group>
                             <field name="origination_url_ids"
                                    invisible="id == False">
                                 <list editable="bottom">
@@ -119,6 +126,26 @@
                                 Save the trunk first, then add IP entries.
                             </p>
                         </page>
+                        <page string="Recording Rules">
+                            <p class="text-muted">
+                                Per-call recording overrides. Twilio applies the
+                                first matching rule (by SIP-header filter); rules
+                                without a filter apply to all calls on this trunk.
+                                Independent of the trunk-level Recording setting.
+                            </p>
+                            <field name="recording_rule_ids"
+                                   invisible="id == False">
+                                <list editable="bottom">
+                                    <field name="recording_type"/>
+                                    <field name="start_condition"
+                                           placeholder='X-Recording-Required = "true"'/>
+                                    <field name="rule_sid" readonly="1"/>
+                                </list>
+                            </field>
+                            <p class="text-muted" invisible="id != False">
+                                Save the trunk first, then add recording rules.
+                            </p>
+                        </page>
                         <page string="Disaster Recovery">
                             <group>
                                 <field name="disaster_recovery_url"
@@ -140,6 +167,8 @@
                                 <field name="sid" readonly="1"/>
                                 <field name="credential_list_sid" readonly="1"/>
                                 <field name="ip_acl_sid" readonly="1"/>
+                                <field name="auth_type" readonly="1"/>
+                                <field name="symmetric_rtp_enabled" readonly="1"/>
                             </group>
                         </page>
                     </notebook>
