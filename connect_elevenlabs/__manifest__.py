@@ -21,7 +21,6 @@
         # Data
         'data/tools.xml',
         'data/agent_templates.xml',
-        'data/sip_trunk.xml',
         # Security
         'security/admin.xml',
         'security/user.xml',
