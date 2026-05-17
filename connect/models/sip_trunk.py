@@ -118,6 +118,14 @@ class SipTrunk(models.Model):
 
     credential_list_sid = fields.Char(readonly=True)
     ip_acl_sid = fields.Char(readonly=True)
+    auth_type = fields.Selection([
+        ('IP_ACL', 'IP ACL'),
+        ('CREDENTIAL_LIST', 'Credential List'),
+    ], readonly=True,
+       help='Active termination authentication method, reported by Twilio.')
+    symmetric_rtp_enabled = fields.Boolean(
+        readonly=True,
+        help='Whether Twilio uses symmetric RTP for this trunk. Reported by Twilio.')
 
     if release.version_info[0] >= 19:
         _sid_unique = Constraint(
@@ -491,6 +499,9 @@ class SipTrunk(models.Model):
                 'recording_trim': rec_trim,
                 'disaster_recovery_url': tr.disaster_recovery_url or '',
                 'disaster_recovery_method': tr.disaster_recovery_method or 'POST',
+                'auth_type': getattr(tr, 'auth_type', None) or False,
+                'symmetric_rtp_enabled': bool(
+                    getattr(tr, 'symmetric_rtp_enabled', False)),
             }
             if not rec:
                 vals['sid'] = tr.sid
