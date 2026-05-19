@@ -393,10 +393,6 @@ class ElevenlabsAgent(models.Model):
             [("is_default", "=", True)], limit=1)
         if default and default.number:
             return default.number
-        own_number = self.env["connect.number"].sudo().search(
-            [("elevenlabs_agent", "=", self.id)], limit=1)
-        if own_number:
-            return own_number.phone_number
         return "anonymous"
 
     # ------------------------------------------------------------------

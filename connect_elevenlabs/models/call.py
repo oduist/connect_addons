@@ -40,22 +40,17 @@ class Call(models.Model):
         caller = phone_call.get('external_number', '')
         called = phone_call.get('agent_number', '')
         call_sid = phone_call.get('call_sid', '')
-        phone_number_id = phone_call.get('phone_number_id', '')
         duration = meta.get('call_duration_secs', 0)
 
         analysis = data.get('analysis', {})
         status = 'completed' if analysis.get('call_successful') == 'success' else 'failed'
 
         number = False
-        if phone_number_id:
-            number = self.env['connect.number'].sudo().search(
-                [('el_phone_number_uid', '=', phone_number_id)], limit=1)
-        if not number and called:
+        if called:
             number = self.env['connect.number'].sudo().search(
                 [('phone_number', '=', called)], limit=1)
         if not number:
-            logger.warning('EL inbound: connect.number not found for phone_number_id=%s / called=%s',
-                           phone_number_id, called)
+            logger.warning('EL inbound: connect.number not found for called=%s', called)
 
         partner = self.env['res.partner'].sudo().get_partner_by_number(caller) if caller else False
         agent_id = data.get('agent_id', '')
