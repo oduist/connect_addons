@@ -15,6 +15,7 @@
                                 <th>Called User</th>
                                 <th class="partner-th">Partner</th>
                                 <th>Direction</th>
+                                <th t-if="canDisableRecording">Rec</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -29,6 +30,13 @@
                                     </td>
                                     <td t-attf-title="{{call.direction ? call.direction : ''}}">
                                         <t t-out="call.direction"/>
+                                    </td>
+                                    <td t-if="canDisableRecording" class="text-center"
+                                        t-on-click="(ev) => this._toggleDisableRecording(ev, call)">
+                                        <i t-if="call.disable_recording" class="fa fa-microphone-slash text-danger"
+                                           title="Recording disabled — click to enable"/>
+                                        <i t-else="" class="fa fa-microphone text-success"
+                                           title="Click to disable recording"/>
                                     </td>
                                 </tr>
                             </t>

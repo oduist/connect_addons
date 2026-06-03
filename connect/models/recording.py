@@ -266,6 +266,9 @@ class Recording(models.Model):
             ('called_user', '!=', False)], limit=1).called_user
         if channel:
             call = channel.call
+            if call.disable_recording:
+                debug(self, 'Recording disabled for call %s, skipping' % call.id)
+                return True
             data['channel'] = channel.id
             data['call'] = call.id
             data['partner'] = call.partner.id
