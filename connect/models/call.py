@@ -49,6 +49,7 @@ class Call(models.Model):
     else:
         recording_widget = fields.Char(compute='_get_recording_data')
     recording_icon = fields.Html(compute='_get_recording_data', string='R')
+    has_activity = fields.Boolean(string='A', compute='_compute_has_activity', store=True)
     summary = fields.Html()
     called = fields.Char(readonly=True, index=True)
     caller = fields.Char(readonly=True, index=True)
@@ -182,6 +183,11 @@ class Call(models.Model):
                 rec.transcript = ''
                 rec.recording = False
                 rec.recording_widget = ''
+
+    @api.depends('activity_ids')
+    def _compute_has_activity(self):
+        for rec in self:
+            rec.has_activity = bool(rec.activity_ids)
 
     def _get_voicemail_widget(self):
         proxy_recordings = self.env['connect.settings'].sudo().get_param('proxy_recordings')
