@@ -373,7 +373,7 @@ class Settings(models.Model):
 
     @api.model
     def connect_reload_view(self, model):
-        if not self.enable_auto_reload_view:
+        if not self.get_param('enable_auto_reload_view'):
             return
         if release.version_info[0] < 15:
             msg = {
