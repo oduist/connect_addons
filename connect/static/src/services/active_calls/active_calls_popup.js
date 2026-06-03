@@ -31,7 +31,7 @@ export class ConnectActiveCallsPopup extends Component {
     }
 
     async getCalls() {
-        const domain = [["status", "=", "in-progress"]]
+        const domain = [["status", "!=", "completed"]]
         this.state.calls = await this.orm.call("connect.call", "get_widget_calls", [domain])
         if (this.state.calls.length > 0) {
             this.setTimer(3000)
