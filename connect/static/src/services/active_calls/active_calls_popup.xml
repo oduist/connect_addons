@@ -31,12 +31,13 @@
                                     <td t-attf-title="{{call.direction ? call.direction : ''}}">
                                         <t t-out="call.direction"/>
                                     </td>
-                                    <td t-if="canDisableRecording" class="text-center"
+                                    <td t-if="canDisableRecording" class="text-center" style="cursor: pointer;"
                                         t-on-click="(ev) => this._toggleDisableRecording(ev, call)">
-                                        <i t-if="call.disable_recording" class="fa fa-microphone-slash text-danger"
-                                           title="Recording disabled — click to enable"/>
-                                        <i t-else="" class="fa fa-microphone text-success"
-                                           title="Click to disable recording"/>
+                                        <div t-attf-class="{{ call.disable_recording ? 'text-muted' : 'text-danger' }}" style="line-height: 1;"
+                                             t-attf-title="{{ call.disable_recording ? 'Recording disabled — click to enable' : 'Recording — click to disable' }}">
+                                            <i class="fa fa-circle"/>
+                                            <div style="font-size: 9px; font-weight: bold;">REC</div>
+                                        </div>
                                     </td>
                                 </tr>
                             </t>
