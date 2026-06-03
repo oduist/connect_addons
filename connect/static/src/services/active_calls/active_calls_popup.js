@@ -1,6 +1,5 @@
 /** @odoo-module **/
 import {useService} from "@web/core/utils/hooks"
-import {user} from "@web/core/user"
 
 import {Component, useState, onWillStart} from "@odoo/owl"
 
@@ -25,7 +24,7 @@ export class ConnectActiveCallsPopup extends Component {
         this.action = useService('action')
         this.canDisableRecording = false
         onWillStart(async () => {
-            this.canDisableRecording = await user.hasGroup('connect.group_connect_do_not_record')
+            this.canDisableRecording = await this.orm.call("connect.call", "can_disable_recording", [])
         })
         this.props.bus.addEventListener('connect_active_calls_toggle_display', (ev) => this.toggleDisplay(ev))
     }

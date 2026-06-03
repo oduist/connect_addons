@@ -1519,6 +1519,14 @@ class Call(models.Model):
         return call.sudo().disable_recording
 
     @api.model
+    def can_disable_recording(self):
+        """Whether the current user may disable recording from the active calls
+        widget: member of the "Do not record" group AND their own calls are
+        recorded (otherwise there is nothing to disable)."""
+        user = self.env.user
+        return user.has_group('connect.group_connect_do_not_record') and bool(user.connect_user.record_calls)
+
+    @api.model
     def park_call(self, request, params):
         """Park a call into a specific parking slot.
 
