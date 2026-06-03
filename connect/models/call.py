@@ -189,6 +189,16 @@ class Call(models.Model):
         for rec in self:
             rec.has_activity = bool(rec.activity_ids)
 
+    def _recompute_has_activity(self):
+        # mail.activity uses a generic (res_model, res_id) reference, so adding
+        # or removing an activity does not auto-trigger the activity_ids
+        # dependency above. Called from the mail.activity create/write/unlink
+        # overrides to keep the stored flag in sync (e.g. on "mark done").
+        calls = self.exists()
+        if calls:
+            calls.invalidate_recordset(['activity_ids'])
+            calls._compute_has_activity()
+
     def _get_voicemail_widget(self):
         proxy_recordings = self.env['connect.settings'].sudo().get_param('proxy_recordings')
         for rec in self:
