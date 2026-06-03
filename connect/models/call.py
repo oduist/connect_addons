@@ -354,6 +354,26 @@ class Call(models.Model):
                 self.status = 'no-answer'
                 logger.info(f"Call {self.id}: Status set to 'no-answer' (default)")
 
+    def _update_live_status(self):
+        """Reflect the live call status while the call is still active.
+
+        The call status is set on creation (ringing) and only finalized once all
+        channels end (_set_final_call_status). Without this, the status never moves
+        to 'in-progress' on answer. Derive it from the current channel statuses so
+        the UI shows ringing -> in-progress. Terminal statuses are left to
+        _set_final_call_status().
+        """
+        self.ensure_one()
+        chan_statuses = self.channels.mapped('status')
+        if 'in-progress' in chan_statuses:
+            live_status = 'in-progress'
+        elif 'ringing' in chan_statuses:
+            live_status = 'ringing'
+        else:
+            return
+        if self.status != live_status:
+            self.status = live_status
+
     def _populate_user_fields_direct_call(self):
         """Populate user fields for direct call pattern."""
         self.ensure_one()
@@ -890,6 +910,8 @@ class Call(models.Model):
             else:
                 reason = "channel not ending"
             logger.info(f"Call {channel.call.id}: Finalization deferred - {reason}")
+            # Call is still active: keep its status live (ringing -> in-progress).
+            channel.call._update_live_status()
         # Reload call view
         self.env['connect.settings'].connect_reload_view('connect.call')
         if params.get('ErrorCode') and params.get('ErrorCode') not in IGNORE_ERROR_CODES:
