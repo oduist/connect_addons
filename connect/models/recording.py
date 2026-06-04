@@ -9,6 +9,7 @@ from odoo import fields, models, api, release
 from odoo.api import SUPERUSER_ID
 from odoo.exceptions import ValidationError
 from .settings import format_connect_response, debug
+from . import s3_utils
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ class Recording(models.Model):
     duration_human = fields.Char(compute='_get_duration_human')
     start_time = fields.Datetime()
     status = fields.Char()
+    recording_expired = fields.Boolean(compute='_compute_recording_expired')
     if release.version_info[0] >= 17.0:
         recording_widget = fields.Html(compute='_get_recording_widget', string='Recording', sanitize=False)
     else:
@@ -64,6 +66,12 @@ class Recording(models.Model):
                         users |= group.user_ids
             rec.pbx_group_user_ids = users
 
+    def _compute_recording_expired(self):
+        days = self.env['connect.settings'].sudo().get_param('s3_retention_days')
+        now = fields.Datetime.now()
+        for rec in self:
+            rec.recording_expired = s3_utils.is_recording_expired(rec.start_time, days, now)
+
     ############## TRANSCRIPTION METHODS #####################################
 
     def transcribe_recording(self, openai_api_key, summary_prompt):
@@ -76,13 +84,21 @@ class Recording(models.Model):
         temp_file_path = None
         try:
             client = self.env['connect.settings'].get_openai_client()
-            response = requests.get(self.media_url, stream=True)
-            response.raise_for_status()
-            with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        temp_file.write(chunk)
-                temp_file_path = temp_file.name
+            settings = self.env["connect.settings"].sudo()
+            bucket = settings.get_param("aws_s3_bucket")
+            if settings.get_param("s3_recordings_enabled") and s3_utils.is_s3_media_url(self.media_url, bucket):
+                key = s3_utils.parse_s3_key(self.media_url, bucket)
+                with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
+                    settings._get_s3_client().download_fileobj(bucket, key, temp_file)
+                    temp_file_path = temp_file.name
+            else:
+                response = requests.get(self.media_url, stream=True)
+                response.raise_for_status()
+                with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            temp_file.write(chunk)
+                    temp_file_path = temp_file.name
             file_size = os.path.getsize(temp_file_path)
             if file_size > 26214400:
                 error_msg = 'File exceeds size limit (26MB). Please use the Elevenlabs module for larger files.'
@@ -189,14 +205,27 @@ class Recording(models.Model):
 ##########  END OF TRANSCRIPTION METHODS #########################################################
 
     def _get_recording_widget(self):
-        proxy_recordings = self.env['connect.settings'].sudo().get_param('proxy_recordings')
+        settings = self.env['connect.settings'].sudo()
+        proxy_recordings = settings.get_param('proxy_recordings')
+        s3_enabled = settings.get_param('s3_recordings_enabled')
+        bucket = settings.get_param('aws_s3_bucket')
         for rec in self:
             if not rec.media_url:
                 # Fix for Agent recordings.
                 rec.recording_widget = ''
                 continue
+            if rec.recording_expired:
+                rec.recording_widget = '<i>Recording expired</i>'
+                continue
+            is_s3 = s3_enabled and s3_utils.is_s3_media_url(rec.media_url, bucket)
             if proxy_recordings:
                 media_url = '/connect/recording/{}'.format(rec.id)
+            elif is_s3:
+                media_url = settings._get_s3_client().generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': bucket, 'Key': s3_utils.parse_s3_key(rec.media_url, bucket)},
+                    ExpiresIn=3600,
+                )
             else:
                 media_url = rec.media_url
             rec.recording_widget = '<audio id="sound_file" preload="auto" ' \
