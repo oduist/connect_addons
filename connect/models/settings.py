@@ -284,7 +284,7 @@ class Settings(models.Model):
     aws_secret_access_key = fields.Char(
         string="AWS Secret Access Key", groups="base.group_erp_manager"
     )
-    display_aws_secret_access_key = fields.Char(string="AWS Secret Access Key")
+    display_aws_secret_access_key = fields.Char()
     aws_region = fields.Selection(
         selection=[
             ("eu-central-1", "EU (Frankfurt)"),

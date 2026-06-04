@@ -23,11 +23,12 @@ class TestS3Settings(TransactionCase):
 
     def test_recording_expired_flag(self):
         self.env["connect.settings"].search([], limit=1).write({"s3_retention_days": 30})
-        old = self.env["connect.recording"].create({
+        recording = self.env["connect.recording"].with_context(skip_transcription=True)
+        old = recording.create({
             "sid": "REtest_old", "call_sid": "CAtest",
             "start_time": datetime.now() - timedelta(days=40),
         })
-        fresh = self.env["connect.recording"].create({
+        fresh = recording.create({
             "sid": "REtest_new", "call_sid": "CAtest",
             "start_time": datetime.now() - timedelta(days=1),
         })
