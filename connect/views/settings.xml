@@ -77,9 +77,6 @@
                 <page name="s3_storage" string="S3 Storage">
                   <group>
                     <group string="AWS S3" name="aws_s3">
-                      <div colspan="2">
-                        <small><strong>Store call recordings in your own AWS S3 bucket. Setup guide: connect/docs/s3-recordings-setup.md</strong></small>
-                      </div>
                       <field name="s3_recordings_enabled"/>
                       <field name="aws_access_key_id"/>
                       <field name="display_aws_secret_access_key" string="AWS Secret Access Key" password="1"/>

@@ -465,9 +465,15 @@ class Settings(models.Model):
                     CreateBucketConfiguration={"LocationConstraint": self.aws_region},
                 )
         except ClientError as e:
-            if e.response["Error"]["Code"] not in (
-                "BucketAlreadyOwnedByYou", "BucketAlreadyExists"
-            ):
+            code = e.response["Error"]["Code"]
+            if code == "AccessDenied":
+                raise ValidationError(
+                    "AWS denied s3:CreateBucket for '%s'. Your IAM user's policy most "
+                    "likely restricts bucket names to a prefix. Use a matching name "
+                    "(e.g. 'oduist-connect-recordings-...') or broaden the policy "
+                    "Resource ARN to this bucket.\n\n%s" % (bucket, e)
+                )
+            if code not in ("BucketAlreadyOwnedByYou", "BucketAlreadyExists"):
                 raise ValidationError("S3 create_bucket failed: %s" % e)
         s3.put_public_access_block(
             Bucket=bucket,
