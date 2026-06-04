@@ -19,9 +19,11 @@ from urllib.parse import urljoin
 
 import httpx
 import openai
+import requests
 from odoo import api, fields, models, release
 from odoo.exceptions import ValidationError
 from twilio.rest import Client
+from . import s3_utils
 from odoo.addons.connect.models.license import ODUIST_MODULES
 ODUIST_MODULES.append('connect')
 
@@ -36,6 +38,7 @@ PROTECTED_FIELDS = [
     "display_region_auth_token",
     "display_twilio_api_secret",
     "display_openai_api_key",
+    "display_aws_secret_access_key",
 ]
 
 TWILIO_EDGES = [
@@ -271,6 +274,40 @@ class Settings(models.Model):
     proxy_recordings = fields.Boolean(
         help="Re-stream recordings using Odoo user auth.", default=True
     )
+    # ---- S3 recording storage (ODU-36) ----
+    s3_recordings_enabled = fields.Boolean(
+        string="Store recordings in S3",
+        help="Read recordings from your AWS S3 bucket instead of Twilio. "
+             "Enable AFTER configuring external storage in the Twilio Console.",
+    )
+    aws_access_key_id = fields.Char(string="AWS Access Key ID")
+    aws_secret_access_key = fields.Char(
+        string="AWS Secret Access Key", groups="base.group_erp_manager"
+    )
+    display_aws_secret_access_key = fields.Char(string="AWS Secret Access Key")
+    aws_region = fields.Selection(
+        selection=[
+            ("eu-central-1", "EU (Frankfurt)"),
+            ("eu-west-1", "EU (Ireland)"),
+            ("us-east-1", "US East (N. Virginia)"),
+            ("us-west-2", "US West (Oregon)"),
+            ("ap-southeast-1", "Asia Pacific (Singapore)"),
+        ],
+        string="AWS Region", default="eu-central-1", required=True,
+    )
+    aws_s3_bucket = fields.Char(string="S3 Bucket Name")
+    aws_s3_prefix = fields.Char(string="S3 Folder (prefix)", default="recordings")
+    s3_retention_days = fields.Integer(
+        string="Retention (days)", default=0,
+        help="0 = keep forever. >0 sets an S3 lifecycle rule that deletes the audio "
+             "file after N days (the recording row and transcript are kept).",
+    )
+    aws_s3_url = fields.Char(
+        string="S3 URL (paste into Twilio)", compute="_compute_aws_s3_url", readonly=True,
+    )
+    twilio_aws_credential_sid = fields.Char(
+        string="Twilio AWS Credential SID", readonly=True,
+    )
     transcript_calls = fields.Boolean()
     transcript_provider = fields.Selection(
         selection=[("openai", "Open AI")], default="openai", required=True
@@ -389,6 +426,103 @@ class Settings(models.Model):
     def _get_name(self):
         for rec in self:
             rec.name = "Connect Settings"
+
+    # ---- S3 recording storage (ODU-36) ----
+    @api.depends("aws_s3_bucket", "aws_region", "aws_s3_prefix")
+    def _compute_aws_s3_url(self):
+        for rec in self:
+            if rec.aws_s3_bucket and rec.aws_region:
+                rec.aws_s3_url = s3_utils.build_s3_url(
+                    rec.aws_s3_bucket, rec.aws_region, rec.aws_s3_prefix
+                )
+            else:
+                rec.aws_s3_url = False
+
+    def _get_s3_client(self):
+        """boto3 S3 client built from the singleton settings (sudo to read secret)."""
+        import boto3
+        rec = self.env["connect.settings"].sudo().search([], limit=1)
+        return boto3.client(
+            "s3",
+            aws_access_key_id=rec.aws_access_key_id,
+            aws_secret_access_key=rec.aws_secret_access_key,
+            region_name=rec.aws_region,
+        )
+
+    def action_provision_s3_bucket(self):
+        from botocore.exceptions import ClientError
+        self.ensure_one()
+        if not (self.aws_s3_bucket and self.aws_region):
+            raise ValidationError("Set S3 bucket name and region first.")
+        s3 = self._get_s3_client()
+        bucket = self.aws_s3_bucket
+        try:
+            if self.aws_region == "us-east-1":
+                s3.create_bucket(Bucket=bucket)
+            else:
+                s3.create_bucket(
+                    Bucket=bucket,
+                    CreateBucketConfiguration={"LocationConstraint": self.aws_region},
+                )
+        except ClientError as e:
+            if e.response["Error"]["Code"] not in (
+                "BucketAlreadyOwnedByYou", "BucketAlreadyExists"
+            ):
+                raise ValidationError("S3 create_bucket failed: %s" % e)
+        s3.put_public_access_block(
+            Bucket=bucket,
+            PublicAccessBlockConfiguration={
+                "BlockPublicAcls": True, "IgnorePublicAcls": True,
+                "BlockPublicPolicy": True, "RestrictPublicBuckets": True,
+            },
+        )
+        s3.put_bucket_encryption(
+            Bucket=bucket,
+            ServerSideEncryptionConfiguration={
+                "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
+            },
+        )
+        if self.s3_retention_days and self.s3_retention_days > 0:
+            s3.put_bucket_lifecycle_configuration(
+                Bucket=bucket,
+                LifecycleConfiguration=s3_utils.build_lifecycle_config(
+                    self.aws_s3_prefix, self.s3_retention_days
+                ),
+            )
+        self.connect_notify("S3 bucket '%s' provisioned." % bucket, notify_uid=self.env.uid)
+        return True
+
+    def action_create_twilio_aws_credential(self):
+        self.ensure_one()
+        settings = self.env["connect.settings"].sudo()
+        access_key = self.aws_access_key_id
+        secret = settings.get_param("aws_secret_access_key")
+        if not (access_key and secret):
+            raise ValidationError("Set AWS access key and secret first.")
+        sid = settings.get_param("account_sid")
+        token = settings.get_param("auth_token")
+        friendly = "connect-s3-recordings"
+        base = "https://accounts.twilio.com/v1/Credentials/AWS"
+        existing = requests.get(base, auth=(sid, token), timeout=30)
+        existing.raise_for_status()
+        for cred in existing.json().get("credentials", []):
+            if cred.get("friendly_name") == friendly:
+                self.twilio_aws_credential_sid = cred["sid"]
+                return True
+        resp = requests.post(
+            base, auth=(sid, token), timeout=30,
+            data={
+                "Credentials": "%s:%s" % (access_key, secret),
+                "FriendlyName": friendly,
+            },
+        )
+        resp.raise_for_status()
+        self.twilio_aws_credential_sid = resp.json()["sid"]
+        self.connect_notify(
+            "Twilio AWS credential created: %s" % self.twilio_aws_credential_sid,
+            notify_uid=self.env.uid,
+        )
+        return True
 
     def open_settings_form(self):
         rec = self.search([])
