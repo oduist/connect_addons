@@ -74,6 +74,39 @@
                     </group>
                   </group>
                 </page>
+                <page name="s3_storage" string="S3 Storage">
+                  <group>
+                    <group string="AWS S3" name="aws_s3">
+                      <div colspan="2">
+                        <small><strong>Store call recordings in your own AWS S3 bucket. Setup guide: connect/docs/s3-recordings-setup.md</strong></small>
+                      </div>
+                      <field name="s3_recordings_enabled"/>
+                      <field name="aws_access_key_id"/>
+                      <field name="display_aws_secret_access_key" string="AWS Secret Access Key" password="1"/>
+                      <field name="aws_region"/>
+                      <field name="aws_s3_bucket"/>
+                      <field name="aws_s3_prefix"/>
+                      <field name="s3_retention_days"/>
+                      <button colspan="2" name="action_provision_s3_bucket" type="object" string="CREATE / CONFIGURE S3 BUCKET" class="btn btn-primary"/>
+                      <button colspan="2" name="action_create_twilio_aws_credential" type="object" string="CREATE TWILIO AWS CREDENTIAL"/>
+                      <field name="twilio_aws_credential_sid" readonly="1"/>
+                      <field name="aws_s3_url" readonly="1"/>
+                    </group>
+                    <group string="Twilio Console (final step)" name="s3_instructions">
+                      <div colspan="2" class="text-muted">
+                        <p><strong>Voice external storage has no API — do this once in the Twilio Console:</strong></p>
+                        <ol>
+                          <li>Twilio Console → Voice → Recordings → Settings.</li>
+                          <li>Enable external S3 storage.</li>
+                          <li>Pick AWS credential <em>connect-s3-recordings</em> (SID shown on the left).</li>
+                          <li>Paste the <strong>S3 URL</strong> shown on the left.</li>
+                          <li>Save. New recordings now go to your bucket.</li>
+                          <li>Then tick <em>Store recordings in S3</em> here.</li>
+                        </ol>
+                      </div>
+                    </group>
+                  </group>
+                </page>
                 <page name="transcription" string="Transcription">
                   <group>
                     <group name="transcribe_options">
