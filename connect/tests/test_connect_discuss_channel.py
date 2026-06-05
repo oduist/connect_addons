@@ -74,3 +74,22 @@ class TestConnectDiscussChannel(TransactionCase):
         self.assertEqual(msg.to_number, '+15551230000')
         self.assertIn('mail_message_id', msg._fields)
         self.assertIn('channel_id', msg._fields)
+
+    def test_inbound_mirror_posts_to_channel(self):
+        ch = self.Channel._get_connect_channel(
+            self.partner, number='+15551230000', create_if_not_found=True)
+        cmsg = self._make_incoming('inbound one')
+        msg = ch._connect_post_inbound(cmsg)
+        self.assertEqual(msg.message_type, 'connect_message')
+        self.assertEqual(msg.author_id, self.partner)
+        self.assertEqual(cmsg.mail_message_id, msg)
+        self.assertEqual(cmsg.channel_id, ch)
+        self.assertIn(msg, ch.message_ids)
+
+    def test_inbound_whatsapp_sets_window(self):
+        ch = self.Channel._get_connect_channel(
+            self.partner, number='+15551230000', create_if_not_found=True)
+        cmsg = self._make_incoming('wa hello', mtype='WhatsApp')
+        msg = ch._connect_post_inbound(cmsg)
+        self.assertEqual(ch.connect_last_inbound_whatsapp_id, msg)
+        self.assertTrue(ch.connect_whatsapp_window_open)

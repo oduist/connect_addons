@@ -354,6 +354,14 @@ class ConnectMessage(models.Model):
                         chatter.connect_message = message
                         # Let Odoo generate notifications for followers automatically (no manual mail.notification)
                         self.env['connect.settings'].connect_reload_view(target_msg.res_model)
+                # ODU-37: mirror inbound into the partner's Discuss channel.
+                try:
+                    if partner:
+                        channel = self.env['discuss.channel']._get_connect_channel(
+                            partner, number=from_number, create_if_not_found=True)
+                        channel._connect_post_inbound(message)
+                except Exception as e:
+                    logger.warning('Connect Discuss mirror failed: %s', e)
             else:
                 # Update message status
                 logger.info("Received Update Twilio SMS webhook data:\n%s", params)

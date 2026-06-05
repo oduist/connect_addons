@@ -6,8 +6,14 @@ class MailMessage(models.Model):
 
     connect_message = fields.Many2one('connect.message')
     message_type = fields.Selection(
-        selection_add=[('WhatsApp', 'WhatsApp')],
-        ondelete={'WhatsApp': lambda recs: recs.write({'message_type': 'comment'})},
+        selection_add=[
+            ('WhatsApp', 'WhatsApp'),
+            ('connect_message', 'Connect Message'),
+        ],
+        ondelete={
+            'WhatsApp': lambda recs: recs.write({'message_type': 'comment'}),
+            'connect_message': lambda recs: recs.write({'message_type': 'comment'}),
+        },
     )
 
     @api.model

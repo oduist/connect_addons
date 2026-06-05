@@ -76,3 +76,28 @@ class DiscussChannel(models.Model):
             'channel_member_ids': [Command.create({'partner_id': p.id}) for p in members],
         })
         return channel
+
+    def _connect_post_inbound(self, connect_message):
+        """Mirror an incoming connect.message into this channel as a mail.message."""
+        self.ensure_one()
+        partner = connect_message.partner
+        author = partner or self.env.ref('base.partner_root')
+        body_txt = connect_message.body or ''
+        if connect_message.media_url:
+            body = Markup("<div class='d-flex flex-column'>"
+                          "<span>{}</span>{}</div>").format(
+                              body_txt, connect_message.media_widget)
+        else:
+            body = Markup("<span>{}</span>").format(body_txt)
+        msg = self.sudo().with_context(connect_mirror=True).message_post(
+            body=body,
+            author_id=author.id,
+            message_type='connect_message',
+            subtype_xmlid='mail.mt_comment',
+        )
+        connect_message.write({'mail_message_id': msg.id, 'channel_id': self.id})
+        if connect_message.message_type == 'WhatsApp':
+            self.connect_last_inbound_whatsapp_id = msg.id
+        # Surface in agents' sidebars: re-pin for all members on new inbound.
+        self.channel_member_ids.filtered(lambda m: not m.is_pinned).write({'unpin_dt': False})
+        return msg
