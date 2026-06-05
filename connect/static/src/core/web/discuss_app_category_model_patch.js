@@ -1,6 +1,6 @@
 /* @odoo-module */
 import { patch } from "@web/core/utils/patch";
-import { DiscussAppCategory } from "@mail/core/public_web/discuss_app_category_model";
+import { DiscussAppCategory } from "@mail/discuss/core/public_web/discuss_app_category_model";
 import { compareDatetime } from "@mail/utils/common/misc";
 
 patch(DiscussAppCategory.prototype, {
