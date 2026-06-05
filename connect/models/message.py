@@ -377,11 +377,11 @@ class ConnectMessage(models.Model):
             logger.error(f"Error handling incoming SMS: {e}")
         return str(MessagingResponse())  # Return empty TwiML response, i.e. no reply.
 
-    def send(self, recipient, body, res_id=None, res_model=None, outgoing_callerid=None):
+    def send(self, recipient, body, res_id=None, res_model=None, outgoing_callerid=None, media_urls=None):
         self.env['oduist.license'].check_license('connect', silent=False)
         sender_user = self.env.user
         message_data = {
-            'message_type': 'sms',
+            'message_type': 'mms' if media_urls else 'sms',
             'to_number': recipient,
             'body': body,
             'sender_user': sender_user.id,
@@ -397,7 +397,7 @@ class ConnectMessage(models.Model):
             if not number:
                 raise ValidationError('You dont have an outgoing callerid number!')
             sender = number.number
-        message = self.client_send(recipient, sender, body)
+        message = self.client_send(recipient, sender, body, media_urls=media_urls)
         if not message:
             raise ValidationError('Unexpected error! Contact admin or maintainer!')
         # Create message record
@@ -440,19 +440,22 @@ class ConnectMessage(models.Model):
                 self.env['connect.settings'].connect_reload_view(res_model)
         return message
 
-    def client_send(self, recipient, sender, body):
+    def client_send(self, recipient, sender, body, media_urls=None):
         api_url = self.env['connect.settings'].get_param('api_url')
         status_callback_url = urljoin(api_url, 'twilio/webhook/message_status')
         try:
             # Messaging is only supported in the US region.
             client = self.env['connect.settings'].get_client(region=False)
             # Send message to twilio
-            message = client.messages.create(
-                to=recipient,
-                from_=sender,
-                body=body,
-                status_callback=status_callback_url,
-            )
+            create_kwargs = {
+                'to': recipient,
+                'from_': sender,
+                'body': body,
+                'status_callback': status_callback_url,
+            }
+            if media_urls:
+                create_kwargs['media_url'] = media_urls
+            message = client.messages.create(**create_kwargs)
             if message.error_code:
                 return False
             logger.info('Message to %s is sent.', recipient)

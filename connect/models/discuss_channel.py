@@ -101,3 +101,61 @@ class DiscussChannel(models.Model):
         # Surface in agents' sidebars: re-pin for all members on new inbound.
         self.channel_member_ids.filtered(lambda m: not m.is_pinned).write({'unpin_dt': False})
         return msg
+
+    def _get_allowed_message_params(self):
+        # Allow the composer to pass provider/sender through the post route.
+        return super()._get_allowed_message_params() | {
+            'connect_provider', 'connect_sender_id'}
+
+    def message_post(self, *args, **kwargs):
+        connect_provider = kwargs.pop('connect_provider', None)
+        connect_sender_id = kwargs.pop('connect_sender_id', None)
+        is_outbound = (
+            self.channel_type == 'connect_messages'
+            and kwargs.get('message_type') == 'connect_message'
+            and not self.env.context.get('connect_mirror')
+        )
+        message = super().message_post(*args, **kwargs)
+        if is_outbound and message:
+            try:
+                self._connect_send_outbound(message, connect_provider, connect_sender_id)
+            except Exception:
+                logger.exception('Connect outbound send failed for channel %s', self.id)
+                raise
+        return message
+
+    def _connect_recipient(self):
+        self.ensure_one()
+        if self.connect_number:
+            return self.connect_number
+        return self.connect_partner_id.phone_sanitized
+
+    def _connect_send_outbound(self, message, provider, sender_id):
+        self.ensure_one()
+        partner = self.connect_partner_id
+        recipient = self._connect_recipient()
+        body = html2plaintext(message.body) if message.body else ''
+        provider = provider or 'sms'
+        if provider == 'whatsapp':
+            Sender = self.env['connect.whatsapp_sender']
+            sender = Sender.browse(int(sender_id)) if sender_id else Sender.get_default_sender(self.env.user)
+            cmsg = sender.send_whatsapp(
+                recipient=recipient, body=body,
+                res_model='res.partner', res_id=partner.id, raise_on_error=True)
+        else:
+            media_urls = self._connect_media_urls(message)
+            cmsg = self.env['connect.message'].send(
+                recipient, body, res_id=partner.id, res_model='res.partner',
+                outgoing_callerid=sender_id or None, media_urls=media_urls)
+        if cmsg:
+            cmsg.sudo().write({'mail_message_id': message.id, 'channel_id': self.id})
+        return cmsg
+
+    def _connect_media_urls(self, message):
+        urls = []
+        base = self.env['connect.settings'].sudo().get_param('api_url') or self.get_base_url()
+        for att in message.attachment_ids:
+            token = att.sudo().generate_access_token()[0]
+            urls.append('%s/web/content/%d?access_token=%s&download=true' % (
+                base.rstrip('/'), att.id, token))
+        return urls

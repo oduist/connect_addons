@@ -93,3 +93,43 @@ class TestConnectDiscussChannel(TransactionCase):
         msg = ch._connect_post_inbound(cmsg)
         self.assertEqual(ch.connect_last_inbound_whatsapp_id, msg)
         self.assertTrue(ch.connect_whatsapp_window_open)
+
+    def test_outbound_post_sends_sms_and_links(self):
+        from unittest.mock import patch
+
+        class _Fake:
+            sid = 'SMout'; account_sid = 'ACtest'; messaging_service_sid = False
+            num_media = 0; error_code = None; error_message = None
+
+        ch = self.Channel._get_connect_channel(
+            self.partner, number='+15551230000', create_if_not_found=True)
+        with patch.object(type(self.env['connect.message']), 'client_send', return_value=_Fake()):
+            msg = ch.with_user(self.agent).message_post(
+                body='reply text', message_type='connect_message',
+                connect_provider='sms', connect_sender_id='+15550000000')
+        cmsg = self.env['connect.message'].search([('mail_message_id', '=', msg.id)])
+        self.assertTrue(cmsg, "Outbound must create a linked connect.message")
+        self.assertEqual(cmsg.to_number, '+15551230000')
+        self.assertEqual(cmsg.channel_id, ch)
+
+    def test_inbound_mirror_does_not_send(self):
+        from unittest.mock import patch
+        ch = self.Channel._get_connect_channel(
+            self.partner, number='+15551230000', create_if_not_found=True)
+        cmsg_in = self._make_incoming('inbound no send')
+        with patch.object(type(self.env['connect.message']), 'client_send') as cs:
+            ch._connect_post_inbound(cmsg_in)
+            cs.assert_not_called()
+
+    def test_outbound_media_urls_built_from_attachments(self):
+        ch = self.Channel._get_connect_channel(
+            self.partner, number='+15551230000', create_if_not_found=True)
+        att = self.env['ir.attachment'].create({
+            'name': 'pic.png', 'datas': 'aGVsbG8=', 'mimetype': 'image/png'})
+        msg = self.env['mail.message'].create({
+            'model': 'discuss.channel', 'res_id': ch.id, 'message_type': 'connect_message',
+            'attachment_ids': [(4, att.id)]})
+        urls = ch._connect_media_urls(msg)
+        self.assertEqual(len(urls), 1)
+        self.assertIn('/web/content/%d' % att.id, urls[0])
+        self.assertIn('access_token=', urls[0])
