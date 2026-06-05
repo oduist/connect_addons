@@ -22,10 +22,14 @@ class TestConnectDiscussChannel(TransactionCase):
         cls.partner = cls.env['res.partner'].create({
             'name': 'Acme Customer', 'phone': '+15551230000',
         })
-        # An agent user in the Connect User group.
+        # An internal agent user in the Connect User group (internal user is
+        # required to create mail.message records when posting in the channel).
         cls.agent = cls.env['res.users'].create({
             'name': 'Agent A', 'login': 'agent_a',
-            'group_ids': [(4, cls.env.ref('connect.group_connect_user').id)],
+            'group_ids': [
+                (4, cls.env.ref('base.group_user').id),
+                (4, cls.env.ref('connect.group_connect_user').id),
+            ],
         })
 
     def _make_incoming(self, body='hi there', mtype='sms', number='+15551230000'):
