@@ -81,7 +81,7 @@
                       <separator string="1. Choose a bucket prefix (the IAM policy below is scoped to it)" colspan="2" invisible="not s3_recordings_enabled"/>
                       <field name="aws_s3_bucket_prefix" invisible="not s3_recordings_enabled"/>
                       <separator string="2. Create an AWS IAM user with this least-privilege policy" colspan="2" invisible="not s3_recordings_enabled"/>
-                      <field name="aws_iam_policy" nolabel="1" colspan="2" widget="ace" options="{'mode': 'json'}" readonly="1" invisible="not s3_recordings_enabled"/>
+                      <field name="aws_iam_policy" nolabel="1" colspan="2" widget="ace" options="{'mode': 'javascript'}" readonly="1" invisible="not s3_recordings_enabled"/>
                       <div colspan="2" class="text-muted" invisible="not s3_recordings_enabled">
                         <p>Create the IAM user (one time):</p>
                         <ol>
