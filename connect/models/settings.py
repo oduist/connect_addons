@@ -346,11 +346,6 @@ class Settings(models.Model):
         string="Fetch Call Prices",
         help="Enable fetching call prices from Twilio API after call completion. May add delay to call processing.",
     )
-    enable_auto_reload_view = fields.Boolean(
-        string="Auto Reload Views",
-        help="Automatically refresh open Connect views (e.g. call list, recordings) in real time "
-        "when records change, pushed over the bus. Disable to reduce browser and bus traffic.",
-    )
     ############################################################
     api_url = fields.Char("API URL", compute="_get_instance_data")
     api_fallback_url = fields.Char("API Fallback URL")
@@ -428,20 +423,6 @@ class Settings(models.Model):
             )
 
         return True
-
-    @api.model
-    def connect_reload_view(self, model):
-        if not self.get_param('enable_auto_reload_view'):
-            return
-        if release.version_info[0] < 15:
-            msg = {
-                "action": "reload_view",
-                "model": model,
-            }
-            self.env["bus.bus"].sendone("connect_actions", json.dumps(msg))
-        else:
-            msg = {"model": model}
-            self.env["bus.bus"]._sendone("connect_actions", "reload_view", msg)
 
     @api.model
     def _get_name(self):
