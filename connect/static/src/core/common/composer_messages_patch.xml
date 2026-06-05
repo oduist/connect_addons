@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+    <t t-inherit="mail.Composer" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('o-mail-Composer-coreMain')]" position="before">
+            <div t-if="isConnectMessages" class="o-connect-Composer-channel d-flex align-items-center gap-2 px-2 py-1">
+                <select class="form-select form-select-sm w-auto"
+                        t-on-change="(ev) => this.setConnectProvider(ev.target.value)">
+                    <option value="sms" t-att-selected="connectProvider === 'sms'">SMS / MMS</option>
+                    <option value="whatsapp" t-att-selected="connectProvider === 'whatsapp'">WhatsApp</option>
+                </select>
+            </div>
+        </xpath>
+    </t>
+</templates>
