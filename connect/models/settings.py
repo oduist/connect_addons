@@ -550,20 +550,28 @@ class Settings(models.Model):
         token = settings.get_param("auth_token")
         friendly = "connect-s3-recordings"
         base = "https://accounts.twilio.com/v1/Credentials/AWS"
-        existing = requests.get(base, auth=(sid, token), timeout=30)
-        existing.raise_for_status()
-        for cred in existing.json().get("credentials", []):
-            if cred.get("friendly_name") == friendly:
-                self.twilio_aws_credential_sid = cred["sid"]
-                return True
-        resp = requests.post(
-            base, auth=(sid, token), timeout=30,
-            data={
-                "Credentials": "%s:%s" % (access_key, secret),
-                "FriendlyName": friendly,
-            },
-        )
-        resp.raise_for_status()
+        try:
+            existing = requests.get(base, auth=(sid, token), timeout=30)
+            existing.raise_for_status()
+            for cred in existing.json().get("credentials", []):
+                if cred.get("friendly_name") == friendly:
+                    self.twilio_aws_credential_sid = cred["sid"]
+                    self.connect_notify(
+                        "Twilio AWS credential '%s' already exists: %s"
+                        % (friendly, cred["sid"]),
+                        notify_uid=self.env.uid,
+                    )
+                    return True
+            resp = requests.post(
+                base, auth=(sid, token), timeout=30,
+                data={
+                    "Credentials": "%s:%s" % (access_key, secret),
+                    "FriendlyName": friendly,
+                },
+            )
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            raise ValidationError("Twilio AWS credential request failed: %s" % e)
         self.twilio_aws_credential_sid = resp.json()["sid"]
         self.connect_notify(
             "Twilio AWS credential created: %s" % self.twilio_aws_credential_sid,
