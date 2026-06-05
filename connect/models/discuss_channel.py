@@ -50,7 +50,6 @@ class DiscussChannel(models.Model):
         users = self.env['res.users'].sudo().search([('all_group_ids', 'in', group.ids)])
         return users.partner_id
 
-    @api.returns('self')
     def _get_connect_channel(self, partner, number=False, create_if_not_found=False):
         """Find-or-create the single connect_messages channel for a partner."""
         if not partner:
