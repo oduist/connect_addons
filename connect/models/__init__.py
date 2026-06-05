@@ -13,6 +13,7 @@ from . import call
 from . import callflow
 from . import ir_module_module
 from . import channel
+from . import discuss_channel
 from . import debug
 from . import domain
 from . import exten
