@@ -101,9 +101,11 @@
                       <field name="aws_s3_prefix" invisible="not s3_recordings_enabled"/>
                       <field name="s3_retention_days" invisible="not s3_recordings_enabled"/>
                       <button colspan="2" name="action_provision_s3_bucket" type="object" string="CREATE / CONFIGURE S3 BUCKET" class="btn btn-primary" invisible="not s3_recordings_enabled"/>
-                      <button colspan="2" name="action_create_twilio_aws_credential" type="object" string="CREATE TWILIO AWS CREDENTIAL" invisible="not s3_recordings_enabled"/>
-                      <button colspan="2" name="action_recreate_twilio_aws_credential" type="object" string="RECREATE TWILIO CREDENTIAL" invisible="not s3_recordings_enabled"
-                              confirm="Delete the existing 'connect-s3-recordings' Twilio credential and create a new one with the current AWS keys? The new SID must be re-selected in the Twilio Console."/>
+                      <div colspan="2" invisible="not s3_recordings_enabled">
+                        <button name="action_create_twilio_aws_credential" type="object" string="CREATE TWILIO AWS CREDENTIAL" class="btn btn-secondary me-2"/>
+                        <button name="action_recreate_twilio_aws_credential" type="object" string="RECREATE TWILIO CREDENTIAL" class="btn btn-secondary"
+                                confirm="Delete the existing 'connect-s3-recordings' Twilio credential and create a new one with the current AWS keys? The new SID must be re-selected in the Twilio Console."/>
+                      </div>
                       <field name="twilio_aws_credential_sid" readonly="1" invisible="not s3_recordings_enabled"/>
                       <field name="aws_s3_url" readonly="1" invisible="not s3_recordings_enabled"/>
                     </group>
