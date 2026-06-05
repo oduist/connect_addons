@@ -22,6 +22,7 @@ from phonenumbers import parse, format_number, PhoneNumberFormat
 from twilio.twiml.messaging_response import MessagingResponse
 
 from odoo import models, fields, api, release
+from odoo.addons.mail.tools.discuss import Store
 from odoo.api import SUPERUSER_ID
 from odoo.exceptions import ValidationError
 from odoo.tools import mail
@@ -523,8 +524,8 @@ class ConnectMessage(models.Model):
                 message.write(vals)
             # ODU-37: push status onto the Discuss bubble if mirrored.
             if message.mail_message_id and message.channel_id:
-                message.channel_id._bus_send_store(
-                    message.mail_message_id, {'connectStatus': message.status})
+                Store(bus_channel=message.channel_id).add(
+                    message.mail_message_id, {'connectStatus': message.status}).bus_send()
         except Exception as e:
             logger.warning('Failed to update message status for %s: %s', sid, e)
         return True
