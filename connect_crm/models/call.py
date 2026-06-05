@@ -207,15 +207,9 @@ class CrmCall(models.Model):
     def register_crm_lead_call_summary(self):
         if not self.env['oduist.license'].check_license('connect_crm', silent=True):
             return False
-        reload_view = False
         register_summary = self.env['connect.settings'].sudo().get_param('register_summary')
         if not register_summary:
             return
         for rec in self:
             if rec.lead and rec.summary:
                 self.register_summary_to_rec(rec.lead, rec.summary)
-                reload_view = True
-        # Reload changed view.
-        if reload_view:
-            # Reload the view of res.partner
-            self.env['connect.settings'].connect_reload_view('crm.lead')
