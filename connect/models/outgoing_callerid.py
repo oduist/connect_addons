@@ -106,7 +106,6 @@ class OutgoingCallerID(models.Model):
             number.write({'status': 'validated', 'sid': params['OutgoingCallerIdSid']})
         else:
             number.status = 'validation failed'
-        self.env['connect.settings'].connect_reload_view('connect.outgoing_callerid')
         return True
 
     def validate(self):

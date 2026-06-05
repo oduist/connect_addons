@@ -912,8 +912,6 @@ class Call(models.Model):
             logger.info(f"Call {channel.call.id}: Finalization deferred - {reason}")
             # Call is still active: keep its status live (ringing -> in-progress).
             channel.call._update_live_status()
-        # Reload call view
-        self.env['connect.settings'].connect_reload_view('connect.call')
         if params.get('ErrorCode') and params.get('ErrorCode') not in IGNORE_ERROR_CODES:
             channel.call.update({
                 'has_error': True,
@@ -1266,18 +1264,12 @@ class Call(models.Model):
 
     @api.constrains('summary')
     def register_partner_call_summary(self):
-        reload_view = False
         register_summary = self.env['connect.settings'].sudo().get_param('register_summary')
         if not register_summary:
             return
         for rec in self:
             if rec.partner and rec.summary:
                 self.register_summary_to_rec(rec.partner, rec.summary)
-                reload_view = True
-        # Reload changed view.
-        if reload_view:
-            # Reload the view of res.partner
-            self.env['connect.settings'].connect_reload_view('res.partner')
 
     def create_partner_button(self):
         self.ensure_one()

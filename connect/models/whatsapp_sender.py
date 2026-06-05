@@ -351,7 +351,6 @@ class ConnectWhatsappSender(models.Model):
                     'is_read': True,
                     'notification_status': 'ready',
                 }])
-                self.env['connect.settings'].connect_reload_view(res_model)
         except Exception as e:
             logger.warning('Failed to post WhatsApp chatter message on %s,%s: %s', res_model, res_id, e)
 
