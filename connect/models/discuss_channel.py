@@ -164,7 +164,8 @@ class DiscussChannel(models.Model):
     def _to_store(self, store, *args, **kwargs):
         super()._to_store(store, *args, **kwargs)
         for channel in self.filtered(lambda c: c.channel_type == 'connect_messages'):
-            store.add(channel, {
+            # add_records_fields (not add) avoids re-entering _to_store recursively.
+            store.add_records_fields(channel, {
                 'connect_whatsapp_window_open': channel.connect_whatsapp_window_open,
                 'connect_whatsapp_valid_until': channel.connect_whatsapp_valid_until,
             })

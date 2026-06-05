@@ -31,7 +31,8 @@ class MailMessage(models.Model):
         linked = self.filtered(
             lambda m: m.message_type == 'connect_message' and m.connect_message)
         for message in linked:
-            store.add(message, {
+            # add_records_fields (not add) avoids re-entering _to_store recursively.
+            store.add_records_fields(message, {
                 'connectStatus': message.connect_message.status,
                 'connectMessageType': message.connect_message.message_type,
             })
