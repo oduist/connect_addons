@@ -2,6 +2,7 @@ phonenumbers
 twilio
 elevenlabs
 openai
+boto3
 
 # For Odoo 18.0 official docker image:
 # pip3 install --user  --force-reinstall --break-system-package typing_extensions openai

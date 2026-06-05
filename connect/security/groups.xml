@@ -24,4 +24,9 @@
         <field name="users" eval="[(4, ref('connect.user_connect_webhook'))]"/>
     </record>
 
+    <record model="res.groups" id="group_connect_do_not_record">
+        <field name="name">Do not record</field>
+        <field name="category_id" ref="connect.module_connect_category"/>
+    </record>
+
 </odoo>
