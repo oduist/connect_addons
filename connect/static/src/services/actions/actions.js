@@ -31,8 +31,6 @@ export const pbxActionService = {
                     this.connect_handle_notify(payload);
                 else if (type === 'open_record')
                     this.connect_handle_open_record(payload)
-                else if (type === 'reload_view')
-                    this.connect_handle_reload_view(payload)
             } catch (e) {
                 console.log(e)
             }
@@ -51,14 +49,6 @@ export const pbxActionService = {
                 'views': [[message.view_id, 'form']],
                 'view_mode': 'tree,form',
             })
-        }
-    },
-
-    connect_handle_reload_view: function (message) {
-        if (!this.action || !this.action.currentController) return
-        const action = this.action.currentController.action
-        if (action.res_model === message.model) {
-            this.bus.trigger("ROUTE_CHANGE")
         }
     },
 
