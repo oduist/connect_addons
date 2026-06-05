@@ -142,7 +142,7 @@ class TestConnectDiscussChannel(TransactionCase):
         msg = ch._connect_post_inbound(cmsg)
         cmsg.status = 'delivered'
         store = Store()
-        msg._to_store(store)
+        store.add(msg)
         data = store.get_result()
         found = any('connectStatus' in rec for rec in _flatten_store(data))
         self.assertTrue(found)

@@ -161,3 +161,11 @@ class DiscussChannel(models.Model):
             urls.append('%s/web/content/%d?access_token=%s&download=true' % (
                 base.rstrip('/'), att.id, token))
         return urls
+
+    def _to_store(self, store, *args, **kwargs):
+        super()._to_store(store, *args, **kwargs)
+        for channel in self.filtered(lambda c: c.channel_type == 'connect_messages'):
+            store.add(channel, {
+                'connect_whatsapp_window_open': channel.connect_whatsapp_window_open,
+                'connect_whatsapp_valid_until': channel.connect_whatsapp_valid_until,
+            })

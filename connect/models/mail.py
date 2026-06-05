@@ -26,8 +26,8 @@ class MailMessage(models.Model):
         else:
             return False
 
-    def _to_store(self, store, **kwargs):
-        super()._to_store(store, **kwargs)
+    def _to_store(self, store, *args, **kwargs):
+        super()._to_store(store, *args, **kwargs)
         linked = self.filtered(
             lambda m: m.message_type == 'connect_message' and m.connect_message)
         for message in linked:
