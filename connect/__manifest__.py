@@ -15,7 +15,7 @@
     "description": "",
     "depends": ["mail", "contacts", "sms", "resource"],
     "external_dependencies": {
-        "python": ["twilio", "openai", "PyJWT"],
+        "python": ["twilio", "openai", "PyJWT", "boto3"],
     },
     "sequences": True,
     "data": [
