@@ -27,6 +27,7 @@
                       <field name="api_url" string="Odoo URL"/>
                       <button class="btn btn-primary" colspan="2" name="action_open_system_parameters" type="object" string="Change Odoo URL"/>
                       <field name="api_fallback_url" string="Fallback URL"/>
+                      <field name="enable_auto_reload_view"/>
                       <field name="debug_mode"/>
                     </group>
                     <group string="Balance">
@@ -70,6 +71,56 @@
                     </group>
                     <group>
                       <button colspan="2" name="reformat_numbers_button" string="FORMAT NUMBERS" type="object"/>
+                    </group>
+                  </group>
+                </page>
+                <page name="s3_storage" string="S3 Storage">
+                  <group>
+                    <group string="AWS S3" name="aws_s3">
+                      <field name="s3_recordings_enabled"/>
+                      <separator string="1. Choose a bucket prefix (the IAM policy below is scoped to it)" colspan="2" attrs="{'invisible': [('s3_recordings_enabled', '=', False)]}"/>
+                      <field name="aws_s3_bucket_prefix" attrs="{'invisible': [('s3_recordings_enabled', '=', False)]}"/>
+                      <separator string="2. Create an AWS IAM user with this least-privilege policy" colspan="2" attrs="{'invisible': [('s3_recordings_enabled', '=', False)]}"/>
+                      <field name="aws_iam_policy" nolabel="1" colspan="2" widget="ace" options="{'mode': 'javascript'}" readonly="1" attrs="{'invisible': [('s3_recordings_enabled', '=', False)]}"/>
+                      <div colspan="2" class="text-muted" attrs="{'invisible': [('s3_recordings_enabled', '=', False)]}">
+                        <p>Create the IAM user (one time):</p>
+                        <ol>
+                          <li>AWS Console → <strong>IAM → Users → Create user</strong> (e.g. <code>connect-s3</code>).</li>
+                          <li>On <strong>Set permissions</strong> pick <strong>Attach policies directly</strong> → <strong>Create policy</strong> → <strong>JSON</strong> tab → paste the policy above → name it (e.g. <code>connect-s3-recordings</code>) → create, then attach it to the user.</li>
+                          <li>Open the user → <strong>Security credentials</strong> → <strong>Create access key</strong> → <em>Application running outside AWS</em> → copy the <strong>Access Key ID</strong> and <strong>Secret access key</strong>.</li>
+                          <li>Paste them below.</li>
+                        </ol>
+                      </div>
+                      <separator string="3. Paste the IAM user's access key" colspan="2" attrs="{'invisible': [('s3_recordings_enabled', '=', False)]}"/>
+                      <field name="aws_access_key_id" attrs="{'invisible': [('s3_recordings_enabled', '=', False)]}"/>
+                      <field name="display_aws_secret_access_key" string="AWS Secret Access Key" password="1" attrs="{'invisible': [('s3_recordings_enabled', '=', False)]}"/>
+                      <field name="aws_region" attrs="{'invisible': [('s3_recordings_enabled', '=', False)]}"/>
+                      <field name="aws_s3_bucket" placeholder="recordings-acme" attrs="{'invisible': [('s3_recordings_enabled', '=', False)]}"
+                             help="Enter a name (or just a suffix). The prefix above is combined with it to form the full bucket name shown below."/>
+                      <field name="aws_s3_bucket_name" readonly="1" attrs="{'invisible': [('s3_recordings_enabled', '=', False)]}"/>
+                      <field name="aws_s3_prefix" attrs="{'invisible': [('s3_recordings_enabled', '=', False)]}"/>
+                      <field name="s3_retention_days" attrs="{'invisible': [('s3_recordings_enabled', '=', False)]}"/>
+                      <button colspan="2" name="action_provision_s3_bucket" type="object" string="CREATE / CONFIGURE S3 BUCKET" class="btn btn-primary" attrs="{'invisible': [('s3_recordings_enabled', '=', False)]}"/>
+                      <div colspan="2" attrs="{'invisible': [('s3_recordings_enabled', '=', False)]}">
+                        <button name="action_create_twilio_aws_credential" type="object" string="CREATE TWILIO AWS CREDENTIAL" class="btn btn-secondary me-2"/>
+                        <button name="action_recreate_twilio_aws_credential" type="object" string="RECREATE TWILIO CREDENTIAL" class="btn btn-secondary"
+                                confirm="Delete the existing 'connect-s3-recordings' Twilio credential and create a new one with the current AWS keys? The new SID must be re-selected in the Twilio Console."/>
+                      </div>
+                      <field name="twilio_aws_credential_sid" readonly="1" attrs="{'invisible': [('s3_recordings_enabled', '=', False)]}"/>
+                      <field name="aws_s3_url" readonly="1" attrs="{'invisible': [('s3_recordings_enabled', '=', False)]}"/>
+                    </group>
+                    <group string="Twilio Console (final step)" name="s3_instructions" attrs="{'invisible': [('s3_recordings_enabled', '=', False)]}">
+                      <div colspan="2" class="text-muted">
+                        <p><strong>Voice external storage has no API — do this once in the Twilio Console:</strong></p>
+                        <ol>
+                          <li>Twilio Console → Voice → Recordings → Settings.</li>
+                          <li>Enable external S3 storage.</li>
+                          <li>Pick AWS credential <em>connect-s3-recordings</em> (SID shown on the left).</li>
+                          <li>Paste the <strong>S3 URL</strong> shown on the left.</li>
+                          <li>Save. New recordings now go to your bucket.</li>
+                          <li>Then tick <em>Store recordings in S3</em> here.</li>
+                        </ol>
+                      </div>
                     </group>
                   </group>
                 </page>
