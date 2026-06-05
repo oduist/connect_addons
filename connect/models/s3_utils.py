@@ -7,6 +7,24 @@ from urllib.parse import urlparse
 from datetime import timedelta
 
 
+# Bucket names are auto-prefixed so they stay inside the IAM policy's allowed
+# ARN (arn:aws:s3:::oduist-connect-*). Keep this in sync with that policy.
+S3_BUCKET_PREFIX = "oduist-connect-"
+
+
+def normalize_bucket_name(name, prefix=S3_BUCKET_PREFIX):
+    """Ensure the bucket name starts with `prefix` (idempotent).
+
+    Blank stays blank. A name already starting with the prefix is returned
+    unchanged; otherwise the prefix is prepended. The user only needs to type a
+    suffix (e.g. "recordings-acme" -> "oduist-connect-recordings-acme").
+    """
+    name = (name or "").strip()
+    if not name:
+        return name
+    return name if name.startswith(prefix) else prefix + name
+
+
 def build_s3_url(bucket, region, prefix):
     """Return the Twilio-ready https URL for a bucket+prefix (no trailing slash)."""
     prefix = (prefix or "").strip("/")

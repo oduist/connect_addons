@@ -19,8 +19,8 @@ working (mixed mode).
 Create a single IAM user (programmatic access) and attach this least-privilege policy.
 It lets Odoo create/configure the bucket and read recordings, and lets Twilio write them.
 No `iam:*` permissions are granted, so the key is not an admin key. The bucket-name prefix
-(`oduist-connect-recordings-*`) limits which buckets the key can touch — name your bucket
-accordingly (or adjust the prefix).
+(`oduist-connect-*`) limits which buckets the key can touch. Odoo adds this prefix to your
+bucket name automatically, so you only enter a suffix (e.g. `recordings-acme`).
 
 ```json
 {
@@ -31,17 +31,17 @@ accordingly (or adjust the prefix).
       "Effect": "Allow",
       "Action": ["s3:CreateBucket", "s3:PutBucketPublicAccessBlock",
                  "s3:PutEncryptionConfiguration", "s3:PutLifecycleConfiguration",
-                 "s3:GetLifecycleConfiguration", "s3:GetBucketLocation"],
-      "Resource": "arn:aws:s3:::oduist-connect-recordings-*"
+                 "s3:GetBucketLocation"],
+      "Resource": "arn:aws:s3:::oduist-connect-*"
     },
     {
       "Sid": "ReadWriteObjects",
       "Effect": "Allow",
-      "Action": ["s3:PutObject", "s3:GetObject", "s3:ListBucket", "s3:DeleteObject",
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:ListBucket",
                  "s3:AbortMultipartUpload", "s3:ListMultipartUploadParts",
                  "s3:ListBucketMultipartUploads"],
-      "Resource": ["arn:aws:s3:::oduist-connect-recordings-*",
-                   "arn:aws:s3:::oduist-connect-recordings-*/*"]
+      "Resource": ["arn:aws:s3:::oduist-connect-*",
+                   "arn:aws:s3:::oduist-connect-*/*"]
     }
   ]
 }
@@ -55,9 +55,9 @@ Generate an **Access Key ID** + **Secret Access Key** for this user (use case
 1. Enter the **AWS Access Key ID** and **AWS Secret Access Key**.
 2. Pick the **AWS Region** (e.g. `eu-central-1` for EU/GDPR). The region is permanent for
    the bucket.
-3. Enter an **S3 Bucket Name** (must start with `oduist-connect-recordings-`, globally
-   unique, e.g. `oduist-connect-recordings-<yourcompany>`), and a **Folder (prefix)**
-   (default `recordings`).
+3. Enter an **S3 Bucket Name** suffix (globally unique, e.g. `recordings-<yourcompany>`).
+   Odoo prepends the `oduist-connect-` prefix automatically to match the IAM policy. Also
+   set a **Folder (prefix)** (default `recordings`).
 4. Set **Retention (days)** — `0` keeps recordings forever; `N` deletes the audio file
    after N days (the recording row and its transcript are kept; the player shows
    "Recording expired").

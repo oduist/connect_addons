@@ -81,7 +81,8 @@
                       <field name="aws_access_key_id"/>
                       <field name="display_aws_secret_access_key" string="AWS Secret Access Key" password="1"/>
                       <field name="aws_region"/>
-                      <field name="aws_s3_bucket"/>
+                      <field name="aws_s3_bucket" placeholder="oduist-connect-…"
+                             help="The 'oduist-connect-' prefix is added automatically to match the IAM policy — enter only the suffix (e.g. 'recordings-acme')."/>
                       <field name="aws_s3_prefix"/>
                       <field name="s3_retention_days"/>
                       <button colspan="2" name="action_provision_s3_bucket" type="object" string="CREATE / CONFIGURE S3 BUCKET" class="btn btn-primary"/>

@@ -39,6 +39,40 @@ class TestS3Utils(unittest.TestCase):
         url = "https://s3.eu-central-1.amazonaws.com/my-bucket/recordings/RE1.mp3"
         self.assertEqual(s3_utils.parse_s3_key(url, "my-bucket"), "recordings/RE1.mp3")
 
+    # ---- normalize_bucket_name ----
+    def test_normalize_bucket_name_adds_prefix(self):
+        self.assertEqual(
+            s3_utils.normalize_bucket_name("recordings-acme"),
+            "oduist-connect-recordings-acme",
+        )
+
+    def test_normalize_bucket_name_keeps_existing_prefix(self):
+        self.assertEqual(
+            s3_utils.normalize_bucket_name("oduist-connect-test"),
+            "oduist-connect-test",
+        )
+
+    def test_normalize_bucket_name_is_idempotent(self):
+        once = s3_utils.normalize_bucket_name("test")
+        self.assertEqual(s3_utils.normalize_bucket_name(once), once)
+
+    def test_normalize_bucket_name_trims_whitespace(self):
+        self.assertEqual(
+            s3_utils.normalize_bucket_name("  test  "),
+            "oduist-connect-test",
+        )
+
+    def test_normalize_bucket_name_empty_stays_empty(self):
+        self.assertEqual(s3_utils.normalize_bucket_name(""), "")
+        self.assertEqual(s3_utils.normalize_bucket_name(None), "")
+        self.assertEqual(s3_utils.normalize_bucket_name("   "), "")
+
+    def test_normalize_bucket_name_custom_prefix(self):
+        self.assertEqual(
+            s3_utils.normalize_bucket_name("acme", prefix="my-prefix-"),
+            "my-prefix-acme",
+        )
+
     # ---- build_lifecycle_config ----
     def test_build_lifecycle_config(self):
         cfg = s3_utils.build_lifecycle_config("recordings", 30)

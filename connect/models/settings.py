@@ -438,6 +438,12 @@ class Settings(models.Model):
             else:
                 rec.aws_s3_url = False
 
+    @api.onchange("aws_s3_bucket")
+    def _onchange_aws_s3_bucket(self):
+        """Show the auto-prefixed bucket name live as the user types."""
+        if self.aws_s3_bucket:
+            self.aws_s3_bucket = s3_utils.normalize_bucket_name(self.aws_s3_bucket)
+
     def _get_s3_client(self):
         """boto3 S3 client built from the singleton settings (sudo to read secret)."""
         import boto3
@@ -455,7 +461,9 @@ class Settings(models.Model):
         if not (self.aws_s3_bucket and self.aws_region):
             raise ValidationError("Set S3 bucket name and region first.")
         s3 = self._get_s3_client()
-        bucket = self.aws_s3_bucket
+        bucket = s3_utils.normalize_bucket_name(self.aws_s3_bucket)
+        if bucket != self.aws_s3_bucket:
+            self.aws_s3_bucket = bucket
         try:
             if self.aws_region == "us-east-1":
                 s3.create_bucket(Bucket=bucket)
@@ -468,10 +476,11 @@ class Settings(models.Model):
             code = e.response["Error"]["Code"]
             if code == "AccessDenied":
                 raise ValidationError(
-                    "AWS denied s3:CreateBucket for '%s'. Your IAM user's policy most "
-                    "likely restricts bucket names to a prefix. Use a matching name "
-                    "(e.g. 'oduist-connect-recordings-...') or broaden the policy "
-                    "Resource ARN to this bucket.\n\n%s" % (bucket, e)
+                    "AWS denied s3:CreateBucket for '%s'. The '%s' prefix is added "
+                    "automatically, so this usually means the IAM policy is not "
+                    "attached to this key, or its Resource ARN uses a different "
+                    "prefix. Allow s3:CreateBucket on 'arn:aws:s3:::%s*'.\n\n%s"
+                    % (bucket, s3_utils.S3_BUCKET_PREFIX, s3_utils.S3_BUCKET_PREFIX, e)
                 )
             if code not in ("BucketAlreadyOwnedByYou", "BucketAlreadyExists"):
                 raise ValidationError("S3 create_bucket failed: %s" % e)
@@ -570,6 +579,9 @@ class Settings(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get("aws_s3_bucket"):
+                vals["aws_s3_bucket"] = s3_utils.normalize_bucket_name(vals["aws_s3_bucket"])
         if release.version_info[0] >= 17:
             self.env.registry.clear_cache()
         else:
@@ -577,6 +589,8 @@ class Settings(models.Model):
         return super(Settings, self).create(vals_list)
 
     def write(self, vals):
+        if vals.get("aws_s3_bucket"):
+            vals["aws_s3_bucket"] = s3_utils.normalize_bucket_name(vals["aws_s3_bucket"])
         if self.env.context.get("skip_protected_fields"):
             return super(Settings, self).write(vals)
         if not self.openai_api_key and vals.get("display_openai_api_key"):
