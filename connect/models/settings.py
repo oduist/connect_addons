@@ -277,8 +277,9 @@ class Settings(models.Model):
     # ---- S3 recording storage (ODU-36) ----
     s3_recordings_enabled = fields.Boolean(
         string="Store recordings in S3",
-        help="Read recordings from your AWS S3 bucket instead of Twilio. "
-             "Enable AFTER configuring external storage in the Twilio Console.",
+        help="Turn on to configure and use AWS S3 storage (reveals the settings "
+             "below). Recordings are read from S3 only once a bucket is configured "
+             "and Twilio uploads there; otherwise they keep playing from Twilio.",
     )
     aws_access_key_id = fields.Char(string="AWS Access Key ID")
     aws_secret_access_key = fields.Char(

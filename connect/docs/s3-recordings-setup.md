@@ -52,6 +52,8 @@ Generate an **Access Key ID** + **Secret Access Key** for this user (use case
 
 ## 2. Odoo — Connect Settings → S3 Storage
 
+First tick **Store recordings in S3** — this reveals the S3 settings below. Then:
+
 1. Enter the **AWS Access Key ID** and **AWS Secret Access Key**.
 2. Pick the **AWS Region** (e.g. `eu-central-1` for EU/GDPR). The region is permanent for
    the bucket.
@@ -74,9 +76,11 @@ Generate an **Access Key ID** + **Secret Access Key** for this user (use case
 4. Paste the **S3 URL** shown in Odoo (the read-only "S3 URL (paste into Twilio)" field).
 5. **Save**.
 
-## 4. Odoo — turn it on
+## 4. Odoo — it's already on
 
-Tick **Store recordings in S3** in Connect Settings → S3 Storage.
+**Store recordings in S3** was switched on in step 2 to reveal the settings, so there is
+nothing more to toggle. Recordings that Twilio uploads to your bucket are now read from
+S3; older (pre-switch) recordings keep playing from Twilio.
 
 ## 5. Verify
 
