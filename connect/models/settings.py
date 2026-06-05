@@ -579,6 +579,47 @@ class Settings(models.Model):
         )
         return True
 
+    def action_recreate_twilio_aws_credential(self):
+        """Delete the existing connect-s3-recordings credential and create a fresh
+        one with the current AWS keys (Twilio can't update a credential's key).
+        The new SID must be re-selected in the Twilio Console."""
+        self.ensure_one()
+        settings = self.env["connect.settings"].sudo()
+        access_key = self.aws_access_key_id
+        secret = settings.get_param("aws_secret_access_key")
+        if not (access_key and secret):
+            raise ValidationError("Set AWS access key and secret first.")
+        sid = settings.get_param("account_sid")
+        token = settings.get_param("auth_token")
+        friendly = "connect-s3-recordings"
+        base = "https://accounts.twilio.com/v1/Credentials/AWS"
+        try:
+            existing = requests.get(base, auth=(sid, token), timeout=30)
+            existing.raise_for_status()
+            for cred in existing.json().get("credentials", []):
+                if cred.get("friendly_name") == friendly:
+                    deleted = requests.delete(
+                        "%s/%s" % (base, cred["sid"]), auth=(sid, token), timeout=30
+                    )
+                    deleted.raise_for_status()
+            resp = requests.post(
+                base, auth=(sid, token), timeout=30,
+                data={
+                    "Credentials": "%s:%s" % (access_key, secret),
+                    "FriendlyName": friendly,
+                },
+            )
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            raise ValidationError("Twilio AWS credential request failed: %s" % e)
+        self.twilio_aws_credential_sid = resp.json()["sid"]
+        self.connect_notify(
+            "Twilio AWS credential recreated: %s. Re-select it in Twilio Console "
+            "→ Voice → Recordings → Settings." % self.twilio_aws_credential_sid,
+            notify_uid=self.env.uid, sticky=True,
+        )
+        return True
+
     def open_settings_form(self):
         rec = self.search([])
         if not rec:

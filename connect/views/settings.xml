@@ -102,6 +102,8 @@
                       <field name="s3_retention_days" invisible="not s3_recordings_enabled"/>
                       <button colspan="2" name="action_provision_s3_bucket" type="object" string="CREATE / CONFIGURE S3 BUCKET" class="btn btn-primary" invisible="not s3_recordings_enabled"/>
                       <button colspan="2" name="action_create_twilio_aws_credential" type="object" string="CREATE TWILIO AWS CREDENTIAL" invisible="not s3_recordings_enabled"/>
+                      <button colspan="2" name="action_recreate_twilio_aws_credential" type="object" string="RECREATE TWILIO CREDENTIAL" invisible="not s3_recordings_enabled"
+                              confirm="Delete the existing 'connect-s3-recordings' Twilio credential and create a new one with the current AWS keys? The new SID must be re-selected in the Twilio Console."/>
                       <field name="twilio_aws_credential_sid" readonly="1" invisible="not s3_recordings_enabled"/>
                       <field name="aws_s3_url" readonly="1" invisible="not s3_recordings_enabled"/>
                     </group>
