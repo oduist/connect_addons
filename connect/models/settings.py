@@ -616,9 +616,13 @@ class Settings(models.Model):
 
     def write(self, vals):
         if vals.get("aws_s3_bucket"):
-            prefix = (vals.get("aws_s3_bucket_prefix")
-                      or (self[:1].aws_s3_bucket_prefix if self else False)
-                      or s3_utils.S3_BUCKET_PREFIX)
+            # Honour an explicitly-cleared prefix in the same write (key present
+            # but empty -> fall back to default), else use the stored value.
+            if "aws_s3_bucket_prefix" in vals:
+                prefix = vals["aws_s3_bucket_prefix"]
+            else:
+                prefix = self[:1].aws_s3_bucket_prefix
+            prefix = prefix or s3_utils.S3_BUCKET_PREFIX
             vals["aws_s3_bucket"] = s3_utils.normalize_bucket_name(vals["aws_s3_bucket"], prefix)
         if self.env.context.get("skip_protected_fields"):
             return super(Settings, self).write(vals)
