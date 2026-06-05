@@ -81,13 +81,23 @@
                       <separator string="1. Choose a bucket prefix (the IAM policy below is scoped to it)" colspan="2" invisible="not s3_recordings_enabled"/>
                       <field name="aws_s3_bucket_prefix" invisible="not s3_recordings_enabled"/>
                       <separator string="2. Create an AWS IAM user with this least-privilege policy" colspan="2" invisible="not s3_recordings_enabled"/>
-                      <field name="aws_iam_policy" nolabel="1" colspan="2" widget="CopyClipboardText" readonly="1" invisible="not s3_recordings_enabled"/>
+                      <field name="aws_iam_policy" nolabel="1" colspan="2" widget="ace" options="{'mode': 'json'}" readonly="1" invisible="not s3_recordings_enabled"/>
+                      <div colspan="2" class="text-muted" invisible="not s3_recordings_enabled">
+                        <p>Create the IAM user (one time):</p>
+                        <ol>
+                          <li>AWS Console → <strong>IAM → Users → Create user</strong> (e.g. <code>connect-s3</code>).</li>
+                          <li>On <strong>Set permissions</strong> pick <strong>Attach policies directly</strong> → <strong>Create policy</strong> → <strong>JSON</strong> tab → paste the policy above → name it (e.g. <code>connect-s3-recordings</code>) → create, then attach it to the user.</li>
+                          <li>Open the user → <strong>Security credentials</strong> → <strong>Create access key</strong> → <em>Application running outside AWS</em> → copy the <strong>Access Key ID</strong> and <strong>Secret access key</strong>.</li>
+                          <li>Paste them below.</li>
+                        </ol>
+                      </div>
                       <separator string="3. Paste the IAM user's access key" colspan="2" invisible="not s3_recordings_enabled"/>
                       <field name="aws_access_key_id" invisible="not s3_recordings_enabled"/>
                       <field name="display_aws_secret_access_key" string="AWS Secret Access Key" password="1" invisible="not s3_recordings_enabled"/>
                       <field name="aws_region" invisible="not s3_recordings_enabled"/>
                       <field name="aws_s3_bucket" placeholder="recordings-acme" invisible="not s3_recordings_enabled"
-                             help="The bucket prefix above is added automatically to match the IAM policy — enter only the suffix (e.g. 'recordings-acme')."/>
+                             help="Enter a name (or just a suffix). The prefix above is combined with it to form the full bucket name shown below."/>
+                      <field name="aws_s3_bucket_name" readonly="1" invisible="not s3_recordings_enabled"/>
                       <field name="aws_s3_prefix" invisible="not s3_recordings_enabled"/>
                       <field name="s3_retention_days" invisible="not s3_recordings_enabled"/>
                       <button colspan="2" name="action_provision_s3_bucket" type="object" string="CREATE / CONFIGURE S3 BUCKET" class="btn btn-primary" invisible="not s3_recordings_enabled"/>

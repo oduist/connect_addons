@@ -52,8 +52,17 @@ copy it straight from there instead of the static example below.
 }
 ```
 
-Generate an **Access Key ID** + **Secret Access Key** for this user (use case
-"Application running outside AWS"). The choice of use case does not change the key.
+Step by step in the AWS Console:
+
+1. **IAM → Users → Create user** — give it a name (e.g. `connect-s3`).
+2. On **Set permissions**, choose **Attach policies directly → Create policy → JSON**,
+   paste the policy above, name it (e.g. `connect-s3-recordings`), create it and attach it
+   to the user.
+3. Open the user → **Security credentials → Create access key** → *Application running
+   outside AWS* → copy the **Access Key ID** and **Secret access key**.
+
+(The same policy and these steps are shown directly in Odoo on the S3 Storage settings
+page, generated from your chosen prefix — copy them from there.)
 
 ## 2. Odoo — Connect Settings → S3 Storage
 

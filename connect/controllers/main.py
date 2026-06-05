@@ -55,7 +55,7 @@ class ConnectController(http.Controller):
 
     def _serve_media(self, media_url):
         settings = http.request.env['connect.settings'].sudo()
-        bucket = settings.get_param('aws_s3_bucket')
+        bucket = settings.get_param('aws_s3_bucket_name')
         if settings.get_param('s3_recordings_enabled') and s3_utils.is_s3_media_url(media_url, bucket):
             key = s3_utils.parse_s3_key(media_url, bucket)
             s3 = settings._get_s3_client()

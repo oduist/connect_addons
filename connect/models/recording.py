@@ -85,7 +85,7 @@ class Recording(models.Model):
         try:
             client = self.env['connect.settings'].get_openai_client()
             settings = self.env["connect.settings"].sudo()
-            bucket = settings.get_param("aws_s3_bucket")
+            bucket = settings.get_param("aws_s3_bucket_name")
             if settings.get_param("s3_recordings_enabled") and s3_utils.is_s3_media_url(self.media_url, bucket):
                 key = s3_utils.parse_s3_key(self.media_url, bucket)
                 with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
@@ -208,7 +208,7 @@ class Recording(models.Model):
         settings = self.env['connect.settings'].sudo()
         proxy_recordings = settings.get_param('proxy_recordings')
         s3_enabled = settings.get_param('s3_recordings_enabled')
-        bucket = settings.get_param('aws_s3_bucket')
+        bucket = settings.get_param('aws_s3_bucket_name')
         for rec in self:
             if not rec.media_url:
                 # Fix for Agent recordings.

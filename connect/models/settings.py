@@ -302,7 +302,16 @@ class Settings(models.Model):
              "above is scoped to it. Default 'oduist-connect-'. Set your own to match "
              "an existing IAM naming convention (leave empty to use the default).",
     )
-    aws_s3_bucket = fields.Char(string="S3 Bucket Name")
+    aws_s3_bucket = fields.Char(
+        string="S3 Bucket Name",
+        help="The bucket name (or just a suffix). The prefix above is combined with "
+             "it dynamically to form the full bucket name shown below.",
+    )
+    aws_s3_bucket_name = fields.Char(
+        string="Full Bucket Name", compute="_compute_aws_s3_bucket_name", readonly=True,
+        help="Actual bucket = prefix + name. Used for provisioning, the S3 URL and "
+             "playback.",
+    )
     aws_s3_prefix = fields.Char(string="S3 Folder (prefix)", default="recordings")
     s3_retention_days = fields.Integer(
         string="Retention (days)", default=0,
@@ -440,15 +449,23 @@ class Settings(models.Model):
             rec.name = "Connect Settings"
 
     # ---- S3 recording storage (ODU-36) ----
-    @api.depends("aws_s3_bucket", "aws_region", "aws_s3_prefix")
+    @api.depends("aws_s3_bucket_name", "aws_region", "aws_s3_prefix")
     def _compute_aws_s3_url(self):
         for rec in self:
-            if rec.aws_s3_bucket and rec.aws_region:
+            if rec.aws_s3_bucket_name and rec.aws_region:
                 rec.aws_s3_url = s3_utils.build_s3_url(
-                    rec.aws_s3_bucket, rec.aws_region, rec.aws_s3_prefix
+                    rec.aws_s3_bucket_name, rec.aws_region, rec.aws_s3_prefix
                 )
             else:
                 rec.aws_s3_url = False
+
+    @api.depends("aws_s3_bucket", "aws_s3_bucket_prefix")
+    def _compute_aws_s3_bucket_name(self):
+        """Full bucket = prefix + name, derived dynamically (input is never mutated)."""
+        for rec in self:
+            rec.aws_s3_bucket_name = s3_utils.normalize_bucket_name(
+                rec.aws_s3_bucket, rec._effective_s3_prefix()
+            )
 
     def _effective_s3_prefix(self):
         """Configured bucket prefix, falling back to the module default."""
@@ -459,14 +476,6 @@ class Settings(models.Model):
     def _compute_aws_iam_policy(self):
         for rec in self:
             rec.aws_iam_policy = s3_utils.build_iam_policy(rec._effective_s3_prefix())
-
-    @api.onchange("aws_s3_bucket")
-    def _onchange_aws_s3_bucket(self):
-        """Show the auto-prefixed bucket name live as the user types."""
-        if self.aws_s3_bucket:
-            self.aws_s3_bucket = s3_utils.normalize_bucket_name(
-                self.aws_s3_bucket, self._effective_s3_prefix()
-            )
 
     def _get_s3_client(self):
         """boto3 S3 client built from the singleton settings (sudo to read secret)."""
@@ -486,9 +495,7 @@ class Settings(models.Model):
             raise ValidationError("Set S3 bucket name and region first.")
         s3 = self._get_s3_client()
         prefix = self._effective_s3_prefix()
-        bucket = s3_utils.normalize_bucket_name(self.aws_s3_bucket, prefix)
-        if bucket != self.aws_s3_bucket:
-            self.aws_s3_bucket = bucket
+        bucket = self.aws_s3_bucket_name
         try:
             if self.aws_region == "us-east-1":
                 s3.create_bucket(Bucket=bucket)
@@ -604,10 +611,6 @@ class Settings(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        for vals in vals_list:
-            if vals.get("aws_s3_bucket"):
-                prefix = vals.get("aws_s3_bucket_prefix") or s3_utils.S3_BUCKET_PREFIX
-                vals["aws_s3_bucket"] = s3_utils.normalize_bucket_name(vals["aws_s3_bucket"], prefix)
         if release.version_info[0] >= 17:
             self.env.registry.clear_cache()
         else:
@@ -615,15 +618,6 @@ class Settings(models.Model):
         return super(Settings, self).create(vals_list)
 
     def write(self, vals):
-        if vals.get("aws_s3_bucket"):
-            # Honour an explicitly-cleared prefix in the same write (key present
-            # but empty -> fall back to default), else use the stored value.
-            if "aws_s3_bucket_prefix" in vals:
-                prefix = vals["aws_s3_bucket_prefix"]
-            else:
-                prefix = self[:1].aws_s3_bucket_prefix
-            prefix = prefix or s3_utils.S3_BUCKET_PREFIX
-            vals["aws_s3_bucket"] = s3_utils.normalize_bucket_name(vals["aws_s3_bucket"], prefix)
         if self.env.context.get("skip_protected_fields"):
             return super(Settings, self).write(vals)
         if not self.openai_api_key and vals.get("display_openai_api_key"):
