@@ -12,6 +12,7 @@ from werkzeug.exceptions import NotFound
 from odoo import fields, http, release, tools
 from odoo.api import SUPERUSER_ID
 from odoo.exceptions import UserError
+from odoo.addons.connect.models import s3_utils
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +54,22 @@ class ConnectController(http.Controller):
         return self._serve_media(call.voicemail_url)
 
     def _serve_media(self, media_url):
+        settings = http.request.env['connect.settings'].sudo()
+        bucket = settings.get_param('aws_s3_bucket_name')
+        if settings.get_param('s3_recordings_enabled') and s3_utils.is_s3_media_url(media_url, bucket):
+            key = s3_utils.parse_s3_key(media_url, bucket)
+            s3 = settings._get_s3_client()
+            try:
+                obj = s3.get_object(Bucket=bucket, Key=key)
+            except s3.exceptions.NoSuchKey:
+                return http.Response(status=410)  # gone (lifecycle-expired)
+            data = obj['Body'].read()
+            res = http.Response(data, content_type=obj.get('ContentType') or 'audio/mpeg')
+            res.headers['Content-Disposition'] = http.content_disposition(key.split('/')[-1])
+            return res
         media_name = '{}.wav'.format(media_url.split('/')[-1])
-        account_sid = http.request.env['connect.settings'].sudo().get_param('account_sid')
-        auth_token = http.request.env['connect.settings'].sudo().get_param('auth_token')
+        account_sid = settings.get_param('account_sid')
+        auth_token = settings.get_param('auth_token')
         response = requests.get(media_url, auth=(account_sid, auth_token))
         if response.status_code == 200:
             # Create the response

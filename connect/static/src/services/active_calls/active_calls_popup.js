@@ -1,7 +1,7 @@
 /** @odoo-module **/
 import {useService} from "@web/core/utils/hooks"
 
-import {Component, useState} from "@odoo/owl"
+import {Component, useState, onWillStart} from "@odoo/owl"
 
 export class ConnectActiveCallsPopup extends Component {
     static template = 'connect.active_calls_popup'
@@ -22,6 +22,10 @@ export class ConnectActiveCallsPopup extends Component {
         super.setup()
         this.orm = useService('orm')
         this.action = useService('action')
+        this.canDisableRecording = false
+        onWillStart(async () => {
+            this.canDisableRecording = await this.orm.call("connect.call", "can_disable_recording", [])
+        })
         this.props.bus.addEventListener('connect_active_calls_toggle_display', (ev) => this.toggleDisplay(ev))
     }
 
@@ -88,6 +92,13 @@ export class ConnectActiveCallsPopup extends Component {
                 views: [[false, 'form']],
             })
         }
+    }
+
+    async _toggleDisableRecording(ev, call) {
+        ev.stopPropagation()
+        const value = !call.disable_recording
+        const result = await this.orm.call("connect.call", "set_disable_recording", [call.id, value])
+        call.disable_recording = result
     }
 
     _onMouseOver(ev) {

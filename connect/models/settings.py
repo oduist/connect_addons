@@ -19,9 +19,11 @@ from urllib.parse import urljoin
 
 import httpx
 import openai
+import requests
 from odoo import api, fields, models, release
 from odoo.exceptions import ValidationError
 from twilio.rest import Client
+from . import s3_utils
 from odoo.addons.connect.models.license import ODUIST_MODULES
 ODUIST_MODULES.append('connect')
 
@@ -36,6 +38,7 @@ PROTECTED_FIELDS = [
     "display_region_auth_token",
     "display_twilio_api_secret",
     "display_openai_api_key",
+    "display_aws_secret_access_key",
 ]
 
 TWILIO_EDGES = [
@@ -271,6 +274,61 @@ class Settings(models.Model):
     proxy_recordings = fields.Boolean(
         help="Re-stream recordings using Odoo user auth.", default=True
     )
+    # ---- S3 recording storage (ODU-36) ----
+    s3_recordings_enabled = fields.Boolean(
+        string="Store recordings in S3",
+        help="Turn on to configure and use AWS S3 storage (reveals the settings "
+             "below). Recordings are read from S3 only once a bucket is configured "
+             "and Twilio uploads there; otherwise they keep playing from Twilio.",
+    )
+    aws_access_key_id = fields.Char(string="AWS Access Key ID")
+    aws_secret_access_key = fields.Char(
+        string="AWS Secret Access Key", groups="base.group_erp_manager"
+    )
+    display_aws_secret_access_key = fields.Char()
+    aws_region = fields.Selection(
+        selection=[
+            ("eu-central-1", "EU (Frankfurt)"),
+            ("eu-west-1", "EU (Ireland)"),
+            ("us-east-1", "US East (N. Virginia)"),
+            ("us-west-2", "US West (Oregon)"),
+            ("ap-southeast-1", "Asia Pacific (Singapore)"),
+        ],
+        string="AWS Region", default="eu-central-1", required=True,
+    )
+    aws_s3_bucket_prefix = fields.Char(
+        string="S3 Bucket Prefix", default=lambda self: s3_utils.S3_BUCKET_PREFIX,
+        help="Bucket names are forced to start with this prefix, and the IAM policy "
+             "above is scoped to it. Default 'oduist-connect-'. Set your own to match "
+             "an existing IAM naming convention (leave empty to use the default).",
+    )
+    aws_s3_bucket = fields.Char(
+        string="S3 Bucket Name",
+        help="The bucket name (or just a suffix). The prefix above is combined with "
+             "it dynamically to form the full bucket name shown below.",
+    )
+    aws_s3_bucket_name = fields.Char(
+        string="Full Bucket Name", compute="_compute_aws_s3_bucket_name", readonly=True,
+        help="Actual bucket = prefix + name. Used for provisioning, the S3 URL and "
+             "playback.",
+    )
+    aws_s3_prefix = fields.Char(string="S3 Folder (prefix)", default="recordings")
+    s3_retention_days = fields.Integer(
+        string="Retention (days)", default=0,
+        help="0 = keep forever. >0 sets an S3 lifecycle rule that deletes the audio "
+             "file after N days (the recording row and transcript are kept).",
+    )
+    aws_s3_url = fields.Char(
+        string="S3 URL (paste into Twilio)", compute="_compute_aws_s3_url", readonly=True,
+    )
+    aws_iam_policy = fields.Text(
+        string="AWS IAM Policy", compute="_compute_aws_iam_policy", readonly=True,
+        help="Least-privilege policy to attach to the AWS IAM user whose access "
+             "key you enter below. Copy it into IAM → Users → Add inline policy.",
+    )
+    twilio_aws_credential_sid = fields.Char(
+        string="Twilio AWS Credential SID", readonly=True,
+    )
     transcript_calls = fields.Boolean()
     transcript_provider = fields.Selection(
         selection=[("openai", "Open AI")], default="openai", required=True
@@ -287,6 +345,11 @@ class Settings(models.Model):
         default=False,
         string="Fetch Call Prices",
         help="Enable fetching call prices from Twilio API after call completion. May add delay to call processing.",
+    )
+    enable_auto_reload_view = fields.Boolean(
+        string="Auto Reload Views",
+        help="Automatically refresh open Connect views (e.g. call list, recordings) in real time "
+        "when records change, pushed over the bus. Disable to reduce browser and bus traffic.",
     )
     ############################################################
     api_url = fields.Char("API URL", compute="_get_instance_data")
@@ -368,6 +431,8 @@ class Settings(models.Model):
 
     @api.model
     def connect_reload_view(self, model):
+        if not self.get_param('enable_auto_reload_view'):
+            return
         if release.version_info[0] < 15:
             msg = {
                 "action": "reload_view",
@@ -378,12 +443,182 @@ class Settings(models.Model):
             msg = {"model": model}
             self.env["bus.bus"]._sendone("connect_actions", "reload_view", msg)
 
-
-
     @api.model
     def _get_name(self):
         for rec in self:
             rec.name = "Connect Settings"
+
+    # ---- S3 recording storage (ODU-36) ----
+    @api.depends("aws_s3_bucket_name", "aws_region", "aws_s3_prefix")
+    def _compute_aws_s3_url(self):
+        for rec in self:
+            if rec.aws_s3_bucket_name and rec.aws_region:
+                rec.aws_s3_url = s3_utils.build_s3_url(
+                    rec.aws_s3_bucket_name, rec.aws_region, rec.aws_s3_prefix
+                )
+            else:
+                rec.aws_s3_url = False
+
+    @api.depends("aws_s3_bucket", "aws_s3_bucket_prefix")
+    def _compute_aws_s3_bucket_name(self):
+        """Full bucket = prefix + name, derived dynamically (input is never mutated)."""
+        for rec in self:
+            rec.aws_s3_bucket_name = s3_utils.normalize_bucket_name(
+                rec.aws_s3_bucket, rec._effective_s3_prefix()
+            )
+
+    def _effective_s3_prefix(self):
+        """Configured bucket prefix, falling back to the module default."""
+        self.ensure_one()
+        return self.aws_s3_bucket_prefix or s3_utils.S3_BUCKET_PREFIX
+
+    @api.depends("aws_s3_bucket_prefix")
+    def _compute_aws_iam_policy(self):
+        for rec in self:
+            rec.aws_iam_policy = s3_utils.build_iam_policy(rec._effective_s3_prefix())
+
+    def _get_s3_client(self):
+        """boto3 S3 client built from the singleton settings (sudo to read secret)."""
+        import boto3
+        rec = self.env["connect.settings"].sudo().search([], limit=1)
+        return boto3.client(
+            "s3",
+            aws_access_key_id=rec.aws_access_key_id,
+            aws_secret_access_key=rec.aws_secret_access_key,
+            region_name=rec.aws_region,
+        )
+
+    def action_provision_s3_bucket(self):
+        from botocore.exceptions import ClientError
+        self.ensure_one()
+        if not (self.aws_s3_bucket and self.aws_region):
+            raise ValidationError("Set S3 bucket name and region first.")
+        s3 = self._get_s3_client()
+        prefix = self._effective_s3_prefix()
+        bucket = self.aws_s3_bucket_name
+        try:
+            if self.aws_region == "us-east-1":
+                s3.create_bucket(Bucket=bucket)
+            else:
+                s3.create_bucket(
+                    Bucket=bucket,
+                    CreateBucketConfiguration={"LocationConstraint": self.aws_region},
+                )
+        except ClientError as e:
+            code = e.response["Error"]["Code"]
+            if code == "AccessDenied":
+                raise ValidationError(
+                    "AWS denied s3:CreateBucket for '%s'. The '%s' prefix is added "
+                    "automatically, so this usually means the IAM policy is not "
+                    "attached to this key, or its Resource ARN uses a different "
+                    "prefix. Allow s3:CreateBucket on 'arn:aws:s3:::%s*'.\n\n%s"
+                    % (bucket, prefix, prefix, e)
+                )
+            if code not in ("BucketAlreadyOwnedByYou", "BucketAlreadyExists"):
+                raise ValidationError("S3 create_bucket failed: %s" % e)
+        s3.put_public_access_block(
+            Bucket=bucket,
+            PublicAccessBlockConfiguration={
+                "BlockPublicAcls": True, "IgnorePublicAcls": True,
+                "BlockPublicPolicy": True, "RestrictPublicBuckets": True,
+            },
+        )
+        s3.put_bucket_encryption(
+            Bucket=bucket,
+            ServerSideEncryptionConfiguration={
+                "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
+            },
+        )
+        if self.s3_retention_days and self.s3_retention_days > 0:
+            s3.put_bucket_lifecycle_configuration(
+                Bucket=bucket,
+                LifecycleConfiguration=s3_utils.build_lifecycle_config(
+                    self.aws_s3_prefix, self.s3_retention_days
+                ),
+            )
+        self.connect_notify("S3 bucket '%s' provisioned." % bucket, notify_uid=self.env.uid)
+        return True
+
+    def action_create_twilio_aws_credential(self):
+        self.ensure_one()
+        settings = self.env["connect.settings"].sudo()
+        access_key = self.aws_access_key_id
+        secret = settings.get_param("aws_secret_access_key")
+        if not (access_key and secret):
+            raise ValidationError("Set AWS access key and secret first.")
+        sid = settings.get_param("account_sid")
+        token = settings.get_param("auth_token")
+        friendly = "connect-s3-recordings"
+        base = "https://accounts.twilio.com/v1/Credentials/AWS"
+        try:
+            existing = requests.get(base, auth=(sid, token), timeout=30)
+            existing.raise_for_status()
+            for cred in existing.json().get("credentials", []):
+                if cred.get("friendly_name") == friendly:
+                    self.twilio_aws_credential_sid = cred["sid"]
+                    self.connect_notify(
+                        "Twilio AWS credential '%s' already exists: %s"
+                        % (friendly, cred["sid"]),
+                        notify_uid=self.env.uid,
+                    )
+                    return True
+            resp = requests.post(
+                base, auth=(sid, token), timeout=30,
+                data={
+                    "Credentials": "%s:%s" % (access_key, secret),
+                    "FriendlyName": friendly,
+                },
+            )
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            raise ValidationError("Twilio AWS credential request failed: %s" % e)
+        self.twilio_aws_credential_sid = resp.json()["sid"]
+        self.connect_notify(
+            "Twilio AWS credential created: %s" % self.twilio_aws_credential_sid,
+            notify_uid=self.env.uid,
+        )
+        return True
+
+    def action_recreate_twilio_aws_credential(self):
+        """Delete the existing connect-s3-recordings credential and create a fresh
+        one with the current AWS keys (Twilio can't update a credential's key).
+        The new SID must be re-selected in the Twilio Console."""
+        self.ensure_one()
+        settings = self.env["connect.settings"].sudo()
+        access_key = self.aws_access_key_id
+        secret = settings.get_param("aws_secret_access_key")
+        if not (access_key and secret):
+            raise ValidationError("Set AWS access key and secret first.")
+        sid = settings.get_param("account_sid")
+        token = settings.get_param("auth_token")
+        friendly = "connect-s3-recordings"
+        base = "https://accounts.twilio.com/v1/Credentials/AWS"
+        try:
+            existing = requests.get(base, auth=(sid, token), timeout=30)
+            existing.raise_for_status()
+            for cred in existing.json().get("credentials", []):
+                if cred.get("friendly_name") == friendly:
+                    deleted = requests.delete(
+                        "%s/%s" % (base, cred["sid"]), auth=(sid, token), timeout=30
+                    )
+                    deleted.raise_for_status()
+            resp = requests.post(
+                base, auth=(sid, token), timeout=30,
+                data={
+                    "Credentials": "%s:%s" % (access_key, secret),
+                    "FriendlyName": friendly,
+                },
+            )
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            raise ValidationError("Twilio AWS credential request failed: %s" % e)
+        self.twilio_aws_credential_sid = resp.json()["sid"]
+        self.connect_notify(
+            "Twilio AWS credential recreated: %s. Re-select it in Twilio Console "
+            "→ Voice → Recordings → Settings." % self.twilio_aws_credential_sid,
+            notify_uid=self.env.uid, sticky=True,
+        )
+        return True
 
     def open_settings_form(self):
         rec = self.search([])
