@@ -296,6 +296,12 @@ class Settings(models.Model):
         ],
         string="AWS Region", default="eu-central-1", required=True,
     )
+    aws_s3_bucket_prefix = fields.Char(
+        string="S3 Bucket Prefix", default=lambda self: s3_utils.S3_BUCKET_PREFIX,
+        help="Bucket names are forced to start with this prefix, and the IAM policy "
+             "above is scoped to it. Default 'oduist-connect-'. Set your own to match "
+             "an existing IAM naming convention (leave empty to use the default).",
+    )
     aws_s3_bucket = fields.Char(string="S3 Bucket Name")
     aws_s3_prefix = fields.Char(string="S3 Folder (prefix)", default="recordings")
     s3_retention_days = fields.Integer(
@@ -444,16 +450,23 @@ class Settings(models.Model):
             else:
                 rec.aws_s3_url = False
 
+    def _effective_s3_prefix(self):
+        """Configured bucket prefix, falling back to the module default."""
+        self.ensure_one()
+        return self.aws_s3_bucket_prefix or s3_utils.S3_BUCKET_PREFIX
+
+    @api.depends("aws_s3_bucket_prefix")
     def _compute_aws_iam_policy(self):
-        policy = s3_utils.build_iam_policy()
         for rec in self:
-            rec.aws_iam_policy = policy
+            rec.aws_iam_policy = s3_utils.build_iam_policy(rec._effective_s3_prefix())
 
     @api.onchange("aws_s3_bucket")
     def _onchange_aws_s3_bucket(self):
         """Show the auto-prefixed bucket name live as the user types."""
         if self.aws_s3_bucket:
-            self.aws_s3_bucket = s3_utils.normalize_bucket_name(self.aws_s3_bucket)
+            self.aws_s3_bucket = s3_utils.normalize_bucket_name(
+                self.aws_s3_bucket, self._effective_s3_prefix()
+            )
 
     def _get_s3_client(self):
         """boto3 S3 client built from the singleton settings (sudo to read secret)."""
@@ -472,7 +485,8 @@ class Settings(models.Model):
         if not (self.aws_s3_bucket and self.aws_region):
             raise ValidationError("Set S3 bucket name and region first.")
         s3 = self._get_s3_client()
-        bucket = s3_utils.normalize_bucket_name(self.aws_s3_bucket)
+        prefix = self._effective_s3_prefix()
+        bucket = s3_utils.normalize_bucket_name(self.aws_s3_bucket, prefix)
         if bucket != self.aws_s3_bucket:
             self.aws_s3_bucket = bucket
         try:
@@ -491,7 +505,7 @@ class Settings(models.Model):
                     "automatically, so this usually means the IAM policy is not "
                     "attached to this key, or its Resource ARN uses a different "
                     "prefix. Allow s3:CreateBucket on 'arn:aws:s3:::%s*'.\n\n%s"
-                    % (bucket, s3_utils.S3_BUCKET_PREFIX, s3_utils.S3_BUCKET_PREFIX, e)
+                    % (bucket, prefix, prefix, e)
                 )
             if code not in ("BucketAlreadyOwnedByYou", "BucketAlreadyExists"):
                 raise ValidationError("S3 create_bucket failed: %s" % e)
@@ -592,7 +606,8 @@ class Settings(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get("aws_s3_bucket"):
-                vals["aws_s3_bucket"] = s3_utils.normalize_bucket_name(vals["aws_s3_bucket"])
+                prefix = vals.get("aws_s3_bucket_prefix") or s3_utils.S3_BUCKET_PREFIX
+                vals["aws_s3_bucket"] = s3_utils.normalize_bucket_name(vals["aws_s3_bucket"], prefix)
         if release.version_info[0] >= 17:
             self.env.registry.clear_cache()
         else:
@@ -601,7 +616,10 @@ class Settings(models.Model):
 
     def write(self, vals):
         if vals.get("aws_s3_bucket"):
-            vals["aws_s3_bucket"] = s3_utils.normalize_bucket_name(vals["aws_s3_bucket"])
+            prefix = (vals.get("aws_s3_bucket_prefix")
+                      or (self[:1].aws_s3_bucket_prefix if self else False)
+                      or s3_utils.S3_BUCKET_PREFIX)
+            vals["aws_s3_bucket"] = s3_utils.normalize_bucket_name(vals["aws_s3_bucket"], prefix)
         if self.env.context.get("skip_protected_fields"):
             return super(Settings, self).write(vals)
         if not self.openai_api_key and vals.get("display_openai_api_key"):

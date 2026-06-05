@@ -22,6 +22,11 @@ No `iam:*` permissions are granted, so the key is not an admin key. The bucket-n
 (`oduist-connect-*`) limits which buckets the key can touch. Odoo adds this prefix to your
 bucket name automatically, so you only enter a suffix (e.g. `recordings-acme`).
 
+The prefix is configurable in **Connect Settings → S3 Storage → S3 Bucket Prefix**
+(default `oduist-connect-`); set your own to match an existing IAM naming convention. The
+policy shown on that page is generated from the prefix you choose, so it always matches —
+copy it straight from there instead of the static example below.
+
 ```json
 {
   "Version": "2012-10-17",
@@ -54,18 +59,20 @@ Generate an **Access Key ID** + **Secret Access Key** for this user (use case
 
 First tick **Store recordings in S3** — this reveals the S3 settings below. Then:
 
-1. Enter the **AWS Access Key ID** and **AWS Secret Access Key**.
-2. Pick the **AWS Region** (e.g. `eu-central-1` for EU/GDPR). The region is permanent for
+1. Keep the default **S3 Bucket Prefix** (`oduist-connect-`) or set your own; the IAM
+   policy shown updates to match. Copy that policy and attach it to the IAM user (section 1).
+2. Enter the **AWS Access Key ID** and **AWS Secret Access Key**.
+3. Pick the **AWS Region** (e.g. `eu-central-1` for EU/GDPR). The region is permanent for
    the bucket.
-3. Enter an **S3 Bucket Name** suffix (globally unique, e.g. `recordings-<yourcompany>`).
-   Odoo prepends the `oduist-connect-` prefix automatically to match the IAM policy. Also
-   set a **Folder (prefix)** (default `recordings`).
-4. Set **Retention (days)** — `0` keeps recordings forever; `N` deletes the audio file
+4. Enter an **S3 Bucket Name** suffix (globally unique, e.g. `recordings-<yourcompany>`).
+   Odoo prepends the bucket prefix automatically to match the IAM policy. Also set a
+   **Folder (prefix)** (default `recordings`).
+5. Set **Retention (days)** — `0` keeps recordings forever; `N` deletes the audio file
    after N days (the recording row and its transcript are kept; the player shows
    "Recording expired").
-5. Click **Create / configure S3 bucket** — Odoo creates the bucket, blocks public access,
+6. Click **Create / configure S3 bucket** — Odoo creates the bucket, blocks public access,
    enables encryption, and applies the retention lifecycle rule.
-6. Click **Create Twilio AWS credential** — Odoo registers your AWS key with Twilio and
+7. Click **Create Twilio AWS credential** — Odoo registers your AWS key with Twilio and
    stores the resulting credential SID (`CR…`). You do **not** paste AWS keys into Twilio.
 
 ## 3. Twilio Console — enable external storage (one time)
