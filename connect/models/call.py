@@ -21,8 +21,8 @@ from datetime import timedelta
 import openai
 import requests
 
-from odoo import fields, models, api, release, SUPERUSER_ID, tools
-from odoo.exceptions import ValidationError
+from odoo import fields, models, api, release, SUPERUSER_ID, tools, _
+from odoo.exceptions import ValidationError, AccessError
 from twilio.twiml.voice_response import VoiceResponse, Say, Dial, Conference, Client, Number, Sip
 from .settings import debug, MAX_EXTEN_LEN
 from .res_partner import strip_number
@@ -49,6 +49,9 @@ class Call(models.Model):
     else:
         recording_widget = fields.Char(compute='_get_recording_data')
     recording_icon = fields.Html(compute='_get_recording_data', string='R')
+    has_activity = fields.Boolean(string='A', compute='_compute_has_activity', store=True)
+    disable_recording = fields.Boolean(default=False,
+        help='When set, no recording is stored for this call when it ends.')
     summary = fields.Html()
     called = fields.Char(readonly=True, index=True)
     caller = fields.Char(readonly=True, index=True)
@@ -182,6 +185,21 @@ class Call(models.Model):
                 rec.transcript = ''
                 rec.recording = False
                 rec.recording_widget = ''
+
+    @api.depends('activity_ids')
+    def _compute_has_activity(self):
+        for rec in self:
+            rec.has_activity = bool(rec.activity_ids)
+
+    def _recompute_has_activity(self):
+        # mail.activity uses a generic (res_model, res_id) reference, so adding
+        # or removing an activity does not auto-trigger the activity_ids
+        # dependency above. Called from the mail.activity create/write/unlink
+        # overrides to keep the stored flag in sync (e.g. on "mark done").
+        calls = self.exists()
+        if calls:
+            calls.invalidate_cache(['activity_ids'], calls.ids)
+            calls._compute_has_activity()
 
     def _get_voicemail_widget(self):
         proxy_recordings = self.env['connect.settings'].sudo().get_param('proxy_recordings')
@@ -335,6 +353,26 @@ class Call(models.Model):
             else:
                 self.status = 'no-answer'
                 logger.info(f"Call {self.id}: Status set to 'no-answer' (default)")
+
+    def _update_live_status(self):
+        """Reflect the live call status while the call is still active.
+
+        The call status is set on creation (ringing) and only finalized once all
+        channels end (_set_final_call_status). Without this, the status never moves
+        to 'in-progress' on answer. Derive it from the current channel statuses so
+        the UI shows ringing -> in-progress. Terminal statuses are left to
+        _set_final_call_status().
+        """
+        self.ensure_one()
+        chan_statuses = self.channels.mapped('status')
+        if 'in-progress' in chan_statuses:
+            live_status = 'in-progress'
+        elif 'ringing' in chan_statuses:
+            live_status = 'ringing'
+        else:
+            return
+        if self.status != live_status:
+            self.status = live_status
 
     def _populate_user_fields_direct_call(self):
         """Populate user fields for direct call pattern."""
@@ -872,6 +910,8 @@ class Call(models.Model):
             else:
                 reason = "channel not ending"
             logger.info(f"Call {channel.call.id}: Finalization deferred - {reason}")
+            # Call is still active: keep its status live (ringing -> in-progress).
+            channel.call._update_live_status()
         # Reload call view
         self.env['connect.settings'].connect_reload_view('connect.call')
         if params.get('ErrorCode') and params.get('ErrorCode') not in IGNORE_ERROR_CODES:
@@ -1462,8 +1502,29 @@ class Call(models.Model):
             "answered_user",
             "completed_by_user",
             "transferred_users",
-            "call_pattern"
+            "call_pattern",
+            "disable_recording",
         ]
+
+    @api.model
+    def set_disable_recording(self, call_id, value=True):
+        """Toggle the disable_recording flag on a call from the active calls widget.
+
+        Restricted to members of the "Do not record" group.
+        """
+        if not self.env.user.has_group('connect.group_connect_do_not_record'):
+            raise AccessError(_('You are not allowed to disable call recording.'))
+        call = self.browse(call_id)
+        call.sudo().disable_recording = bool(value)
+        return call.sudo().disable_recording
+
+    @api.model
+    def can_disable_recording(self):
+        """Whether the current user may disable recording from the active calls
+        widget: member of the "Do not record" group AND their own calls are
+        recorded (otherwise there is nothing to disable)."""
+        user = self.env.user
+        return user.has_group('connect.group_connect_do_not_record') and bool(user.connect_user.record_calls)
 
     @api.model
     def park_call(self, request, params):
