@@ -73,6 +73,30 @@ class TestS3Utils(unittest.TestCase):
             "my-prefix-acme",
         )
 
+    # ---- build_iam_policy ----
+    def test_build_iam_policy_is_valid_json(self):
+        import json
+        doc = json.loads(s3_utils.build_iam_policy())
+        self.assertEqual(doc["Version"], "2012-10-17")
+        sids = [s["Sid"] for s in doc["Statement"]]
+        self.assertEqual(sids, ["CreateAndConfigureBucket", "ReadWriteObjects"])
+
+    def test_build_iam_policy_default_prefix_arns(self):
+        import json
+        doc = json.loads(s3_utils.build_iam_policy())
+        create = next(s for s in doc["Statement"] if s["Sid"] == "CreateAndConfigureBucket")
+        self.assertIn("s3:CreateBucket", create["Action"])
+        self.assertEqual(create["Resource"], "arn:aws:s3:::oduist-connect-*")
+
+    def test_build_iam_policy_object_arns_use_prefix(self):
+        import json
+        doc = json.loads(s3_utils.build_iam_policy(prefix="my-prefix-"))
+        rw = next(s for s in doc["Statement"] if s["Sid"] == "ReadWriteObjects")
+        self.assertEqual(
+            rw["Resource"],
+            ["arn:aws:s3:::my-prefix-*", "arn:aws:s3:::my-prefix-*/*"],
+        )
+
     # ---- build_lifecycle_config ----
     def test_build_lifecycle_config(self):
         cfg = s3_utils.build_lifecycle_config("recordings", 30)

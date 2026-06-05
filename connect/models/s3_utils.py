@@ -3,6 +3,7 @@
 
 No Odoo or boto3 imports here on purpose: keep this unit-testable in isolation.
 """
+import json
 from urllib.parse import urlparse
 from datetime import timedelta
 
@@ -23,6 +24,48 @@ def normalize_bucket_name(name, prefix=S3_BUCKET_PREFIX):
     if not name:
         return name
     return name if name.startswith(prefix) else prefix + name
+
+
+def build_iam_policy(prefix=S3_BUCKET_PREFIX):
+    """Return the least-privilege AWS IAM policy (pretty JSON) for the S3 key.
+
+    Bucket ARNs are derived from `prefix`, so the policy always matches the
+    auto-prefixed bucket names. Attach it to the IAM user whose access key is
+    entered in Connect Settings; it grants only bucket create/configure and
+    object read/write under the prefix, no `iam:*`.
+    """
+    bucket_arn = "arn:aws:s3:::{}*".format(prefix)
+    policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "CreateAndConfigureBucket",
+                "Effect": "Allow",
+                "Action": [
+                    "s3:CreateBucket",
+                    "s3:PutBucketPublicAccessBlock",
+                    "s3:PutEncryptionConfiguration",
+                    "s3:PutLifecycleConfiguration",
+                    "s3:GetBucketLocation",
+                ],
+                "Resource": bucket_arn,
+            },
+            {
+                "Sid": "ReadWriteObjects",
+                "Effect": "Allow",
+                "Action": [
+                    "s3:PutObject",
+                    "s3:GetObject",
+                    "s3:ListBucket",
+                    "s3:AbortMultipartUpload",
+                    "s3:ListMultipartUploadParts",
+                    "s3:ListBucketMultipartUploads",
+                ],
+                "Resource": [bucket_arn, bucket_arn + "/*"],
+            },
+        ],
+    }
+    return json.dumps(policy, indent=2)
 
 
 def build_s3_url(bucket, region, prefix):

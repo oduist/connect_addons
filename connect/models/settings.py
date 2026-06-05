@@ -306,6 +306,11 @@ class Settings(models.Model):
     aws_s3_url = fields.Char(
         string="S3 URL (paste into Twilio)", compute="_compute_aws_s3_url", readonly=True,
     )
+    aws_iam_policy = fields.Text(
+        string="AWS IAM Policy", compute="_compute_aws_iam_policy", readonly=True,
+        help="Least-privilege policy to attach to the AWS IAM user whose access "
+             "key you enter below. Copy it into IAM → Users → Add inline policy.",
+    )
     twilio_aws_credential_sid = fields.Char(
         string="Twilio AWS Credential SID", readonly=True,
     )
@@ -438,6 +443,11 @@ class Settings(models.Model):
                 )
             else:
                 rec.aws_s3_url = False
+
+    def _compute_aws_iam_policy(self):
+        policy = s3_utils.build_iam_policy()
+        for rec in self:
+            rec.aws_iam_policy = policy
 
     @api.onchange("aws_s3_bucket")
     def _onchange_aws_s3_bucket(self):

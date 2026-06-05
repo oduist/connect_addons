@@ -78,6 +78,9 @@
                   <group>
                     <group string="AWS S3" name="aws_s3">
                       <field name="s3_recordings_enabled"/>
+                      <separator string="1. Create an AWS IAM user with this least-privilege policy" colspan="2" invisible="not s3_recordings_enabled"/>
+                      <field name="aws_iam_policy" nolabel="1" colspan="2" widget="CopyClipboardText" readonly="1" invisible="not s3_recordings_enabled"/>
+                      <separator string="2. Paste the IAM user's access key" colspan="2" invisible="not s3_recordings_enabled"/>
                       <field name="aws_access_key_id" invisible="not s3_recordings_enabled"/>
                       <field name="display_aws_secret_access_key" string="AWS Secret Access Key" password="1" invisible="not s3_recordings_enabled"/>
                       <field name="aws_region" invisible="not s3_recordings_enabled"/>
