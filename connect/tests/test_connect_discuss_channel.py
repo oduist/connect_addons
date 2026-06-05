@@ -133,3 +133,16 @@ class TestConnectDiscussChannel(TransactionCase):
         self.assertEqual(len(urls), 1)
         self.assertIn('/web/content/%d' % att.id, urls[0])
         self.assertIn('access_token=', urls[0])
+
+    def test_to_store_includes_connect_status(self):
+        from odoo.addons.mail.tools.discuss import Store
+        ch = self.Channel._get_connect_channel(
+            self.partner, number='+15551230000', create_if_not_found=True)
+        cmsg = self._make_incoming('status check')
+        msg = ch._connect_post_inbound(cmsg)
+        cmsg.status = 'delivered'
+        store = Store()
+        msg._to_store(store)
+        data = store.get_result()
+        found = any('connectStatus' in rec for rec in _flatten_store(data))
+        self.assertTrue(found)

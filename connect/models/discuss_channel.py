@@ -96,6 +96,7 @@ class DiscussChannel(models.Model):
             subtype_xmlid='mail.mt_comment',
         )
         connect_message.write({'mail_message_id': msg.id, 'channel_id': self.id})
+        msg.connect_message = connect_message.id
         if connect_message.message_type == 'WhatsApp':
             self.connect_last_inbound_whatsapp_id = msg.id
         # Surface in agents' sidebars: re-pin for all members on new inbound.
@@ -149,6 +150,7 @@ class DiscussChannel(models.Model):
                 outgoing_callerid=sender_id or None, media_urls=media_urls)
         if cmsg:
             cmsg.sudo().write({'mail_message_id': message.id, 'channel_id': self.id})
+            message.sudo().connect_message = cmsg.id
         return cmsg
 
     def _connect_media_urls(self, message):

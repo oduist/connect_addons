@@ -521,6 +521,10 @@ class ConnectMessage(models.Model):
                 self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
             if vals:
                 message.write(vals)
+            # ODU-37: push status onto the Discuss bubble if mirrored.
+            if message.mail_message_id and message.channel_id:
+                message.channel_id._bus_send_store(
+                    message.mail_message_id, {'connectStatus': message.status})
         except Exception as e:
             logger.warning('Failed to update message status for %s: %s', sid, e)
         return True
