@@ -54,3 +54,23 @@ class TestConnectDiscussChannel(TransactionCase):
     def test_get_connect_channel_no_create(self):
         ch = self.Channel._get_connect_channel(self.partner)
         self.assertFalse(ch)
+
+    def test_send_returns_connect_message(self):
+        from unittest.mock import patch
+
+        class _Fake:
+            sid = 'SMtest'
+            account_sid = 'ACtest'
+            messaging_service_sid = False
+            num_media = 0
+            error_code = None
+            error_message = None
+
+        with patch.object(type(self.env['connect.message']), 'client_send', return_value=_Fake()):
+            msg = self.env['connect.message'].with_user(self.agent).send(
+                '+15551230000', 'hello', res_id=self.partner.id, res_model='res.partner',
+                outgoing_callerid='+15550000000')
+        self.assertTrue(msg, "send() must return the created connect.message")
+        self.assertEqual(msg.to_number, '+15551230000')
+        self.assertIn('mail_message_id', msg._fields)
+        self.assertIn('channel_id', msg._fields)

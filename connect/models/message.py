@@ -74,6 +74,11 @@ class ConnectMessage(models.Model):
     media_url = fields.Char()
     media_content_type = fields.Char()
     transcription_error = fields.Char()
+    # ODU-37: link to the mirrored Discuss message/channel.
+    mail_message_id = fields.Many2one('mail.message', index='btree_not_null',
+                                      string='Discuss Message', ondelete='set null')
+    channel_id = fields.Many2one('discuss.channel', index='btree_not_null',
+                                 string='Discuss Channel', ondelete='set null')
     if release.version_info[0] >= 17.0:
         media_widget = fields.Html(compute='_get_media_widget', string='Media', sanitize=False)
     else:
@@ -425,6 +430,7 @@ class ConnectMessage(models.Model):
                 }]
                 self.env['mail.notification'].sudo().create(mail_notification_values)
                 self.env['connect.settings'].connect_reload_view(res_model)
+        return message
 
     def client_send(self, recipient, sender, body):
         api_url = self.env['connect.settings'].get_param('api_url')
