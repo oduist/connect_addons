@@ -41,3 +41,38 @@ class DiscussChannel(models.Model):
             else:
                 channel.connect_whatsapp_valid_until = False
                 channel.connect_whatsapp_window_open = False
+
+    @api.model
+    def _connect_agent_partners(self):
+        group = self.env.ref('connect.group_connect_user', raise_if_not_found=False)
+        if not group:
+            return self.env['res.partner']
+        users = self.env['res.users'].sudo().search([('all_group_ids', 'in', group.ids)])
+        return users.partner_id
+
+    @api.returns('self')
+    def _get_connect_channel(self, partner, number=False, create_if_not_found=False):
+        """Find-or-create the single connect_messages channel for a partner."""
+        if not partner:
+            return self.browse()
+        channel = self.sudo().search([
+            ('channel_type', '=', 'connect_messages'),
+            ('connect_partner_id', '=', partner.id),
+        ], limit=1)
+        if channel:
+            if number and channel.connect_number != number:
+                channel.connect_number = number
+            return channel
+        if not create_if_not_found:
+            return self.browse()
+        members = self._connect_agent_partners() | partner
+        channel = self.sudo().with_context(
+            mail_create_nosubscribe=True,
+        ).create({
+            'name': partner.display_name,
+            'channel_type': 'connect_messages',
+            'connect_partner_id': partner.id,
+            'connect_number': number or partner.phone_sanitized,
+            'channel_member_ids': [Command.create({'partner_id': p.id}) for p in members],
+        })
+        return channel
