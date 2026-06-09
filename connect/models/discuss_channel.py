@@ -96,7 +96,10 @@ class DiscussChannel(models.Model):
             message_type='connect_message',
             subtype_xmlid='mail.mt_comment',
         )
-        connect_message.write({'mail_message_id': msg.id, 'channel_id': self.id})
+        write_vals = {'channel_id': self.id}
+        if not connect_message.mail_message_id:
+            write_vals['mail_message_id'] = msg.id
+        connect_message.write(write_vals)
         msg.connect_message = connect_message.id
         if connect_message.message_type == 'WhatsApp':
             self.connect_last_inbound_whatsapp_id = msg.id

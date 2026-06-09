@@ -353,6 +353,7 @@ class ConnectMessage(models.Model):
                             kwargs.update({'author_id': partner.id})
                         chatter = obj.with_context(mail_create_nosubscribe=True).message_post(**kwargs)
                         chatter.connect_message = message
+                        message.mail_message_id = chatter.id
                         # Let Odoo generate notifications for followers automatically (no manual mail.notification)
                         self.env['connect.settings'].connect_reload_view(target_msg.res_model)
                 # ODU-37: mirror inbound into the partner's Discuss channel.
