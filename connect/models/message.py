@@ -378,7 +378,7 @@ class ConnectMessage(models.Model):
             logger.error(f"Error handling incoming SMS: {e}")
         return str(MessagingResponse())  # Return empty TwiML response, i.e. no reply.
 
-    def send(self, recipient, body, res_id=None, res_model=None, outgoing_callerid=None, media_urls=None):
+    def send(self, recipient, body, res_id=None, res_model=None, outgoing_callerid=None, media_urls=None, skip_chatter=False):
         self.env['oduist.license'].check_license('connect', silent=False)
         sender_user = self.env.user
         message_data = {
@@ -416,7 +416,7 @@ class ConnectMessage(models.Model):
         message = self.env['connect.message'].sudo().create(message_data)
 
         # Add message to chatter
-        if res_model and res_id:
+        if res_model and res_id and not skip_chatter:
             mt_note = self.env.ref('mail.mt_note').id
             obj = self.env[res_model].with_user(SUPERUSER_ID).browse(res_id)
             if hasattr(obj, 'message_post'):

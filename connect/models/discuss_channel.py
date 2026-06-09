@@ -144,12 +144,14 @@ class DiscussChannel(models.Model):
             sender = Sender.browse(int(sender_id)) if sender_id else Sender.get_default_sender(self.env.user)
             cmsg = sender.send_whatsapp(
                 recipient=recipient, body=body,
-                res_model='res.partner', res_id=partner.id, raise_on_error=True)
+                res_model='res.partner', res_id=partner.id, raise_on_error=True,
+                skip_chatter=True)
         else:
             media_urls = self._connect_media_urls(message)
             cmsg = self.env['connect.message'].send(
                 recipient, body, res_id=partner.id, res_model='res.partner',
-                outgoing_callerid=sender_id or None, media_urls=media_urls)
+                outgoing_callerid=sender_id or None, media_urls=media_urls,
+                skip_chatter=True)
         if cmsg:
             cmsg.sudo().write({'mail_message_id': message.id, 'channel_id': self.id})
             message.sudo().connect_message = cmsg.id

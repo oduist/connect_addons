@@ -234,7 +234,7 @@ class ConnectWhatsappSender(models.Model):
         any_sender = self.search([('status', '=', 'ONLINE'), ('no_sync', '=', False)], limit=1)
         return any_sender
 
-    def send_whatsapp(self, recipient, body, res_model=None, res_id=None, raise_on_error=True, content_sid=None, content_variables=None):
+    def send_whatsapp(self, recipient, body, res_model=None, res_id=None, raise_on_error=True, content_sid=None, content_variables=None, skip_chatter=False):
         """Send a WhatsApp message using this sender and create connect.message + chatter.
 
         Args:
@@ -326,7 +326,7 @@ class ConnectWhatsappSender(models.Model):
         msg = self.env['connect.message'].sudo().create(msg_vals)
 
         # Post to chatter if relevant
-        if res_model and res_id:
+        if res_model and res_id and not skip_chatter:
             chatter_message = Markup(f"<div class='d-flex flex-row'>"
                                      f"<p class='px-1'>{body}</p></div>")
             self.chatter_post(res_model, res_id, self.env.user.partner_id.id, chatter_message)
