@@ -8,7 +8,8 @@ patch(Composer.prototype, {
         return this.thread?.channel_type === "connect_messages";
     },
     get connectProvider() {
-        return this.thread?.connectProvider || "sms";
+        // Explicit user selection overrides server default; fall back to channel provider.
+        return this.thread?.connectProvider || this.thread?.connect_channel_provider || "sms";
     },
     setConnectProvider(provider) {
         if (this.thread) {

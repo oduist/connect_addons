@@ -23,6 +23,8 @@ class DiscussChannel(models.Model):
         'res.partner', string='Customer', index='btree_not_null')
     # Phone number we last spoke to the customer on; default reply target.
     connect_number = fields.Char(string='Customer Number')
+    # Messaging provider used to reach this customer ('sms' or 'whatsapp').
+    connect_channel_provider = fields.Char(string='Channel Provider', default='sms')
     # WhatsApp 24h session window (per Twilio/Meta), WhatsApp messages only.
     connect_last_inbound_whatsapp_id = fields.Many2one('mail.message')
     connect_whatsapp_valid_until = fields.Datetime(
@@ -53,20 +55,29 @@ class DiscussChannel(models.Model):
         users = self.env['res.users'].sudo().search([('all_group_ids', 'in', groups.ids)])
         return users.partner_id
 
+    @staticmethod
+    def _connect_parse_number(number):
+        """Strip provider prefix and return (clean_number, provider)."""
+        if (number or '').startswith('whatsapp:'):
+            return number[len('whatsapp:'):], 'whatsapp'
+        return number or '', 'sms'
+
     def _get_connect_channel(self, partner=False, number=False, create_if_not_found=False):
         """Find-or-create a connect_messages channel.
 
         When partner is given the channel is keyed on the partner.
         When only number is given (no partner) the channel is keyed on the phone number.
+        Provider prefix (e.g. 'whatsapp:') is stripped from the stored number.
         """
+        clean_number, provider = self._connect_parse_number(number)
         if partner:
             channel = self.sudo().search([
                 ('channel_type', '=', 'connect_messages'),
                 ('connect_partner_id', '=', partner.id),
             ], limit=1)
             if channel:
-                if number and channel.connect_number != number:
-                    channel.connect_number = number
+                if clean_number and channel.connect_number != clean_number:
+                    channel.connect_number = clean_number
                 return channel
             if not create_if_not_found:
                 return self.browse()
@@ -75,15 +86,16 @@ class DiscussChannel(models.Model):
                 'name': partner.display_name,
                 'channel_type': 'connect_messages',
                 'connect_partner_id': partner.id,
-                'connect_number': number or partner.phone_sanitized,
+                'connect_number': clean_number or partner.phone_sanitized,
+                'connect_channel_provider': provider,
                 'channel_member_ids': [Command.create({'partner_id': p.id}) for p in members],
             })
-        elif number:
-            # Phone-number-only channel: no partner yet, keyed on the number.
+        elif clean_number:
+            # Phone-number-only channel: no partner yet, keyed on the clean number.
             channel = self.sudo().search([
                 ('channel_type', '=', 'connect_messages'),
                 ('connect_partner_id', '=', False),
-                ('connect_number', '=', number),
+                ('connect_number', '=', clean_number),
             ], limit=1)
             if channel:
                 return channel
@@ -91,10 +103,11 @@ class DiscussChannel(models.Model):
                 return self.browse()
             members = self._connect_agent_partners()
             return self.sudo().with_context(mail_create_nosubscribe=True).create({
-                'name': number,
+                'name': clean_number,
                 'channel_type': 'connect_messages',
                 'connect_partner_id': False,
-                'connect_number': number,
+                'connect_number': clean_number,
+                'connect_channel_provider': provider,
                 'channel_member_ids': [Command.create({'partner_id': p.id}) for p in members],
             })
         return self.browse()
@@ -233,4 +246,5 @@ class DiscussChannel(models.Model):
                 'connect_whatsapp_valid_until': channel.connect_whatsapp_valid_until,
                 'connect_partner_id': channel.connect_partner_id.id or False,
                 'connect_number': channel.connect_number,
+                'connect_channel_provider': channel.connect_channel_provider or 'sms',
             })
