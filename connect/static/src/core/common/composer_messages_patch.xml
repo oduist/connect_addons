@@ -9,17 +9,6 @@
                     <option value="whatsapp" t-att-selected="connectProvider === 'whatsapp'">WhatsApp</option>
                 </select>
             </div>
-            <div t-if="isConnectUnknownContact"
-                 class="o-connect-Composer-unknownContact d-flex align-items-center gap-2 px-2 py-1 border-top">
-                <i class="fa fa-user-times text-muted"/>
-                <span class="text-muted small" t-esc="thread.connect_number"/>
-                <button class="btn btn-sm btn-outline-primary ms-auto"
-                        t-on-click="onCreateContact"
-                        title="Create Contact"
-                        type="button">
-                    <i class="fa fa-user-plus"/>
-                </button>
-            </div>
         </xpath>
     </t>
 </templates>
