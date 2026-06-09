@@ -2,8 +2,14 @@
 import { Composer } from "@mail/core/common/composer";
 import { _t } from "@web/core/l10n/translation";
 import { patch } from "@web/core/utils/patch";
+import { useService } from "@web/core/utils/hooks";
 
 patch(Composer.prototype, {
+    setup() {
+        super.setup(...arguments);
+        this._connectOrm = useService("orm");
+        this._connectNotification = useService("notification");
+    },
     get isConnectMessages() {
         return this.thread?.channel_type === "connect_messages";
     },
@@ -40,7 +46,7 @@ patch(Composer.prototype, {
         const thread = this.thread;
         if (!thread) return;
         try {
-            const result = await this.env.services.orm.call(
+            const result = await this._connectOrm.call(
                 "discuss.channel",
                 "connect_create_partner",
                 [[thread.id]],
@@ -48,13 +54,14 @@ patch(Composer.prototype, {
             );
             if (result && result.partner_id) {
                 thread.connect_partner_id = result.partner_id;
-                this.env.services.notification.add(
+                this._connectNotification.add(
                     _t("Contact created: %s", result.partner_name),
                     { type: "success" }
                 );
             }
-        } catch {
-            this.env.services.notification.add(
+        } catch (e) {
+            console.error("connect_create_partner failed:", e);
+            this._connectNotification.add(
                 _t("Failed to create contact"),
                 { type: "warning" }
             );
