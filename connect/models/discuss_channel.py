@@ -44,10 +44,12 @@ class DiscussChannel(models.Model):
 
     @api.model
     def _connect_agent_partners(self):
-        group = self.env.ref('connect.group_connect_user', raise_if_not_found=False)
-        if not group:
+        admin_group = self.env.ref('connect.group_connect_admin', raise_if_not_found=False)
+        user_group = self.env.ref('connect.group_connect_user', raise_if_not_found=False)
+        groups = (admin_group | user_group).filtered(bool)
+        if not groups:
             return self.env['res.partner']
-        users = self.env['res.users'].sudo().search([('all_group_ids', 'in', group.ids)])
+        users = self.env['res.users'].sudo().search([('all_group_ids', 'in', groups.ids)])
         return users.partner_id
 
     def _get_connect_channel(self, partner, number=False, create_if_not_found=False):
