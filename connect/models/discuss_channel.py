@@ -115,6 +115,7 @@ class DiscussChannel(models.Model):
         is_outbound = (
             self.channel_type == 'connect_messages'
             and kwargs.get('message_type') == 'connect_message'
+            and kwargs.get('subtype_xmlid') != 'mail.mt_note'
             and not self.env.context.get('connect_mirror')
         )
         message = super().message_post(*args, **kwargs)
