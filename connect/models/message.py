@@ -220,12 +220,21 @@ class ConnectMessage(models.Model):
             return result
 
     def get_receive_message_values(self, params):
+        from_raw = params.get('From', '')
+        num_media = int(params.get('NumMedia', 0))
+        if from_raw.startswith('whatsapp:'):
+            message_type = 'WhatsApp'
+        elif num_media > 0:
+            message_type = 'mms'
+        else:
+            message_type = 'sms'
         values = {
             'message_sid': params.get('MessageSid'),
-            'from_number': params.get('From'),
+            'from_number': from_raw,
             'to_number': params.get('To'),
             'body': params.get('Body'),
-            'num_media': int(params.get('NumMedia', 0)),
+            'num_media': num_media,
+            'message_type': message_type,
             'from_city': params.get('FromCity'),
             'from_state': params.get('FromState'),
             'from_zip': params.get('FromZip'),
