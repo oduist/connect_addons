@@ -5,6 +5,7 @@ from datetime import timedelta
 from markupsafe import Markup
 
 from odoo import api, Command, fields, models
+from odoo.exceptions import ValidationError
 from odoo.tools import html2plaintext
 
 logger = logging.getLogger(__name__)
@@ -52,31 +53,85 @@ class DiscussChannel(models.Model):
         users = self.env['res.users'].sudo().search([('all_group_ids', 'in', groups.ids)])
         return users.partner_id
 
-    def _get_connect_channel(self, partner, number=False, create_if_not_found=False):
-        """Find-or-create the single connect_messages channel for a partner."""
-        if not partner:
-            return self.browse()
-        channel = self.sudo().search([
-            ('channel_type', '=', 'connect_messages'),
-            ('connect_partner_id', '=', partner.id),
-        ], limit=1)
-        if channel:
-            if number and channel.connect_number != number:
-                channel.connect_number = number
-            return channel
-        if not create_if_not_found:
-            return self.browse()
-        members = self._connect_agent_partners() | partner
-        channel = self.sudo().with_context(
-            mail_create_nosubscribe=True,
-        ).create({
-            'name': partner.display_name,
-            'channel_type': 'connect_messages',
-            'connect_partner_id': partner.id,
-            'connect_number': number or partner.phone_sanitized,
-            'channel_member_ids': [Command.create({'partner_id': p.id}) for p in members],
+    def _get_connect_channel(self, partner=False, number=False, create_if_not_found=False):
+        """Find-or-create a connect_messages channel.
+
+        When partner is given the channel is keyed on the partner.
+        When only number is given (no partner) the channel is keyed on the phone number.
+        """
+        if partner:
+            channel = self.sudo().search([
+                ('channel_type', '=', 'connect_messages'),
+                ('connect_partner_id', '=', partner.id),
+            ], limit=1)
+            if channel:
+                if number and channel.connect_number != number:
+                    channel.connect_number = number
+                return channel
+            if not create_if_not_found:
+                return self.browse()
+            members = self._connect_agent_partners() | partner
+            return self.sudo().with_context(mail_create_nosubscribe=True).create({
+                'name': partner.display_name,
+                'channel_type': 'connect_messages',
+                'connect_partner_id': partner.id,
+                'connect_number': number or partner.phone_sanitized,
+                'channel_member_ids': [Command.create({'partner_id': p.id}) for p in members],
+            })
+        elif number:
+            # Phone-number-only channel: no partner yet, keyed on the number.
+            channel = self.sudo().search([
+                ('channel_type', '=', 'connect_messages'),
+                ('connect_partner_id', '=', False),
+                ('connect_number', '=', number),
+            ], limit=1)
+            if channel:
+                return channel
+            if not create_if_not_found:
+                return self.browse()
+            members = self._connect_agent_partners()
+            return self.sudo().with_context(mail_create_nosubscribe=True).create({
+                'name': number,
+                'channel_type': 'connect_messages',
+                'connect_partner_id': False,
+                'connect_number': number,
+                'channel_member_ids': [Command.create({'partner_id': p.id}) for p in members],
+            })
+        return self.browse()
+
+    def connect_create_partner(self, partner_name=None):
+        """Create a contact for a phone-number-only channel and link it to the channel."""
+        self.ensure_one()
+        if self.channel_type != 'connect_messages':
+            raise ValidationError('Not a Connect Messages channel')
+        if self.connect_partner_id:
+            raise ValidationError('Channel already has a contact')
+        number = self.connect_number
+        if not number:
+            raise ValidationError('Channel has no phone number')
+        partner = self.env['res.partner'].sudo().create({
+            'name': partner_name or number,
+            'phone': number,
         })
-        return channel
+        self._connect_link_partner(partner)
+        return {'partner_id': partner.id, 'partner_name': partner.display_name}
+
+    def _connect_link_partner(self, partner):
+        """Link a newly-created partner to this phone-number-only channel."""
+        self.ensure_one()
+        self.sudo().write({
+            'connect_partner_id': partner.id,
+            'name': partner.display_name,
+        })
+        if partner not in self.channel_member_ids.partner_id:
+            self.sudo().write({
+                'channel_member_ids': [Command.create({'partner_id': partner.id})]
+            })
+        # Back-fill partner on existing connect.message records for this number.
+        self.env['connect.message'].sudo().search([
+            ('from_number', '=', self.connect_number),
+            ('partner', '=', False),
+        ]).write({'partner': partner.id})
 
     def _connect_post_inbound(self, connect_message):
         """Mirror an incoming connect.message into this channel as a mail.message."""
@@ -176,4 +231,6 @@ class DiscussChannel(models.Model):
             store.add_records_fields(channel, {
                 'connect_whatsapp_window_open': channel.connect_whatsapp_window_open,
                 'connect_whatsapp_valid_until': channel.connect_whatsapp_valid_until,
+                'connect_partner_id': channel.connect_partner_id.id or False,
+                'connect_number': channel.connect_number,
             })

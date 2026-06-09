@@ -12,6 +12,9 @@ patch(Thread.prototype, {
         // Per-agent composer selection (client-only).
         this.connectProvider = fields.Attr("sms");
         this.connectSenderId = fields.Attr(undefined);
+        // Partner ID (or false) and raw phone number for connect_messages channels.
+        this.connect_partner_id = fields.Attr(undefined);
+        this.connect_number = fields.Attr(undefined);
     },
     _computeDiscussAppCategory() {
         if (this.channel_type === "connect_messages") {

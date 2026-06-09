@@ -319,7 +319,9 @@ class ConnectMessage(models.Model):
                             defaults = dict(ast.literal_eval(config.default_values or '{}'))
                         except Exception as e:
                             logger.error('Invalid default data: %s\n%s', config.default_values, e)
-                    if dest_model in self.env:
+                    # For res.partner destination: skip auto-creation; the agent will
+                    # create the contact manually from the Discuss channel if needed.
+                    if dest_model != 'res.partner' and dest_model in self.env:
                         try:
                             new_rec = self.env[dest_model].with_context(mail_create_nosubscribe=True).sudo().create_record_from_message(message, default_values=defaults)
                             target_msg.write({
@@ -328,7 +330,7 @@ class ConnectMessage(models.Model):
                             })
                         except Exception as e:
                             logger.warning('create_record_from_message failed for %s: %s', dest_model, e)
-                    else:
+                    elif dest_model not in self.env:
                         logger.warning('Destination model %s not found', dest_model)
                 # Add message to chatter at the target record when available and valid
                 if valid_target and target_msg and target_msg.res_model and target_msg.res_id:
@@ -356,12 +358,12 @@ class ConnectMessage(models.Model):
                         message.mail_message_id = chatter.id
                         # Let Odoo generate notifications for followers automatically (no manual mail.notification)
                         self.env['connect.settings'].connect_reload_view(target_msg.res_model)
-                # ODU-37: mirror inbound into the partner's Discuss channel.
+                # Mirror inbound into Discuss: use partner channel when known,
+                # otherwise a phone-number-only channel so the agent can see it.
                 try:
-                    if partner:
-                        channel = self.env['discuss.channel']._get_connect_channel(
-                            partner, number=from_number, create_if_not_found=True)
-                        channel._connect_post_inbound(message)
+                    channel = self.env['discuss.channel']._get_connect_channel(
+                        partner, number=from_number, create_if_not_found=True)
+                    channel._connect_post_inbound(message)
                 except Exception as e:
                     logger.warning('Connect Discuss mirror failed: %s', e)
             else:

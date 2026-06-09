@@ -138,6 +138,51 @@ class TestConnectDiscussChannel(TransactionCase):
         self.assertIn('/web/content/%d' % att.id, urls[0])
         self.assertIn('access_token=', urls[0])
 
+    def test_number_only_channel_created_when_no_partner(self):
+        """_get_connect_channel creates a phone-number-only channel when partner is falsy."""
+        unknown_number = '+19995550001'
+        ch = self.Channel._get_connect_channel(
+            self.env['res.partner'], number=unknown_number, create_if_not_found=True)
+        self.assertTrue(ch, "Must create a channel even without a partner")
+        self.assertEqual(ch.channel_type, 'connect_messages')
+        self.assertFalse(ch.connect_partner_id)
+        self.assertEqual(ch.connect_number, unknown_number)
+        self.assertEqual(ch.name, unknown_number)
+
+    def test_number_only_channel_is_idempotent(self):
+        unknown_number = '+19995550002'
+        ch1 = self.Channel._get_connect_channel(
+            self.env['res.partner'], number=unknown_number, create_if_not_found=True)
+        ch2 = self.Channel._get_connect_channel(
+            self.env['res.partner'], number=unknown_number, create_if_not_found=True)
+        self.assertEqual(ch1, ch2, "Must reuse the existing number-only channel")
+
+    def test_connect_create_partner_links_channel(self):
+        unknown_number = '+19995550003'
+        ch = self.Channel._get_connect_channel(
+            self.env['res.partner'], number=unknown_number, create_if_not_found=True)
+        result = ch.connect_create_partner(partner_name='New Customer')
+        self.assertTrue(result['partner_id'])
+        self.assertEqual(result['partner_name'], 'New Customer')
+        # Channel must now be linked to the partner.
+        self.assertEqual(ch.connect_partner_id.id, result['partner_id'])
+        self.assertEqual(ch.name, 'New Customer')
+        partner = self.env['res.partner'].browse(result['partner_id'])
+        self.assertIn(partner, ch.channel_member_ids.partner_id)
+
+    def test_connect_create_partner_backfills_messages(self):
+        unknown_number = '+19995550004'
+        ch = self.Channel._get_connect_channel(
+            self.env['res.partner'], number=unknown_number, create_if_not_found=True)
+        msg = self.env['connect.message'].sudo().create({
+            'message_sid': 'SMbackfill', 'from_number': unknown_number,
+            'to_number': '+15550000000', 'body': 'test', 'message_type': 'sms',
+            'status': 'received',
+        })
+        self.assertFalse(msg.partner)
+        ch.connect_create_partner(partner_name='Back Customer')
+        self.assertTrue(msg.partner)
+
     def test_to_store_includes_connect_status(self):
         from odoo.addons.mail.tools.discuss import Store
         ch = self.Channel._get_connect_channel(
