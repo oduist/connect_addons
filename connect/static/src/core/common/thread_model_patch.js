@@ -23,4 +23,10 @@ patch(Thread.prototype, {
         }
         return super._computeDiscussAppCategory(...arguments);
     },
+    get importantCounter() {
+        if (this.channel_type === "connect_messages") {
+            return this.self_member_id?.message_unread_counter_ui ?? 0;
+        }
+        return super.importantCounter;
+    },
 });
