@@ -2,16 +2,6 @@
 <templates xml:space="preserve">
     <t t-inherit="mail.Composer" t-inherit-mode="extension">
         <xpath expr="//div[hasclass('o-mail-Composer-coreMain')]" position="before">
-            <div t-if="isConnectMessages" class="o-connect-Composer-channel d-flex align-items-center gap-2 px-2 py-1">
-                <div class="btn-group" role="group">
-                    <button type="button" style="white-space:nowrap"
-                            t-att-class="connectProvider === 'sms' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline-secondary'"
-                            t-on-click="() => this.setConnectProvider('sms')">SMS / MMS</button>
-                    <button type="button" style="white-space:nowrap"
-                            t-att-class="connectProvider === 'whatsapp' ? 'btn btn-sm btn-success' : 'btn btn-sm btn-outline-secondary'"
-                            t-on-click="() => this.setConnectProvider('whatsapp')"><i class="fa fa-whatsapp me-1"/>WhatsApp</button>
-                </div>
-            </div>
         </xpath>
     </t>
 </templates>

@@ -8,13 +8,7 @@ patch(Composer.prototype, {
         return this.thread?.channel_type === "connect_messages";
     },
     get connectProvider() {
-        // Explicit user selection overrides server default; fall back to channel provider.
-        return this.thread?.connectProvider || this.thread?.connect_channel_provider || "sms";
-    },
-    setConnectProvider(provider) {
-        if (this.thread) {
-            this.thread.connectProvider = provider;
-        }
+        return this.thread?.connect_channel_provider || "sms";
     },
     get connectWhatsappBlocked() {
         // WhatsApp outside the 24h window needs a template (server enforces too).

@@ -10,8 +10,6 @@ patch(Thread.prototype, {
         // Server-provided WhatsApp 24h window state (connect_messages channels).
         this.connect_whatsapp_window_open = fields.Attr(false);
         this.connect_whatsapp_valid_until = fields.Attr(undefined, { type: "datetime" });
-        // Per-agent composer selection; undefined = fall back to server default.
-        this.connectProvider = fields.Attr(undefined);
         this.connectSenderId = fields.Attr(undefined);
         // Server-provided fields for connect_messages channels.
         this.connect_partner_id = fields.Attr(undefined);
