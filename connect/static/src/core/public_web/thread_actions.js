@@ -34,3 +34,24 @@ registerThreadAction("connect-create-contact", {
     sequence: 15,
     sequenceGroup: 20,
 });
+
+registerThreadAction("connect-leave-channel", {
+    condition: ({ owner, thread }) =>
+        thread?.channel_type === "connect_messages" && owner.isDiscussSidebarChannelActions,
+    icon: "fa fa-fw fa-sign-out",
+    name: _t("Leave Channel"),
+    open: async ({ store, thread }) => {
+        try {
+            await store.env.services.orm.call(
+                "discuss.channel",
+                "execute_command_leave",
+                [[thread.id]],
+                {}
+            );
+        } catch (e) {
+            console.error("connect leave channel failed:", e);
+        }
+    },
+    sequence: 10,
+    sequenceGroup: 30,
+});
