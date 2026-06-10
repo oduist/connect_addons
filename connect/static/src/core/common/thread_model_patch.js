@@ -2,6 +2,7 @@
 import { Thread } from "@mail/core/common/thread_model";
 import { fields } from "@mail/model/misc";
 import { patch } from "@web/core/utils/patch";
+import { imageUrl } from "@web/core/utils/urls";
 
 patch(Thread.prototype, {
     setup() {
@@ -28,5 +29,11 @@ patch(Thread.prototype, {
             return this.self_member_id?.message_unread_counter_ui ?? 0;
         }
         return super.importantCounter;
+    },
+    get avatarUrl() {
+        if (this.channel_type === "connect_messages" && this.connect_partner_id) {
+            return imageUrl("res.partner", this.connect_partner_id, "avatar_128");
+        }
+        return super.avatarUrl;
     },
 });
