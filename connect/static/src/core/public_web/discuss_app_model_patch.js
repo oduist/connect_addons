@@ -15,7 +15,7 @@ patch(DiscussApp.prototype, {
                     extraClass: "o-mail-DiscussSidebarCategory-connect",
                     icon: "fa fa-comments",
                     id: "connect_messages",
-                    name: _t("Connect Messages"),
+                    name: _t("Messages"),
                     sequence: 22,
                     serverStateKey: "is_discuss_sidebar_category_connect_messages_open",
                 };
