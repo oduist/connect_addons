@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import base64
 import logging
 from datetime import timedelta
 
@@ -6,6 +7,7 @@ from markupsafe import Markup
 
 from odoo import api, Command, fields, models
 from odoo.exceptions import ValidationError
+from odoo.modules.module import get_module_resource
 from odoo.tools import html2plaintext
 
 logger = logging.getLogger(__name__)
@@ -122,9 +124,15 @@ class DiscussChannel(models.Model):
         number = self.connect_number
         if not number:
             raise ValidationError('Channel has no phone number')
+        img_path = get_module_resource('connect', 'static/src/images', 'default_contact.jpg')
+        default_image = False
+        if img_path:
+            with open(img_path, 'rb') as f:
+                default_image = base64.b64encode(f.read())
         partner = self.env['res.partner'].sudo().create({
             'name': partner_name or number,
             'phone': number,
+            'image_1920': default_image or False,
         })
         self._connect_link_partner(partner)
         return {'partner_id': partner.id, 'partner_name': partner.display_name}
