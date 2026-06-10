@@ -209,19 +209,39 @@ class DiscussChannel(models.Model):
         partner = self.connect_partner_id
         recipient = self._connect_recipient()
         body = html2plaintext(message.body) if message.body else ''
-        provider = provider or 'sms'
+        provider = provider or self.connect_channel_provider or 'sms'
+        res_id = partner.id or None
+        res_model = 'res.partner' if res_id else None
+
+        # Find the last inbound message so we know which of our Twilio numbers
+        # the customer originally messaged — reply from that same line.
+        last_inbound = self.env['connect.message'].sudo().search(
+            [('channel_id', '=', self.id), ('status', '=', 'received')],
+            order='create_date desc', limit=1)
+
         if provider == 'whatsapp':
             Sender = self.env['connect.whatsapp_sender']
-            sender = Sender.browse(int(sender_id)) if sender_id else Sender.get_default_sender(self.env.user)
-            cmsg = sender.send_whatsapp(
+            if sender_id:
+                wa_sender = Sender.sudo().browse(int(sender_id))
+            elif last_inbound:
+                to_num = (last_inbound.to_number or '').replace('whatsapp:', '')
+                wa_sender = Sender.sudo().search([('number', '=', to_num)], limit=1)
+                if not wa_sender:
+                    wa_sender = Sender.get_default_sender(self.env.user)
+            else:
+                wa_sender = Sender.get_default_sender(self.env.user)
+            cmsg = wa_sender.send_whatsapp(
                 recipient=recipient, body=body,
-                res_model='res.partner', res_id=partner.id, raise_on_error=True,
-                skip_chatter=True)
+                res_model=res_model, res_id=res_id,
+                raise_on_error=True, skip_chatter=True)
         else:
             media_urls = self._connect_media_urls(message)
+            callerid = sender_id or None
+            if not callerid and last_inbound:
+                callerid = last_inbound.to_number or None
             cmsg = self.env['connect.message'].send(
-                recipient, body, res_id=partner.id, res_model='res.partner',
-                outgoing_callerid=sender_id or None, media_urls=media_urls,
+                recipient, body, res_id=res_id, res_model=res_model,
+                outgoing_callerid=callerid, media_urls=media_urls,
                 skip_chatter=True)
         if cmsg:
             cmsg.sudo().write({'mail_message_id': message.id, 'channel_id': self.id})
