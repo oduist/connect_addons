@@ -29,8 +29,11 @@ patch(Thread.prototype, {
         return super.importantCounter;
     },
     get avatarUrl() {
-        if (this.channel_type === "connect_messages" && this.connect_partner_id) {
-            return imageUrl("res.partner", this.connect_partner_id, "avatar_128");
+        if (this.channel_type === "connect_messages") {
+            if (this.connect_partner_id) {
+                return imageUrl("res.partner", this.connect_partner_id, "avatar_128");
+            }
+            return "/connect/static/src/images/default_contact.jpg";
         }
         return super.avatarUrl;
     },

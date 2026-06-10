@@ -2,6 +2,23 @@
 import { registerThreadAction } from "@mail/core/common/thread_actions";
 import { _t } from "@web/core/l10n/translation";
 
+registerThreadAction("connect-open-contact", {
+    condition: ({ thread }) =>
+        thread?.channel_type === "connect_messages" && !!thread.connect_partner_id,
+    icon: "fa fa-fw fa-address-card",
+    name: _t("Open Contact"),
+    open: async ({ store, thread }) => {
+        await store.env.services.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: "res.partner",
+            res_id: thread.connect_partner_id,
+            views: [[false, "form"]],
+        });
+    },
+    sequence: 14,
+    sequenceGroup: 20,
+});
+
 registerThreadAction("connect-create-contact", {
     condition: ({ thread }) =>
         thread?.channel_type === "connect_messages" && !thread.connect_partner_id,
