@@ -159,7 +159,6 @@ class DiscussChannel(models.Model):
         """Mirror an incoming connect.message into this channel as a mail.message."""
         self.ensure_one()
         partner = connect_message.partner
-        author = partner or self.env.ref('base.partner_root')
         body_txt = connect_message.body or ''
         if connect_message.media_url:
             body = Markup("<div class='d-flex flex-column'>"
@@ -167,11 +166,21 @@ class DiscussChannel(models.Model):
                               body_txt, connect_message.media_widget)
         else:
             body = Markup("<span>{}</span>").format(body_txt)
+        # Author the message as the customer's partner when known. For an unknown
+        # number leave author_id empty and surface the phone number via email_from
+        # so it shows as the sender name (instead of OdooBot/partner_root).
+        if partner:
+            author_vals = {'author_id': partner.id}
+        else:
+            author_vals = {
+                'author_id': False,
+                'email_from': self.connect_number or connect_message.from_number,
+            }
         msg = self.sudo().with_context(connect_mirror=True).message_post(
             body=body,
-            author_id=author.id,
             message_type='connect_message',
             subtype_xmlid='mail.mt_comment',
+            **author_vals,
         )
         write_vals = {'channel_id': self.id}
         if not connect_message.mail_message_id:
