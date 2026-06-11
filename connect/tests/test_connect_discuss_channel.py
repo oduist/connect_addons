@@ -263,11 +263,18 @@ class TestConnectDiscussChannel(TransactionCase):
                 sender.send_whatsapp(recipient='+19998887777', body='cold')
 
     def test_get_connect_channel_uses_explicit_provider(self):
+        # Number-only branch: provider comes from the argument, number stored clean.
         ch = self.Channel._get_connect_channel(
             self.env['res.partner'], number='+19995551111',
             provider='whatsapp', create_if_not_found=True)
         self.assertEqual(ch.connect_channel_provider, 'whatsapp')
         self.assertEqual(ch.connect_number, '+19995551111')  # stored clean
+        # Partner-keyed branch (the actual bug site): provider also honoured.
+        pch = self.Channel._get_connect_channel(
+            self.partner, number='+15551230000',
+            provider='whatsapp', create_if_not_found=True)
+        self.assertEqual(pch.connect_channel_provider, 'whatsapp')
+        self.assertEqual(pch.connect_partner_id, self.partner)
 
     def test_inbound_whatsapp_with_contact_reuses_channel(self):
         from unittest.mock import patch
