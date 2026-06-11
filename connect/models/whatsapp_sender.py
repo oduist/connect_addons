@@ -254,13 +254,10 @@ class ConnectWhatsappSender(models.Model):
             raise ValidationError('WhatsApp sender has no number configured.')
         # Check 24-hour window for WhatsApp - only if not using a content template
         if not content_sid:
-            # Inbound WhatsApp numbers are stored with the 'whatsapp:' prefix; add it
-            # back for the lookup (the discuss layer strips it for display).
-            wa_recipient = recipient if recipient.startswith('whatsapp:') else f'whatsapp:{recipient}'
-            # Find last incoming WhatsApp message from this recipient
+            # Find last incoming WhatsApp message from this recipient (clean number).
             last_incoming = self.env['connect.message'].sudo().search([
-                ('message_type', '=', 'WhatsApp'),
-                ('from_number', '=', wa_recipient),
+                ('message_type', '=', 'whatsapp'),
+                ('from_number', '=', recipient),
                 ('direction', '=', 'incoming')
             ], order='create_date desc', limit=1)
 
@@ -310,7 +307,7 @@ class ConnectWhatsappSender(models.Model):
         sender_user = self.env.user
         partner = self.env['res.partner'].get_partner_by_number(recipient)
         msg_vals = {
-            'message_type': 'WhatsApp',
+            'message_type': 'whatsapp',
             'to_number': recipient,
             'from_number': self.number,
             'body': body,

@@ -187,7 +187,7 @@ class DiscussChannel(models.Model):
             write_vals['mail_message_id'] = msg.id
         connect_message.write(write_vals)
         msg.connect_message = connect_message.id
-        if connect_message.message_type == 'WhatsApp':
+        if connect_message.message_type == 'whatsapp':
             self.connect_last_inbound_whatsapp_id = msg.id
         # Surface in agents' sidebars: re-pin for all members on new inbound.
         self.channel_member_ids.filtered(lambda m: not m.is_pinned).write({'unpin_dt': False})
@@ -242,7 +242,7 @@ class DiscussChannel(models.Model):
             if sender_id:
                 wa_sender = Sender.sudo().browse(int(sender_id))
             elif last_inbound:
-                to_num = (last_inbound.to_number or '').replace('whatsapp:', '')
+                to_num = last_inbound.to_number or ''
                 wa_sender = Sender.sudo().search([('number', '=', to_num)], limit=1)
                 if not wa_sender:
                     wa_sender = Sender.get_default_sender(self.env.user)

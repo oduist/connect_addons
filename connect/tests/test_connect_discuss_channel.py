@@ -90,10 +90,38 @@ class TestConnectDiscussChannel(TransactionCase):
         self.assertEqual(cmsg.channel_id, ch)
         self.assertIn(msg, ch.message_ids)
 
+    def test_inbound_whatsapp_stores_clean_number_and_provider(self):
+        Msg = self.env['connect.message']
+        vals = Msg.get_receive_message_values({
+            'From': 'whatsapp:+15551230000', 'To': 'whatsapp:+15550000000',
+            'Body': 'hi', 'MessageSid': 'SMwa', 'NumMedia': '0',
+        })
+        self.assertEqual(vals['message_type'], 'whatsapp')
+        self.assertEqual(vals['from_number'], '+15551230000')
+        self.assertEqual(vals['to_number'], '+15550000000')
+
+    def test_inbound_sms_unchanged(self):
+        Msg = self.env['connect.message']
+        vals = Msg.get_receive_message_values({
+            'From': '+15551230000', 'To': '+15550000000',
+            'Body': 'hi', 'MessageSid': 'SMsms', 'NumMedia': '0',
+        })
+        self.assertEqual(vals['message_type'], 'sms')
+        self.assertEqual(vals['from_number'], '+15551230000')
+
+    def test_provider_helper(self):
+        Msg = self.env['connect.message']
+        wa = Msg.sudo().create({'message_sid': 'SMp1', 'from_number': '+1',
+            'to_number': '+2', 'body': 'x', 'message_type': 'whatsapp', 'status': 'received'})
+        sms = Msg.sudo().create({'message_sid': 'SMp2', 'from_number': '+1',
+            'to_number': '+2', 'body': 'x', 'message_type': 'mms', 'status': 'received'})
+        self.assertEqual(wa._provider(), 'whatsapp')
+        self.assertEqual(sms._provider(), 'sms')
+
     def test_inbound_whatsapp_sets_window(self):
         ch = self.Channel._get_connect_channel(
             self.partner, number='+15551230000', create_if_not_found=True)
-        cmsg = self._make_incoming('wa hello', mtype='WhatsApp')
+        cmsg = self._make_incoming('wa hello', mtype='whatsapp')
         msg = ch._connect_post_inbound(cmsg)
         self.assertEqual(ch.connect_last_inbound_whatsapp_id, msg)
         self.assertTrue(ch.connect_whatsapp_window_open)
@@ -196,41 +224,29 @@ class TestConnectDiscussChannel(TransactionCase):
         found = any('connectStatus' in rec for rec in _flatten_store(data))
         self.assertTrue(found)
 
-    def test_whatsapp_window_matches_prefixed_inbound(self):
-        """Regression: inbound WhatsApp from_number is stored with a 'whatsapp:'
-        prefix, but a reply uses the bare number. The 24h-window lookup must add
-        the prefix back and find the inbound, instead of falsely raising
-        'contact window expired'."""
+    def test_whatsapp_window_matches_inbound(self):
         from unittest.mock import patch
-
         sender = self.env['connect.whatsapp_sender'].create({
-            'number': '+15550000000', 'status': 'ONLINE',
-        })
-        # Inbound WhatsApp message stored with the 'whatsapp:' prefix, just now.
+            'number': '+15550000000', 'status': 'ONLINE'})
         self.env['connect.message'].sudo().create({
-            'message_sid': 'WAin1', 'from_number': 'whatsapp:+15551230000',
-            'to_number': 'whatsapp:+15550000000', 'body': 'hi',
-            'message_type': 'WhatsApp', 'status': 'received',
-            'partner': self.partner.id,
-        })
+            'message_sid': 'WAin1', 'from_number': '+15551230000',
+            'to_number': '+15550000000', 'body': 'hi',
+            'message_type': 'whatsapp', 'status': 'received', 'partner': self.partner.id})
 
         class _Msg:
             sid = 'WAout1'; account_sid = 'ACtest'; messaging_service_sid = False
             num_media = 0; error_code = None; error_message = None
-
         class _FakeMessages:
             def create(self, **kwargs):
                 return _Msg()
-
         class _FakeClient:
             messages = _FakeMessages()
-
         with patch.object(type(self.env['oduist.license']), 'check_license', return_value=True), \
              patch.object(type(self.env['connect.settings']), 'get_client', return_value=_FakeClient()):
             msg = sender.send_whatsapp(recipient='+15551230000', body='reply')
-        self.assertTrue(msg, "Reply within the 24h window must send, not raise")
+        self.assertTrue(msg)
+        self.assertEqual(msg.message_type, 'whatsapp')
         self.assertEqual(msg.to_number, '+15551230000')
-        self.assertEqual(msg.message_type, 'WhatsApp')
 
     def test_whatsapp_window_raises_without_inbound(self):
         """No prior inbound WhatsApp -> must refuse and ask for a template."""

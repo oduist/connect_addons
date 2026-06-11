@@ -194,6 +194,17 @@ class ConnectMessage(models.Model):
             else:
                 record.name = f"New {record.message_type}"
 
+    @staticmethod
+    def _strip_provider_scheme(number):
+        """Return the bare E.164 number without the 'whatsapp:' Twilio scheme."""
+        number = number or ''
+        return number[len('whatsapp:'):] if number.startswith('whatsapp:') else number
+
+    def _provider(self):
+        """Messaging provider for this message: 'whatsapp' or 'sms'."""
+        self.ensure_one()
+        return 'whatsapp' if self.message_type == 'whatsapp' else 'sms'
+
     def transcribe_voice_message(self, openai_api_key, media_url):
         result = {}
         try:
@@ -220,18 +231,18 @@ class ConnectMessage(models.Model):
             return result
 
     def get_receive_message_values(self, params):
-        from_raw = params.get('From', '')
+        from_raw = params.get('From', '') or ''
         num_media = int(params.get('NumMedia', 0))
         if from_raw.startswith('whatsapp:'):
-            message_type = 'WhatsApp'
+            message_type = 'whatsapp'
         elif num_media > 0:
             message_type = 'mms'
         else:
             message_type = 'sms'
         values = {
             'message_sid': params.get('MessageSid'),
-            'from_number': from_raw,
-            'to_number': params.get('To'),
+            'from_number': self._strip_provider_scheme(from_raw),
+            'to_number': self._strip_provider_scheme(params.get('To')),
             'body': params.get('Body'),
             'num_media': num_media,
             'message_type': message_type,
@@ -265,9 +276,9 @@ class ConnectMessage(models.Model):
                 return
             if params.get('SmsStatus') == 'received':
                 # Create SMS message record
-                from_number = params.get('From')
-                to_number = params.get('To')
                 values = self.get_receive_message_values(params)
+                from_number = values['from_number']
+                to_number = values['to_number']
                 # Media handling (image, audio, video)
                 try:
                     if int(params.get('NumMedia', '0') or 0) > 0:
