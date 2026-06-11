@@ -362,3 +362,9 @@ class TestConnectDiscussChannel(TransactionCase):
         # comment — a comment emails followers and yields a red delivery-failure
         # envelope when no SMTP is configured.
         self.assertEqual(new.mail_message_id.subtype_id, self.env.ref('mail.mt_note'))
+        # ...and carry a display-only WhatsApp notification so the note shows the
+        # WhatsApp logo (no email: is_read + 'ready' status).
+        wa_notif = new.mail_message_id.notification_ids.filtered(
+            lambda n: n.notification_type == 'WhatsApp')
+        self.assertTrue(wa_notif, "inbound note must carry a WhatsApp marker notification")
+        self.assertEqual(wa_notif.notification_status, 'ready')

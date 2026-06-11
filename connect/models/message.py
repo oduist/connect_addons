@@ -388,7 +388,19 @@ class ConnectMessage(models.Model):
                         chatter = obj.with_context(mail_create_nosubscribe=True).message_post(**kwargs)
                         chatter.connect_message = message
                         message.mail_message_id = chatter.id
-                        # Let Odoo generate notifications for followers automatically (no manual mail.notification)
+                        # Display-only WhatsApp marker so the inbound note shows the
+                        # WhatsApp logo (notification_model_patch icon), matching the
+                        # outbound chatter. is_read + 'ready' => icon only: no email,
+                        # no red "delivery failure" envelope.
+                        if message._provider() == 'whatsapp':
+                            self.env['mail.notification'].sudo().create([{
+                                'author_id': chatter.author_id.id,
+                                'mail_message_id': chatter.id,
+                                'res_partner_id': chatter.author_id.id,
+                                'notification_type': 'WhatsApp',
+                                'is_read': True,
+                                'notification_status': 'ready',
+                            }])
                         self.env['connect.settings'].connect_reload_view(target_msg.res_model)
                 # Mirror inbound into Discuss: use partner channel when known,
                 # otherwise a phone-number-only channel so the agent can see it.
