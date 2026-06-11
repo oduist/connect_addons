@@ -383,7 +383,8 @@ class ConnectMessage(models.Model):
                 # otherwise a phone-number-only channel so the agent can see it.
                 try:
                     channel = self.env['discuss.channel']._get_connect_channel(
-                        partner, number=from_number, create_if_not_found=True)
+                        partner, number=from_number, provider=message._provider(),
+                        create_if_not_found=True)
                     channel._connect_post_inbound(message)
                 except Exception as e:
                     logger.warning('Connect Discuss mirror failed: %s', e)

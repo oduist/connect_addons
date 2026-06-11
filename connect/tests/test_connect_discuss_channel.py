@@ -261,3 +261,37 @@ class TestConnectDiscussChannel(TransactionCase):
         with patch.object(type(self.env['oduist.license']), 'check_license', return_value=True):
             with self.assertRaises(ValidationError):
                 sender.send_whatsapp(recipient='+19998887777', body='cold')
+
+    def test_get_connect_channel_uses_explicit_provider(self):
+        ch = self.Channel._get_connect_channel(
+            self.env['res.partner'], number='+19995551111',
+            provider='whatsapp', create_if_not_found=True)
+        self.assertEqual(ch.connect_channel_provider, 'whatsapp')
+        self.assertEqual(ch.connect_number, '+19995551111')  # stored clean
+
+    def test_inbound_whatsapp_with_contact_reuses_channel(self):
+        from unittest.mock import patch
+        Msg = self.env['connect.message']
+        # Contact already linked to its connect_messages channel.
+        ch = self.Channel._get_connect_channel(
+            self.partner, number='+15551230000', provider='whatsapp',
+            create_if_not_found=True)
+
+        def _gp(key, *a, **k):
+            return 'ACtest' if key == 'account_sid' else ''
+        params = {
+            'AccountSid': 'ACtest', 'SmsStatus': 'received',
+            'From': 'whatsapp:+15551230000', 'To': 'whatsapp:+15550000000',
+            'Body': 'second', 'MessageSid': 'SMsecond', 'NumMedia': '0',
+        }
+        with patch.object(type(self.env['oduist.license']), 'check_license', return_value=True), \
+             patch.object(type(self.env['connect.settings']), 'get_param', side_effect=_gp):
+            Msg.with_user(self.agent).receive(params)
+
+        channels = self.Channel.search([
+            ('channel_type', '=', 'connect_messages'),
+            ('connect_partner_id', '=', self.partner.id)])
+        self.assertEqual(channels, ch, "must reuse the partner channel, not create a duplicate")
+        msg = Msg.search([('message_sid', '=', 'SMsecond')])
+        self.assertEqual(msg.from_number, '+15551230000')
+        self.assertEqual(msg.message_type, 'whatsapp')

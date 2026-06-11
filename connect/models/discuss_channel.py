@@ -64,14 +64,16 @@ class DiscussChannel(models.Model):
             return number[len('whatsapp:'):], 'whatsapp'
         return number or '', 'sms'
 
-    def _get_connect_channel(self, partner=False, number=False, create_if_not_found=False):
+    def _get_connect_channel(self, partner=False, number=False, provider='sms', create_if_not_found=False):
         """Find-or-create a connect_messages channel.
 
         When partner is given the channel is keyed on the partner.
         When only number is given (no partner) the channel is keyed on the phone number.
-        Provider prefix (e.g. 'whatsapp:') is stripped from the stored number.
+        ``number`` must be a clean E.164 string (no provider prefix).
+        ``provider`` ('sms' or 'whatsapp') is passed explicitly by the caller, never parsed
+        from the number.
         """
-        clean_number, provider = self._connect_parse_number(number)
+        clean_number = self._connect_parse_number(number)[0]  # defensive strip; provider is passed explicitly
         if partner:
             channel = self.sudo().search([
                 ('channel_type', '=', 'connect_messages'),
