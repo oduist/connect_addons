@@ -279,16 +279,20 @@ class TestConnectDiscussChannel(TransactionCase):
     def test_inbound_whatsapp_with_contact_reuses_channel(self):
         from unittest.mock import patch
         Msg = self.env['connect.message']
+        # Use a VALID number so phone_sanitized populates and get_partner_by_number
+        # resolves the contact (the fictional +1555... range does not sanitize).
+        number = '+12125550123'
+        cust = self.env['res.partner'].create({'name': 'WA Cust', 'phone': number})
+        self.assertTrue(cust.phone_sanitized, 'precondition: number must sanitize')
         # Contact already linked to its connect_messages channel.
         ch = self.Channel._get_connect_channel(
-            self.partner, number='+15551230000', provider='whatsapp',
-            create_if_not_found=True)
+            cust, number=number, provider='whatsapp', create_if_not_found=True)
 
         def _gp(key, *a, **k):
             return 'ACtest' if key == 'account_sid' else ''
         params = {
             'AccountSid': 'ACtest', 'SmsStatus': 'received',
-            'From': 'whatsapp:+15551230000', 'To': 'whatsapp:+15550000000',
+            'From': 'whatsapp:' + number, 'To': 'whatsapp:+15550000000',
             'Body': 'second', 'MessageSid': 'SMsecond', 'NumMedia': '0',
         }
         # Run as the real webhook user (production identity) so the
@@ -304,8 +308,8 @@ class TestConnectDiscussChannel(TransactionCase):
         # (connect_partner_id=False) which a partner-filtered search would miss.
         channels = self.Channel.search([
             ('channel_type', '=', 'connect_messages'),
-            ('connect_number', '=', '+15551230000')])
+            ('connect_number', '=', number)])
         self.assertEqual(channels, ch, "must reuse the existing channel, not create a duplicate")
         msg = Msg.search([('message_sid', '=', 'SMsecond')])
-        self.assertEqual(msg.from_number, '+15551230000')
+        self.assertEqual(msg.from_number, number)
         self.assertEqual(msg.message_type, 'whatsapp')
