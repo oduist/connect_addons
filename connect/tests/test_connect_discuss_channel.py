@@ -358,3 +358,7 @@ class TestConnectDiscussChannel(TransactionCase):
         new = Msg.search([('message_sid', '=', 'SMafter')])
         self.assertTrue(new.channel_id, "inbound must be mirrored to Discuss (channel_id set)")
         self.assertTrue(new.mail_message_id, "inbound must have a mirrored mail.message")
+        # The contact-chatter post must be a quiet log note (mt_note), not a
+        # comment — a comment emails followers and yields a red delivery-failure
+        # envelope when no SMTP is configured.
+        self.assertEqual(new.mail_message_id.subtype_id, self.env.ref('mail.mt_note'))

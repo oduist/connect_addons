@@ -372,11 +372,15 @@ class ConnectMessage(models.Model):
                                           f"<span class='px-1'>{values.get('body')}</span>"
                                           f"<br/>{message.media_widget}</div>")
 
-                        # Post as a comment to notify subscribed followers similar to incoming mail
-                        mt_comment = self.env.ref('mail.mt_comment').id
+                        # Post as an internal log note (not a comment): keeps the
+                        # message in the contact's chatter history without emailing
+                        # followers — agents see it in the Discuss channel anyway.
+                        # A comment would trigger follower email notifications that
+                        # fail (red "delivery failure" envelope) when no SMTP is set.
+                        mt_note = self.env.ref('mail.mt_note').id
                         kwargs = {
                             'body': body,
-                            'subtype_id': mt_comment,
+                            'subtype_id': mt_note,
                             'message_type': message._mail_message_type(),
                         }
                         if partner:
