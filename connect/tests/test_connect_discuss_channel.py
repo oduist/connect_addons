@@ -291,9 +291,14 @@ class TestConnectDiscussChannel(TransactionCase):
             'From': 'whatsapp:+15551230000', 'To': 'whatsapp:+15550000000',
             'Body': 'second', 'MessageSid': 'SMsecond', 'NumMedia': '0',
         }
+        # Run as the real webhook user (production identity) so the
+        # connect.message_configuration lookup in receive() does not AccessError
+        # and the Discuss mirror actually runs — otherwise this test passes
+        # vacuously without exercising the channel-reuse path.
+        webhook_user = self.env.ref('connect.user_connect_webhook')
         with patch.object(type(self.env['oduist.license']), 'check_license', return_value=True), \
              patch.object(type(self.env['connect.settings']), 'get_param', side_effect=_gp):
-            Msg.with_user(self.agent).receive(params)
+            Msg.with_user(webhook_user).receive(params)
 
         channels = self.Channel.search([
             ('channel_type', '=', 'connect_messages'),
