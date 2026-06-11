@@ -300,10 +300,12 @@ class TestConnectDiscussChannel(TransactionCase):
              patch.object(type(self.env['connect.settings']), 'get_param', side_effect=_gp):
             Msg.with_user(webhook_user).receive(params)
 
+        # Search by NUMBER, not partner: the bug created a number-only duplicate
+        # (connect_partner_id=False) which a partner-filtered search would miss.
         channels = self.Channel.search([
             ('channel_type', '=', 'connect_messages'),
-            ('connect_partner_id', '=', self.partner.id)])
-        self.assertEqual(channels, ch, "must reuse the partner channel, not create a duplicate")
+            ('connect_number', '=', '+15551230000')])
+        self.assertEqual(channels, ch, "must reuse the existing channel, not create a duplicate")
         msg = Msg.search([('message_sid', '=', 'SMsecond')])
         self.assertEqual(msg.from_number, '+15551230000')
         self.assertEqual(msg.message_type, 'whatsapp')
