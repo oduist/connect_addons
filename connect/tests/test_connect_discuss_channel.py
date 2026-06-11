@@ -225,6 +225,8 @@ class TestConnectDiscussChannel(TransactionCase):
         self.assertTrue(found)
 
     def test_whatsapp_window_matches_inbound(self):
+        """Regression: a clean-number inbound WhatsApp lets a reply send within
+        the 24h window (the window lookup must match the stored clean number)."""
         from unittest.mock import patch
         sender = self.env['connect.whatsapp_sender'].create({
             'number': '+15550000000', 'status': 'ONLINE'})

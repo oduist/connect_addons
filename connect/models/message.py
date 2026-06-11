@@ -201,7 +201,7 @@ class ConnectMessage(models.Model):
         return number[len('whatsapp:'):] if number.startswith('whatsapp:') else number
 
     def _provider(self):
-        """Messaging provider for this message: 'whatsapp' or 'sms'."""
+        """Messaging provider for this message: 'whatsapp' or 'sms' (mms is sms)."""
         self.ensure_one()
         return 'whatsapp' if self.message_type == 'whatsapp' else 'sms'
 
@@ -233,6 +233,7 @@ class ConnectMessage(models.Model):
     def get_receive_message_values(self, params):
         from_raw = params.get('From', '') or ''
         num_media = int(params.get('NumMedia', 0))
+        # Detect the provider from the scheme before stripping it for storage.
         if from_raw.startswith('whatsapp:'):
             message_type = 'whatsapp'
         elif num_media > 0:
