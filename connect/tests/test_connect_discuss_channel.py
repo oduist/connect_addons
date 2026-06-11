@@ -313,3 +313,48 @@ class TestConnectDiscussChannel(TransactionCase):
         msg = Msg.search([('message_sid', '=', 'SMsecond')])
         self.assertEqual(msg.from_number, number)
         self.assertEqual(msg.message_type, 'whatsapp')
+
+    def test_mail_message_type_maps_to_capitalized(self):
+        Msg = self.env['connect.message']
+        wa = Msg.sudo().create({'message_sid': 'SMm1', 'from_number': '+1',
+            'to_number': '+2', 'body': 'x', 'message_type': 'whatsapp', 'status': 'received'})
+        sms = Msg.sudo().create({'message_sid': 'SMm2', 'from_number': '+1',
+            'to_number': '+2', 'body': 'x', 'message_type': 'sms', 'status': 'received'})
+        # mail.message / mail.notification selections use the capitalized 'WhatsApp'.
+        self.assertEqual(wa._mail_message_type(), 'WhatsApp')
+        self.assertEqual(sms._mail_message_type(), 'sms')
+
+    def test_inbound_whatsapp_chatter_does_not_break_mirror(self):
+        """Regression: when receive() posts to the target record's chatter, the
+        mail.message message_type must use the mail convention ('WhatsApp'), not
+        the lowercase connect provider. Otherwise message_post raises 'Wrong value
+        for mail.message.message_type: whatsapp', receive() aborts, and the Discuss
+        mirror is skipped (channel_id stays NULL)."""
+        from unittest.mock import patch
+        Msg = self.env['connect.message']
+        number = '+12125550124'
+        our = '+15550000000'
+        cust = self.env['res.partner'].create({'name': 'WA Cust3', 'phone': number})
+        # A prior outbound linked to the partner's chatter makes the next inbound
+        # resolve a VALID target -> the chatter-post branch of receive() runs.
+        Msg.sudo().create({
+            'message_sid': 'SMprior', 'from_number': our, 'to_number': number,
+            'body': 'prior', 'message_type': 'whatsapp', 'status': 'sent',
+            'res_model': 'res.partner', 'res_id': cust.id, 'sender_user': self.agent.id,
+        })
+
+        def _gp(key, *a, **k):
+            return 'ACtest' if key == 'account_sid' else ''
+        params = {
+            'AccountSid': 'ACtest', 'SmsStatus': 'received',
+            'From': 'whatsapp:' + number, 'To': 'whatsapp:' + our,
+            'Body': 'inbound after', 'MessageSid': 'SMafter', 'NumMedia': '0',
+        }
+        webhook_user = self.env.ref('connect.user_connect_webhook')
+        with patch.object(type(self.env['oduist.license']), 'check_license', return_value=True), \
+             patch.object(type(self.env['connect.settings']), 'get_param', side_effect=_gp):
+            Msg.with_user(webhook_user).receive(params)
+
+        new = Msg.search([('message_sid', '=', 'SMafter')])
+        self.assertTrue(new.channel_id, "inbound must be mirrored to Discuss (channel_id set)")
+        self.assertTrue(new.mail_message_id, "inbound must have a mirrored mail.message")

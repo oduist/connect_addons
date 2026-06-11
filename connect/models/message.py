@@ -205,6 +205,13 @@ class ConnectMessage(models.Model):
         self.ensure_one()
         return 'whatsapp' if self.message_type == 'whatsapp' else 'sms'
 
+    def _mail_message_type(self):
+        """Tag value for mail.message.message_type / mail.notification.notification_type,
+        whose selections use the capitalized 'WhatsApp' (see connect/models/mail.py).
+        sms/mms are passed through unchanged."""
+        self.ensure_one()
+        return 'WhatsApp' if self.message_type == 'whatsapp' else self.message_type
+
     def transcribe_voice_message(self, openai_api_key, media_url):
         result = {}
         try:
@@ -370,7 +377,7 @@ class ConnectMessage(models.Model):
                         kwargs = {
                             'body': body,
                             'subtype_id': mt_comment,
-                            'message_type': message.message_type
+                            'message_type': message._mail_message_type(),
                         }
                         if partner:
                             kwargs.update({'author_id': partner.id})
@@ -449,7 +456,7 @@ class ConnectMessage(models.Model):
                 kwargs = {
                     'body': chat_body,
                     'subtype_id': mt_note,
-                    'message_type': message.message_type
+                    'message_type': message._mail_message_type(),
                 }
                 kwargs.update({'author_id': sender_user.partner_id.id})
                 chatter = obj.with_context(mail_create_nosubscribe=True).message_post(**kwargs)
@@ -458,7 +465,7 @@ class ConnectMessage(models.Model):
                     'mail_message_id': chatter.id,
                     'res_partner_id': chatter.author_id.id,
                     'sms_number': sender,
-                    'notification_type': message.message_type,
+                    'notification_type': message._mail_message_type(),
                     'is_read': True,
                     'notification_status': 'ready',
                 }]
