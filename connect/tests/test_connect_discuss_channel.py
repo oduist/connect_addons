@@ -195,3 +195,51 @@ class TestConnectDiscussChannel(TransactionCase):
         data = store.get_result()
         found = any('connectStatus' in rec for rec in _flatten_store(data))
         self.assertTrue(found)
+
+    def test_whatsapp_window_matches_prefixed_inbound(self):
+        """Regression: inbound WhatsApp from_number is stored with a 'whatsapp:'
+        prefix, but a reply uses the bare number. The 24h-window lookup must add
+        the prefix back and find the inbound, instead of falsely raising
+        'contact window expired'."""
+        from unittest.mock import patch
+
+        sender = self.env['connect.whatsapp_sender'].create({
+            'number': '+15550000000', 'status': 'ONLINE',
+        })
+        # Inbound WhatsApp message stored with the 'whatsapp:' prefix, just now.
+        self.env['connect.message'].sudo().create({
+            'message_sid': 'WAin1', 'from_number': 'whatsapp:+15551230000',
+            'to_number': 'whatsapp:+15550000000', 'body': 'hi',
+            'message_type': 'WhatsApp', 'status': 'received',
+            'partner': self.partner.id,
+        })
+
+        class _Msg:
+            sid = 'WAout1'; account_sid = 'ACtest'; messaging_service_sid = False
+            num_media = 0; error_code = None; error_message = None
+
+        class _FakeMessages:
+            def create(self, **kwargs):
+                return _Msg()
+
+        class _FakeClient:
+            messages = _FakeMessages()
+
+        with patch.object(type(self.env['oduist.license']), 'check_license', return_value=True), \
+             patch.object(type(self.env['connect.settings']), 'get_client', return_value=_FakeClient()):
+            msg = sender.send_whatsapp(recipient='+15551230000', body='reply')
+        self.assertTrue(msg, "Reply within the 24h window must send, not raise")
+        self.assertEqual(msg.to_number, '+15551230000')
+        self.assertEqual(msg.message_type, 'WhatsApp')
+
+    def test_whatsapp_window_raises_without_inbound(self):
+        """No prior inbound WhatsApp -> must refuse and ask for a template."""
+        from unittest.mock import patch
+        from odoo.exceptions import ValidationError
+
+        sender = self.env['connect.whatsapp_sender'].create({
+            'number': '+15550000001', 'status': 'ONLINE',
+        })
+        with patch.object(type(self.env['oduist.license']), 'check_license', return_value=True):
+            with self.assertRaises(ValidationError):
+                sender.send_whatsapp(recipient='+19998887777', body='cold')
