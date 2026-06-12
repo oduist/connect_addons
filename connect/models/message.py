@@ -401,7 +401,6 @@ class ConnectMessage(models.Model):
                                 'is_read': True,
                                 'notification_status': 'ready',
                             }])
-                        self.env['connect.settings'].connect_reload_view(target_msg.res_model)
                 # Mirror inbound into Discuss: use partner channel when known,
                 # otherwise a phone-number-only channel so the agent can see it.
                 try:
@@ -486,7 +485,6 @@ class ConnectMessage(models.Model):
                     'notification_status': 'ready',
                 }]
                 self.env['mail.notification'].sudo().create(mail_notification_values)
-                self.env['connect.settings'].connect_reload_view(res_model)
         return message
 
     def client_send(self, recipient, sender, body, media_urls=None):
@@ -598,6 +596,5 @@ class ConnectMessage(models.Model):
                     'is_read': True,
                     'notification_status': 'ready',
                 }])
-                self.env['connect.settings'].connect_reload_view(res_model)
         except Exception as e:
             logger.warning('Failed to post SMS chatter message on %s,%s: %s', res_model, res_id, e)
