@@ -197,6 +197,8 @@ class TestConnectDiscussChannel(TransactionCase):
         self.assertEqual(ch.name, 'New Customer')
         partner = self.env['res.partner'].browse(result['partner_id'])
         self.assertIn(partner, ch.channel_member_ids.partner_id)
+        # New contact gets the default mail "smiley" avatar.
+        self.assertTrue(partner.image_1920, "new contact must get a default avatar")
 
     def test_connect_create_partner_backfills_messages(self):
         unknown_number = '+19995550004'

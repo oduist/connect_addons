@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 import base64
 import logging
-import os
 from datetime import timedelta
 
 from markupsafe import Markup
 
 from odoo import api, Command, fields, models
 from odoo.exceptions import ValidationError
-from odoo.tools import html2plaintext
+from odoo.tools import file_open, html2plaintext
 
 logger = logging.getLogger(__name__)
 
@@ -126,12 +125,13 @@ class DiscussChannel(models.Model):
         number = self.connect_number
         if not number:
             raise ValidationError('Channel has no phone number')
-        img_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
-                               'static', 'src', 'images', 'default_contact.jpg')
+        # New contacts get Odoo's default mail "smiley" avatar.
         default_image = False
-        if os.path.exists(img_path):
-            with open(img_path, 'rb') as f:
+        try:
+            with file_open('mail/static/src/img/smiley/avatar.jpg', 'rb') as f:
                 default_image = base64.b64encode(f.read())
+        except Exception:
+            logger.warning('Could not read default contact avatar', exc_info=True)
         partner = self.env['res.partner'].sudo().create({
             'name': partner_name or number,
             'phone': number,
