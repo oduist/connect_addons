@@ -33,6 +33,12 @@ CALL_END_STATUSES = ['completed', 'busy', 'failed', 'no-answer', 'canceled']
 
 IGNORE_ERROR_CODES = ['32009']
 
+# Fixed namespace ("class id") for per-call PostgreSQL advisory locks used to
+# serialize concurrent Twilio status webhooks targeting the same connect.call.
+# Must be a stable constant shared across all worker processes (NOT Python's
+# per-process-salted hash()). 0x636E6374 == b'cnct', fits in a signed int4.
+CALL_LOCK_CLASS = 0x636E6374
+
 
 class Call(models.Model):
     _name = 'connect.call'
@@ -823,8 +829,22 @@ class Call(models.Model):
         elif channel.parent_channel and channel.parent_channel.call:
             # Secondary channel, assign the call from the parent.
             channel.call = channel.parent_channel.call
-            # Detect internal calls: both sides are PBX users (extension-to-extension).
-            # This also reclassifies outgoing→internal when the child channel reveals the called user.
+        # DATABASE LOCKING: serialize all concurrent webhooks for this call.
+        # Twilio fires the parent leg and every child (ring-group) leg almost
+        # simultaneously; each lands in its own HTTP worker / transaction and they
+        # all mutate the same connect.call row plus its m2m relations. Acquiring a
+        # per-call transaction-level advisory lock here — as the FIRST contended
+        # resource, before ANY write to the call or its relations — forces those
+        # webhooks into a single queue and removes the lock-ordering cycle that
+        # previously produced "deadlock detected ... FOR UPDATE" on connect_call.
+        if channel.call:
+            self.env.cr.execute(
+                "SELECT pg_advisory_xact_lock(%s, %s)",
+                (CALL_LOCK_CLASS, channel.call.id),
+            )
+        # Detect internal calls: both sides are PBX users (extension-to-extension).
+        # This also reclassifies outgoing→internal when the child channel reveals the called user.
+        if channel.parent_channel and channel.parent_channel.call:
             if channel.caller_pbx_user and channel.parent_channel.called_pbx_user:
                 channel.call.direction = 'internal'
             elif channel.called_pbx_user and channel.parent_channel.caller_pbx_user:
@@ -854,8 +874,9 @@ class Call(models.Model):
                 params.get('To').startswith('sip:')):
             # Desktop notification only for SIP calls.
             channel.connect_notify()
-        # DATABASE LOCKING: Acquire exclusive lock on call record to prevent concurrent modifications
-        self.env.cr.execute("SELECT id FROM connect_call WHERE id = %s FOR UPDATE", (channel.call.id,))
+        # NOTE: concurrent webhooks are already serialized by the per-call advisory
+        # lock acquired above (pg_advisory_xact_lock), so no late row-level
+        # SELECT ... FOR UPDATE is needed here.
         # Set called users - all called users including transfer recipients
         if channel.called_user:
             if channel.called_user.id not in channel.call.called_users.ids:
