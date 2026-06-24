@@ -439,6 +439,23 @@ class TestConnectDiscussChannel(TransactionCase):
             ('channel_type', '=', 'connect_messages'),
             ('connect_partner_id', '=', cust.id)]))
 
+    def test_archive_then_inbound_resurfaces(self):
+        """Archiving unpins the agent's member; a new inbound re-pins it."""
+        ch = self.Channel._get_connect_channel(
+            self.partner, number='+15551230000', create_if_not_found=True)
+        member = ch.channel_member_ids.filtered(
+            lambda m: m.partner_id == self.agent.partner_id)
+        self.assertTrue(member.is_pinned, 'precondition: thread starts pinned')
+        # Agent archives (unpins) the thread.
+        ch.with_user(self.agent).channel_pin(pinned=False)
+        member.invalidate_recordset(['is_pinned', 'unpin_dt'])
+        self.assertFalse(member.is_pinned, 'archive must unpin the agent member')
+        # A new inbound un-archives (re-pins) it.
+        cmsg = self._make_incoming('back again')
+        ch._connect_post_inbound(cmsg)
+        member.invalidate_recordset(['is_pinned', 'unpin_dt'])
+        self.assertTrue(member.is_pinned, 'new message must un-archive (re-pin) the thread')
+
     def test_inbound_reply_quotes_parent_in_discuss(self):
         """A customer reply (WhatsApp OriginalRepliedMessageSid) quotes the parent
         message's Discuss mirror via parent_id."""

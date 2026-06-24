@@ -52,6 +52,18 @@ registerThreadAction("connect-create-contact", {
     sequenceGroup: 20,
 });
 
+registerThreadAction("connect-archive", {
+    condition: ({ thread }) => thread?.channel_type === "connect_messages",
+    icon: "fa fa-fw fa-archive",
+    name: _t("Archive"),
+    // Unpin the conversation: it leaves the sidebar but stays a real channel, so a
+    // new inbound message auto-re-pins (un-archives) it — see _connect_resurface.
+    open: ({ thread }) => thread.unpin(),
+    // Just above "Leave Channel" in the same lifecycle group.
+    sequence: 9,
+    sequenceGroup: 30,
+});
+
 registerThreadAction("connect-leave-channel", {
     condition: ({ owner, thread }) =>
         thread?.channel_type === "connect_messages" && owner.isDiscussSidebarChannelActions,

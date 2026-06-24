@@ -8,6 +8,7 @@ from markupsafe import Markup
 from odoo import api, Command, fields, models
 from odoo.exceptions import ValidationError
 from odoo.tools import file_open, html2plaintext
+from odoo.addons.mail.tools.discuss import Store
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +201,7 @@ class DiscussChannel(models.Model):
         if connect_message.message_type == 'whatsapp':
             self.connect_last_inbound_whatsapp_id = msg.id
         # Surface in agents' sidebars: re-pin for all members on new inbound.
-        self.channel_member_ids.filtered(lambda m: not m.is_pinned).write({'unpin_dt': False})
+        self._connect_resurface()
         return msg
 
     def _connect_post_outbound(self, connect_message):
@@ -229,8 +230,25 @@ class DiscussChannel(models.Model):
         })
         msg.connect_message = connect_message.id
         # Surface in agents' sidebars: re-pin for all members on new activity.
-        self.channel_member_ids.filtered(lambda m: not m.is_pinned).write({'unpin_dt': False})
+        self._connect_resurface()
         return msg
+
+    def _connect_resurface(self):
+        """Un-archive the thread for any member who archived (unpinned) it.
+
+        Resets ``unpin_dt`` so the channel re-pins, and pushes the channel to each
+        affected member's Discuss sidebar so an archived conversation reappears in
+        real time when a new message arrives.
+        """
+        self.ensure_one()
+        archived = self.channel_member_ids.filtered(lambda m: not m.is_pinned)
+        if not archived:
+            return
+        archived.write({'unpin_dt': False})
+        for member in archived:
+            user = member.partner_id.user_ids[:1]
+            if user:
+                Store(bus_channel=user).add(self.with_user(user)).bus_send()
 
     def _get_allowed_message_params(self):
         # Allow the composer to pass provider/sender through the post route.
