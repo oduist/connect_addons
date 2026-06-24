@@ -439,6 +439,17 @@ class TestConnectDiscussChannel(TransactionCase):
             ('channel_type', '=', 'connect_messages'),
             ('connect_partner_id', '=', cust.id)]))
 
+    def test_connect_sidebar_category_open_setting_persists(self):
+        """The 'Messages' sidebar category needs a real res.users.settings field
+        so its collapse/expand toggle reads and persists (like channel/chat)."""
+        Settings = self.env['res.users.settings']
+        self.assertIn('is_discuss_sidebar_category_connect_messages_open', Settings._fields)
+        s = Settings._find_or_create_for_user(self.agent)
+        self.assertTrue(s.is_discuss_sidebar_category_connect_messages_open, 'defaults to open')
+        s.set_res_users_settings(
+            {'is_discuss_sidebar_category_connect_messages_open': False})
+        self.assertFalse(s.is_discuss_sidebar_category_connect_messages_open)
+
     def test_archive_then_inbound_resurfaces(self):
         """Archiving unpins the agent's member; a new inbound re-pins it."""
         ch = self.Channel._get_connect_channel(
