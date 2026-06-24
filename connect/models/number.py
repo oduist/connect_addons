@@ -84,7 +84,7 @@ class Number(models.Model):
                 status_callback=self.voice_status_url
             )
             region = self.env['connect.settings'].sudo().get_param('twilio_region')
-            if region and region != 'us1':
+            if region and region != 'us1' and not self.env['connect.settings'].uses_compatible_rest_api():
                 us_client = self.env['connect.settings'].get_client(region=False)
                 us_client.incoming_phone_numbers(self.sid).update(
                     sms_url=self.message_url,

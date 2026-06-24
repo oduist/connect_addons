@@ -14,7 +14,7 @@ from urllib.parse import urljoin
 from odoo import fields, models, api, release
 from odoo.exceptions import ValidationError
 from twilio.twiml.voice_response import Client, Dial, VoiceResponse
-from .settings import format_connect_response, debug, TWILIO_EDGES
+from .settings import format_connect_response, debug, TWILIO_EDGES, DEFAULT_SIP_DOMAIN_SUFFIX
 from .twiml import pretty_xml
 
 
@@ -48,13 +48,19 @@ class Domain(models.Model):
     ]
 
     def _get_domain_name(self):
-        edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
+        settings = self.env['connect.settings']
         edges = [v[0] for v in TWILIO_EDGES if v[0] != 'roaming']
+        suffix = settings.normalized_sip_domain_suffix()
         for rec in self:
             if rec.subdomain:
-                rec.domain_name = rec.subdomain + ".sip.twilio.com"
-                rec.edge_domains = '\n'.join(['{}.sip.{}.twilio.com'.format(
-                    rec.subdomain, edge) for edge in edges])
+                rec.domain_name = settings.format_sip_domain_name(rec.subdomain)
+                if suffix == DEFAULT_SIP_DOMAIN_SUFFIX:
+                    rec.edge_domains = '\n'.join([
+                        settings.format_sip_edge_domain(rec.subdomain, edge)
+                        for edge in edges
+                    ])
+                else:
+                    rec.edge_domains = rec.domain_name
             else:
                 rec.domain_name = ''
                 rec.edge_domains = ''
@@ -521,10 +527,10 @@ class Domain(models.Model):
         self.env["connect.call"].on_call_status(request)
         to_val = request.get("To") or ''
         # Extract number for SIP or WhatsApp channels
-        found = re.search(r"^sip:(.+)@(.+)\.sip\.((.+)\.)?twilio\.com", to_val)
+        found_num = self.env['connect.settings'].parse_sip_to_user(to_val)
         is_whatsapp = False
-        if found:
-            found_num = found.group(1)
+        if found_num is not None:
+            pass
         elif isinstance(to_val, str) and to_val.startswith('whatsapp:'):
             found_num = to_val.split(':', 1)[1]
             is_whatsapp = True

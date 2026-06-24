@@ -110,7 +110,8 @@ class OutgoingCallerID(models.Model):
 
     def validate(self):
         self.ensure_one()
-        if self.env['connect.settings'].sudo().get_param('twilio_region') != 'us1':
+        if (self.env['connect.settings'].sudo().get_param('twilio_region') != 'us1'
+                and not self.env['connect.settings'].uses_compatible_rest_api()):
             raise ValidationError('Outgoing CallerIds are supported in US1 region only!')
         if self.sid:
             raise ValidationError('Outgoing callerid is already validated!')

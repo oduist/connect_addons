@@ -15,7 +15,7 @@ import os
 import random
 import re
 import string
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit, urlunsplit
 
 import httpx
 import openai
@@ -23,6 +23,7 @@ import requests
 from odoo import api, fields, models, release
 from odoo.exceptions import ValidationError
 from twilio.rest import Client
+from twilio.http.http_client import TwilioHttpClient
 from . import s3_utils
 from odoo.addons.connect.models.license import ODUIST_MODULES
 ODUIST_MODULES.append('connect')
@@ -51,6 +52,26 @@ TWILIO_EDGES = [
     ("tokyo", "Japan"),
     ("singapore", "Singapore"),
 ]
+
+DEFAULT_SIP_DOMAIN_SUFFIX = 'sip.twilio.com'
+DEFAULT_HOLD_MUSIC_URL = (
+    'http://twimlets.com/holdmusic?Bucket=com.twilio.music.classical'
+)
+
+
+class _RewriteHostHttpClient(TwilioHttpClient):
+    """Route Twilio SDK REST calls to a Twilio-compatible voice API host."""
+
+    def __init__(self, rewrite_host, **kwargs):
+        super().__init__(**kwargs)
+        self._rewrite_host = rewrite_host
+
+    def request(self, method, url, params=None, data=None, headers=None,
+                auth=None, timeout=None, allow_redirects=False):
+        url = urlunsplit(urlsplit(url)._replace(netloc=self._rewrite_host))
+        return super().request(method, url, params, data, headers, auth,
+                               timeout, allow_redirects)
+
 
 SYSTEM_VOICE_CHOICES = [
     # Basic voices (no SSML support, free)
@@ -252,6 +273,28 @@ class Settings(models.Model):
         ('au1', 'Australia'),
     ], default='us1', required=True)
     twilio_edge = fields.Selection(selection=TWILIO_EDGES, required=True, default='ashburn')
+    rest_api_host = fields.Char(
+        string="REST API Host",
+        help="Hostname of a Twilio-compatible voice API. Leave empty for Twilio. "
+             "When set, SDK REST traffic uses this host; region/edge are ignored.",
+    )
+    sip_domain_suffix = fields.Char(
+        string="SIP Domain Suffix",
+        help="SIP hostname suffix (subdomain.suffix). Empty = sip.twilio.com.",
+    )
+    default_hold_music_url = fields.Char(
+        string="Default Hold Music URL",
+        help="Hold/wait music for conferences. Empty = Twilio twimlets default.",
+    )
+    webrtc_provider = fields.Selection(
+        [
+            ('twilio', 'Twilio WebRTC (browser phone)'),
+            ('disabled', 'Disabled (SIP phones only)'),
+        ],
+        default='twilio',
+        required=True,
+        string="Browser Phone",
+    )
     account_sid = fields.Char(string="Account SID")
     auth_token = fields.Char(
         groups="base.group_erp_manager,connect.group_connect_webhook"
@@ -673,6 +716,59 @@ class Settings(models.Model):
         return res
 
     @api.model
+    def uses_compatible_rest_api(self):
+        return bool((self.get_param('rest_api_host') or '').strip())
+
+    @api.model
+    def normalized_sip_domain_suffix(self):
+        suffix = (self.get_param('sip_domain_suffix') or '').strip().lstrip('.')
+        return suffix or DEFAULT_SIP_DOMAIN_SUFFIX
+
+    @api.model
+    def format_sip_domain_name(self, subdomain):
+        return '{}.{}'.format(subdomain, self.normalized_sip_domain_suffix())
+
+    @api.model
+    def format_sip_edge_domain(self, subdomain, edge):
+        suffix = self.normalized_sip_domain_suffix()
+        if suffix == DEFAULT_SIP_DOMAIN_SUFFIX and edge:
+            return '{}.sip.{}.twilio.com'.format(subdomain, edge)
+        return self.format_sip_domain_name(subdomain)
+
+    @api.model
+    def format_sip_connect_uri(self, username, subdomain, edge=None):
+        suffix = self.normalized_sip_domain_suffix()
+        if suffix == DEFAULT_SIP_DOMAIN_SUFFIX and edge and edge != 'roaming':
+            return '{}@{}.sip.{}.twilio.com'.format(username, subdomain, edge)
+        return '{}@{}'.format(username, self.format_sip_domain_name(subdomain))
+
+    @api.model
+    def get_default_hold_music_url(self):
+        url = (self.get_param('default_hold_music_url') or '').strip()
+        return url or DEFAULT_HOLD_MUSIC_URL
+
+    @api.model
+    def is_webrtc_enabled(self):
+        return self.get_param('webrtc_provider') != 'disabled'
+
+    @api.model
+    def parse_sip_to_user(self, to_val):
+        if not isinstance(to_val, str) or not to_val.startswith('sip:'):
+            return None
+        at = to_val.find('@')
+        if at == -1:
+            return None
+        user_part = to_val[4:at]
+        host_part = to_val[at + 1:]
+        suffix = self.normalized_sip_domain_suffix()
+        if suffix == DEFAULT_SIP_DOMAIN_SUFFIX:
+            if re.match(r'^.+\.sip(\.[^.]+)?\.twilio\.com$', host_part):
+                return user_part
+        elif host_part == suffix or host_part.endswith('.' + suffix):
+            return user_part
+        return None
+
+    @api.model
     def get_system_voice(self):
         """Get the system-wide voice setting for all TwiML say() calls"""
         voice = self.sudo().get_param('system_voice', 'man')
@@ -725,11 +821,14 @@ class Settings(models.Model):
             )
             account_sid = self.sudo().get_param("account_sid")
             auth_token = self.sudo().get_param("auth_token")
-            client = Client(account_sid, auth_token)
-            if region:
+            rest_api_host = (self.sudo().get_param("rest_api_host") or "").strip()
+            token_to_use = auth_token
+            if region and not rest_api_host:
                 region_auth_token = self.sudo().get_param("region_auth_token")
                 token_to_use = region_auth_token if region_auth_token else auth_token
-                client = Client(account_sid, token_to_use)
+            http_client = _RewriteHostHttpClient(rest_api_host) if rest_api_host else None
+            client = Client(account_sid, token_to_use, http_client=http_client)
+            if region and not rest_api_host:
                 twilio_region = self.sudo().get_param("twilio_region")
                 if twilio_region:
                     client.region = twilio_region
