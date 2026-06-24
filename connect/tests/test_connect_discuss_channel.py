@@ -86,7 +86,7 @@ class TestConnectDiscussChannel(TransactionCase):
         msg = ch._connect_post_inbound(cmsg)
         self.assertEqual(msg.message_type, 'connect_message')
         self.assertEqual(msg.author_id, self.partner)
-        self.assertEqual(cmsg.mail_message_id, msg)
+        self.assertEqual(cmsg.channel_message_id, msg)
         self.assertEqual(cmsg.channel_id, ch)
         self.assertIn(msg, ch.message_ids)
 
@@ -139,7 +139,7 @@ class TestConnectDiscussChannel(TransactionCase):
             msg = ch.with_user(self.agent).message_post(
                 body='reply text', message_type='connect_message',
                 connect_provider='sms', connect_sender_id='+15550000000')
-        cmsg = self.env['connect.message'].search([('mail_message_id', '=', msg.id)])
+        cmsg = self.env['connect.message'].search([('channel_message_id', '=', msg.id)])
         self.assertTrue(cmsg, "Outbound must create a linked connect.message")
         self.assertEqual(cmsg.to_number, '+15551230000')
         self.assertEqual(cmsg.channel_id, ch)
@@ -370,3 +370,109 @@ class TestConnectDiscussChannel(TransactionCase):
             lambda n: n.notification_type == 'WhatsApp')
         self.assertTrue(wa_notif, "inbound note must carry a WhatsApp marker notification")
         self.assertEqual(wa_notif.notification_status, 'ready')
+
+    def test_inbound_known_partner_copies_to_partner_chatter(self):
+        """Inbound from an existing partner (no prior thread record) still posts a
+        copy to the partner's own chatter, and mirrors into Discuss."""
+        from unittest.mock import patch
+        Msg = self.env['connect.message']
+        number = '+12125550133'
+        cust = self.env['res.partner'].create({'name': 'Copy Cust', 'phone': number})
+        self.assertTrue(cust.phone_sanitized, 'precondition: number must sanitize')
+
+        def _gp(key, *a, **k):
+            return 'ACtest' if key == 'account_sid' else ''
+        params = {
+            'AccountSid': 'ACtest', 'SmsStatus': 'received',
+            'From': number, 'To': '+15550000000',
+            'Body': 'hello there', 'MessageSid': 'SMcopy', 'NumMedia': '0',
+        }
+        webhook_user = self.env.ref('connect.user_connect_webhook')
+        with patch.object(type(self.env['oduist.license']), 'check_license', return_value=True), \
+             patch.object(type(self.env['connect.settings']), 'get_param', side_effect=_gp):
+            Msg.with_user(webhook_user).receive(params)
+        new = Msg.search([('message_sid', '=', 'SMcopy')])
+        # Copy landed on the partner's own record...
+        self.assertTrue(new.mail_message_id, 'inbound from known partner must copy to chatter')
+        self.assertEqual(new.mail_message_id.model, 'res.partner')
+        self.assertEqual(new.mail_message_id.res_id, cust.id)
+        # ...and was also mirrored into the Discuss channel.
+        self.assertTrue(new.channel_id)
+        self.assertTrue(new.channel_message_id)
+
+    def test_outbound_from_chatter_mirrors_to_existing_thread(self):
+        """Outbound sent from a record's chatter is mirrored into the existing
+        Discuss thread when one exists."""
+        from unittest.mock import patch
+        number = '+12125550150'
+        cust = self.env['res.partner'].create({'name': 'Out Cust', 'phone': number})
+        self.assertTrue(cust.phone_sanitized, 'precondition: number must sanitize')
+        ch = self.Channel._get_connect_channel(cust, number=number, create_if_not_found=True)
+
+        class _Fake:
+            sid = 'SMch'; account_sid = 'ACtest'; messaging_service_sid = False
+            num_media = 0; error_code = None; error_message = None
+        with patch.object(type(self.env['connect.message']), 'client_send', return_value=_Fake()):
+            msg = self.env['connect.message'].with_user(self.agent).send(
+                number, 'from chatter', res_id=cust.id, res_model='res.partner',
+                outgoing_callerid='+15550000000')
+        self.assertEqual(msg.channel_id, ch, 'outbound must mirror into the existing thread')
+        self.assertTrue(msg.channel_message_id)
+        self.assertIn(msg.channel_message_id, ch.message_ids)
+
+    def test_outbound_from_chatter_no_thread_no_mirror(self):
+        """Outbound from chatter must NOT create a Discuss thread when none exists."""
+        from unittest.mock import patch
+        number = '+12125550151'
+        cust = self.env['res.partner'].create({'name': 'Cold Cust', 'phone': number})
+        self.assertTrue(cust.phone_sanitized, 'precondition: number must sanitize')
+
+        class _Fake:
+            sid = 'SMnt'; account_sid = 'ACtest'; messaging_service_sid = False
+            num_media = 0; error_code = None; error_message = None
+        with patch.object(type(self.env['connect.message']), 'client_send', return_value=_Fake()):
+            msg = self.env['connect.message'].with_user(self.agent).send(
+                number, 'cold outbound', res_id=cust.id, res_model='res.partner',
+                outgoing_callerid='+15550000000')
+        self.assertFalse(msg.channel_id, 'no existing thread -> must not create/mirror')
+        self.assertFalse(self.Channel.search([
+            ('channel_type', '=', 'connect_messages'),
+            ('connect_partner_id', '=', cust.id)]))
+
+    def test_inbound_reply_quotes_parent_in_discuss(self):
+        """A customer reply (WhatsApp OriginalRepliedMessageSid) quotes the parent
+        message's Discuss mirror via parent_id."""
+        from unittest.mock import patch
+        Msg = self.env['connect.message']
+        number = '+12125550160'
+        our = '+15550000000'
+        cust = self.env['res.partner'].create({'name': 'Reply Cust', 'phone': number})
+        self.assertTrue(cust.phone_sanitized, 'precondition: number must sanitize')
+        ch = self.Channel._get_connect_channel(
+            cust, number=number, provider='whatsapp', create_if_not_found=True)
+        # Earlier outbound, mirrored into the Discuss thread.
+        parent = Msg.sudo().create({
+            'message_sid': 'WAparent', 'from_number': our, 'to_number': number,
+            'body': 'Goes here', 'message_type': 'whatsapp', 'status': 'sent',
+            'res_model': 'res.partner', 'res_id': cust.id, 'sender_user': self.agent.id,
+        })
+        parent_mirror = ch._connect_post_outbound(parent)
+        self.assertEqual(parent.channel_message_id, parent_mirror)
+
+        def _gp(key, *a, **k):
+            return 'ACtest' if key == 'account_sid' else ''
+        params = {
+            'AccountSid': 'ACtest', 'SmsStatus': 'received',
+            'From': 'whatsapp:' + number, 'To': 'whatsapp:' + our,
+            'Body': 'Reply', 'MessageSid': 'WAreply', 'NumMedia': '0',
+            'OriginalRepliedMessageSid': 'WAparent',
+        }
+        webhook_user = self.env.ref('connect.user_connect_webhook')
+        with patch.object(type(self.env['oduist.license']), 'check_license', return_value=True), \
+             patch.object(type(self.env['connect.settings']), 'get_param', side_effect=_gp):
+            Msg.with_user(webhook_user).receive(params)
+        new = Msg.search([('message_sid', '=', 'WAreply')])
+        self.assertEqual(new.parent_message, parent, 'reply must link the parent connect.message')
+        self.assertTrue(new.channel_message_id)
+        self.assertEqual(new.channel_message_id.parent_id, parent_mirror,
+                         "Discuss mirror must quote the parent's mirror (reply)")

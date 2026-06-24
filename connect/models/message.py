@@ -76,8 +76,12 @@ class ConnectMessage(models.Model):
     media_content_type = fields.Char()
     transcription_error = fields.Char()
     # ODU-37: link to the mirrored Discuss message/channel.
+    # mail_message_id is the copy posted to a record's *chatter* (log note);
+    # channel_message_id is the mirror posted into the *Discuss* channel.
     mail_message_id = fields.Many2one('mail.message', index='btree_not_null',
-                                      string='Discuss Message', ondelete='set null')
+                                      string='Chatter Message', ondelete='set null')
+    channel_message_id = fields.Many2one('mail.message', index='btree_not_null',
+                                         string='Discuss Message', ondelete='set null')
     channel_id = fields.Many2one('discuss.channel', index='btree_not_null',
                                  string='Discuss Channel', ondelete='set null')
     if release.version_info[0] >= 17.0:
@@ -360,54 +364,43 @@ class ConnectMessage(models.Model):
                             logger.warning('create_record_from_message failed for %s: %s', dest_model, e)
                     elif dest_model not in self.env:
                         logger.warning('Destination model %s not found', dest_model)
-                # Add message to chatter at the target record when available and valid
+                # Mirror the inbound onto chatters: the resolved target record
+                # (when valid) and — for a known partner — always the partner's
+                # own record (deduped). A brand-new unknown number gets no chatter;
+                # it lives only in the Discuss channel.
+                chatter_targets = []
                 if valid_target and target_msg and target_msg.res_model and target_msg.res_id:
-                    obj = self.env[target_msg.res_model].with_user(SUPERUSER_ID).browse(target_msg.res_id)
-                    # Double-check existence to be safe in concurrent delete scenarios
-                    if obj.exists() and hasattr(obj, 'message_post'):
-                        body = Markup(f"<div class='d-flex flex-row px-1'>"
-                                f"<span class='px-1'>{values.get('body')}</span></div>")
-                        if message.media_url:
-                            body = Markup(f"<div class='d-flex flex-row'>"
-                                          f"<span class='px-1'>{values.get('body')}</span>"
-                                          f"<br/>{message.media_widget}</div>")
-
-                        # Post as an internal log note (not a comment): keeps the
-                        # message in the contact's chatter history without emailing
-                        # followers — agents see it in the Discuss channel anyway.
-                        # A comment would trigger follower email notifications that
-                        # fail (red "delivery failure" envelope) when no SMTP is set.
-                        mt_note = self.env.ref('mail.mt_note').id
-                        kwargs = {
-                            'body': body,
-                            'subtype_id': mt_note,
-                            'message_type': message._mail_message_type(),
-                        }
-                        if partner:
-                            kwargs.update({'author_id': partner.id})
-                        chatter = obj.with_context(mail_create_nosubscribe=True).message_post(**kwargs)
-                        chatter.connect_message = message
-                        message.mail_message_id = chatter.id
-                        # Display-only WhatsApp marker so the inbound note shows the
-                        # WhatsApp logo (notification_model_patch icon), matching the
-                        # outbound chatter. is_read + 'ready' => icon only: no email,
-                        # no red "delivery failure" envelope.
-                        if message._provider() == 'whatsapp':
-                            self.env['mail.notification'].sudo().create([{
-                                'author_id': chatter.author_id.id,
-                                'mail_message_id': chatter.id,
-                                'res_partner_id': chatter.author_id.id,
-                                'notification_type': 'WhatsApp',
-                                'is_read': True,
-                                'notification_status': 'ready',
-                            }])
+                    target_rec = self.env[target_msg.res_model].with_user(SUPERUSER_ID).browse(target_msg.res_id)
+                    if target_rec.exists() and hasattr(target_rec, 'message_post'):
+                        chatter_targets.append(target_rec)
+                if partner and not any(
+                        r._name == 'res.partner' and r.id == partner.id for r in chatter_targets):
+                    chatter_targets.append(partner.with_user(SUPERUSER_ID))
+                primary_chatter = False
+                for obj in chatter_targets:
+                    chatter = self._post_inbound_chatter_note(obj, message, values.get('body'), partner)
+                    if not chatter:
+                        continue
+                    # Prefer the partner's own record as the canonical chatter copy.
+                    if obj._name == 'res.partner' and partner and obj.id == partner.id:
+                        primary_chatter = chatter
+                    elif not primary_chatter:
+                        primary_chatter = chatter
+                if primary_chatter:
+                    message.mail_message_id = primary_chatter.id
                 # Mirror inbound into Discuss: use partner channel when known,
                 # otherwise a phone-number-only channel so the agent can see it.
+                # When the inbound is a reply (WhatsApp OriginalRepliedMessageSid),
+                # quote the parent's Discuss mirror so the thread shows the reply.
                 try:
                     channel = self.env['discuss.channel']._get_connect_channel(
                         partner, number=from_number, provider=message._provider(),
                         create_if_not_found=True)
-                    channel._connect_post_inbound(message)
+                    parent_id = False
+                    if (parent_msg and parent_msg.channel_message_id
+                            and parent_msg.channel_id.id == channel.id):
+                        parent_id = parent_msg.channel_message_id.id
+                    channel._connect_post_inbound(message, parent_id=parent_id)
                 except Exception as e:
                     logger.warning('Connect Discuss mirror failed: %s', e)
             else:
@@ -424,6 +417,43 @@ class ConnectMessage(models.Model):
         except Exception as e:
             logger.error(f"Error handling incoming SMS: {e}")
         return str(MessagingResponse())  # Return empty TwiML response, i.e. no reply.
+
+    def _post_inbound_chatter_note(self, obj, message, body_text, partner):
+        """Post an inbound connect.message as a quiet log note on obj's chatter.
+
+        Returns the created mail.message (or False). Kept as a log note (mt_note)
+        so followers are not emailed — agents see it in the Discuss channel anyway;
+        a comment would yield a red delivery-failure envelope when no SMTP is set.
+        """
+        if not (obj and obj.exists() and hasattr(obj, 'message_post')):
+            return False
+        body = Markup("<div class='d-flex flex-row px-1'>"
+                      "<span class='px-1'>{}</span></div>").format(body_text or '')
+        if message.media_url:
+            body = Markup("<div class='d-flex flex-row'>"
+                          "<span class='px-1'>{}</span>"
+                          "<br/>{}</div>").format(body_text or '', message.media_widget)
+        kwargs = {
+            'body': body,
+            'subtype_id': self.env.ref('mail.mt_note').id,
+            'message_type': message._mail_message_type(),
+        }
+        if partner:
+            kwargs['author_id'] = partner.id
+        chatter = obj.with_context(mail_create_nosubscribe=True).message_post(**kwargs)
+        chatter.connect_message = message
+        # Display-only WhatsApp marker so the note shows the WhatsApp logo
+        # (is_read + 'ready' => icon only: no email, no delivery-failure envelope).
+        if message._provider() == 'whatsapp':
+            self.env['mail.notification'].sudo().create([{
+                'author_id': chatter.author_id.id,
+                'mail_message_id': chatter.id,
+                'res_partner_id': chatter.author_id.id,
+                'notification_type': 'WhatsApp',
+                'is_read': True,
+                'notification_status': 'ready',
+            }])
+        return chatter
 
     def send(self, recipient, body, res_id=None, res_model=None, outgoing_callerid=None, media_urls=None, skip_chatter=False):
         self.env['oduist.license'].check_license('connect', silent=False)
@@ -485,6 +515,18 @@ class ConnectMessage(models.Model):
                     'notification_status': 'ready',
                 }]
                 self.env['mail.notification'].sudo().create(mail_notification_values)
+        # Mirror an outbound sent from a record's chatter into the existing Discuss
+        # thread (only when one already exists). The Discuss-composer path passes
+        # skip_chatter=True and already posts into the channel itself.
+        if not skip_chatter:
+            try:
+                channel = self.env['discuss.channel']._get_connect_channel(
+                    partner, number=recipient, provider=message._provider(),
+                    create_if_not_found=False)
+                if channel:
+                    channel._connect_post_outbound(message)
+            except Exception as e:
+                logger.warning('Connect Discuss outbound mirror failed: %s', e)
         return message
 
     def client_send(self, recipient, sender, body, media_urls=None):
@@ -569,9 +611,9 @@ class ConnectMessage(models.Model):
             if vals:
                 message.write(vals)
             # ODU-37: push status onto the Discuss bubble if mirrored.
-            if message.mail_message_id and message.channel_id:
+            if message.channel_message_id and message.channel_id:
                 Store(bus_channel=message.channel_id).add(
-                    message.mail_message_id, {'connectStatus': message.status}).bus_send()
+                    message.channel_message_id, {'connectStatus': message.status}).bus_send()
         except Exception as e:
             logger.warning('Failed to update message status for %s: %s', sid, e)
         return True

@@ -157,8 +157,13 @@ class DiscussChannel(models.Model):
             ('partner', '=', False),
         ]).write({'partner': partner.id})
 
-    def _connect_post_inbound(self, connect_message):
-        """Mirror an incoming connect.message into this channel as a mail.message."""
+    def _connect_post_inbound(self, connect_message, parent_id=False):
+        """Mirror an incoming connect.message into this channel as a mail.message.
+
+        ``parent_id`` quotes a parent mail.message (Discuss reply) when the inbound
+        is a reply to an earlier message in this thread (see the customer-reply
+        screenshot in the feature request).
+        """
         self.ensure_one()
         partner = connect_message.partner
         body_txt = connect_message.body or ''
@@ -178,20 +183,52 @@ class DiscussChannel(models.Model):
                 'author_id': False,
                 'email_from': self.connect_number or connect_message.from_number,
             }
-        msg = self.sudo().with_context(connect_mirror=True).message_post(
+        post_kwargs = dict(
             body=body,
             message_type='connect_message',
             subtype_xmlid='mail.mt_comment',
             **author_vals,
         )
-        write_vals = {'channel_id': self.id}
-        if not connect_message.mail_message_id:
-            write_vals['mail_message_id'] = msg.id
-        connect_message.write(write_vals)
+        if parent_id:
+            post_kwargs['parent_id'] = parent_id
+        msg = self.sudo().with_context(connect_mirror=True).message_post(**post_kwargs)
+        connect_message.write({
+            'channel_id': self.id,
+            'channel_message_id': msg.id,
+        })
         msg.connect_message = connect_message.id
         if connect_message.message_type == 'whatsapp':
             self.connect_last_inbound_whatsapp_id = msg.id
         # Surface in agents' sidebars: re-pin for all members on new inbound.
+        self.channel_member_ids.filtered(lambda m: not m.is_pinned).write({'unpin_dt': False})
+        return msg
+
+    def _connect_post_outbound(self, connect_message):
+        """Mirror an outbound connect.message (sent from a record's chatter) into
+        this channel, keeping the Discuss thread in sync. Does not re-send — the
+        connect_mirror context bypasses the outbound send in ``message_post``.
+        """
+        self.ensure_one()
+        body_txt = connect_message.body or ''
+        if connect_message.media_url:
+            body = Markup("<div class='d-flex flex-column'>"
+                          "<span>{}</span>{}</div>").format(
+                              body_txt, connect_message.media_widget)
+        else:
+            body = Markup("<span>{}</span>").format(body_txt)
+        author = connect_message.sender_user.partner_id or self.env.user.partner_id
+        msg = self.sudo().with_context(connect_mirror=True).message_post(
+            body=body,
+            message_type='connect_message',
+            subtype_xmlid='mail.mt_comment',
+            author_id=author.id,
+        )
+        connect_message.write({
+            'channel_id': self.id,
+            'channel_message_id': msg.id,
+        })
+        msg.connect_message = connect_message.id
+        # Surface in agents' sidebars: re-pin for all members on new activity.
         self.channel_member_ids.filtered(lambda m: not m.is_pinned).write({'unpin_dt': False})
         return msg
 
@@ -264,7 +301,7 @@ class DiscussChannel(models.Model):
                 outgoing_callerid=callerid, media_urls=media_urls,
                 skip_chatter=True)
         if cmsg:
-            cmsg.sudo().write({'mail_message_id': message.id, 'channel_id': self.id})
+            cmsg.sudo().write({'channel_message_id': message.id, 'channel_id': self.id})
             message.sudo().connect_message = cmsg.id
         return cmsg
 

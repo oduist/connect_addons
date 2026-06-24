@@ -330,6 +330,18 @@ class ConnectWhatsappSender(models.Model):
             chatter_message = Markup(f"<div class='d-flex flex-row'>"
                                      f"<p class='px-1'>{body}</p></div>")
             self.chatter_post(res_model, res_id, self.env.user.partner_id.id, chatter_message)
+        # Mirror an outbound sent from a record's chatter into the existing Discuss
+        # thread (only when one already exists). The Discuss-composer path passes
+        # skip_chatter=True and already posts into the channel itself.
+        if not skip_chatter:
+            try:
+                channel = self.env['discuss.channel']._get_connect_channel(
+                    partner, number=recipient, provider='whatsapp',
+                    create_if_not_found=False)
+                if channel:
+                    channel._connect_post_outbound(msg)
+            except Exception as e:
+                logger.warning('Connect Discuss outbound mirror failed: %s', e)
         return msg
 
     def chatter_post(self, res_model, res_id, author, body):
@@ -395,9 +407,9 @@ class ConnectWhatsappSender(models.Model):
             if vals:
                 message.write(vals)
             # ODU-37: push status onto the Discuss bubble if mirrored.
-            if message.mail_message_id and message.channel_id:
+            if message.channel_message_id and message.channel_id:
                 Store(bus_channel=message.channel_id).add(
-                    message.mail_message_id, {'connectStatus': message.status}).bus_send()
+                    message.channel_message_id, {'connectStatus': message.status}).bus_send()
         except Exception as e:
             logger.warning('Failed to update message status for %s: %s', sid, e)
         return True
