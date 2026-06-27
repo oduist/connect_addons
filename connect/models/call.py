@@ -1428,6 +1428,9 @@ class Call(models.Model):
         api_url = self.env['connect.settings'].sudo().get_param("api_url")
         edge = self.env["connect.settings"].get_param("twilio_edge")
         status_url = urljoin(api_url, "twilio/webhook/callstatus#e={}".format(edge))
+        record_status_url = urljoin(
+            api_url, "twilio/webhook/recordingstatus#e={}".format(edge)
+        )
         if exten:
             callerId = user.connect_user.exten.number
             twiml = exten.render()
@@ -1455,11 +1458,15 @@ class Call(models.Model):
                     callerId = user.connect_user.outgoing_callerid.number
                 else:
                     callerId = default_number.number
-                twiml = self.env['connect.settings'].get_external_call_route(number, callerId, status_url)
+                dial_record = (
+                    'record-from-answer-dual'
+                    if self.env.user.connect_user.record_calls
+                    else 'do-not-record'
+                )
+                twiml = self.env['connect.settings'].get_external_call_route(
+                    number, callerId, status_url,
+                    record=dial_record, record_status_url=record_status_url)
         record = self.env.user.connect_user.record_calls
-        record_status_url = urljoin(
-            api_url, "twilio/webhook/recordingstatus#e={}".format(edge)
-        )
         debug(self, "Originate destination TwiML: {}".format(twiml))
         channel = client.calls.create(
             twiml=twiml,
