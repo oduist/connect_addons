@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
-    <t t-inherit="mail.Composer" t-inherit-mode="extension">
+    <t t-inherit="mail.Composer.attachFiles" t-inherit-mode="extension">
         <xpath expr="//FileUploader" position="after">
-            <button class="btn border-0 rounded-pill" t-on-click="_onClickAiCompletion" title="AI Completion" aria-label="AI Completion" type="button">
-                <i class="fa fa-microchip"/>
+            <button class="btn border-0 rounded-circle p-0" t-on-click="_onClickAiCompletion" title="AI Completion" aria-label="AI Completion" type="button">
+                <i class="fa fa-fw fa-lg fa-microchip"/>
             </button>
         </xpath>
     </t>
