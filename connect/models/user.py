@@ -15,7 +15,7 @@ if release.version_info[0] >= 19:
 from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 from twilio.twiml.voice_response import Client, Dial, VoiceResponse
-from .settings import format_connect_response, debug, TWILIO_EDGES
+from .settings import format_connect_response, debug, TWILIO_EDGES, DEFAULT_SIP_DOMAIN_SUFFIX
 from .twiml import pretty_xml
 
 logger = logging.getLogger(__name__)
@@ -110,13 +110,16 @@ class User(models.Model):
         settings = self.env['connect.settings']
         default_edge = settings.get_param('twilio_edge') or 'roaming'
         for rec in self:
+            if not rec.username or not rec.domain or not rec.domain.subdomain:
+                rec.uri = ''
+                rec.connect_uri = ''
+                continue
             edge = rec.twilio_edge or default_edge
-            # Render URI is always global
             rec.uri = '{}@{}'.format(rec.username, rec.domain.domain_name)
-            if edge == 'roaming':
-                rec.connect_uri = '{}@{}'.format(rec.username, rec.domain.domain_name)
+            if edge == 'roaming' or settings.normalized_sip_domain_suffix() != DEFAULT_SIP_DOMAIN_SUFFIX:
+                rec.connect_uri = rec.uri
             else:
-                rec.connect_uri = '{}@{}.sip.{}.twilio.com'.format(
+                rec.connect_uri = settings.format_sip_connect_uri(
                     rec.username, rec.domain.subdomain, edge)
 
     def _create_sip_account(self, username, password, client=None):
@@ -543,6 +546,8 @@ class User(models.Model):
                 return {'token': False}
             if not user.client_enabled:
                 logger.info("Client for user %s not enabled!", self.env.user.id)
+                return {'token': False}
+            if not self.env['connect.settings'].is_webrtc_enabled():
                 return {'token': False}
             account_sid = self.env['connect.settings'].sudo().get_param('account_sid')
             api_key = self.env['connect.settings'].sudo().get_param('twilio_api_key')
