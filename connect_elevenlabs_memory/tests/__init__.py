@@ -1,3 +1,4 @@
 # -*- coding: utf-8 -*-
 from . import test_hindsight_client
 from . import test_settings
+from . import test_bank
