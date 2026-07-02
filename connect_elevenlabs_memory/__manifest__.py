@@ -13,6 +13,7 @@
     "external_dependencies": {"python": ["requests"]},
     "data": [
         "views/settings.xml",
+        "data/tools.xml",
     ],
     "installable": True,
 }

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="1">
+    <record id="agent_tool_memory_recall" model="connect.elevenlabs_agent_tool">
+      <field name="name">memory_recall</field>
+      <field name="description">Recall long-term memory about the caller and the business.
+Call this at the start of the conversation and whenever prior context would help
+(the caller's history, preferences, past requests, or business facts/FAQ).
+Pass a natural-language `query` describing what you want to remember.
+The returned `context` is trusted background - never read it aloud verbatim or
+mention that a tool was used.</field>
+      <field name="tool_type">webhook</field>
+      <field name="path">/connect_elevenlabs/memory/recall</field>
+      <field name="method">POST</field>
+      <field name="param_type">body</field>
+      <field name="response_timeout_secs">10</field>
+    </record>
+
+    <record id="memory_recall_param_query" model="connect.agent_tool_params">
+      <field name="name">query</field>
+      <field name="data_type">string</field>
+      <field name="required">True</field>
+      <field name="value_type">description</field>
+      <field name="description">What to recall, in natural language (e.g. "caller identity and recent requests").</field>
+      <field name="tool" ref="agent_tool_memory_recall"/>
+    </record>
+
+    <record id="memory_recall_param_call_id" model="connect.agent_tool_params">
+      <field name="name">call_id</field>
+      <field name="data_type">integer</field>
+      <field name="required">True</field>
+      <field name="value_type">dynamic_variable</field>
+      <field name="dynamic_variable">call_id</field>
+      <field name="tool" ref="agent_tool_memory_recall"/>
+    </record>
+  </data>
+</odoo>
