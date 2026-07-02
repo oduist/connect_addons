@@ -771,7 +771,9 @@ class TestRetain(TransactionCase):
                    "ConnectRecording._memory_module_present", return_value=False), \
              patch("odoo.addons.connect_elevenlabs_memory.models.recording."
                    "hindsight_client.retain") as retain:
-            self.env["connect.recording"].create({
+            self.env["connect.recording"].with_context(skip_transcription=True).create({
+                "sid": "rec-test-1",
+                "call_sid": "chan-test-1",
                 "partner": company.id,
                 "elevenlabs_summary": "Booked a demo.",
                 "elevenlabs_transcript": "agent: hi\nuser: book a demo",
@@ -784,7 +786,9 @@ class TestRetain(TransactionCase):
         company = self.env["res.partner"].create({"name": "Acme2", "is_company": True})
         with patch("odoo.addons.connect_elevenlabs_memory.models.recording."
                    "hindsight_client.retain") as retain:
-            self.env["connect.recording"].create({
+            self.env["connect.recording"].with_context(skip_transcription=True).create({
+                "sid": "rec-test-2",
+                "call_sid": "chan-test-2",
                 "partner": company.id,
                 "elevenlabs_summary": "x",
             })

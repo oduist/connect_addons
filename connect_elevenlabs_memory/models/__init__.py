@@ -2,3 +2,4 @@
 from . import hindsight_client
 from . import settings
 from . import call
+from . import recording
