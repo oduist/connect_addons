@@ -11,6 +11,8 @@
     "description": "",
     "depends": ["connect_elevenlabs"],
     "external_dependencies": {"python": ["requests"]},
-    "data": [],
+    "data": [
+        "views/settings.xml",
+    ],
     "installable": True,
 }

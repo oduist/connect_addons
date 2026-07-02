@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="connect_elevenlabs_memory_settings_form" model="ir.ui.view">
+    <field name="name">connect_elevenlabs_memory_settings_form</field>
+    <field name="model">connect.settings</field>
+    <field name="inherit_id" ref="connect_elevenlabs.connect_elevenlabs_settings_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//notebook" position="inside">
+        <page name="memory" string="Memory">
+          <group>
+            <group>
+              <field name="hindsight_memory_enabled"/>
+              <field name="hindsight_base_url"/>
+              <field name="hindsight_tenant"/>
+              <field name="display_hindsight_api_key" password="1" string="Hindsight API Key"/>
+              <field name="hindsight_shared_bank"/>
+            </group>
+          </group>
+        </page>
+      </xpath>
+    </field>
+  </record>
+</odoo>
