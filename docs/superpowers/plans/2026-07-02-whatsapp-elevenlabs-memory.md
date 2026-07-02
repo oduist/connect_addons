@@ -523,8 +523,6 @@ class TestRecallController(HttpCase):
         company = self.env["res.partner"].create({"name": "Acme", "is_company": True})
         self.call = self.env["connect.call"].create(
             {"partner": company.id, "caller": "+15551230000"})
-        self.env.cr.commit()
-        self.addCleanup(self.call.unlink)
 
     def _post(self, token):
         return self.url_open(
@@ -549,7 +547,7 @@ class TestRecallController(HttpCase):
         self.assertIn("We open at 9.", body["context"])
 ```
 
-Note: `HttpCase` + `url_open` needs committed data; `self.env.cr.commit()` is used deliberately here (test tears the records down in `addCleanup`).
+Note: do NOT call `self.env.cr.commit()` in the test — Odoo 19 forbids commit/rollback inside tests. `HttpCase.url_open` runs against the same test transaction (shared `TestCursor`), so data created in `setUp` is already visible to the request.
 
 - [ ] **Step 2: Run test to verify it fails**
 
