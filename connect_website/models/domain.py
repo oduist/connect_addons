@@ -15,8 +15,8 @@ class Domain(models.Model):
 
     @api.model
     def route_call(self, request, params={}):
-        # Check access only for Twilio Service agent.
-        if not self.env.user.has_group('connect.group_connect_webhook'):
+        # Only the Twilio webhook controller (sudo) may call this method.
+        if not self.env.su:
             logger.error('Access to Twilio webhook is denied!')
             return '<Response><Say>You must select a default number for caller ID!</Say></Response>'
         if not self.env["oduist.license"].check_license('connect_website'):

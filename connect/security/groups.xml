@@ -18,12 +18,6 @@
         <field name="user_ids" eval="[(4, ref('base.user_admin'))]"/>
     </record>
 
-    <record model="res.groups" id="group_connect_webhook">
-        <field name="name">Webhook</field>
-        <field name="privilege_id" ref="module_connect_privilege"/>
-        <field name="user_ids" eval="[(4, ref('connect.user_connect_webhook'))]"/>
-    </record>
-
     <record model="res.groups" id="group_connect_user">
         <field name="name">User</field>
         <field name="privilege_id" ref="module_connect_privilege"/>

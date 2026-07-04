@@ -69,8 +69,7 @@ class ConnectElevenlabsController(http.Controller):
         if not self.check_tool_token():
             raise Unauthorized()
         data = json.loads(http.request.httprequest.get_data(as_text=True))
-        agent = http.request.env['connect.elevenlabs_agent'].with_user(
-            http.request.env.ref("connect.user_connect_webhook")).sudo()
+        agent = http.request.env['connect.elevenlabs_agent'].sudo()
         res = agent.transfer(**data)
         return res
 
@@ -80,7 +79,6 @@ class ConnectElevenlabsController(http.Controller):
         logger.info('Incoming request: /connect_elevenlabs/post_call')
         if not self.check_post_call_webhook():
             raise Unauthorized()
-        user_connect_webhook = http.request.env.ref("connect.user_connect_webhook")
         data = json.loads(http.request.httprequest.get_data(as_text=True)).get('data')
 
         dynamic_variables = data.get('conversation_initiation_client_data').get('dynamic_variables')
@@ -90,7 +88,7 @@ class ConnectElevenlabsController(http.Controller):
         transcript_list = [f"{transcript['role']}: {transcript['message']}" for transcript in transcript_data]
         transcript = '\n'.join(transcript_list)
 
-        call = http.request.env['connect.call'].with_user(user_connect_webhook).browse(call_id)
+        call = http.request.env['connect.call'].sudo().browse(call_id)
         call.write({
             'elevenlabs_summary': transcript_summary,
             'elevenlabs_conversation_id': data.get('conversation_id', '')
@@ -105,7 +103,7 @@ class ConnectElevenlabsController(http.Controller):
         if response.status_code == 200:
             audio_data = base64.b64encode(response.content)
             recording = http.request.env['connect.recording'].with_context(skip_transcription=True)
-            recording.with_user(user_connect_webhook).sudo().create({
+            recording.sudo().create({
                 'call': call_id,
                 'elevenlabs_transcript': transcript,
                 'elevenlabs_summary': transcript_summary,

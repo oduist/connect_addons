@@ -2,7 +2,7 @@
 
 {
     'name': 'Connect ElevenLabs',
-    'version': '1.0.6',
+    'version': '1.0.7',
     'author': 'Oduist',
     'price': 0,
     'currency': 'EUR',
@@ -24,7 +24,6 @@
         # Security
         'security/admin.xml',
         'security/user.xml',
-        'security/webhook.xml',
         # Views
         'views/call.xml',
         'views/settings.xml',

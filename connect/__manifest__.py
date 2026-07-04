@@ -2,7 +2,7 @@
 
 {
     "name": "Connect",
-    "version": "2.0.2",
+    "version": "2.0.3",
     "author": "Oduist",
     "maintainer": "Oduist",
     "live_test_url": "https://connect-demo.oduist.com/",
@@ -19,7 +19,6 @@
     },
     "sequences": True,
     "data": [
-        "data/res_users.xml",
         "data/license.xml",
         "data/ir_cron.xml",
         "data/twiml.xml",
@@ -28,7 +27,6 @@
         # Security
         "security/groups.xml",
         "security/admin.xml",
-        "security/webhook.xml",
         "security/user.xml",
         "security/license.xml",
         "security/user_record_rules.xml",
