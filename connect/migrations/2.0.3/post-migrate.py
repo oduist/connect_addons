@@ -14,6 +14,7 @@ def migrate(cr, version):
     user = env.ref('connect.user_connect_webhook', raise_if_not_found=False)
     if not user:
         return
+    partner = user.partner_id
     try:
         with env.cr.savepoint():
             user.unlink()
@@ -21,3 +22,5 @@ def migrate(cr, version):
     except Exception:
         user.active = False
         logger.warning('Could not delete the Connect webhook user, archived it instead.', exc_info=True)
+    # Keep the partner (it may author old chatter messages) but hide it.
+    partner.active = False
