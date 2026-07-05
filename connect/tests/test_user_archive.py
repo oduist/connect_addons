@@ -13,11 +13,12 @@ class TestUserArchive(TransactionCase):
     def setUp(self):
         super().setUp()
         self.env["connect.settings"].set_param("twilio_auto_sync", True)
-        self.domain = self.env["connect.domain"].create({
-            "subdomain": "testarchive",
-            "friendly_name": "Test Archive",
-            "cred_list_sid": "CLtest",
-        })
+        self.domain = self.env["connect.domain"].with_context(
+            no_twilio_create=True).create({
+                "subdomain": "testarchive",
+                "friendly_name": "Test Archive",
+                "cred_list_sid": "CLtest",
+            })
         self.res_user = self.env["res.users"].create({
             "name": "Arch Test",
             "login": "archtest@example.com",
