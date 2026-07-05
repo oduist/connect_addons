@@ -54,6 +54,7 @@ class User(models.Model):
     _description = 'Connect User'
     _order = 'username'
 
+    active = fields.Boolean(default=True)
     sid = fields.Char('SID', readonly=True)
     callflow = fields.One2many('connect.user_callflow', 'user')
     exten = fields.Many2one('connect.exten', ondelete='set null', readonly=True)
@@ -310,6 +311,19 @@ class User(models.Model):
             return res
         if 'username' in vals:
             raise ValidationError('Username cannot be changed!')
+        # Telephony sync on archive/unarchive.
+        archiving = 'active' in vals and not vals['active']
+        unarchiving = 'active' in vals and vals['active']
+        sync_active = (self.env['connect.settings'].get_param('twilio_auto_sync')
+                       and not self.env.context.get('no_twilio_create'))
+        if archiving:
+            # Remove the SIP account so an archived user cannot use telephony.
+            if sync_active:
+                for rec in self:
+                    if rec.sid:
+                        rec.delete_sip_account()
+            # Drop the stale SID so the account is recreated cleanly on restore.
+            vals['sid'] = False
         for rec in self:
             if vals.get('password'):
                 # Check if twilio_auto_sync is disabled
@@ -324,7 +338,20 @@ class User(models.Model):
                     # Don't keep SIP password in Odoo.
                     vals['password'] = '*' * len(vals['password'])
         res = super().write(vals)
-        self.manage_group()
+        if unarchiving and sync_active:
+            # Recreate the SIP account with a fresh password (the original one
+            # is not stored in Odoo and cannot be recovered from Twilio).
+            for rec in self:
+                if rec.sip_enabled and not rec.sid:
+                    password = self.generate_twilio_password()
+                    rec.with_context(skip_sync=True, no_clear_cache=True).write({
+                        'sid': rec._create_sip_account(rec.username, password),
+                        'password': '*' * len(password),
+                    })
+        if archiving:
+            self.manage_group('remove')
+        else:
+            self.manage_group()
         if res and not self.env.context.get('no_clear_cache'):
             if release.version_info[0] >= 17:
                 self.env.registry.clear_cache()
