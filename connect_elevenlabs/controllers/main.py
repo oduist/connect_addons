@@ -70,4 +70,29 @@ class ConnectElevenlabsController(http.Controller):
                        "dynamic_variables": {}}
         return json.dumps(payload)
 
+    @http.route('/connect_elevenlabs/post_call', methods=['POST'],
+                type='http', auth='public', csrf=False)
+    def post_call_webhook(self):
+        """EL posts conversation metadata after a call ends.
+
+        Creates a connect.call record for calls that arrived via native EL SIP
+        attach (where no Twilio webhook fired and Odoo has no call record yet).
+        Already-logged calls are deduped by conversation_id so re-delivery is
+        safe. Returns an empty 200 on any internal error so EL does not retry.
+        """
+        logger.info('Incoming request: /connect_elevenlabs/post_call')
+        if not self.check_tool_token():
+            raise Unauthorized()
+        try:
+            body = json.loads(http.request.httprequest.get_data(as_text=True) or '{}')
+            # EL wraps the payload under a 'data' key.
+            data = body.get('data', body)
+        except Exception as e:
+            logger.warning('Post call webhook: bad JSON body: %s', e)
+            return ''
+        try:
+            http.request.env['connect.call'].sudo().create_from_elevenlabs_inbound(data)
+        except Exception as e:
+            logger.exception('Post call webhook: create_from_elevenlabs_inbound failed: %s', e)
+        return ''
 
