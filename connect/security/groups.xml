@@ -29,4 +29,17 @@
         <field name="privilege_id" ref="module_connect_privilege"/>
     </record>
 
+    <!-- Separate privilege so "Do not record" is an independent selection,
+         not mutually exclusive with the Admin/User/Webhook access level. -->
+    <record id="privilege_connect_recording" model="res.groups.privilege">
+        <field name="name">Recording</field>
+        <field name="sequence">10</field>
+        <field name="category_id" ref="connect.module_connect_category"/>
+    </record>
+
+    <record model="res.groups" id="group_connect_do_not_record">
+        <field name="name">Do not record</field>
+        <field name="privilege_id" ref="privilege_connect_recording"/>
+    </record>
+
 </odoo>

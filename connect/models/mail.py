@@ -27,3 +27,29 @@ class MailNotification(models.Model):
     notification_type = fields.Selection(selection_add=[
         ('WhatsApp', 'WhatsApp')
     ], ondelete={'WhatsApp': 'cascade'})
+
+
+class MailActivity(models.Model):
+    _inherit = 'mail.activity'
+
+    def _connect_calls(self):
+        call_ids = {a.res_id for a in self if a.res_model == 'connect.call' and a.res_id}
+        return self.env['connect.call'].browse(call_ids)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        activities = super().create(vals_list)
+        activities._connect_calls()._recompute_has_activity()
+        return activities
+
+    def write(self, vals):
+        calls = self._connect_calls()
+        res = super().write(vals)
+        (calls | self._connect_calls())._recompute_has_activity()
+        return res
+
+    def unlink(self):
+        calls = self._connect_calls()
+        res = super().unlink()
+        calls._recompute_has_activity()
+        return res
