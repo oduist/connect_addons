@@ -10,9 +10,6 @@
           <group>
             <group>
               <field name="hindsight_memory_enabled"/>
-              <field name="hindsight_base_url"/>
-              <field name="hindsight_tenant"/>
-              <field name="display_hindsight_api_key" password="1" string="Hindsight API Key"/>
               <field name="hindsight_shared_bank"/>
             </group>
           </group>

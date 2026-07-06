@@ -2,11 +2,10 @@
 import json
 import logging
 
+import requests
 from werkzeug.exceptions import Unauthorized
 
 from odoo import http
-
-from ..models import hindsight_client
 
 logger = logging.getLogger(__name__)
 
@@ -28,27 +27,37 @@ class ConnectElevenlabsMemoryController(http.Controller):
         query = data.get("query") or ""
         call_id = data.get("call_id")
         env = http.request.env
-        cfg = env["connect.settings"].sudo().get_hindsight_config()
-        if not cfg["enabled"] or not cfg["api_key"] or not query:
+        cfg = env["connect.settings"].sudo().get_recall_config()
+        if not cfg["enabled"] or not cfg["service_url"] or not cfg["token"] or not query:
             return json.dumps({"context": ""})
 
+        # Odoo owns caller -> partner, so it resolves the banks; the memory
+        # service does the Hindsight reflect (it holds the engine key).
         banks = []
         if call_id:
-            call = env["connect.call"].sudo().browse(int(call_id)).exists()
+            # call_id is a dynamic variable; if it didn't resolve to an int,
+            # fall back to the shared bank only instead of erroring the call.
+            try:
+                call = env["connect.call"].sudo().browse(int(call_id)).exists()
+            except (TypeError, ValueError):
+                call = env["connect.call"].browse()
             if call:
                 personal = call._hindsight_personal_bank()
                 if personal:
                     banks.append(personal)
         if cfg["shared_bank"]:
             banks.append(cfg["shared_bank"])
+        if not banks:
+            return json.dumps({"context": ""})
 
-        parts = []
-        for bank in banks:
-            try:
-                text = hindsight_client.reflect(
-                    cfg["base"], cfg["tenant"], cfg["api_key"], bank, query, timeout=8)
-                if text:
-                    parts.append(text)
-            except Exception as e:
-                logger.warning("Hindsight recall failed for bank %s: %s", bank, e)
-        return json.dumps({"context": "\n\n".join(parts)})
+        context = ""
+        try:
+            resp = requests.post(
+                cfg["service_url"].rstrip("/") + "/recall",
+                json={"token": cfg["token"], "banks": banks, "query": query},
+                timeout=9)
+            resp.raise_for_status()
+            context = (resp.json() or {}).get("context") or ""
+        except Exception as e:
+            logger.warning("Memory recall failed: %s", e)
+        return json.dumps({"context": context})

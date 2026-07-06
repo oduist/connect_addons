@@ -5,22 +5,23 @@ from odoo import models, fields
 class ConnectSettings(models.Model):
     _inherit = "connect.settings"
 
-    hindsight_memory_enabled = fields.Boolean(string="Hindsight Memory Enabled")
-    hindsight_base_url = fields.Char(
-        string="Hindsight Base URL", default="https://api.hindsight.vectorize.io")
-    hindsight_tenant = fields.Char(string="Hindsight Tenant", default="default")
-    hindsight_api_key = fields.Char(
-        string="Hindsight API Key", groups="base.group_erp_manager")
-    display_hindsight_api_key = fields.Char()
+    # ElevenLabs voice-memory recall config only. The Hindsight connection
+    # (base URL, tenant, API key) lives in the memory service, never in Odoo:
+    # recall reaches that service via the memory module's `memory.service_url`
+    # and `memory.token` (see get_recall_config).
+    hindsight_memory_enabled = fields.Boolean(string="ElevenLabs Voice Memory")
     hindsight_shared_bank = fields.Char(
         string="Shared Knowledge Bank", default="business-knowledge")
 
-    def get_hindsight_config(self):
+    def get_recall_config(self):
+        """Config for the live recall tool: ElevenLabs-specific bits from
+        connect.settings + the memory-service connection from the memory module
+        (memory.service_url / memory.token)."""
         get = self.sudo().get_param
+        icp = self.env["ir.config_parameter"].sudo()
         return {
             "enabled": bool(get("hindsight_memory_enabled")),
-            "base": get("hindsight_base_url") or "https://api.hindsight.vectorize.io",
-            "tenant": get("hindsight_tenant") or "default",
-            "api_key": get("hindsight_api_key") or "",
+            "service_url": icp.get_param("memory.service_url") or "",
+            "token": icp.get_param("memory.token") or "",
             "shared_bank": get("hindsight_shared_bank") or "business-knowledge",
         }

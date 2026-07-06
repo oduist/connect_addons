@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from odoo.tests import HttpCase, tagged
 
 
@@ -8,9 +8,11 @@ from odoo.tests import HttpCase, tagged
 class TestRecallController(HttpCase):
     def setUp(self):
         super().setUp()
+        icp = self.env["ir.config_parameter"].sudo()
+        icp.set_param("memory.service_url", "http://memory-svc:8790")
+        icp.set_param("memory.token", "svc-tok")
         s = self.env["connect.settings"]
         s.set_param("elevenlabs_agent_token", "tok123")
-        s.set_param("hindsight_api_key", "hsk_x")
         s.set_param("hindsight_memory_enabled", True)
         company = self.env["res.partner"].create({"name": "Acme", "is_company": True})
         self.call = self.env["connect.call"].create(
@@ -27,13 +29,22 @@ class TestRecallController(HttpCase):
         resp = self._post("wrong")
         self.assertEqual(resp.status_code, 401)
 
-    def test_returns_merged_context(self):
+    def test_recall_proxies_to_memory_service(self):
+        fake = MagicMock()
+        fake.raise_for_status.return_value = None
+        fake.json.return_value = {"context": "Bob prefers mornings."}
         with patch(
-            "odoo.addons.connect_elevenlabs_memory.controllers.main.hindsight_client.reflect"
-        ) as m:
-            m.side_effect = ["Bob prefers mornings.", "We open at 9."]
+            "odoo.addons.connect_elevenlabs_memory.controllers.main.requests.post",
+            return_value=fake) as post:
             resp = self._post("tok123")
         self.assertEqual(resp.status_code, 200)
-        body = json.loads(resp.content)
-        self.assertIn("Bob prefers mornings.", body["context"])
-        self.assertIn("We open at 9.", body["context"])
+        self.assertEqual(json.loads(resp.content)["context"], "Bob prefers mornings.")
+        # It calls the memory service /recall (never Hindsight directly) with the
+        # service token and the banks Odoo resolved.
+        self.assertTrue(post.called)
+        self.assertTrue(post.call_args.args[0].endswith("/recall"))
+        sent = post.call_args.kwargs["json"]
+        self.assertEqual(sent["token"], "svc-tok")
+        bank = "partner-%s" % self.call.partner.commercial_partner_id.id
+        self.assertIn(bank, sent["banks"])
+        self.assertIn("business-knowledge", sent["banks"])
