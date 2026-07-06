@@ -7,6 +7,7 @@ from . import call
 from . import callflow
 from . import exten
 from . import file
+from . import number
 from . import settings
 from . import user
 from . import voice
