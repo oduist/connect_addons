@@ -8,6 +8,7 @@ Modification is prohibited under Oduist Proprietary License.
 See LICENSE and COPYRIGHT files for full terms.
 """
 
+from . import s3_utils
 from . import call
 from . import callflow
 from . import ir_module_module
