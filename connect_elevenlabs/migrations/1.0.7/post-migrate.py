@@ -1,10 +1,17 @@
 """Migrate EL routing from connect.sip_trunk to connect.elevenlabs_agent.
 
 Before 1.0.7 the chain was: exten/number -> connect.sip_trunk -> connect.elevenlabs_agent
-After 1.0.7 the agent is the destination directly: exten/number -> connect.elevenlabs_agent
+After 1.0.7:
+  * extensions point at the agent directly (dst = connect.elevenlabs_agent);
+  * numbers no longer have an 'elevenlabs_agent' destination — inbound DIDs
+    reach an agent via a connect.exten(number -> agent) resolved by
+    domain.route_call, so we repoint numbers by creating that extension and
+    clearing their old trunk destination.
 SIP routing data (virtual EL phone-number UID, allowed IPs) moves from trunk to agent.
 """
 import logging
+
+from odoo import SUPERUSER_ID, api
 
 logger = logging.getLogger(__name__)
 
@@ -57,19 +64,54 @@ def migrate(cr, version):
     )
     logger.info("Repointed %d exten(s) from sip_trunk to elevenlabs_agent.", cr.rowcount)
 
-    # 3. Repoint numbers: destination=sip_trunk(linked) -> elevenlabs_agent.
+    # 3. Repoint numbers that routed to an agent-via-trunk onto the agent using
+    #    the new mechanism: a connect.exten(number -> agent) resolved by
+    #    domain.route_call. The old destination='elevenlabs_agent' value and the
+    #    connect.number.elevenlabs_agent field were removed in this release, so
+    #    they must NOT be written. Clearing the trunk destination also restores
+    #    the number's voice webhook (native trunk attach bypasses it); the
+    #    Twilio-side detach may still need a manual number Sync.
     cr.execute(
         """
-        UPDATE connect_number n
-           SET destination = 'elevenlabs_agent',
-               elevenlabs_agent = t.elevenlabs_agent
-          FROM connect_sip_trunk t
+        SELECT n.id, n.phone_number, t.elevenlabs_agent
+          FROM connect_number n
+          JOIN connect_sip_trunk t ON n.sip_trunk = t.id
          WHERE n.destination = 'sip_trunk'
-           AND n.sip_trunk = t.id
            AND t.elevenlabs_agent IS NOT NULL
         """
     )
-    logger.info("Repointed %d number(s) from sip_trunk to elevenlabs_agent.", cr.rowcount)
+    rows = cr.fetchall()
+    if rows:
+        env = api.Environment(cr, SUPERUSER_ID, {})
+        Exten = env["connect.exten"].with_context(
+            skip_elevenlabs=True, skip_twilio_sync=True)
+        for _number_id, phone_number, agent_id in rows:
+            if not phone_number:
+                continue
+            try:
+                existing = Exten.search([("number", "=", phone_number)], limit=1)
+                if existing:
+                    if not existing.dst:
+                        existing.write({
+                            "model": "connect.elevenlabs_agent",
+                            "res_id": agent_id,
+                        })
+                else:
+                    Exten.create({
+                        "number": phone_number,
+                        "model": "connect.elevenlabs_agent",
+                        "res_id": agent_id,
+                    })
+            except Exception as e:
+                logger.warning(
+                    "Could not route number %s to agent %s via extension: %s",
+                    phone_number, agent_id, e)
+        cr.execute(
+            "UPDATE connect_number SET destination = NULL, sip_trunk = NULL "
+            "WHERE id IN %s",
+            (tuple(r[0] for r in rows),),
+        )
+        logger.info("Repointed %d number(s) to agent via extension.", len(rows))
 
     # 4. Drop now-orphan EL columns on connect_sip_trunk so they cannot drift.
     for col in ("elevenlabs_agent", "el_virtual_number_uid", "el_inbound_allowed_ips"):
