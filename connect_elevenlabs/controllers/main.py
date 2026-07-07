@@ -73,28 +73,26 @@ class ConnectElevenlabsController(http.Controller):
     @http.route('/connect_elevenlabs/post_call', methods=['POST'],
                 type='http', auth='public', csrf=False)
     def post_call_webhook(self):
-        """EL posts the conversation transcript/analysis after a call ends.
+        """EL posts conversation metadata after a call ends.
 
-        Ingests it into a connect.call + connect.recording so the transcript
-        surfaces on the call and downstream hooks (Oduist Memory retain) fire.
-        Always 200s so EL does not retry indefinitely on our internal errors.
+        Creates a connect.call record for calls that arrived via native EL SIP
+        attach (where no Twilio webhook fired and Odoo has no call record yet).
+        Already-logged calls are deduped by conversation_id so re-delivery is
+        safe. Returns an empty 200 on any internal error so EL does not retry.
         """
         logger.info('Incoming request: /connect_elevenlabs/post_call')
         if not self.check_tool_token():
             raise Unauthorized()
         try:
             body = json.loads(http.request.httprequest.get_data(as_text=True) or '{}')
+            # EL wraps the payload under a 'data' key.
+            data = body.get('data', body)
         except Exception as e:
-            logger.warning('Post call: bad JSON body: %s', e)
+            logger.warning('Post call webhook: bad JSON body: %s', e)
             return ''
-        # EL wraps the payload as {"type": "...", "data": {...}}; accept either.
-        data = body.get('data') if isinstance(body.get('data'), dict) else body
         try:
-            http.request.env['connect.call'].with_user(
-                http.request.env.ref('connect.user_connect_webhook')
-            ).create_from_elevenlabs_inbound(data)
+            http.request.env['connect.call'].sudo().create_from_elevenlabs_inbound(data)
         except Exception as e:
-            logger.exception('Post call ingestion failed: %s', e)
+            logger.exception('Post call webhook: create_from_elevenlabs_inbound failed: %s', e)
         return ''
-
 

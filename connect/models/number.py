@@ -37,17 +37,12 @@ class Number(models.Model):
     message_url = fields.Char(compute='_get_twilio_urls', compute_sudo=True)
     message_fallback_url = fields.Char(compute='_get_twilio_urls', compute_sudo=True)
     twiml = fields.Many2one('connect.twiml', string='TwiML', ondelete='set null')
-    # NOTE: no `ondelete=` here. On a Selection, `ondelete` must be a dict
-    # keyed by the values contributed via `selection_add` (submodules), not a
-    # bare string. A string crashes _process_ondelete ('str' has no .get) when
-    # a submodule value is later removed — e.g. dropping 'elevenlabs_agent'.
-    # Removed values are handled explicitly by the connect_elevenlabs migration.
     destination = fields.Selection(selection=[
         ('user', 'User'),
         ('callflow', 'CallFlow'),
         ('twiml', 'TwiML'),
         ('sip_trunk', 'SIP Trunk'),
-    ])
+    ], ondelete='set null')
     callflow = fields.Many2one('connect.callflow', ondelete='set null')
     user = fields.Many2one('connect.user', ondelete='set null')
     sip_trunk = fields.Many2one(

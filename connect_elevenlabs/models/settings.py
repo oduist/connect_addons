@@ -54,7 +54,10 @@ class Elevenlabsettings(models.Model):
 
     def get_elevenlabs_client(self):
         # Take this using super access because nobody must be able to access it.
-        key = self.sudo().get_param('elevenlabs_api_key')
+        # Strip stray whitespace: a leading/trailing space in the pasted key
+        # makes httpx reject the xi-api-key header (LocalProtocolError:
+        # "Illegal header value").
+        key = (self.sudo().get_param('elevenlabs_api_key') or '').strip()
         if not key:
             raise ValidationError('Elevenlabs API key not set!')
         return ElevenLabs(api_key=key)

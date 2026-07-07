@@ -1,23 +1,10 @@
-"""Migrate legacy ElevenLabs number->agent routing onto the new model.
+"""Migrate EL routing from connect.sip_trunk to connect.elevenlabs_agent.
 
-Two legacy shapes reached an agent from a phone number; both are removed in
-this release, where inbound DIDs reach an agent via a connect.exten(number ->
-agent) resolved by domain.route_call:
-
-  * ORIGINAL: connect.number.destination = 'elevenlabs_agent' with a
-    connect.number.elevenlabs_agent FK.
-  * INTERMEDIATE: connect.number.destination = 'sip_trunk' -> connect.sip_trunk
-    -> connect.sip_trunk.elevenlabs_agent (plus SIP routing data on the trunk).
-
-For each affected number we create the routing extension and clear the now
-invalid destination (which would otherwise leave the number unroutable, or, in
-the trunk case, natively attached to Twilio and bypassing the voice webhook).
-The Twilio-side trunk detach may still need a manual number Sync. The orphan
-EL columns are dropped afterwards so they cannot drift.
+Before 1.0.7 the chain was: exten/number -> connect.sip_trunk -> connect.elevenlabs_agent
+After 1.0.7 the agent is the destination directly: exten/number -> connect.elevenlabs_agent
+SIP routing data (virtual EL phone-number UID, allowed IPs) moves from trunk to agent.
 """
 import logging
-
-from odoo import SUPERUSER_ID, api
 
 logger = logging.getLogger(__name__)
 
@@ -31,64 +18,9 @@ def _column_exists(cr, table, column):
     return cr.fetchone() is not None
 
 
-def _route_number_to_agent(Exten, phone_number, agent_id):
-    """Ensure a connect.exten(number -> agent) exists for this DID."""
-    if not phone_number or not agent_id:
-        return
-    try:
-        existing = Exten.search([("number", "=", phone_number)], limit=1)
-        if existing:
-            if not existing.dst:
-                existing.write({
-                    "model": "connect.elevenlabs_agent",
-                    "res_id": agent_id,
-                })
-        else:
-            Exten.create({
-                "number": phone_number,
-                "model": "connect.elevenlabs_agent",
-                "res_id": agent_id,
-            })
-    except Exception as e:
-        logger.warning(
-            "Could not route number %s to agent %s via extension: %s",
-            phone_number, agent_id, e)
-
-
-def _migrate_original_number_field(cr):
-    """ORIGINAL model: connect.number.destination='elevenlabs_agent' + FK."""
-    if not _column_exists(cr, "connect_number", "elevenlabs_agent"):
-        return
-    cr.execute(
-        """
-        SELECT id, phone_number, elevenlabs_agent
-          FROM connect_number
-         WHERE destination = 'elevenlabs_agent'
-           AND elevenlabs_agent IS NOT NULL
-        """
-    )
-    rows = cr.fetchall()
-    if rows:
-        Exten = api.Environment(cr, SUPERUSER_ID, {})["connect.exten"].with_context(
-            skip_elevenlabs=True, skip_twilio_sync=True)
-        for _number_id, phone_number, agent_id in rows:
-            _route_number_to_agent(Exten, phone_number, agent_id)
-        logger.info("Repointed %d number(s) from destination='elevenlabs_agent'"
-                    " to agent via extension.", len(rows))
-    # Clear the now-invalid destination on every such number (even without a
-    # linked agent) so none is left with an orphan selection value, then drop
-    # the orphan FK column.
-    cr.execute(
-        "UPDATE connect_number SET destination = NULL, elevenlabs_agent = NULL "
-        "WHERE destination = 'elevenlabs_agent'"
-    )
-    cr.execute("ALTER TABLE connect_number DROP COLUMN elevenlabs_agent")
-    logger.info("Dropped orphan column connect_number.elevenlabs_agent")
-
-
-def _migrate_intermediate_trunk(cr):
-    """INTERMEDIATE model: number -> sip_trunk -> elevenlabs_agent."""
+def migrate(cr, version):
     if not _column_exists(cr, "connect_sip_trunk", "elevenlabs_agent"):
+        logger.info("connect_sip_trunk.elevenlabs_agent not found — nothing to migrate.")
         return
 
     # 1. Copy SIP routing data from each linked trunk onto its agent.
@@ -125,38 +57,22 @@ def _migrate_intermediate_trunk(cr):
     )
     logger.info("Repointed %d exten(s) from sip_trunk to elevenlabs_agent.", cr.rowcount)
 
-    # 3. Repoint numbers that routed to an agent-via-trunk onto the agent via a
-    #    connect.exten(number -> agent), and clear the trunk destination.
+    # 3. Repoint numbers: destination=sip_trunk(linked) -> elevenlabs_agent.
     cr.execute(
         """
-        SELECT n.id, n.phone_number, t.elevenlabs_agent
-          FROM connect_number n
-          JOIN connect_sip_trunk t ON n.sip_trunk = t.id
+        UPDATE connect_number n
+           SET destination = 'elevenlabs_agent',
+               elevenlabs_agent = t.elevenlabs_agent
+          FROM connect_sip_trunk t
          WHERE n.destination = 'sip_trunk'
+           AND n.sip_trunk = t.id
            AND t.elevenlabs_agent IS NOT NULL
         """
     )
-    rows = cr.fetchall()
-    if rows:
-        Exten = api.Environment(cr, SUPERUSER_ID, {})["connect.exten"].with_context(
-            skip_elevenlabs=True, skip_twilio_sync=True)
-        for _number_id, phone_number, agent_id in rows:
-            _route_number_to_agent(Exten, phone_number, agent_id)
-        cr.execute(
-            "UPDATE connect_number SET destination = NULL, sip_trunk = NULL "
-            "WHERE id IN %s",
-            (tuple(r[0] for r in rows),),
-        )
-        logger.info("Repointed %d number(s) from sip_trunk to agent via extension.",
-                    len(rows))
+    logger.info("Repointed %d number(s) from sip_trunk to elevenlabs_agent.", cr.rowcount)
 
     # 4. Drop now-orphan EL columns on connect_sip_trunk so they cannot drift.
     for col in ("elevenlabs_agent", "el_virtual_number_uid", "el_inbound_allowed_ips"):
         if _column_exists(cr, "connect_sip_trunk", col):
             cr.execute(f"ALTER TABLE connect_sip_trunk DROP COLUMN {col}")
             logger.info("Dropped orphan column connect_sip_trunk.%s", col)
-
-
-def migrate(cr, version):
-    _migrate_original_number_field(cr)
-    _migrate_intermediate_trunk(cr)
