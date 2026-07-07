@@ -352,18 +352,30 @@ class ElevenlabsAgent(models.Model):
         if not self.env["oduist.license"].check_license('connect_elevenlabs'):
             return "<Response><Pause length='1'/><Say>This is Oduist Connect. Your trial period is over. Please buy a license to continue.</Say><Pause length='1'/></Response>"
         # Tag the existing connect.call so the agent shows up immediately on form.
+        call_ref = ""
         call_sid = request.get("CallSid")
         if call_sid:
             channel = self.env["connect.channel"].sudo().search(
                 [("sid", "=", call_sid)], limit=1)
-            if channel and channel.call and not channel.call.elevenlabs_agent:
-                channel.call.sudo().elevenlabs_agent = self.id
+            if channel and channel.call:
+                call_ref = str(channel.call.id)
+                if not channel.call.elevenlabs_agent:
+                    channel.call.sudo().elevenlabs_agent = self.id
         identifier = self._el_sip_identifier(request)
         if not identifier:
             response = VoiceResponse()
             response.say("ElevenLabs agent is not configured.")
             return response
         target_url = "sip:{}@sip.rtc.elevenlabs.io:5060;transport=tcp".format(identifier)
+        # Hand the connect.call id to ElevenLabs as a custom SIP header. For SIP
+        # trunk inbound EL does NOT call the conversation-initiation webhook, but
+        # it does expose custom X- headers as dynamic variables
+        # (X-Connect-Call-Ref -> {{sip_connect_call_ref}}). The memory_recall
+        # tool reads it back as call_id so the recall controller can resolve the
+        # caller's personal memory bank. The parent CallSid EL reports itself is
+        # the child SIP leg's, which no connect.channel carries — hence this.
+        if call_ref:
+            target_url += "?X-Connect-Call-Ref={}".format(call_ref)
         response = VoiceResponse()
         dial = Dial(callerId=self._resolve_caller_id(request))
         dial.sip(target_url)
@@ -562,6 +574,7 @@ class ElevenlabsAgent(models.Model):
             partner = call.caller_user.partner_id
 
         dyn = {
+            "call_id": str(call.id) if call else "",
             "caller_number": caller or (call.caller if call else ""),
             "called_number": called or (call.called if call else ""),
             "partner_name": partner.name if partner else "Not registered",
@@ -671,7 +684,8 @@ class ElevenlabsAgent(models.Model):
             dynamic_variable_placeholders.update(
                 dict(
                     [
-                        (param.name, f"test_{param.name}")
+                        (param.dynamic_variable or param.name,
+                         f"test_{param.dynamic_variable or param.name}")
                         for param in tool.params
                         if param.value_type == "dynamic_variable"
                     ]

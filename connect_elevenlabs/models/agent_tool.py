@@ -144,8 +144,9 @@ class ElevenlabsAgentTool(models.Model):
                                 'type': param.data_type,
                             }
                             if param.value_type == 'dynamic_variable':
-                                properties[param.name].update({'dynamic_variable': param.name})
-                                dynamic_variable_placeholders.update({param.name: "default"})
+                                dyn_name = param.dynamic_variable or param.name
+                                properties[param.name].update({'dynamic_variable': dyn_name})
+                                dynamic_variable_placeholders.update({dyn_name: "default"})
                             else:
                                 properties[param.name].update({
                                     'description': param.description if param.value_type == 'description' else param.name

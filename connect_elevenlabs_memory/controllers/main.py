@@ -35,12 +35,20 @@ class ConnectElevenlabsMemoryController(http.Controller):
         # service does the Hindsight reflect (it holds the engine key).
         banks = []
         if call_id:
-            # call_id is a dynamic variable; if it didn't resolve to an int,
-            # fall back to the shared bank only instead of erroring the call.
-            try:
-                call = env["connect.call"].sudo().browse(int(call_id)).exists()
-            except (TypeError, ValueError):
-                call = env["connect.call"].browse()
+            # call_id normally carries the connect.call id (dynamic var
+            # sip_connect_call_ref, injected as the X-Connect-Call-Ref SIP header
+            # by the agent). Also tolerate a raw Twilio CallSid by resolving the
+            # owning channel. A miss just yields no personal bank instead of
+            # erroring the call.
+            channel = env["connect.channel"].sudo().search(
+                [("sid", "=", call_id)], limit=1)
+            if channel and channel.call:
+                call = channel.call
+            else:
+                try:
+                    call = env["connect.call"].sudo().browse(int(call_id)).exists()
+                except (TypeError, ValueError):
+                    call = env["connect.call"].browse()
             if call:
                 personal = call._hindsight_personal_bank()
                 if personal:
