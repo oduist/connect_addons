@@ -550,7 +550,7 @@ class ElevenlabsAgent(models.Model):
         return "Transfer Successful"
 
     @api.model
-    def build_initiation_payload(self, caller="", called="", agent_uid="", call_sid=""):
+    def build_initiation_payload(self, caller="", called="", agent_uid="", call_sid="", call_ref=""):
         """Build the JSON envelope EL expects from the conversation_initiation webhook.
 
         Looks up the in-flight connect.call and its partner to populate
@@ -559,13 +559,27 @@ class ElevenlabsAgent(models.Model):
         """
         agent = self.search([("agent_uid", "=", agent_uid)], limit=1) if agent_uid else self.browse()
         call = self.env["connect.call"]
-        if call_sid:
+        # Prefer the connect.call id handed over via the X-Connect-Call-Ref SIP
+        # header (render()): on the SIP-trunk path EL reports the child leg's
+        # call_sid (absent from connect.channel) and the DID as caller_id, so
+        # this is the only reliable link back to the real inbound call.
+        if call_ref:
+            try:
+                call = self.env["connect.call"].sudo().browse(int(call_ref)).exists()
+            except (TypeError, ValueError):
+                call = self.env["connect.call"]
+        if not call and call_sid:
             channel = self.env["connect.channel"].sudo().search(
                 [("sid", "=", call_sid)], limit=1)
             if channel and channel.call:
                 call = channel.call
-                if agent and not call.elevenlabs_agent:
-                    call.sudo().elevenlabs_agent = agent.id
+        if call and agent and not call.elevenlabs_agent:
+            call.sudo().elevenlabs_agent = agent.id
+        # The SIP leg to EL carries the DID as caller id; use the real inbound
+        # caller from the resolved call so partner lookup and caller_number are
+        # about the actual caller, not the number they dialled.
+        if call and call.caller:
+            caller = call.caller
 
         partner = call.partner if call else self.env["res.partner"]
         if not partner and caller:
@@ -819,6 +833,9 @@ class ElevenlabsAgent(models.Model):
                         "language": True,
                     }
                 },
+                # Without this EL never calls the conversation-initiation webhook,
+                # so the agent gets no per-call client data (partner, history…).
+                "enable_conversation_initiation_client_data_from_webhook": True,
             },
             call_limits={
                 "agent_concurrency_limit": self.agent_concurrency_limit,

@@ -58,11 +58,13 @@ class ConnectElevenlabsController(http.Controller):
             logger.warning('Conversation initiation: bad JSON body: %s', e)
             data = {}
         try:
+            sip_headers = data.get('sip_headers') or {}
             payload = http.request.env['connect.elevenlabs_agent'].sudo().build_initiation_payload(
                 caller=data.get('caller_id') or '',
                 called=data.get('called_number') or '',
                 agent_uid=data.get('agent_id') or '',
                 call_sid=data.get('call_sid') or '',
+                call_ref=sip_headers.get('X-Connect-Call-Ref') or '',
             )
         except Exception as e:
             logger.exception('Conversation initiation payload build failed: %s', e)
