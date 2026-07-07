@@ -70,4 +70,31 @@ class ConnectElevenlabsController(http.Controller):
                        "dynamic_variables": {}}
         return json.dumps(payload)
 
+    @http.route('/connect_elevenlabs/post_call', methods=['POST'],
+                type='http', auth='public', csrf=False)
+    def post_call_webhook(self):
+        """EL posts the conversation transcript/analysis after a call ends.
+
+        Ingests it into a connect.call + connect.recording so the transcript
+        surfaces on the call and downstream hooks (Oduist Memory retain) fire.
+        Always 200s so EL does not retry indefinitely on our internal errors.
+        """
+        logger.info('Incoming request: /connect_elevenlabs/post_call')
+        if not self.check_tool_token():
+            raise Unauthorized()
+        try:
+            body = json.loads(http.request.httprequest.get_data(as_text=True) or '{}')
+        except Exception as e:
+            logger.warning('Post call: bad JSON body: %s', e)
+            return ''
+        # EL wraps the payload as {"type": "...", "data": {...}}; accept either.
+        data = body.get('data') if isinstance(body.get('data'), dict) else body
+        try:
+            http.request.env['connect.call'].with_user(
+                http.request.env.ref('connect.user_connect_webhook')
+            ).create_from_elevenlabs_inbound(data)
+        except Exception as e:
+            logger.exception('Post call ingestion failed: %s', e)
+        return ''
+
 
