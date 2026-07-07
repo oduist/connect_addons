@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import urllib.parse
 from urllib.parse import urljoin
-import requests
 import uuid
 from elevenlabs import ElevenLabs
 
@@ -17,7 +15,6 @@ ODUIST_MODULES.append('connect_elevenlabs')
 logger = logging.getLogger(__name__)
 
 PROTECTED_FIELDS.append('display_elevenlabs_api_key')
-PROTECTED_FIELDS.append('display_elevenlabs_post_call_webhook_secret')
 
 class Elevenlabsettings(models.Model):
     _inherit = 'connect.settings'
@@ -28,11 +25,8 @@ class Elevenlabsettings(models.Model):
     display_elevenlabs_api_key = fields.Char()
     elevenlabs_voice = fields.Many2one('connect.elevenlabs_voice', ondelete='set null', string='Selected Voice')
     elevenlabs_enabled = fields.Boolean()
-    elevenlabs_agent_url = fields.Char(string='Agent URL', required=True, default='https://elevenlabs-agent.ngrok.io')
-    elevenlabs_agent_parameters = fields.Text(string='Agent Parameters')
-    elevenlabs_post_call_webhook_url = fields.Char(compute='_get_post_call_webhook_url')
-    display_elevenlabs_post_call_webhook_secret = fields.Char()
-    elevenlabs_post_call_webhook_secret = fields.Char(groups="base.group_erp_manager")
+    elevenlabs_conversation_initiation_webhook_url = fields.Char(
+        compute='_get_conversation_initiation_webhook_url')
     # Transcript elevenlabs webhook
     transcript_provider = fields.Selection(
         selection_add=[('elevenlabs', 'Elevenlabs')], ondelete={'elevenlabs': 'set default'})
@@ -53,9 +47,10 @@ class Elevenlabsettings(models.Model):
             'target': 'current',
         }
 
-    def _get_post_call_webhook_url(self):
+    def _get_conversation_initiation_webhook_url(self):
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        self.elevenlabs_post_call_webhook_url = urljoin(api_url, 'connect_elevenlabs/post_call')
+        self.elevenlabs_conversation_initiation_webhook_url = urljoin(
+            api_url, 'connect_elevenlabs/conversation_initiation')
 
     def get_elevenlabs_client(self):
         # Take this using super access because nobody must be able to access it.
@@ -64,6 +59,36 @@ class Elevenlabsettings(models.Model):
             raise ValidationError('Elevenlabs API key not set!')
         return ElevenLabs(api_key=key)
 
+    def _push_elevenlabs_initiation_webhook(self):
+        """Push the Conversation Initiation Client Data Webhook to EL workspace settings.
+
+        This is the workspace-level webhook (PATCH /v1/convai/settings) — one
+        config for all agents in the account. URL and token come from this
+        record; agent-level overrides are intentionally not used.
+        """
+        rec = self.sudo()
+        if not rec.elevenlabs_enabled:
+            return
+        url = rec.elevenlabs_conversation_initiation_webhook_url
+        token = rec.elevenlabs_agent_token
+        if not url or not token:
+            return
+        try:
+            client = rec.get_elevenlabs_client()
+        except ValidationError:
+            return
+        try:
+            client.conversational_ai.settings.update(
+                conversation_initiation_client_data_webhook={
+                    "url": url,
+                    "request_headers": {
+                        "x-elevenlabs-agent-token": token,
+                    },
+                },
+            )
+            logger.info("EL initiation webhook pushed: %s", url)
+        except Exception as e:
+            logger.exception("EL initiation webhook push failed: %s", e)
 
     def elevenlabs_get_voices(self):
         self.env['connect.elevenlabs_voice'].get_voices()
@@ -80,6 +105,7 @@ class Elevenlabsettings(models.Model):
     def elevenlabs_reset_token(self):
         # Generate new token.
         self.set_param('elevenlabs_agent_token', str(uuid.uuid4()))
+        self._push_elevenlabs_initiation_webhook()
 
 
     def elevenlabs_sync_tools(self):
@@ -115,14 +141,3 @@ class Elevenlabsettings(models.Model):
             {'tool_id': None, 'synced': False})
 
         self.connect_notify('Unbind done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)
-
-    def ping_agent(self):
-        self.ensure_one()
-        try:
-            response = requests.post(urljoin(self.elevenlabs_agent_url, '/agent/ping'))
-            if response.text == 'true':
-                self.connect_notify('Pong', title='Elevenlabs Agent', notify_uid=self.env.user.id)
-            else:
-                self.connect_notify('Error! Check the Agent error log.', title='Elevenlabs Agent', notify_uid=self.env.user.id)
-        except Exception as e:
-            raise ValidationError(str(e))

@@ -217,7 +217,7 @@ class CallForwardHandler(models.TransientModel):
 
     def _execute_blind_transfer(self, client, session_id, target_number, call_id=None):
         """
-        Execute immediate blind transfer using extension render method (like ElevenLabs)
+        Execute immediate blind transfer using the extension's render method.
         """
         try:
             if target_number.startswith('client:'):

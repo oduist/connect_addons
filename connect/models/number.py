@@ -41,9 +41,13 @@ class Number(models.Model):
         ('user', 'User'),
         ('callflow', 'CallFlow'),
         ('twiml', 'TwiML'),
+        ('sip_trunk', 'SIP Trunk'),
     ], ondelete='set null')
     callflow = fields.Many2one('connect.callflow', ondelete='set null')
     user = fields.Many2one('connect.user', ondelete='set null')
+    sip_trunk = fields.Many2one(
+        'connect.sip_trunk', string='SIP Trunk', ondelete='set null',
+        help='Twilio Elastic SIP Trunk this number is attached to.')
 
     # Use modern constraint syntax for Odoo 19, fallback to legacy for older versions
     if release.version_info[0] >= 19:
@@ -75,6 +79,10 @@ class Number(models.Model):
         if self.is_ignored:
             debug(self, 'Ignoring number {} update.'.format(self.phone_number))
             return
+        if self.destination == 'sip_trunk' and self.sip_trunk:
+            debug(self, 'Skipping voice_url update for trunk-attached number {}.'.format(
+                self.phone_number))
+            return
         try:
             number = client.incoming_phone_numbers(self.sid)
             number.update(
@@ -105,6 +113,13 @@ class Number(models.Model):
             for field in ['user', 'callflow', 'twiml']:
                 if field != vals['destination']:
                     vals.update({field: None})
+        # Snapshot previous (trunk, destination) — both can flip the desired
+        # Twilio binding state (see _sync_sip_trunk_membership).
+        binding_affected = 'sip_trunk' in vals or 'destination' in vals
+        prev_state = {
+            rec.id: (rec.sip_trunk, rec.destination)
+            for rec in self
+        } if binding_affected else {}
         res = super().write(vals)
         # Check if twilio_auto_sync is disabled
         if not self.env["connect.settings"].get_param("twilio_auto_sync"):
@@ -114,7 +129,47 @@ class Number(models.Model):
         for rec in self:
             if not self.env.context.get('skip_twilio_sync'):
                 rec.update_twilio_number(client)
+                if rec.id in prev_state:
+                    prev_trunk, prev_dest = prev_state[rec.id]
+                    rec._sync_sip_trunk_membership(client, prev_trunk, prev_dest)
         return res
+
+    def _sync_sip_trunk_membership(self, client, previous_trunk, previous_destination):
+        """Attach/detach this number on the Twilio Elastic SIP Trunk.
+
+        When destination='sip_trunk' the number is natively attached to
+        the trunk and Twilio forwards inbound calls directly to the
+        trunk's Origination URLs. The number's voice_url is bypassed
+        in that state, so Odoo-side call logging via webhook does not
+        fire — that is by design; the receiving PBX is the call-record
+        source.
+        """
+        self.ensure_one()
+        if not self.sid:
+            return
+        want_trunk = (self.sip_trunk
+                      if self.destination == 'sip_trunk' and self.sip_trunk
+                      else self.env['connect.sip_trunk'])
+        was_trunk = (previous_trunk
+                     if previous_destination == 'sip_trunk' and previous_trunk
+                     else self.env['connect.sip_trunk'])
+        if was_trunk and was_trunk != want_trunk and was_trunk.sid:
+            try:
+                client.trunking.v1.trunks(
+                    was_trunk.sid).phone_numbers(self.sid).delete()
+            except Exception as e:
+                if 'not found' not in str(e).lower():
+                    logger.warning('Detach number %s from trunk %s: %s',
+                                   self.phone_number, was_trunk.sid, e)
+        if want_trunk and want_trunk != was_trunk and want_trunk.sid:
+            try:
+                client.trunking.v1.trunks(
+                    want_trunk.sid).phone_numbers.create(
+                        phone_number_sid=self.sid)
+            except Exception as e:
+                if 'already' not in str(e).lower():
+                    logger.warning('Attach number %s to trunk %s: %s',
+                                   self.phone_number, want_trunk.sid, e)
 
     @api.model
     def sync(self):
@@ -180,6 +235,9 @@ class Number(models.Model):
             return self.user.render(request)
         elif self.destination == 'callflow' and self.callflow:
             return self.callflow.render(request)
+        elif self.destination == 'sip_trunk':
+            return ('<Response><Say>Number routed natively via SIP '
+                    'Trunk.</Say></Response>')
         else:
             return '<Response><Say>Number not configured. Goodbye!</Say></Response>'
 
