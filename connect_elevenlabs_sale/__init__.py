@@ -1,5 +1,4 @@
 from . import controllers
-from . import models
 
 import logging
 from odoo import fields, api

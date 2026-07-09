@@ -1,46 +1,6 @@
 <odoo>
     <data>
 
-        <!-- tool_create_partner -->
-        <record id="tool_create_partner" model="connect.elevenlabs_agent_tool">
-            <field name="name">create_partner</field>
-            <field name="description">Creates a new partner. Returns partner_id that should be used as Partner ID. You can call this tool only once per session with user. It's not allowed to call this tool if Partner ID is set. You are not allowed to call this tool for already registered customers.</field>
-            <field name="tool_type">webhook</field>
-            <field name="path">/connect_elevenlabs_sale/create_partner</field>
-            <field name="method">POST</field>
-            <field name="body_params_description">All params must be passed.</field>
-        </record>
-
-        <!-- Tool parameter: name -->
-        <record id="tool_create_partner_name" model="connect.agent_tool_params">
-            <field name="name">name</field>
-            <field name="description">Partner's name.</field>
-            <field name="data_type">string</field>
-            <field name="required" eval="True"/>
-            <field name="value_type">description</field>
-            <field name="tool" ref="tool_create_partner"/>
-        </record>
-
-        <!-- Tool parameter: partner_phone -->
-        <record id="tool_create_partner_partner_phone" model="connect.agent_tool_params">
-            <field name="name">partner_phone</field>
-            <field name="data_type">string</field>
-            <field name="required" eval="True"/>
-            <field name="value_type">dynamic_variable</field>
-            <field name="dynamic_variable">partner_phone</field>
-            <field name="tool" ref="tool_create_partner"/>
-        </record>
-
-        <!-- Tool parameter: call_id -->
-        <record id="tool_create_partner_call_id" model="connect.agent_tool_params">
-            <field name="name">call_id</field>
-            <field name="data_type">integer</field>
-            <field name="required" eval="True"/>
-            <field name="value_type">dynamic_variable</field>
-            <field name="dynamic_variable">call_id</field>
-            <field name="tool" ref="tool_create_partner"/>
-        </record>
-
         <!-- Sale Orders -->
         <record id="tool_get_sale_orders" model="connect.elevenlabs_agent_tool">
             <field name="name">get_sale_orders</field>

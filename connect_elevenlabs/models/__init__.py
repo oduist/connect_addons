@@ -12,6 +12,7 @@ from . import settings
 from . import user
 from . import voice
 from . import recording
+from . import whatsapp_sender
 
 # Inject documentation page.
 from odoo.addons.connect.models.documentation import PAGE_MAP

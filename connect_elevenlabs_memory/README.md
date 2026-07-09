@@ -87,7 +87,7 @@ Customer ──WhatsApp voice call──► Meta WhatsApp Business Calling
 1. Set a public `api_url` (ngrok static domain in dev), then **Sync** the WhatsApp sender (registers `voice_application_sid` + webhook URLs in Twilio).
 2. Enable WhatsApp Business Calling for the sender (Meta / WhatsApp Manager). Region limits: not available in US, Canada, Egypt, Vietnam, Nigeria.
 3. Create an **ElevenLabs agent** (needs `elevenlabs_api_key` + a valid `connect_elevenlabs` license).
-4. Route the WhatsApp number to the agent: `sender.action_route_calls_to_agent(agent)` (or create a `connect.exten` with `number = <WhatsApp E.164>`, destination = the agent).
+4. Route the WhatsApp number to the agent: `sender.action_route_calls_to_agent(agent)` (provided by `connect_elevenlabs`), or create a `connect.exten` with `number = <WhatsApp E.164>`, destination = the agent.
 5. Attach the **`memory_recall`** tool to the agent and sync the agent to ElevenLabs.
 6. In the **Memory** settings tab enable ElevenLabs voice memory + set the shared bank; configure the memory service (`memory.service_url` + `memory.token`) in the `memory` module's settings; seed the `business-knowledge` bank with FAQ/business facts.
 7. Install `memory` in the same DB and run the gateway (`memory/deploy`) with `RECALL_PORT` reachable from Odoo — it serves both retain (pull) and the synchronous `POST /recall`.

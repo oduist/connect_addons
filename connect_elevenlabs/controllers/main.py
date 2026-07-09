@@ -17,10 +17,6 @@ POST_CALL_MAX_SKEW_SECS = 30 * 60
 
 class ConnectElevenlabsController(http.Controller):
 
-    def dispatch(self, method_name, args, kwargs):
-        http.request.env['oduist.license'].check_license('connect_elevenlabs', silent=False)
-        return super().dispatch(method_name, args, kwargs)
-
     def check_tool_token(self):
         token = http.request.httprequest.headers.get('x-elevenlabs-agent-token')
         if not token:
@@ -66,6 +62,32 @@ class ConnectElevenlabsController(http.Controller):
             logger.warning('Post call: HMAC signature mismatch')
             return False
         return True
+
+    @http.route('/connect_elevenlabs/create_partner', methods=['POST'], type='http',
+                auth='public', csrf=False)
+    def create_partner(self):
+        logger.info('Incoming request: /connect_elevenlabs/create_partner')
+        if not self.check_tool_token():
+            raise Unauthorized()
+        data = json.loads(http.request.httprequest.get_data(as_text=True))
+        logger.info('Agent data: %s', data)
+        call = http.request.env['connect.call'].sudo().browse(int(data['call_id']))
+        if call.direction == 'outgoing':
+            data['partner_phone'] = call.called
+        else:
+            data['partner_phone'] = call.caller
+        partner = http.request.env['res.partner'].sudo().with_context(
+            connect_call_id=int(data['call_id'])).create({
+                'name': data['name'],
+                'phone': data.get('partner_phone')
+            })
+        logger.info('Partner %s (%s) has been created: ', partner.name, partner.id)
+        # Now assign partner to the call.
+        call.partner = partner.id
+        return http.request.make_json_response({
+            'partner_id': partner.id,
+            'message': 'Partner created'
+        })
 
     @http.route('/connect_elevenlabs/transfer', methods=['POST'], type='http', auth='public', csrf=False)
     def transfer_webhook(self):

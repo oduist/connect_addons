@@ -7,10 +7,10 @@ from zoneinfo import ZoneInfo
 
 from werkzeug.exceptions import Unauthorized
 
-from odoo import http, release
+from odoo import http
 
 logger = logging.getLogger(__name__)
-route_type = "json" if release.version_info[0] < 19.0 else 'jsonrpc'
+
 
 class CalendarController(http.Controller):
 
@@ -29,7 +29,7 @@ class CalendarController(http.Controller):
         logger.info('Tool token check passed')
         return True
 
-    @http.route('/connect_elevenlabs/get_available_slots', methods=['POST'], type=route_type, auth='public',
+    @http.route('/connect_elevenlabs/get_available_slots', methods=['POST'], type='http', auth='public',
                 csrf=False)
     def get_available_slots(self):
         logger.info('Incoming request: /connect_elevenlabs/get_available_slots')
@@ -78,10 +78,9 @@ class CalendarController(http.Controller):
             "start": current_start,
             "stop": day_end
         })
-        print(free_intervals)
-        return free_intervals
+        return http.request.make_json_response(free_intervals)
 
-    @http.route('/connect_elevenlabs/create_event', methods=['POST'], type=route_type, auth='public',
+    @http.route('/connect_elevenlabs/create_event', methods=['POST'], type='http', auth='public',
                 csrf=False)
     def create_event(self):
         logger.info('Incoming request: /connect_elevenlabs/create_event')
@@ -113,23 +112,23 @@ class CalendarController(http.Controller):
         event = http.request.env['calendar.event'].sudo().search(
             [('user_id', '=', user_id), ('start', '=', start_date), ('stop', '=', stop_date)])
         if event:
-            return {'status': 200, 'detail': 'Event already exist!'}
+            return http.request.make_json_response({'status': 200, 'detail': 'Event already exist!'})
         http.request.env['calendar.event'].sudo().with_user(user_id).create({
             'name': kwargs.get('name', 'Unknowns'),
             'start': start_date,
             'stop': stop_date,
             'user_id': user_id
         })
-        return {'status': 201, 'detail': 'Event successfully created'}
+        return http.request.make_json_response({'status': 201, 'detail': 'Event successfully created'})
 
-    @http.route('/connect_elevenlabs/get_current_date', methods=['POST'], type=route_type, auth='public', csrf=False)
+    @http.route('/connect_elevenlabs/get_current_date', methods=['POST'], type='http', auth='public', csrf=False)
     def get_current_date(self):
         logger.info('Incoming request: /connect_elevenlabs/get_current_date')
         if not self.check_tool_token():
             raise Unauthorized()
-        return {'current_date': str(datetime.now())}
+        return http.request.make_json_response({'current_date': str(datetime.now())})
 
-    @http.route('/connect_elevenlabs/get_meetings', methods=['POST'], type=route_type, auth='public',
+    @http.route('/connect_elevenlabs/get_meetings', methods=['POST'], type='http', auth='public',
                 csrf=False)
     def get_meetings(self):
         logger.info('Incoming request: /connect_elevenlabs/get_meetings')
@@ -138,14 +137,14 @@ class CalendarController(http.Controller):
         kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
         partner_id = kwargs.get('partner_id')
         if not partner_id:
-            return {'status': 400, 'detail': 'partner_id is required'}
+            return http.request.make_json_response({'status': 400, 'detail': 'partner_id is required'})
         events = http.request.env['calendar.event'].sudo().search(
             [('attendee_ids.partner_id', '=', partner_id)],
             order='start desc'
         ).read(['id', 'name', 'start', 'stop', 'user_id', 'location', 'description'])
-        return {'status': 200, 'meetings': events}
+        return http.request.make_json_response({'status': 200, 'meetings': events})
 
-    @http.route('/connect_elevenlabs/remove_meeting', methods=['POST'], type=route_type, auth='public',
+    @http.route('/connect_elevenlabs/remove_meeting', methods=['POST'], type='http', auth='public',
                 csrf=False)
     def remove_meeting(self):
         logger.info('Incoming request: /connect_elevenlabs/remove_meeting')
@@ -154,13 +153,14 @@ class CalendarController(http.Controller):
         kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
         event_id = kwargs.get('event_id')
         if not event_id:
-            return {'status': 400, 'detail': 'event_id is required'}
+            return http.request.make_json_response({'status': 400, 'detail': 'event_id is required'})
         try:
             event = http.request.env['calendar.event'].sudo().browse(event_id)
             if not event.exists():
-                return {'status': 404, 'detail': 'Event not found'}
+                return http.request.make_json_response({'status': 404, 'detail': 'Event not found'})
             event.unlink()
-            return {'status': 200, 'detail': 'Event successfully removed'}
+            return http.request.make_json_response({'status': 200, 'detail': 'Event successfully removed'})
         except Exception as e:
             logger.error(f'Error removing event {event_id}: {str(e)}')
-            return {'status': 500, 'detail': f'Error removing event: {str(e)}'}
+            return http.request.make_json_response(
+                {'status': 500, 'detail': f'Error removing event: {str(e)}'})
