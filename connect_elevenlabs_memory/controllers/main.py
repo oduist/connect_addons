@@ -53,8 +53,6 @@ class ConnectElevenlabsMemoryController(http.Controller):
                 personal = call._hindsight_personal_bank()
                 if personal:
                     banks.append(personal)
-        if cfg["shared_bank"]:
-            banks.append(cfg["shared_bank"])
         if not banks:
             return json.dumps({"context": ""})
 

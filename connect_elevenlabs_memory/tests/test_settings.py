@@ -16,4 +16,3 @@ class TestRecallConfig(TransactionCase):
         self.assertTrue(cfg["enabled"])
         self.assertEqual(cfg["service_url"], "http://memory-svc:8790")
         self.assertEqual(cfg["token"], "svc-tok")
-        self.assertEqual(cfg["shared_bank"], "business-knowledge")

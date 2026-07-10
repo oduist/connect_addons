@@ -46,5 +46,4 @@ class TestRecallController(HttpCase):
         sent = post.call_args.kwargs["json"]
         self.assertEqual(sent["token"], "svc-tok")
         bank = "partner-%s" % self.call.partner.commercial_partner_id.id
-        self.assertIn(bank, sent["banks"])
-        self.assertIn("business-knowledge", sent["banks"])
+        self.assertEqual(sent["banks"], [bank])

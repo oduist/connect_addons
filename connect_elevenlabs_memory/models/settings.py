@@ -10,11 +10,9 @@ class ConnectSettings(models.Model):
     # recall reaches that service via the memory module's `memory.service_url`
     # and `memory.token` (see get_recall_config).
     hindsight_memory_enabled = fields.Boolean(string="ElevenLabs Voice Memory")
-    hindsight_shared_bank = fields.Char(
-        string="Shared Knowledge Bank", default="business-knowledge")
 
     def get_recall_config(self):
-        """Config for the live recall tool: ElevenLabs-specific bits from
+        """Config for the live recall tool: the ElevenLabs enable toggle from
         connect.settings + the memory-service connection from the memory module
         (memory.service_url / memory.token)."""
         get = self.sudo().get_param
@@ -23,5 +21,4 @@ class ConnectSettings(models.Model):
             "enabled": bool(get("hindsight_memory_enabled")),
             "service_url": icp.get_param("memory.service_url") or "",
             "token": icp.get_param("memory.token") or "",
-            "shared_bank": get("hindsight_shared_bank") or "business-knowledge",
         }
