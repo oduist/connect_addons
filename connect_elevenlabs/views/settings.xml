@@ -74,17 +74,13 @@
             <group>
                 <field name="elevenlabs_post_call_webhook_url"
                        string="Post-call Webhook URL"/>
-                <field name="elevenlabs_post_call_webhook_id"
-                       string="Post-call Webhook ID"/>
                 <div colspan="2">
                   <small class="text-muted">
                     The Post-call Webhook is created in the ElevenLabs
                     workspace automatically on <strong>SYNC</strong> and
                     selected for post-call delivery. EL authenticates it by
                     <strong>HMAC</strong> signature; the shared secret is stored
-                    server-side and never shown here. The
-                    <code>Webhook ID</code> lets you cross-check the entry in
-                    the ElevenLabs dashboard.
+                    server-side and never shown here.
                   </small>
                 </div>
             </group>
