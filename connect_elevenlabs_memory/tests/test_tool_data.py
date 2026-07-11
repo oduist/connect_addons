@@ -13,6 +13,9 @@ class TestMemoryRecallTool(TransactionCase):
         self.assertIn("call_id", names)
         call_id = tool.params.filtered(lambda p: p.name == "call_id")
         self.assertEqual(call_id.value_type, "dynamic_variable")
-        self.assertEqual(call_id.dynamic_variable, "call_id")
+        # The webhook body key stays "call_id", but the EL dynamic variable is
+        # sip_connect_call_ref so inbound SIP-trunk calls resolve (see tools.xml
+        # and commit ac4a06a).
+        self.assertEqual(call_id.dynamic_variable, "sip_connect_call_ref")
         query = tool.params.filtered(lambda p: p.name == "query")
         self.assertEqual(query.value_type, "description")
