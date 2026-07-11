@@ -14,6 +14,7 @@
     "data": [
         "views/settings.xml",
         "data/tools.xml",
+        "data/agent_templates.xml",
     ],
     "installable": True,
 }
