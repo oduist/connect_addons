@@ -6,7 +6,8 @@
     <field name="inherit_id" ref="connect_elevenlabs.connect_elevenlabs_settings_form"/>
     <field name="arch" type="xml">
       <xpath expr="//notebook" position="inside">
-        <page name="memory" string="Memory">
+        <page name="memory" string="Memory"
+              invisible="not elevenlabs_enabled">
           <group>
             <group>
               <field name="hindsight_memory_enabled"/>
