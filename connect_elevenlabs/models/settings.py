@@ -27,6 +27,8 @@ class Elevenlabsettings(models.Model):
     elevenlabs_enabled = fields.Boolean()
     elevenlabs_conversation_initiation_webhook_url = fields.Char(
         compute='_get_conversation_initiation_webhook_url')
+    elevenlabs_post_call_webhook_url = fields.Char(
+        compute='_get_post_call_webhook_url')
     # Post-call webhook the module owns (HMAC): EL only authenticates post-call
     # webhooks by HMAC signature, so we create the webhook entity ourselves and
     # keep its secret to verify inbound deliveries.
@@ -58,6 +60,11 @@ class Elevenlabsettings(models.Model):
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
         self.elevenlabs_conversation_initiation_webhook_url = urljoin(
             api_url, 'connect_elevenlabs/conversation_initiation')
+
+    def _get_post_call_webhook_url(self):
+        api_url = self.env['connect.settings'].sudo().get_param('api_url')
+        self.elevenlabs_post_call_webhook_url = urljoin(
+            api_url, 'connect_elevenlabs/post_call')
 
     def get_elevenlabs_client(self):
         # Take this using super access because nobody must be able to access it.
