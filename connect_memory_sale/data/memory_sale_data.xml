@@ -11,15 +11,15 @@
     </record>
 
     <record forcecreate="True" id="config_digest_period_months" model="ir.config_parameter">
-        <field name="key">memory_sale.digest_period_months</field>
+        <field name="key">connect_memory_sale.digest_period_months</field>
         <field name="value">6</field>
     </record>
     <record forcecreate="True" id="config_digest_min_invoices" model="ir.config_parameter">
-        <field name="key">memory_sale.digest_min_invoices</field>
+        <field name="key">connect_memory_sale.digest_min_invoices</field>
         <field name="value">3</field>
     </record>
     <record forcecreate="True" id="config_digest_batch_size" model="ir.config_parameter">
-        <field name="key">memory_sale.digest_batch_size</field>
+        <field name="key">connect_memory_sale.digest_batch_size</field>
         <field name="value">50</field>
     </record>
 </odoo>

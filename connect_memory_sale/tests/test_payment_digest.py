@@ -14,9 +14,9 @@ class TestPaymentDigest(TestSaleCommon):
     def setUpClass(cls):
         super().setUpClass()
         cls.env["ir.config_parameter"].sudo().set_param("connect_memory.enabled", "1")
-        cls.env["ir.config_parameter"].sudo().set_param("memory_sale.digest_min_invoices", "1")
-        cls.env["ir.config_parameter"].sudo().set_param("memory_sale.digest_period_months", "12")
-        cls.env["ir.config_parameter"].sudo().set_param("memory_sale.digest_batch_size", "5")
+        cls.env["ir.config_parameter"].sudo().set_param("connect_memory_sale.digest_min_invoices", "1")
+        cls.env["ir.config_parameter"].sudo().set_param("connect_memory_sale.digest_period_months", "12")
+        cls.env["ir.config_parameter"].sudo().set_param("connect_memory_sale.digest_batch_size", "5")
 
     def test_cron_emits_observation_for_paid_invoices(self):
         partner = self.partner
