@@ -12,7 +12,7 @@ class TestPaymentCapture(TestSaleCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.env["ir.config_parameter"].sudo().set_param("connect_memory.enabled", "1")
+        cls.env["connect.settings"].sudo().set_param("memory_enabled", True)
 
     def _payment_events(self, partner):
         out = []

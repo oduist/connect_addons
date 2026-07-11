@@ -12,7 +12,7 @@ class TestSaleCapture(TestSaleCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.env["ir.config_parameter"].sudo().set_param("connect_memory.enabled", "1")
+        cls.env["connect.settings"].sudo().set_param("memory_enabled", True)
 
     def _outbox_for(self, commercial_partner):
         return self.env["connect.memory.outbox"].sudo().search([
@@ -99,7 +99,7 @@ class TestSaleCapture(TestSaleCommon):
             "diff must carry the real old value, not the post-write value")
 
     def test_disabled_master_switch_emits_nothing(self):
-        self.env["ir.config_parameter"].sudo().set_param("connect_memory.enabled", "0")
+        self.env["connect.settings"].sudo().set_param("memory_enabled", False)
         self.env["sale.order"].create({
             "partner_id": self.partner.id,
             "order_line": [Command.create({
@@ -110,7 +110,7 @@ class TestSaleCapture(TestSaleCommon):
         })
         created = [e for e in self._payloads(self.partner, tags=["domain:sale"])
                    if e.get("kind") == "created"]
-        self.assertFalse(created, "no event must be emitted when connect_memory.enabled=0")
+        self.assertFalse(created, "no event must be emitted when memory_enabled=False")
 
     def test_should_capture_gate(self):
         """The shared gate: capture only for a real external party, and only
@@ -121,7 +121,7 @@ class TestSaleCapture(TestSaleCommon):
         self.assertFalse(Mix._memory_sale_should_capture(own), "own company excluded")
         self.assertFalse(Mix._memory_sale_should_capture(self.env["res.partner"]),
                          "empty partner excluded")
-        self.env["ir.config_parameter"].sudo().set_param("connect_memory.enabled", "0")
+        self.env["connect.settings"].sudo().set_param("memory_enabled", False)
         self.assertFalse(Mix._memory_sale_should_capture(self.partner),
                          "switch off -> never capture")
 

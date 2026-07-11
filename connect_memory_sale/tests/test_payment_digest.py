@@ -13,7 +13,7 @@ class TestPaymentDigest(TestSaleCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.env["ir.config_parameter"].sudo().set_param("connect_memory.enabled", "1")
+        cls.env["connect.settings"].sudo().set_param("memory_enabled", True)
         cls.env["ir.config_parameter"].sudo().set_param("connect_memory_sale.digest_min_invoices", "1")
         cls.env["ir.config_parameter"].sudo().set_param("connect_memory_sale.digest_period_months", "12")
         cls.env["ir.config_parameter"].sudo().set_param("connect_memory_sale.digest_batch_size", "5")
