@@ -100,5 +100,5 @@ class ResPartner(models.Model):
                       "max_days_late": max_late,
                       "late_count": late_invoices,
                       "late_ratio": ratio})
-            self.env["connect.memory.mixin"]._memory_emit(envelope, module="memory_sale")
+            self.env["connect.memory.mixin"]._memory_emit(envelope, module="connect_memory_sale")
             partner.memory_payment_digest_date = fields.Datetime.now()

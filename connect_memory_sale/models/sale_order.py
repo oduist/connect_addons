@@ -50,7 +50,7 @@ class SaleOrder(models.Model):
                 data={"amount_total": order.amount_total,
                       "currency": order.currency_id.name,
                       "lines": lines})
-            self.env["connect.memory.mixin"]._memory_emit(envelope, module="memory_sale")
+            self.env["connect.memory.mixin"]._memory_emit(envelope, module="connect_memory_sale")
 
     @api.model
     def _memory_sale_line_summary(self, order):
@@ -140,7 +140,7 @@ class SaleOrder(models.Model):
                 dedup_key="sale.order-%s@%s" % (order.id, label),
                 data={"amount_total": order.amount_total,
                       "currency": order.currency_id.name})
-            self.env["connect.memory.mixin"]._memory_emit(envelope, module="memory_sale")
+            self.env["connect.memory.mixin"]._memory_emit(envelope, module="connect_memory_sale")
 
     def _memory_sale_state_change(self, vals, before_scalars, before_lines):
         mixin = self.env["connect.memory.sale.mixin"]
@@ -224,4 +224,4 @@ class SaleOrder(models.Model):
             dedup_key="sale.order-%s@edit-%s" % (
                 order.id, fields.Datetime.now().strftime("%Y%m%dT%H%M%S")),
             data={"changes": diff})
-        self.env["connect.memory.mixin"]._memory_emit(envelope, module="memory_sale")
+        self.env["connect.memory.mixin"]._memory_emit(envelope, module="connect_memory_sale")

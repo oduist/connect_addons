@@ -64,4 +64,4 @@ class AccountPartialReconcile(models.Model):
                       "days_late": days_late,
                       "invoice_ref": invoice.name,
                       "invoice_id": invoice.id})
-            self.env["connect.memory.mixin"]._memory_emit(envelope, module="memory_sale")
+            self.env["connect.memory.mixin"]._memory_emit(envelope, module="connect_memory_sale")

@@ -48,4 +48,4 @@ class AccountMove(models.Model):
                       "company_currency": move.company_id.currency_id.name,
                       "invoice_date_due": due,
                       "payment_state": move.payment_state})
-            self.env["connect.memory.mixin"]._memory_emit(envelope, module="memory_sale")
+            self.env["connect.memory.mixin"]._memory_emit(envelope, module="connect_memory_sale")

@@ -8,6 +8,7 @@
     "depends": ["connect_memory", "sale", "account"],
     "data": ["data/memory_sale_data.xml"],
     "license": "Other proprietary",
+    "post_init_hook": "post_init_hook",
     "installable": True,
     "application": False,
 }

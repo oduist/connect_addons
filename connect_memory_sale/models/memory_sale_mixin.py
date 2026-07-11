@@ -3,6 +3,13 @@ import uuid
 
 from odoo import api, fields, models
 
+from odoo.addons.connect.models.license import ODUIST_MODULES
+
+# Register connect_memory_sale in Connect's licensed-module registry so it is
+# enforced by its own license (mirrors the base module's append).
+if "connect_memory_sale" not in ODUIST_MODULES:
+    ODUIST_MODULES.append("connect_memory_sale")
+
 
 class MemorySaleMixin(models.AbstractModel):
     _name = "connect.memory.sale.mixin"
