@@ -10,16 +10,17 @@ class MemoryController(http.Controller):
     """HTTP (JSON-RPC) contract between Odoo and the external memory service.
 
     The service PULLS pending events and request answers; Odoo never calls the
-    service. All endpoints are token-protected (config parameter `connect_memory.token`,
-    passed as `token` in the JSON-RPC params or in the `X-Memory-Token` header).
+    service. All endpoints are token-protected (Connect settings field
+    `memory_service_token`, passed as `token` in the JSON-RPC params or in the
+    `X-Memory-Token` header).
 
     Routes are `type="jsonrpc"`: send a body
         {"jsonrpc": "2.0", "method": "call", "params": {...}}
     and the return value comes back wrapped in `{"result": ...}`."""
 
     def _check_token(self, kw):
-        expected = request.env["ir.config_parameter"].sudo().get_param(
-            "connect_memory.token")
+        expected = request.env["connect.settings"].sudo().get_param(
+            "memory_service_token")
         token = kw.get("token") \
             or request.httprequest.headers.get("X-Memory-Token")
         return bool(expected) and token == expected

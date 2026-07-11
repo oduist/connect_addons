@@ -95,8 +95,8 @@ class ResPartner(models.Model):
         service answers asynchronously into connect.memory.inbox."""
         self.ensure_one()
         commercial = self.commercial_partner_id or self
-        engine = self.env["ir.config_parameter"].sudo().get_param(
-            "connect_memory.default_engine") or False
+        engine = self.env["connect.settings"].sudo().get_param(
+            "memory_default_engine") or False
         inbox = self.env["connect.memory.inbox"].submit(
             query=_("Give a concise summary of what we know about %s.")
             % commercial.display_name,

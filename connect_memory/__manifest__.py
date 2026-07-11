@@ -1,6 +1,6 @@
 {
     'name': 'Connect Memory',
-    'version': '1.0.0',
+    'version': '1.0.1',
     'category': 'Phone',
     'summary': 'External AI memory for Odoo (provider-neutral: Hindsight, Cognee). '
                'Base module: connect.memory.outbox/inbox contract + customer '
@@ -38,7 +38,7 @@ their own data.
         'data/memory_data.xml',
         'views/memory_outbox_views.xml',
         'views/memory_inbox_views.xml',
-        'views/res_config_settings_views.xml',
+        'views/settings.xml',
         'views/res_partner_views.xml',
         'views/memory_menus.xml',
         'views/memory_backfill_views.xml',

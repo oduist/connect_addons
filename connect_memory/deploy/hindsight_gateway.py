@@ -11,7 +11,7 @@ into the per-customer bank `<BANK_PREFIX><commercial_partner_id>` (ADR-003).
 
 Config via environment variables:
   ODOO_BASE_URL      e.g. https://litnimax-...velesagro.dev.oduist.com
-  ODOO_TOKEN         must equal Odoo config parameter `connect_memory.token`
+  ODOO_TOKEN         must equal Odoo Connect setting `memory_service_token`
   HINDSIGHT_BASE     default https://api.hindsight.vectorize.io
   HINDSIGHT_KEY      Hindsight API key (hsk_...)
   HINDSIGHT_TENANT   default "default"

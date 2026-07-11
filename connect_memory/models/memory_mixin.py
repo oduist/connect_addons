@@ -41,8 +41,8 @@ class MemoryMixin(models.AbstractModel):
     def _memory_enabled(self):
         """Master capture switch. Single source of truth for the base module
         and every domain module (memory_sale, memory_crm, ...)."""
-        return self.env["ir.config_parameter"].sudo().get_param(
-            "connect_memory.enabled") in ("1", "True", "true")
+        return bool(self.env["connect.settings"].sudo().get_param(
+            "memory_enabled"))
 
     @api.model
     def _memory_emit(self, envelope, module="connect_memory"):

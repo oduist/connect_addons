@@ -138,8 +138,8 @@ class MemoryOutbox(models.Model):
         de-duplicating and never re-sends. The memory itself lives in the engine;
         the payload is only a transport buffer. `days=0` disables retention."""
         if days is None:
-            days = int(self.env["ir.config_parameter"].sudo().get_param(
-                "connect_memory.outbox_retention_days", "7") or 0)
+            days = int(self.env["connect.settings"].sudo().get_param(
+                "memory_outbox_retention_days") or 0)
         if not days:
             return 0
         cutoff = fields.Datetime.now() - timedelta(days=days)

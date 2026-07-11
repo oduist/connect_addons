@@ -28,7 +28,7 @@ Three components:
 2. **The gateway** `hindsight_gateway.py` (this directory) — a separate process that polls Odoo and loads events into Hindsight.
 3. **Hindsight** — the external memory engine (key `hsk_...`).
 
-Auth between the gateway and Odoo — the shared token `connect_memory.token`.
+Auth between the gateway and Odoo — the shared token (Connect settings `memory_service_token`).
 
 ---
 
@@ -51,26 +51,26 @@ print(mod.state, mod.latest_version)   # installed  19.0.x.x
 
 ### A.2. Configure the parameters
 
-**Settings → Memory** (or the top menu **Memory → Settings**, requires *Administration / Settings* rights). The **Memory** block:
+**Connect → Settings → Memory → Settings** (requires *Connect / Administrator* rights). The **Memory** page:
 
-| Field in the UI | config parameter | Value |
+| Field in the UI | connect.settings field | Value |
 |---|---|---|
-| **Capture correspondence** | `connect_memory.enabled` | ✅ enable (the capture master switch) |
-| **Memory service → shared token** | `connect_memory.token` | **any random string** — must **match** the gateway's `ODOO_TOKEN` |
-| Default engine | `connect_memory.default_engine` | `hindsight` |
-| Outbox retention (days) | `connect_memory.outbox_retention_days` | `7` (a daily cron cleans the `payload` of sent rows, leaving a thin tombstone for dedup; `0` = don't clean) |
-| Memory service URL | `connect_memory.service_url` | optional in the pull model (Odoo doesn't call out); can be left empty |
+| **Enable memory capture** | `memory_enabled` | ✅ enable (the capture master switch) |
+| **Memory service token** | `memory_service_token` | **any random string** — must **match** the gateway's `ODOO_TOKEN` |
+| Default engine | `memory_default_engine` | `hindsight` |
+| Outbox retention (days) | `memory_outbox_retention_days` | `7` (a daily cron cleans the `payload` of sent rows, leaving a thin tombstone for dedup; `0` = don't clean) |
+| Memory service URL | `memory_service_url` | optional in the pull model (Odoo doesn't call out); can be left empty |
 
 > The keys to Hindsight itself (`hsk_...`) are **not stored in Odoo** — they live only in the gateway (ADR-009).
 
 The same way (without code):
 ```python
 # run_odoo_shell
-ICP = env['ir.config_parameter']
-ICP.set_param('connect_memory.enabled', 'True')
-ICP.set_param('connect_memory.token', '<random_token>')
-ICP.set_param('connect_memory.default_engine', 'hindsight')
-ICP.set_param('connect_memory.outbox_retention_days', '7')
+S = env['connect.settings']
+S.set_param('memory_enabled', True)
+S.set_param('memory_service_token', '<random_token>')
+S.set_param('memory_default_engine', 'hindsight')
+S.set_param('memory_outbox_retention_days', 7)
 ```
 
 ---
@@ -87,7 +87,7 @@ cp .env.example .env
 ```ini
 # --- Odoo ---
 ODOO_BASE_URL=http://localhost:50004      # the Odoo database URL
-ODOO_TOKEN=<the same token as connect_memory.token in Odoo>
+ODOO_TOKEN=<the same token as the Memory service token in Odoo>
 
 # --- Hindsight ---
 HINDSIGHT_BASE=https://api.hindsight.vectorize.io
@@ -100,7 +100,7 @@ POLL_INTERVAL=10                           # seconds between cycles
 BATCH=50
 ```
 
-Critical: **`ODOO_TOKEN` must match `connect_memory.token`** in Odoo — otherwise `/connect_memory/outbox/fetch` silently returns empty.
+Critical: **`ODOO_TOKEN` must match `memory_service_token`** in Odoo (Connect → Settings → Memory) — otherwise `/connect_memory/outbox/fetch` silently returns empty.
 
 ### B.2. Get the Hindsight key
 
@@ -183,10 +183,10 @@ Reflect check (inbox): create a `connect.memory.inbox` request (state=pending) w
 |---|---|
 | Odoo | `http://localhost:50004` (container `oduflow-memory19-odoo`, live-mount of this repo) |
 | Module `memory` | `installed`, version `19.0.1.2.0` |
-| `connect_memory.enabled` | `True` |
-| `connect_memory.token` | `f6d2b995c1abf3a_93f51ee5be19c778` (= `ODOO_TOKEN` in `.env`) |
-| `connect_memory.default_engine` | `hindsight` |
-| `connect_memory.outbox_retention_days` | `7` |
+| `memory_enabled` | `True` |
+| `memory_service_token` | `f6d2b995c1abf3a_93f51ee5be19c778` (= `ODOO_TOKEN` in `.env`) |
+| `memory_default_engine` | `hindsight` |
+| `memory_outbox_retention_days` | `7` |
 | Hindsight | `https://api.hindsight.vectorize.io`, tenant `default`, bank `partner-2` |
 | Gateway | started locally: `/Users/poligon/Workspace/odoo19/.venv/bin/python hindsight_gateway.py` |
 
@@ -199,8 +199,8 @@ End-to-end verified: the created event `id=6` → `state=sent` (09:58:56 UTC),
 
 | Symptom | Cause / fix |
 |---|---|
-| `outbox` piles up in `pending` | the gateway isn't running, or `ODOO_TOKEN ≠ connect_memory.token` (fetch silently returns `[]`), or the gateway can't reach Odoo |
-| Odoo auth errors in the gateway log | compare `ODOO_TOKEN` and `connect_memory.token` character by character |
+| `outbox` piles up in `pending` | the gateway isn't running, or `ODOO_TOKEN ≠ memory_service_token` (fetch silently returns `[]`), or the gateway can't reach Odoo |
+| Odoo auth errors in the gateway log | compare `ODOO_TOKEN` and `memory_service_token` character by character |
 | `retain failed ... 401/403` | an invalid `HINDSIGHT_KEY` |
 | `retain failed ... no commercial_partner_id in scope` | an event without `scope.commercial_partner_id` — the gateway doesn't know which bank to put it in |
 | The gateway is running but the log is empty | stdout is block-buffered in a non-tty; run with `python -u` or via a terminal to see logs live |

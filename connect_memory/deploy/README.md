@@ -30,8 +30,8 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
-`ODOO_TOKEN` must match the Odoo config parameter `connect_memory.token`
-(Settings → Memory), and `connect_memory.enabled` must be on for capture.
+`ODOO_TOKEN` must match the Odoo Connect setting `memory_service_token`
+(Connect → Settings → Memory), and `memory_enabled` must be on for capture.
 
 ## Run locally (no Docker)
 ```bash
@@ -53,6 +53,6 @@ Token in JSON-RPC `params.token` or header `X-Memory-Token`.
 ## Recall endpoint (gateway serves this; Odoo → gateway)
 - `POST /recall` `{token, banks:[...], query}` → `{context}` — reflects each bank
   within one shared budget (`RECALL_BUDGET`, default 8s) and merges the answers.
-- Auth: body `token` must equal `ODOO_TOKEN` (= Odoo `connect_memory.token`).
-- Listens on `RECALL_PORT` (default `8790`). Set the Odoo `connect_memory.service_url`
+- Auth: body `token` must equal `ODOO_TOKEN` (= Odoo `memory_service_token`).
+- Listens on `RECALL_PORT` (default `8790`). Set the Odoo `memory_service_url`
   to this `host:port` (must be reachable from the Odoo container).
