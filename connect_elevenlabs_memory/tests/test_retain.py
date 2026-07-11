@@ -16,20 +16,20 @@ class TestRetain(TransactionCase):
             })
 
     def _outbox_row(self, rec):
-        return self.env["memory.outbox"].search(
+        return self.env["connect.memory.outbox"].search(
             [("dedup_key", "=", "connect-recording-%s" % rec.id)], limit=1)
 
     def test_retain_enqueues_to_outbox(self):
-        self.env["ir.config_parameter"].sudo().set_param("memory.enabled", "True")
+        self.env["ir.config_parameter"].sudo().set_param("connect_memory.enabled", "True")
         company = self.env["res.partner"].create({"name": "Acme", "is_company": True})
         rec = self._make_recording("rec-test-1", company)
         row = self._outbox_row(rec)
-        self.assertTrue(row, "retain should enqueue a memory.outbox row")
+        self.assertTrue(row, "retain should enqueue a connect.memory.outbox row")
         self.assertEqual(row.commercial_partner_id.id, company.id)
         self.assertEqual(row.domain, "voice")
 
     def test_no_retain_when_disabled(self):
-        self.env["ir.config_parameter"].sudo().set_param("memory.enabled", "False")
+        self.env["ir.config_parameter"].sudo().set_param("connect_memory.enabled", "False")
         company = self.env["res.partner"].create({"name": "Acme2", "is_company": True})
         rec = self._make_recording("rec-test-2", company, summary="x", transcript="")
         self.assertFalse(self._outbox_row(rec))
@@ -59,7 +59,7 @@ class TestRetain(TransactionCase):
 
     def test_inbound_ingestion_creates_recording_and_retains(self):
         """EL post-call ingestion -> connect.recording -> memory retain fires."""
-        self.env["ir.config_parameter"].sudo().set_param("memory.enabled", "True")
+        self.env["ir.config_parameter"].sudo().set_param("connect_memory.enabled", "True")
         caller = "+13105550100"
         partner = self.env["res.partner"].create(
             {"name": "Caller Co", "is_company": True, "phone": caller})
@@ -82,7 +82,7 @@ class TestRetain(TransactionCase):
 
     def test_inbound_ingestion_is_idempotent(self):
         """Duplicate EL post-call delivery must not double-ingest."""
-        self.env["ir.config_parameter"].sudo().set_param("memory.enabled", "True")
+        self.env["ir.config_parameter"].sudo().set_param("connect_memory.enabled", "True")
         payload = self._post_call_payload("+13105550100")
         first = self.env["connect.call"].create_from_elevenlabs_inbound(payload)
         second = self.env["connect.call"].create_from_elevenlabs_inbound(payload)

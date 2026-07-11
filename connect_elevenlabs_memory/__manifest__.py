@@ -9,7 +9,7 @@
     "category": "Phone",
     "summary": "Long-term memory (Hindsight) for ElevenLabs voice agents",
     "description": "",
-    "depends": ["connect_elevenlabs", "memory"],
+    "depends": ["connect_elevenlabs", "connect_memory"],
     "external_dependencies": {"python": ["requests"]},
     "data": [
         "views/settings.xml",

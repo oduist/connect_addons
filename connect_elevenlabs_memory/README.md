@@ -23,7 +23,7 @@ Customer ──WhatsApp voice call──► Meta WhatsApp Business Calling
    POST /connect_elevenlabs/memory/recall  (x-elevenlabs-agent-token)
      call_id → connect.call → partner → resolve bank:              │
          • bank partner-<commercial_id>   (personal history)       │
-                    │  POST {memory.service_url}/recall  (memory.token)
+                    │  POST {connect_memory.service_url}/recall  (connect_memory.token)
                     ▼                                               │
      memory gateway → Hindsight reflect per bank ──► merged context ┘
                                         │
@@ -31,7 +31,7 @@ Customer ──WhatsApp voice call──► Meta WhatsApp Business Calling
      creates connect.recording (transcript + summary + partner)
                                         │  connect.recording.create override
                                         ▼
-     retain: memory.outbox.enqueue → memory gateway retains into
+     retain: connect.memory.outbox.enqueue → memory gateway retains into
              bank partner-<commercial_id>  (unified with the rest of Memory)
 ```
 
@@ -43,8 +43,8 @@ Customer ──WhatsApp voice call──► Meta WhatsApp Business Calling
 | **Twilio Programmable Voice** | The WhatsApp sender's voice provider. `voice_application_sid` on the sender routes inbound calls to a TwiML app whose `voice_url` is the Odoo webhook. Also bridges call audio to ElevenLabs via **Media Streams**. |
 | **`connect`** | Call routing (`connect.domain.route_call`), extensions (`connect.exten`), WhatsApp senders, TwiML apps, recordings, settings. |
 | **`connect_elevenlabs`** | Manages ElevenLabs agents/tools/voices. Bridges a call to an agent with `<Connect><Stream>`. Post-call webhook stores transcript + recording. |
-| **`connect_elevenlabs_memory`** (this) | Live recall tool + endpoint (proxies to the memory service); retain on post-call via `memory.outbox`; per-caller bank resolution; ElevenLabs voice-memory toggle; WhatsApp→agent routing helper. |
-| **`memory`** (required) | Owns the engine connection: provides `memory.service_url` + `memory.token`. Retain flows through `memory.outbox` → the gateway; the gateway also answers the synchronous recall (`POST /recall`). |
+| **`connect_elevenlabs_memory`** (this) | Live recall tool + endpoint (proxies to the memory service); retain on post-call via `connect.memory.outbox`; per-caller bank resolution; ElevenLabs voice-memory toggle; WhatsApp→agent routing helper. |
+| **`memory`** (required) | Owns the engine connection: provides `connect_memory.service_url` + `connect_memory.token`. Retain flows through `connect.memory.outbox` → the gateway; the gateway also answers the synchronous recall (`POST /recall`). |
 | **Hindsight** | External memory engine (`api.hindsight.vectorize.io`). Reached only by the memory gateway (key in `memory/deploy/.env`), never by Odoo. Bank: `partner-<commercial_partner_id>` (per customer). |
 
 ## Inbound call — step by step
@@ -62,12 +62,12 @@ Customer ──WhatsApp voice call──► Meta WhatsApp Business Calling
 6. The agent calls the webhook tool **`memory_recall(query, call_id)`** → `POST /connect_elevenlabs/memory/recall` with header `x-elevenlabs-agent-token` (checked against `connect.settings.elevenlabs_agent_token`).
 7. The endpoint resolves `call_id → connect.call → partner` and builds the banks:
    - personal bank `partner-<commercial_partner_id>` (fallback `whatsapp-<E164>` if no partner).
-   With no bank resolved it returns empty context immediately. Otherwise it POSTs `{banks, query}` to the **memory service** (`{memory.service_url}/recall`, auth `memory.token`, ~9s). The gateway runs Hindsight `reflect` per bank within one shared budget, merges, and returns `{"context": "..."}`. The Hindsight key never leaves the service; failures return empty context fast — never stall the call.
+   With no bank resolved it returns empty context immediately. Otherwise it POSTs `{banks, query}` to the **memory service** (`{connect_memory.service_url}/recall`, auth `connect_memory.token`, ~9s). The gateway runs Hindsight `reflect` per bank within one shared budget, merges, and returns `{"context": "..."}`. The Hindsight key never leaves the service; failures return empty context fast — never stall the call.
 
 ## Retain (after the call)
 
 8. ElevenLabs sends the **post-call webhook** → `POST /connect_elevenlabs/post_call` (HMAC-verified) → `connect.recording` is created with `elevenlabs_transcript`, `elevenlabs_summary`, and `partner`.
-9. This module overrides `connect.recording.create` → `_retain_to_memory()`: gated by `memory.enabled`, it calls `memory.outbox.enqueue(envelope)` (text = summary + transcript, `dedup_key = connect-recording-<id>`, scope = commercial partner). The gateway performs the Hindsight retain into `partner-<commercial_partner_id>` — one write path, unified with the rest of Oduist Memory. Any error is logged and swallowed, never breaking call handling.
+9. This module overrides `connect.recording.create` → `_retain_to_memory()`: gated by `connect_memory.enabled`, it calls `connect.memory.outbox.enqueue(envelope)` (text = summary + transcript, `dedup_key = connect-recording-<id>`, scope = commercial partner). The gateway performs the Hindsight retain into `partner-<commercial_partner_id>` — one write path, unified with the rest of Oduist Memory. Any error is logged and swallowed, never breaking call handling.
 
 ## Configuration (connect.settings)
 
@@ -78,7 +78,7 @@ Customer ──WhatsApp voice call──► Meta WhatsApp Business Calling
 | `elevenlabs_api_key`, `elevenlabs_agent_token`, `elevenlabs_agent_url` | ElevenLabs API + tool auth + media-stream host. |
 | `elevenlabs_post_call_webhook_secret` | HMAC secret for the post-call webhook. |
 | `hindsight_memory_enabled` | Memory tab (ElevenLabs-specific): master toggle for voice recall. |
-| `memory.service_url`, `memory.token` | **From the `memory` module's settings**, not connect. Recall POSTs to `{memory.service_url}/recall` with this token; the Hindsight key lives only in `memory/deploy/.env`. |
+| `connect_memory.service_url`, `connect_memory.token` | **From the `memory` module's settings**, not connect. Recall POSTs to `{connect_memory.service_url}/recall` with this token; the Hindsight key lives only in `memory/deploy/.env`. |
 
 ## Setup checklist
 
@@ -87,7 +87,7 @@ Customer ──WhatsApp voice call──► Meta WhatsApp Business Calling
 3. Create an **ElevenLabs agent** (needs `elevenlabs_api_key` + a valid `connect_elevenlabs` license).
 4. Route the WhatsApp number to the agent: `sender.action_route_calls_to_agent(agent)` (provided by `connect_elevenlabs`), or create a `connect.exten` with `number = <WhatsApp E.164>`, destination = the agent.
 5. Attach the **`memory_recall`** tool to the agent and sync the agent to ElevenLabs.
-6. In the **Memory** settings tab enable ElevenLabs voice memory; configure the memory service (`memory.service_url` + `memory.token`) in the `memory` module's settings.
+6. In the **Memory** settings tab enable ElevenLabs voice memory; configure the memory service (`connect_memory.service_url` + `connect_memory.token`) in the `memory` module's settings.
 7. Install `memory` in the same DB and run the gateway (`memory/deploy`) with `RECALL_PORT` reachable from Odoo — it serves both retain (pull) and the synchronous `POST /recall`.
 
 ## Dependency model
@@ -95,10 +95,10 @@ Customer ──WhatsApp voice call──► Meta WhatsApp Business Calling
 - **Hard dependencies (manifest `depends`):** `connect_elevenlabs` **and
   `memory`**. `memory_addons` must therefore be on the addons path wherever this
   module is installed.
-- **Retain** always flows through `memory.outbox.enqueue` → the gateway (unified
+- **Retain** always flows through `connect.memory.outbox.enqueue` → the gateway (unified
   with the rest of Oduist Memory). There is no direct-Hindsight path in Odoo.
 - **Recall** needs a synchronous answer, so it POSTs to the memory gateway's
-  `POST /recall` (auth `memory.token`), which does the Hindsight `reflect`. Odoo
+  `POST /recall` (auth `connect_memory.token`), which does the Hindsight `reflect`. Odoo
   never talks to Hindsight and holds no engine key — connect keeps only the
   ElevenLabs-specific `hindsight_memory_enabled` toggle.
 

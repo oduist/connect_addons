@@ -17,12 +17,12 @@ class ConnectRecording(models.Model):
 
     def _retain_to_memory(self):
         """Enqueue this recording's transcript into the caller's partner bank via
-        memory.outbox; the gateway performs the Hindsight retain (one write path,
+        connect.memory.outbox; the gateway performs the Hindsight retain (one write path,
         unified with the rest of Oduist Memory). Never raises into call handling."""
         icp = self.env["ir.config_parameter"].sudo()
-        if icp.get_param("memory.enabled") not in ("1", "True", "true"):
+        if icp.get_param("connect_memory.enabled") not in ("1", "True", "true"):
             return
-        outbox = self.env["memory.outbox"].sudo()
+        outbox = self.env["connect.memory.outbox"].sudo()
         for rec in self:
             try:
                 partner = rec.partner
