@@ -7,10 +7,9 @@ class TestRecallConfig(TransactionCase):
     def test_get_recall_config(self):
         # Service connection comes from the memory module (memory.*), the
         # ElevenLabs-specific bits from connect.settings.
-        icp = self.env["ir.config_parameter"].sudo()
-        icp.set_param("connect_memory.service_url", "http://memory-svc:8790")
-        icp.set_param("connect_memory.token", "svc-tok")
         s = self.env["connect.settings"]
+        s.set_param("memory_service_url", "http://memory-svc:8790")
+        s.set_param("memory_service_token", "svc-tok")
         s.set_param("hindsight_memory_enabled", True)
         cfg = s.get_recall_config()
         self.assertTrue(cfg["enabled"])

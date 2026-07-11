@@ -8,10 +8,9 @@ from odoo.tests import HttpCase, tagged
 class TestRecallController(HttpCase):
     def setUp(self):
         super().setUp()
-        icp = self.env["ir.config_parameter"].sudo()
-        icp.set_param("connect_memory.service_url", "http://memory-svc:8790")
-        icp.set_param("connect_memory.token", "svc-tok")
         s = self.env["connect.settings"]
+        s.set_param("memory_service_url", "http://memory-svc:8790")
+        s.set_param("memory_service_token", "svc-tok")
         s.set_param("elevenlabs_agent_token", "tok123")
         s.set_param("hindsight_memory_enabled", True)
         company = self.env["res.partner"].create({"name": "Acme", "is_company": True})
