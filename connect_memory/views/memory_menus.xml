@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_memory_root" name="Memory" sequence="95"/>
+    <menuitem id="menu_memory_outbox" name="Outbox"
+              parent="menu_memory_root" action="action_memory_outbox"
+              sequence="10"/>
+    <menuitem id="menu_memory_inbox" name="Inbox"
+              parent="menu_memory_root" action="action_memory_inbox"
+              sequence="20"/>
+    <menuitem id="menu_memory_config" name="Settings"
+              parent="menu_memory_root" action="action_memory_config"
+              sequence="90" groups="base.group_system"/>
+</odoo>

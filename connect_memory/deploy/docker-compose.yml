@@ -1,0 +1,24 @@
+# Example: run the Oduist Memory Hindsight gateway.
+#
+#   cp .env.example .env   # then fill in secrets
+#   docker compose up -d --build
+#   docker compose logs -f
+#
+# The gateway only needs network access to Odoo (ODOO_BASE_URL) and to
+# Hindsight (HINDSIGHT_BASE). It never exposes a port — it polls (pull model).
+services:
+  memory-hindsight-gateway:
+    build: .
+    # Or use a prebuilt image instead of build:
+    # image: oduist/memory-hindsight-gateway:latest
+    container_name: memory-hindsight-gateway
+    restart: unless-stopped
+    env_file:
+      - .env
+    # If Odoo runs in a compose network on the same host, join it so
+    # ODOO_BASE_URL can be an internal hostname (e.g. http://odoo:8069):
+    # networks:
+    #   - odoo_net
+# networks:
+#   odoo_net:
+#     external: true
