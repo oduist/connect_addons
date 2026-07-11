@@ -1,5 +1,12 @@
 from odoo import fields, models
 
+from odoo.addons.connect.models.license import ODUIST_MODULES
+
+# Register the base module in Connect's licensed-module registry. Domain
+# modules (connect_memory_sale, ...) append their own name the same way.
+if "connect_memory" not in ODUIST_MODULES:
+    ODUIST_MODULES.append("connect_memory")
+
 
 class ResConfigSettings(models.TransientModel):
     _inherit = "res.config.settings"

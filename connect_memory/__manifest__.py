@@ -31,7 +31,7 @@ their own data.
     'website': 'https://oduist.com',
     'license': 'Other proprietary',
     'depends': [
-        'mail',
+        'connect',
     ],
     'data': [
         'security/ir.model.access.csv',
@@ -43,6 +43,7 @@ their own data.
         'views/memory_menus.xml',
         'views/memory_backfill_views.xml',
     ],
+    'post_init_hook': 'post_init_hook',
     'installable': True,
     'application': True,
     'auto_install': False,
