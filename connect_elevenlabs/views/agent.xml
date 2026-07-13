@@ -81,7 +81,7 @@
                                 </group>
                             </group>
                         </page>
-                        <page name="sip" string="SIP" groups="base.group_erp_manager">
+                        <page name="sip" string="SIP" groups="base.group_no_one">
                             <group>
                                 <group>
                                     <field name="el_virtual_number_uid" readonly="1"/>
