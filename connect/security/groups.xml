@@ -24,7 +24,7 @@
     </record>
 
     <!-- Separate privilege so "Do not record" is an independent selection,
-         not mutually exclusive with the Admin/User/Webhook access level. -->
+         not mutually exclusive with the Admin/User access level. -->
     <record id="privilege_connect_recording" model="res.groups.privilege">
         <field name="name">Recording</field>
         <field name="sequence">10</field>
