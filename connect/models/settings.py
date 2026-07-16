@@ -330,9 +330,6 @@ class Settings(models.Model):
     ############################################################
     api_url = fields.Char("API URL", compute="_get_instance_data")
     api_fallback_url = fields.Char("API Fallback URL")
-    twilio_verify_requests = fields.Boolean(
-        default=True, string="Verify Twilio Requests"
-    )
     call_duration_limit = fields.Integer(
         default=7200, string="Call Duration Limit (seconds)"
     )

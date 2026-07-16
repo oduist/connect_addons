@@ -153,14 +153,6 @@
                         </group>
                     </group>
                 </page>
-                <page string="Development" groups="base.group_no_one">
-                  <group>
-                    <group>
-                      <field name="twilio_verify_requests"/>
-                    </group>
-                  </group>
-                </page>
-
               </notebook>
             </sheet>
         </form>

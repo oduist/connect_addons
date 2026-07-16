@@ -12,8 +12,6 @@ class ConnectController(Controller):
 
     @staticmethod
     def check_signature(data, region=True):
-        if not request.env['connect.settings'].sudo().get_param('twilio_verify_requests'):
-            return True
         settings = request.env['connect.settings'].sudo()
         if region:
             auth_token = settings.get_param('region_auth_token') or settings.get_param('auth_token')
