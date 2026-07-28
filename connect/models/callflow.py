@@ -153,6 +153,25 @@ class CallFlow(models.Model):
             else:
                 dial = Dial(callerId=callerId, action=action_url, timeout=self.ring_timeout,
                         referUrl=refer_url)
+            # Resolve the caller's contact name + partner id for the client legs,
+            # mirroring user.render_client, so a ring-group call shows the contact
+            # name/avatar and a clickable partner instead of the raw number. Fall
+            # back to a caller-number lookup for the inbound-DID case where the
+            # channel isn't linked to the partner at render time.
+            channel = self.env['connect.channel'].sudo().search(
+                [('sid', '=', request.get('CallSid'))], limit=1)
+            call = channel.call if channel else None
+            raw_caller = request.get('Caller') or ''
+            if call and call.partner:
+                caller_partner = call.partner
+            elif channel and channel.caller_user:
+                caller_partner = channel.caller_user.partner_id
+            elif raw_caller.startswith('+'):
+                caller_partner = self.env['res.partner'].sudo().get_partner_by_number(raw_caller)
+            else:
+                caller_partner = self.env['res.partner']
+            caller_partner_id = caller_partner.id if caller_partner else False
+            caller_name = caller_partner.name if caller_partner else False
             for user in self.ring_users:
                 callflows = self.env['connect.user_callflow'].sudo().search(
                     [('callflow_type', 'in', ['sip', 'client']), ('user', '=', user.id)], order='prio')
@@ -166,7 +185,9 @@ class CallFlow(models.Model):
                             statusCallbackEvent='answered completed',
                             statusCallback=status_url)
                         client.identity(user.get_client_identity())
-                        client.parameter(name='CallerName', value=callerId)
+                        if caller_name:
+                            client.parameter(name='CallerName', value=caller_name)
+                        client.parameter(name='Partner', value=caller_partner_id)
                         dial.append(client)
             response.append(dial)
         else:

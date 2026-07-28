@@ -85,3 +85,15 @@ class ResUser(models.Model):
                 })
 
         return True
+
+
+class ResUsersSettings(models.Model):
+    _inherit = 'res.users.settings'
+
+    # Persisted open/closed state of the "Messages" (connect_messages) Discuss
+    # sidebar category. The category's serverStateKey in the JS points at this
+    # field name; without it the collapse toggle has nothing to read/persist, so
+    # the category header doesn't expand/collapse like the built-in channel/chat
+    # categories. Default True => starts expanded, matching the built-ins.
+    is_discuss_sidebar_category_connect_messages_open = fields.Boolean(
+        string="Is discuss sidebar category connect messages open?", default=True)

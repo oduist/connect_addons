@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="mail.DiscussSidebarChannel.main" t-inherit-mode="extension">
+        <xpath expr="//span[hasclass('o-mail-DiscussSidebarChannel-itemName')]/t[@t-esc]" position="replace">
+            <i t-if="thread.connect_channel_provider === 'whatsapp'"
+               class="fa fa-whatsapp text-success me-1 flex-shrink-0"
+               title="WhatsApp"/>
+            <t t-esc="thread.displayName"/>
+        </xpath>
+    </t>
+</templates>

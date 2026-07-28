@@ -31,7 +31,7 @@
                 <filter string="Has Error" name="has_error" domain="[('has_error', '=', True)]"/>
                 <filter string="SMS" name="sms" domain="[('message_type', '=', 'sms')]"/>
                 <filter string="MMS" name="mms" domain="[('message_type', '=', 'mms')]"/>
-                <filter string="WhatsApp" name="whatsapp" domain="[('message_type', '=', 'WhatsApp')]"/>
+                <filter string="WhatsApp" name="whatsapp" domain="[('message_type', '=', 'whatsapp')]"/>
                 <separator/>
                 <filter string="With Media" name="with_media" domain="[('num_media', '>', 0)]"/>
                 <separator/>

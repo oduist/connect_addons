@@ -2,7 +2,7 @@
 
 {
     "name": "Connect",
-    "version": "2.0.2",
+    "version": "2.0.3",
     "author": "Oduist",
     "maintainer": "Oduist",
     "live_test_url": "https://connect-demo.oduist.com/",
@@ -33,6 +33,7 @@
         "security/license.xml",
         "security/user_record_rules.xml",
         "security/admin_record_rules.xml",
+        "security/discuss_messages.xml",
         # Views
         "views/menu.xml",
         "views/settings.xml",
@@ -80,6 +81,8 @@
             "/connect/static/src/services/active_calls/*",
             "/connect/static/src/services/mail/*",
             "/connect/static/src/core/common/*",
+            "/connect/static/src/core/public_web/*",
+            "/connect/static/src/core/web/*",
         ],
     },
     "post_init_hook": "post_init_hook",
