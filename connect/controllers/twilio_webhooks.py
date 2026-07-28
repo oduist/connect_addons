@@ -11,6 +11,11 @@ logger = logging.getLogger(__name__)
 class ConnectController(Controller):
 
     @staticmethod
+    def _idempotency_token():
+        return request.httprequest.headers.get(
+            'I-Twilio-Idempotency-Token')
+
+    @staticmethod
     def check_signature(data, region=True):
         if not request.env['connect.settings'].sudo().get_param('twilio_verify_requests'):
             return True
@@ -42,8 +47,11 @@ class ConnectController(Controller):
     def callstatus_webhook(self, **kw):
         if not self.check_signature(kw):
             return Response("Twilio request is not valid!", status=500)
-        res = request.env['connect.call'].with_user(request.env.ref("connect.user_connect_webhook")).on_call_status(kw)
-        return f'{res}'
+        request.env['connect.call.event'].with_user(
+            request.env.ref("connect.user_connect_webhook")
+        ).ingest(
+            'call_status', kw, token=self._idempotency_token())
+        return Response("OK", status=200)
 
     @route('/twilio/webhook/number', methods=['POST'], type='http', auth='public', csrf=False)
     def number_webhook(self, **kw):
@@ -73,14 +81,25 @@ class ConnectController(Controller):
     def vm_recording_status_webhook(self, **kw):
         if not self.check_signature(kw):
             return '<Response><Say>Invalid Twilio request!</Say></Response>'
-        call = request.env['connect.call'].with_user(request.env.ref("connect.user_connect_webhook"))
-        res = call.on_vm_recording_status(kw)
-        return f'{res}'
+        request.env['connect.call.event'].with_user(
+            request.env.ref("connect.user_connect_webhook")
+        ).ingest(
+            'voicemail_status', kw, token=self._idempotency_token())
+        return Response("OK", status=200)
 
     @route('/twilio/webhook/<string:model_name>/call_action/<int:record_id>', methods=['POST'], type='http', auth='public', csrf=False)
     def call_action_edit_webhook(self, model_name, record_id, **kw):
         if not self.check_signature(kw):
             return '<Response><Say>Invalid Twilio request!</Say></Response>'
+        event_payload = dict(
+            kw,
+            ConnectActionModel=model_name,
+            ConnectActionRecordId=record_id,
+        )
+        request.env['connect.call.event'].with_user(
+            request.env.ref("connect.user_connect_webhook")
+        ).ingest(
+            'dial_action', event_payload, token=self._idempotency_token())
         model = request.env[model_name].with_user(request.env.ref("connect.user_connect_webhook"))
         res = model.on_call_action(record_id, kw)
         return f'{res}'
@@ -97,9 +116,15 @@ class ConnectController(Controller):
     def call_action_webhook(self, **kw):
         if not self.check_signature(kw):
             return '<Response><Say>Invalid Twilio request!</Say></Response>'
-        call = request.env['connect.call'].with_user(request.env.ref("connect.user_connect_webhook"))
-        res = call.on_call_action(kw)
-        return f'{res}'
+        event_payload = dict(
+            kw,
+            ConnectActionModel='connect.call',
+        )
+        request.env['connect.call.event'].with_user(
+            request.env.ref("connect.user_connect_webhook")
+        ).ingest(
+            'dial_action', event_payload, token=self._idempotency_token())
+        return '<Response><Hangup/></Response>'
 
     @route('/twilio/webhook/twiml/<int:twiml_id>', methods=['POST'], type='http', auth='public', csrf=False)
     def twiml_webhook(self, twiml_id, **kw):
@@ -135,6 +160,15 @@ class ConnectController(Controller):
     def callflow_ring_contact_manager_action(self, record_id, **kw):
         if not self.check_signature(kw):
             return '<Response><Say>Invalid Twilio request!</Say></Response>'
+        event_payload = dict(
+            kw,
+            ConnectActionModel='connect.callflow',
+            ConnectActionRecordId=record_id,
+        )
+        request.env['connect.call.event'].with_user(
+            request.env.ref("connect.user_connect_webhook")
+        ).ingest(
+            'dial_action', event_payload, token=self._idempotency_token())
         model = request.env['connect.callflow'].with_user(request.env.ref("connect.user_connect_webhook"))
         res = model.on_ring_contact_manager_action(record_id, kw)
         return f'{res}'
@@ -152,6 +186,14 @@ class ConnectController(Controller):
     def transfer_continuation_webhook(self, **kw):
         if not self.check_signature(kw):
             return '<Response><Say>Invalid Twilio request!</Say></Response>'
+        event_payload = dict(
+            kw,
+            ConnectActionModel='connect.call',
+        )
+        request.env['connect.call.event'].with_user(
+            request.env.ref("connect.user_connect_webhook")
+        ).ingest(
+            'dial_action', event_payload, token=self._idempotency_token())
         transfer_wizard = request.env['connect.transfer_wizard'].with_user(request.env.ref("connect.user_connect_webhook"))
         res = transfer_wizard.handle_transfer_continuation(kw)
         return f'{res}'

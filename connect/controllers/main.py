@@ -3,13 +3,13 @@
 import json
 import logging
 import os
-from datetime import timedelta
 
 import openai
 import requests
+from twilio.request_validator import RequestValidator
 from werkzeug.exceptions import NotFound
 
-from odoo import fields, http, release, tools
+from odoo import http, release, tools
 from odoo.api import SUPERUSER_ID
 from odoo.exceptions import UserError
 from odoo.addons.connect.models import s3_utils
@@ -19,6 +19,21 @@ logger = logging.getLogger(__name__)
 route_type = "json" if release.version_info[0] < 19.0 else 'jsonrpc'
 
 class ConnectController(http.Controller):
+
+    @staticmethod
+    def _check_twilio_signature(data):
+        settings = http.request.env['connect.settings'].sudo()
+        if not settings.get_param('twilio_verify_requests'):
+            return True
+        auth_token = (
+            settings.get_param('region_auth_token')
+            or settings.get_param('auth_token')
+        )
+        validator = RequestValidator(auth_token)
+        url = http.request.httprequest.url.replace('http:', 'https:')
+        signature = http.request.httprequest.headers.get(
+            'X-Twilio-Signature', '')
+        return validator.validate(url, data, signature)
 
     @http.route('/connect/transcript/<int:rec_id>', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
@@ -89,17 +104,22 @@ class ConnectController(http.Controller):
 
     @http.route('/connect/dial_complete', methods=['GET', 'POST'], type='http', auth='public', csrf=False)
     def dial_complete_handler(self, **kw):
-        """Handle Dial action completion for transfer redirects and update call completion fields"""
+        """Ingest transfer completion and return its immediate TwiML branch."""
         from twilio.twiml.voice_response import VoiceResponse
 
+        if not self._check_twilio_signature(kw):
+            return '<Response><Say>Invalid Twilio request!</Say></Response>'
         dial_status = kw.get('DialCallStatus')
         dial_call_sid = kw.get('DialCallSid')
         original_call_sid = kw.get('CallSid')
 
-        try:
-            self._process_extension_redirect_completion(kw)
-        except Exception as e:
-            logger.error(f'Failed to process transfer completion: {e}', exc_info=True)
+        event_payload = dict(kw, ConnectActionModel='connect.call')
+        http.request.env['connect.call.event'].sudo().ingest(
+            'dial_action',
+            event_payload,
+            token=http.request.httprequest.headers.get(
+                'I-Twilio-Idempotency-Token'),
+        )
 
         response = VoiceResponse()
 
@@ -159,55 +179,27 @@ class ConnectController(http.Controller):
 
         return response.to_xml()
 
-    def _process_extension_redirect_completion(self, webhook_params):
-        """
-        Process completion of extension redirect transfers.
-        Updates the original call's completion fields based on transfer outcome.
-        """
-        dial_call_status = webhook_params.get('DialCallStatus')
-        dial_call_sid = webhook_params.get('DialCallSid')
-        original_call_sid = webhook_params.get('CallSid')
-
-        original_call = self._find_original_call_for_redirect_completion(original_call_sid, dial_call_sid)
-        if not original_call:
-            logger.warning(f'Could not find original call for redirect completion')
-            return
-
-        transfer_recipient = None
-
-        if original_call_sid:
-            transfer_recipient = original_call.get_transfer_target(original_call_sid)
-
-        if not transfer_recipient and dial_call_sid:
-            transfer_recipient = original_call.get_transfer_target(dial_call_sid)
-
-        if not transfer_recipient:
-            parent_call_sid = webhook_params.get('ParentCallSid')
-            if parent_call_sid:
-                transfer_recipient = original_call.get_transfer_target(parent_call_sid)
-
-        if not transfer_recipient and original_call.transferred_users:
-            transfer_recipient = original_call.transferred_users[-1]
-
-        if not transfer_recipient:
-            logger.warning(f'Could not find transfer recipient for completion processing - no transferred_users found')
-            return
-
-        if dial_call_status == 'completed':
-            original_call.completed_by_user = transfer_recipient
-            self._create_or_update_transfer_channel(original_call, dial_call_sid, transfer_recipient, 'completed', webhook_params)
-            self._terminate_external_call_after_transfer_completion(original_call, dial_call_sid, transfer_recipient)
-        else:
-            self._create_or_update_transfer_channel(original_call, dial_call_sid, transfer_recipient, dial_call_status, webhook_params)
-
     def _find_original_call_for_redirect_completion(self, original_call_sid, dial_call_sid):
-        """Find the original call that initiated this transfer redirect"""
+        """Find the call from database-backed transfer runtime state."""
+        sid_values = [
+            sid for sid in (original_call_sid, dial_call_sid) if sid
+        ]
+        if sid_values:
+            attempt = http.request.env['connect.call.attempt'].sudo().search([
+                ('kind', '=', 'transfer'),
+                ('state', '=', 'pending'),
+                '|',
+                ('parent_sid', 'in', sid_values),
+                ('dial_call_sid', 'in', sid_values),
+            ], order='id desc', limit=1)
+            if attempt:
+                return attempt.call_id
+
+        # Compatibility fallback for calls created before the 2.0.3 migration.
         Call = http.request.env['connect.call'].sudo()
-        cutoff = fields.Datetime.now() - timedelta(minutes=5)
 
         recent_calls = Call.search([
             ('transfer_context', '!=', False),
-            ('create_date', '>=', cutoff),
         ])
 
         for call in recent_calls:
@@ -220,112 +212,10 @@ class ConnectController(http.Controller):
         # Fallback: find recent calls with transfers still in progress
         recent_transfers = Call.search([
             ('transferred_users', '!=', False),
-            ('create_date', '>=', cutoff),
             ('status', 'not in', ['completed', 'failed', 'busy', 'no-answer']),
         ], limit=5)
 
-        if recent_transfers:
-            return recent_transfers[0]
-
-        return None
-
-    def _create_or_update_transfer_channel(self, call, dial_call_sid, transfer_recipient, status, webhook_params):
-        """Create or update a channel record for the transfer recipient to ensure proper field population"""
-        try:
-            existing_channel = http.request.env['connect.channel'].sudo().search([
-                ('sid', '=', dial_call_sid),
-                ('call', '=', call.id)
-            ], limit=1)
-
-            if existing_channel:
-                logger.info(f'Updating existing transfer channel {existing_channel.id}')
-                existing_channel.write({
-                    'status': status,
-                    'duration': int(webhook_params.get('DialCallDuration', 0))
-                })
-                return existing_channel
-            else:
-                logger.info(f'Creating new transfer channel for {transfer_recipient.login}')
-
-                parent_channel = call.channels.filtered(lambda c: not c.parent_channel)
-                if not parent_channel:
-                    logger.warning(f'No parent channel found for call {call.id}')
-                    return None
-                parent_channel = parent_channel[0]
-
-                pbx_user = http.request.env['connect.user'].sudo().search([
-                    ('user', '=', transfer_recipient.id)
-                ], limit=1)
-
-                if not pbx_user:
-                    logger.warning(f'No PBX user found for {transfer_recipient.login}')
-                    return None
-
-                channel_data = {
-                    'sid': dial_call_sid,
-                    'call': call.id,
-                    'parent_channel': parent_channel.id,
-                    'technical_direction': 'outbound-dial',
-                    'status': status,
-                    'duration': int(webhook_params.get('DialCallDuration', 0)),
-                    'called_pbx_user': pbx_user.id,
-                    'called_user': transfer_recipient.id,
-                    'call_source': 'transfer',
-                    'caller': parent_channel.caller,
-                    'called': pbx_user.uri
-                }
-
-                new_channel = http.request.env['connect.channel'].sudo().create(channel_data)
-                logger.info(f'Created transfer channel {new_channel.id} for {transfer_recipient.login}')
-                return new_channel
-
-        except Exception as e:
-            logger.error(f'Failed to create/update transfer channel: {e}', exc_info=True)
-            return None
-
-    def _terminate_external_call_after_transfer_completion(self, call, transfer_recipient_sid, transfer_recipient):
-        """
-        Terminate external call legs after successful transfer completion to prevent voicemail fall-through.
-        This addresses the issue where external callers go to voicemail when internal users hang up completed calls.
-        """
-        try:
-            if call.direction == 'outgoing':
-                external_call_sid = call.get_external_call_leg()
-                if external_call_sid:
-                    client = http.request.env['connect.settings'].sudo().get_client()
-                    try:
-                        external_call = client.calls(external_call_sid).fetch()
-                        if external_call.status in ['in-progress', 'ringing']:
-                            self._store_external_call_termination_context(call, external_call_sid, transfer_recipient_sid)
-                        else:
-                            logger.info(f'External call {external_call_sid} already ended ({external_call.status})')
-                    except Exception as e:
-                        logger.warning(f'Could not check external call status: {e}')
-                else:
-                    logger.warning(f'No external call leg found for outgoing call {call.id}')
-            else:
-                external_channels = call.channels.filtered(lambda c: not c.parent_channel and not c.caller_pbx_user)
-                if external_channels:
-                    external_channel = external_channels[0]
-                    self._store_external_call_termination_context(call, external_channel.sid, transfer_recipient_sid)
-                else:
-                    logger.info(f'No external caller channel found for incoming call {call.id}')
-
-        except Exception as e:
-            logger.error(f'Failed to set up external call termination: {e}', exc_info=True)
-
-    def _store_external_call_termination_context(self, call, external_call_sid, transfer_recipient_sid):
-        """Store context for terminating external calls when transfer recipients hang up"""
-        try:
-            current_context = call.transfer_context or {}
-            current_context['_external_termination'] = {
-                'external_call_sid': external_call_sid,
-                'transfer_recipient_sid': transfer_recipient_sid,
-                'setup_time': http.request.env.cr.now()
-            }
-            call.transfer_context = current_context
-        except Exception as e:
-            logger.error(f'Failed to store external termination context: {e}')
+        return recent_transfers[:1]
 
     @http.route("/connect/ai_completion", type="json", auth="user")
     def ai_completion(self, model, res_id):
