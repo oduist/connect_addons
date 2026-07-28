@@ -1,0 +1,86 @@
+/* @odoo-module */
+import { registerThreadAction } from "@mail/core/common/thread_actions";
+import { _t } from "@web/core/l10n/translation";
+
+registerThreadAction("connect-open-contact", {
+    condition: ({ thread }) =>
+        thread?.channel_type === "connect_messages" && !!thread.connect_partner_id,
+    icon: "fa fa-fw fa-address-card",
+    name: _t("Open Contact"),
+    open: async ({ store, thread }) => {
+        await store.env.services.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: "res.partner",
+            res_id: thread.connect_partner_id,
+            views: [[false, "form"]],
+        });
+    },
+    sequence: 14,
+    sequenceGroup: 20,
+});
+
+registerThreadAction("connect-create-contact", {
+    condition: ({ thread }) =>
+        thread?.channel_type === "connect_messages" && !thread.connect_partner_id,
+    icon: "fa fa-fw fa-user-plus",
+    name: _t("Create Contact"),
+    open: async ({ store, thread }) => {
+        try {
+            const result = await store.env.services.orm.call(
+                "discuss.channel",
+                "connect_create_partner",
+                [[thread.id]],
+                {}
+            );
+            if (result?.partner_id) {
+                thread.connect_partner_id = result.partner_id;
+                store.env.services.notification.add(
+                    _t("Contact created: %s", result.partner_name),
+                    { type: "success" }
+                );
+            }
+        } catch (e) {
+            console.error("connect_create_partner failed:", e);
+            store.env.services.notification.add(
+                _t("Failed to create contact"),
+                { type: "warning" }
+            );
+        }
+    },
+    // sequence 15 puts it right above "Invite People" (sequence 20) in the same group.
+    sequence: 15,
+    sequenceGroup: 20,
+});
+
+registerThreadAction("connect-archive", {
+    condition: ({ thread }) => thread?.channel_type === "connect_messages",
+    icon: "fa fa-fw fa-archive",
+    name: _t("Archive"),
+    // Unpin the conversation: it leaves the sidebar but stays a real channel, so a
+    // new inbound message auto-re-pins (un-archives) it — see _connect_resurface.
+    open: ({ thread }) => thread.unpin(),
+    // Just above "Leave Channel" in the same lifecycle group.
+    sequence: 9,
+    sequenceGroup: 30,
+});
+
+registerThreadAction("connect-leave-channel", {
+    condition: ({ owner, thread }) =>
+        thread?.channel_type === "connect_messages" && owner.isDiscussSidebarChannelActions,
+    icon: "fa fa-fw fa-sign-out",
+    name: _t("Leave Channel"),
+    open: async ({ store, thread }) => {
+        try {
+            await store.env.services.orm.call(
+                "discuss.channel",
+                "execute_command_leave",
+                [[thread.id]],
+                {}
+            );
+        } catch (e) {
+            console.error("connect leave channel failed:", e);
+        }
+    },
+    sequence: 10,
+    sequenceGroup: 30,
+});

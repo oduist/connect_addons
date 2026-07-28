@@ -19,6 +19,7 @@ from markupsafe import Markup
 from odoo import models, fields, api, release
 if release.version_info[0] >= 19:
     from odoo.models import Constraint
+from odoo.addons.mail.tools.discuss import Store
 from odoo.exceptions import ValidationError
 from .settings import debug
 from .res_partner import strip_number
@@ -233,7 +234,7 @@ class ConnectWhatsappSender(models.Model):
         any_sender = self.search([('status', '=', 'ONLINE'), ('no_sync', '=', False)], limit=1)
         return any_sender
 
-    def send_whatsapp(self, recipient, body, res_model=None, res_id=None, raise_on_error=True, content_sid=None, content_variables=None):
+    def send_whatsapp(self, recipient, body, res_model=None, res_id=None, raise_on_error=True, content_sid=None, content_variables=None, skip_chatter=False):
         """Send a WhatsApp message using this sender and create connect.message + chatter.
 
         Args:
@@ -253,9 +254,9 @@ class ConnectWhatsappSender(models.Model):
             raise ValidationError('WhatsApp sender has no number configured.')
         # Check 24-hour window for WhatsApp - only if not using a content template
         if not content_sid:
-            # Find last incoming WhatsApp message from this recipient
+            # Find last incoming WhatsApp message from this recipient (clean number).
             last_incoming = self.env['connect.message'].sudo().search([
-                ('message_type', '=', 'WhatsApp'),
+                ('message_type', '=', 'whatsapp'),
                 ('from_number', '=', recipient),
                 ('direction', '=', 'incoming')
             ], order='create_date desc', limit=1)
@@ -306,7 +307,7 @@ class ConnectWhatsappSender(models.Model):
         sender_user = self.env.user
         partner = self.env['res.partner'].get_partner_by_number(recipient)
         msg_vals = {
-            'message_type': 'WhatsApp',
+            'message_type': 'whatsapp',
             'to_number': recipient,
             'from_number': self.number,
             'body': body,
@@ -325,10 +326,22 @@ class ConnectWhatsappSender(models.Model):
         msg = self.env['connect.message'].sudo().create(msg_vals)
 
         # Post to chatter if relevant
-        if res_model and res_id:
+        if res_model and res_id and not skip_chatter:
             chatter_message = Markup(f"<div class='d-flex flex-row'>"
                                      f"<p class='px-1'>{body}</p></div>")
             self.chatter_post(res_model, res_id, self.env.user.partner_id.id, chatter_message)
+        # Mirror an outbound sent from a record's chatter into the existing Discuss
+        # thread (only when one already exists). The Discuss-composer path passes
+        # skip_chatter=True and already posts into the channel itself.
+        if not skip_chatter:
+            try:
+                channel = self.env['discuss.channel']._get_connect_channel(
+                    partner, number=recipient, provider='whatsapp',
+                    create_if_not_found=False)
+                if channel:
+                    channel._connect_post_outbound(msg)
+            except Exception as e:
+                logger.warning('Connect Discuss outbound mirror failed: %s', e)
         return msg
 
     def chatter_post(self, res_model, res_id, author, body):
@@ -393,6 +406,10 @@ class ConnectWhatsappSender(models.Model):
                 self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
             if vals:
                 message.write(vals)
+            # ODU-37: push status onto the Discuss bubble if mirrored.
+            if message.channel_message_id and message.channel_id:
+                Store(bus_channel=message.channel_id).add(
+                    message.channel_message_id, {'connectStatus': message.status}).bus_send()
         except Exception as e:
             logger.warning('Failed to update message status for %s: %s', sid, e)
         return True
