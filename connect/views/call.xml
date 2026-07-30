@@ -134,6 +134,9 @@
                                 </group>
                                 <group>
                                     <field name="parent_call" invisible="not parent_call"/>
+                                    <field name="park_slot" invisible="not park_slot"/>
+                                    <field name="parked_by_pbx_user" invisible="not parked_by_pbx_user"/>
+                                    <field name="parked_at" invisible="not parked_at"/>
                                     <field name="caller_pbx_user"/>
                                     <field name="called_pbx_users" widget="many2many_tags"/>
                                     <field name="answered_pbx_user"/>

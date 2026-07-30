@@ -245,6 +245,14 @@ class Settings(models.Model):
 
     name = fields.Char(compute="_get_name")
     debug_mode = fields.Boolean()
+    delete_processed_call_events = fields.Boolean(
+        string="Delete processed call events",
+        default=True,
+        help=(
+            "Delete successfully projected Twilio lifecycle events and completed "
+            "runtime attempts immediately. Disable to retain them for one hour."
+        ),
+    )
     twilio_auto_sync = fields.Boolean(default=True)
     twilio_region = fields.Selection([
         ('us1', 'US'),

@@ -136,6 +136,7 @@ class CallFlow(models.Model):
             self.get_prompt_message(response)
         # Add ringall users
         if self.ring_users:
+            expected_leg_count = 0
             callerId = request.get('Caller')
             # Hack to enable testing callflow from SIP or Client.
             if callerId.startswith('sip:') or callerId.startswith('client:'):
@@ -180,6 +181,7 @@ class CallFlow(models.Model):
                         dial.sip('sip:{}'.format(user.uri),
                                 statusCallbackEvent='answered completed',
                                 statusCallback=status_url)
+                        expected_leg_count += 1
                     else:
                         client = Client(
                             statusCallbackEvent='answered completed',
@@ -189,6 +191,22 @@ class CallFlow(models.Model):
                             client.parameter(name='CallerName', value=caller_name)
                         client.parameter(name='Partner', value=caller_partner_id)
                         dial.append(client)
+                        expected_leg_count += 1
+            root_channel = self.env['connect.channel'].sudo().search(
+                [('sid', '=', request.get('CallSid'))], limit=1)
+            if root_channel.call and expected_leg_count:
+                call = root_channel.call
+                if call.call_pattern != 'ring_group':
+                    call.call_pattern = 'ring_group'
+                pending = call.attempt_ids.filtered(
+                    lambda attempt: attempt.kind == 'ring_group'
+                    and attempt.state == 'pending')[:1]
+                if pending:
+                    pending.write({'expected_count': expected_leg_count})
+                else:
+                    call._set_webhook_expectation('ring_group', {
+                        'expected_count': expected_leg_count,
+                    })
             response.append(dial)
         else:
             # No ring users set, just send to voicemail if enabled.

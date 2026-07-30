@@ -40,6 +40,25 @@ class OutgoingCallerID(models.Model):
         for rec in self:
             rec.name = '{} "{}"'.format(rec.number, rec.friendly_name)
 
+    @api.model
+    def _get_sms_lines(self):
+        """Caller IDs a message can be sent from.
+
+        Only real Twilio numbers: a verified caller ID is voice-only and
+        Twilio rejects it as the From of a message.
+        """
+        return self.sudo().search([('callerid_type', '=', 'number')])
+
+    @api.model
+    def _get_default_number(self):
+        """Number of the caller ID flagged as Default, or False.
+
+        Outgoing messages always leave from this line, so the lookup is by the
+        ``is_default`` flag and never by a hardcoded number: any database only
+        has to mark one caller ID as Default in Connect.
+        """
+        return self.sudo().search([('is_default', '=', True)], limit=1).number
+
     def sync_outgoing_callerid(self, callerid_type):
         client = self.env['connect.settings'].get_client(region=False)
         if callerid_type == 'outgoing_callerid':

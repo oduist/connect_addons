@@ -455,6 +455,23 @@ class ConnectMessage(models.Model):
             }])
         return chatter
 
+    @api.model
+    def _get_sender_number(self):
+        """Number outgoing messages are sent from.
+
+        The Connect default outgoing caller ID. The agent's own caller ID is
+        only used when the database has no default configured at all, and
+        without either we cannot send: Twilio always requires a From.
+        """
+        sender = self.env['connect.outgoing_callerid']._get_default_number()
+        if not sender:
+            sender = self.env.user.connect_user.outgoing_callerid.number
+        if not sender:
+            raise ValidationError(
+                'No default outgoing number is set. Mark one caller ID as '
+                'Default in Connect to send messages.')
+        return sender
+
     def send(self, recipient, body, res_id=None, res_model=None, outgoing_callerid=None, media_urls=None, skip_chatter=False):
         self.env['oduist.license'].check_license('connect', silent=False)
         sender_user = self.env.user
@@ -467,14 +484,7 @@ class ConnectMessage(models.Model):
             'res_model': res_model,
             'status': 'sent'
         }
-        if outgoing_callerid:
-            sender = outgoing_callerid
-        else:
-            number = sender_user.connect_user.outgoing_callerid
-            # Check if user have a number
-            if not number:
-                raise ValidationError('You dont have an outgoing callerid number!')
-            sender = number.number
+        sender = outgoing_callerid or self._get_sender_number()
         message = self.client_send(recipient, sender, body, media_urls=media_urls)
         if not message:
             raise ValidationError('Unexpected error! Contact admin or maintainer!')

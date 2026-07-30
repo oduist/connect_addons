@@ -631,52 +631,7 @@ class CallForwardHandler(models.TransientModel):
 
     @api.model
     def handle_transfer_continuation(self, webhook_params):
-        """
-        Handle the action callback from transfer dial completion.
-        For successful transfers, update completion status.
-        For failed transfers, route the external caller to the transfer target's voicemail.
-        """
-        call_sid = webhook_params.get('CallSid')
-        dial_call_status = webhook_params.get('DialCallStatus')
-        dial_call_sid = webhook_params.get('DialCallSid')
-        
-        # Find the call record
-        call_channel = self.env['connect.channel'].sudo().search([('sid', '=', call_sid)], limit=1)
-        if not call_channel or not call_channel.call:
-            logger.warning(f'Could not find call for transfer continuation: {call_sid}')
-            response = VoiceResponse()
-            response.hangup()
-            return response
-        
-        call = call_channel.call
-        
-        # If transfer recipient answered (DialCallStatus: completed), update completion status
-        if dial_call_status == 'completed' and call.transferred_users:
-            # Find the transfer recipient who answered by looking at transfer context
-            transfer_context = call.transfer_context or {}
-            transfer_recipient_login = None
-            
-            # Look for the transfer recipient in the context using call SID or dial call SID
-            for context_key, context_value in transfer_context.items():
-                if context_key.startswith('_'):  # Skip internal keys like _external_leg
-                    continue
-                if context_key in (call_sid, dial_call_sid):
-                    if isinstance(context_value, dict) and 'user_id' in context_value:
-                        transfer_recipient_login = context_value.get('user_login')
-                        break
-            
-            if transfer_recipient_login:
-                # Find the user and set as completed_by_user
-                transfer_recipient = self.env['res.users'].sudo().search([('login', '=', transfer_recipient_login)], limit=1)
-                if transfer_recipient:
-                    call.completed_by_user = transfer_recipient
-                else:
-                    logger.warning(f'Could not find user with login {transfer_recipient_login}')
-            else:
-                # Fallback: use the first transfer recipient
-                if call.transferred_users:
-                    call.completed_by_user = call.transferred_users[0]
-        
+        """Return TwiML immediately; the inbox projects transfer state."""
         response = VoiceResponse()
         response.hangup()
         return response
