@@ -5,6 +5,7 @@ import logging
 import re
 from urllib.parse import urljoin
 from odoo import fields, models, api, release
+from odoo.tools import sql
 from .settings import debug
 
 CALL_END_STATUSES = ['completed', 'busy', 'failed', 'no-answer', 'canceled']
@@ -57,10 +58,138 @@ class Channel(models.Model):
     sip_call_id = fields.Char('SIP Call-ID', index=True)
     # Webhook sequence tracking for duplicate filtering
     sequence_number = fields.Integer(string='Sequence Number', default=0, help='Twilio webhook sequence number for duplicate filtering')
+    event_timestamp = fields.Datetime(
+        string='Last Event Timestamp', readonly=True, index=True)
+    last_event_id = fields.Integer(
+        string='Last Event ID', readonly=True, index=True)
     pbx_group_user_ids = fields.Many2many(
         'res.users', 'connect_channel_pbx_group_users_rel',
         string='PBX Group Users',
         compute='_compute_pbx_group_user_ids', store=True)
+
+    _sid_unique = models.Constraint(
+        'UNIQUE(sid)', 'A Twilio Call SID can only have one channel.')
+
+    def _auto_init(self):
+        # _sid_unique is applied at the very end of _auto_init, so leftover
+        # duplicates have to be merged before that: Postgres would refuse the
+        # index, odoo.schema would log an error, and the upgrade would still
+        # succeed with the constraint silently missing. Doing this here rather
+        # than in a migration script keeps it independent of the module
+        # version, which is what a database has to cross for a migration
+        # folder to be picked up at all.
+        self._merge_duplicate_sids()
+        return super()._auto_init()
+
+    def _merge_duplicate_sids(self):
+        """Keep one channel per Twilio SID, repointing everything that
+        referenced the discarded rows."""
+        cr = self.env.cr
+        if not sql.table_exists(cr, self._table):
+            return
+        has_parent = sql.column_exists(cr, self._table, 'parent_channel')
+        has_parent_sid = sql.column_exists(cr, self._table, 'parent_sid')
+        has_sequence = sql.column_exists(cr, self._table, 'sequence_number')
+        # Prefer the row carrying the most information; the columns are probed
+        # because this also runs on databases predating some of them.
+        richness = [
+            column for column in (
+                'call', 'partner', 'caller_pbx_user', 'called_pbx_user',
+                'caller', 'called', 'duration',
+            )
+            if sql.column_exists(cr, self._table, column)
+        ]
+        score = ' + '.join('(%s IS NOT NULL)::integer' % c for c in richness) or '0'
+        order = 'sequence_number DESC NULLS LAST, ' if has_sequence else ''
+
+        def clear_self_parents():
+            if not has_parent:
+                return
+            reset = 'parent_channel = NULL'
+            if has_parent_sid:
+                reset += ', parent_sid = NULL'
+            cr.execute(
+                'UPDATE connect_channel SET %s WHERE parent_channel = id' % reset)
+
+        clear_self_parents()
+        cr.execute('DROP TABLE IF EXISTS connect_channel_sid_merge')
+        cr.execute(
+            """
+            CREATE TEMP TABLE connect_channel_sid_merge (
+                duplicate_id integer PRIMARY KEY,
+                keeper_id integer NOT NULL
+            ) ON COMMIT DROP
+            """
+        )
+        cr.execute(
+            """
+            INSERT INTO connect_channel_sid_merge (duplicate_id, keeper_id)
+            SELECT id, keeper_id
+            FROM (
+                SELECT
+                    id,
+                    first_value(id) OVER (
+                        PARTITION BY sid
+                        ORDER BY {order}({score}) DESC, id DESC
+                    ) AS keeper_id,
+                    count(*) OVER (PARTITION BY sid) AS duplicate_count
+                FROM connect_channel
+                WHERE sid IS NOT NULL
+            ) ranked
+            WHERE duplicate_count > 1 AND id != keeper_id
+            """.format(order=order, score=score)
+        )
+        if not cr.rowcount:
+            return
+        merged = cr.rowcount
+
+        if has_parent:
+            cr.execute(
+                """
+                UPDATE connect_channel channel
+                   SET parent_channel = merge.keeper_id
+                  FROM connect_channel_sid_merge merge
+                 WHERE channel.parent_channel = merge.duplicate_id
+                """
+            )
+            clear_self_parents()
+        if sql.column_exists(cr, 'connect_recording', 'channel'):
+            cr.execute(
+                """
+                UPDATE connect_recording recording
+                   SET channel = merge.keeper_id
+                  FROM connect_channel_sid_merge merge
+                 WHERE recording.channel = merge.duplicate_id
+                """
+            )
+        if sql.table_exists(cr, 'connect_channel_pbx_group_users_rel'):
+            cr.execute(
+                """
+                INSERT INTO connect_channel_pbx_group_users_rel (
+                    connect_channel_id, res_users_id
+                )
+                SELECT DISTINCT merge.keeper_id, relation.res_users_id
+                  FROM connect_channel_pbx_group_users_rel relation
+                  JOIN connect_channel_sid_merge merge
+                    ON merge.duplicate_id = relation.connect_channel_id
+                ON CONFLICT DO NOTHING
+                """
+            )
+            cr.execute(
+                """
+                DELETE FROM connect_channel_pbx_group_users_rel relation
+                 USING connect_channel_sid_merge merge
+                 WHERE relation.connect_channel_id = merge.duplicate_id
+                """
+            )
+        cr.execute(
+            """
+            DELETE FROM connect_channel channel
+             USING connect_channel_sid_merge merge
+             WHERE channel.id = merge.duplicate_id
+            """
+        )
+        logger.info('Merged %s duplicate channel SID(s)', merged)
 
     @api.depends('caller_user', 'called_user')
     def _compute_pbx_group_user_ids(self):
@@ -186,10 +315,6 @@ class Channel(models.Model):
                     data['parent_sid'] = parent_channel.parent_channel.sid
             channel.write(data)
             debug(self, 'Channel %s updated.' % channel.id)
-
-            # Check for external call termination after transfer recipient hangs up
-            if params['CallStatus'] in CALL_END_STATUSES and channel.call:
-                self._handle_external_call_termination_on_hangup(channel, params)
 
             # Note: Outgoing transfer failures now handled by direct extension redirect
             # No longer need complex failure detection logic
@@ -345,49 +470,6 @@ class Channel(models.Model):
 
         except Exception as e:
             logger.error(f'Error handling failed outgoing transfer: {e}')
-
-    def _handle_external_call_termination_on_hangup(self, channel, params):
-        """
-        Handle external call termination when transfer recipients hang up completed calls.
-        This prevents external callers from going to voicemail when internal users end calls.
-        """
-        try:
-            call = channel.call
-            call_sid = params.get('CallSid')
-            call_status = params.get('CallStatus')
-
-            # Only process if call has transfer context with termination info
-            if not call.transfer_context or '_external_termination' not in call.transfer_context:
-                return
-
-            termination_info = call.transfer_context['_external_termination']
-            transfer_recipient_sid = termination_info.get('transfer_recipient_sid')
-            external_call_sid = termination_info.get('external_call_sid')
-
-            # Check if this is the transfer recipient hanging up
-            if call_sid == transfer_recipient_sid:
-                # Terminate the external call
-                client = self.env['connect.settings'].get_client()
-                try:
-                    # Check if external call is still active
-                    external_call = client.calls(external_call_sid).fetch()
-                    if external_call.status in ['in-progress', 'ringing']:
-                        # Terminate the external call
-                        hangup_result = client.calls(external_call_sid).update(status='completed')
-                except Exception as e:
-                    logger.error(f'Failed to terminate external call {external_call_sid}: {e}')
-
-                # Clean up termination context
-                try:
-                    current_context = call.transfer_context or {}
-                    if '_external_termination' in current_context:
-                        del current_context['_external_termination']
-                        call.transfer_context = current_context
-                except Exception as e:
-                    logger.error(f'Failed to clean up termination context: {e}')
-
-        except Exception as e:
-            logger.error(f'Error handling external call termination: {e}', exc_info=True)
 
     def transfer(self, to=None):
         self.ensure_one()

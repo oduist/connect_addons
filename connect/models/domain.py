@@ -517,8 +517,9 @@ class Domain(models.Model):
         debug(self, "Domain call to %s" % request.get("To"))
         if not self.env["oduist.license"].check_license('connect'):
             return "<Response><Pause length='1'/><Say>This is Oduist Connect. Your trial period is over. Please buy a license to continue.</Say><Pause length='1'/></Response>"
-        # Create call + channel
-        self.env["connect.call"].on_call_status(request)
+        # Routing needs the root aggregate synchronously; lifecycle projection is
+        # handled independently by the status callback inbox.
+        self.env["connect.call"].ensure_initial_call(request)
         to_val = request.get("To") or ''
         # Extract number for SIP or WhatsApp channels
         found = re.search(r"^sip:(.+)@(.+)\.sip\.((.+)\.)?twilio\.com", to_val)

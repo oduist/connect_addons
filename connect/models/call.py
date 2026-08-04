@@ -94,6 +94,14 @@ class Call(models.Model):
         ('ring_group', 'Ring Group (Multiple Users)'),
         ('direct_call', 'Direct Call (Single User)')
     ], string='Call Pattern', readonly=True, help='Detected call pattern: ring group vs direct call')
+    # Call parking fields
+    park_slot = fields.Char(string='Parking Slot', readonly=True, index=True,
+        help='Parking slot the call is currently waiting in. Cleared when the call is retrieved.')
+    park_call_sid = fields.Char(string='Parked Call SID', readonly=True,
+        help='Twilio CallSid of the leg that was placed into the parking queue.')
+    parked_at = fields.Datetime(string='Parked At', readonly=True)
+    parked_by_pbx_user = fields.Many2one('connect.user', ondelete='set null',
+        string='Parked By', readonly=True)
     # Scheduled fields.
     scheduled_datetime = fields.Datetime()
     # Voicemail fields
@@ -118,6 +126,14 @@ class Call(models.Model):
     call_sid = fields.Char(string='Twilio Call SID', readonly=True, index=True, help='Twilio CallSid for fetching price information')
     is_price_fetched = fields.Boolean(string='Price Fetched', default=False, readonly=True, index=True, help='Indicates if call price has been fetched from Twilio API')
     price_fetch_attempts = fields.Integer(string='Price Fetch Attempts', default=0, readonly=True)
+    attempt_ids = fields.One2many(
+        'connect.call.attempt', 'call_id', string='Runtime Attempts', readonly=True)
+    projection_event_id = fields.Integer(readonly=True, index=True)
+    finalization_event_id = fields.Integer(readonly=True, index=True)
+    finalized_at = fields.Datetime(readonly=True, index=True)
+    registration_done = fields.Boolean(default=False, readonly=True, index=True)
+    ring_notification_done = fields.Boolean(default=False, readonly=True)
+    error_notification_done = fields.Boolean(default=False, readonly=True)
     pbx_group_user_ids = fields.Many2many(
         'res.users', 'connect_call_pbx_group_users_rel',
         string='PBX Group Users',
@@ -553,34 +569,15 @@ class Call(models.Model):
             logger.info(f"Call {self.id}: Fallback - answered_user={self.answered_user.login}, completed_by_user={self.completed_by_user.login}")
 
     def add_transferred_user(self, user):
-        """Add a user to the transferred_users field when a transfer is initiated."""
+        """Persist transfer runtime state so every worker observes it."""
         self.ensure_one()
         if user and hasattr(user, 'id'):
             current_transfer_ids = self.transferred_users.ids
             if user.id not in current_transfer_ids:
                 self.transferred_users = [(4, user.id)]
-                if hasattr(self.__class__, '_webhook_expectations'):
-                    call_key = f"call_{self.id}"
-                    expectations = self.__class__._webhook_expectations.get(call_key, {})
-                    if 'ring_group' in expectations:
-                        ring_expectation = expectations['ring_group']
-                        current_expected = ring_expectation.get('expected_count', 0)
-                        if current_expected > 1:
-                            new_expected = current_expected - 1
-                            ring_expectation['expected_count'] = new_expected
-                            logger.info(f"Call {self.id}: Reduced ring_group expectation from {current_expected} to {new_expected} due to transfer")
-                            all_call_sids = list(ring_expectation.get('call_sid_states', {}).keys())
-                            terminal_sids = [sid for sid, state in ring_expectation.get('call_sid_states', {}).items() if state.get('terminal', False)]
-                            if len(all_call_sids) >= new_expected and len(terminal_sids) >= new_expected:
-                                logger.info(f"Call {self.id}: ring_group expectation now fulfilled with reduced count - clearing expectation")
-                                del expectations['ring_group']
-                                if not expectations:
-                                    del self.__class__._webhook_expectations[call_key]
                 self._set_webhook_expectation('transfer', {
                     'expected_count': 1,
-                    'received_count': 0,
                     'target_user_id': user.id,
-                    'target_user_login': user.login
                 })
                 logger.info(f"Call {self.id}: Transfer initiated to {user.login} (added to transferred_users)")
                 if not self.call_pattern:
@@ -589,24 +586,40 @@ class Call(models.Model):
                         self.call_pattern = detected_pattern
 
     def store_transfer_context(self, dial_call_sid, target_user):
-        """Store temporary transfer context for webhook processing."""
+        """Store transfer context in the database (legacy JSON is read-only)."""
         self.ensure_one()
         if not dial_call_sid or not target_user:
             return
-        current_context = self.transfer_context or {}
-        current_context[dial_call_sid] = {
-            'user_id': target_user.id,
-            'user_login': target_user.login
-        }
-        self.transfer_context = current_context
+        attempt = self.attempt_ids.filtered(
+            lambda rec: rec.kind == 'transfer'
+            and rec.state == 'pending'
+            and rec.target_user_id == target_user
+        )[:1]
+        if attempt:
+            attempt.write({'dial_call_sid': dial_call_sid})
+        else:
+            self.env['connect.call.attempt'].sudo().create({
+                'kind': 'transfer',
+                'call_id': self.id,
+                'parent_sid': self.call_sid or self.channels[:1].sid,
+                'dial_call_sid': dial_call_sid,
+                'target_user_id': target_user.id,
+            })
         logger.info(f"Call {self.id}: Stored transfer context for {dial_call_sid} -> {target_user.login}")
 
     def get_transfer_target(self, dial_call_sid):
-        """Get transfer target from temporary context storage."""
+        """Get a transfer target from runtime attempts, then legacy JSON."""
         self.ensure_one()
-        if not self.transfer_context or not dial_call_sid:
+        if not dial_call_sid:
             return None
-        context_data = self.transfer_context.get(dial_call_sid)
+        attempt = self.attempt_ids.filtered(
+            lambda rec: rec.kind == 'transfer'
+            and rec.dial_call_sid == dial_call_sid
+            and rec.target_user_id
+        )[:1]
+        if attempt:
+            return attempt.target_user_id
+        context_data = (self.transfer_context or {}).get(dial_call_sid)
         if context_data and 'user_id' in context_data:
             user = self.env['res.users'].sudo().browse(context_data['user_id'])
             if user.exists():
@@ -615,161 +628,162 @@ class Call(models.Model):
         return None
 
     def store_external_call_leg(self, external_call_sid):
-        """Store external call leg SID for outgoing call transfers."""
+        """Store an external leg without mutating connect.call."""
         self.ensure_one()
         if not external_call_sid:
             return
-        current_context = self.transfer_context or {}
-        current_context['_external_leg'] = external_call_sid
-        self.transfer_context = current_context
+        attempt = self.attempt_ids.filtered(
+            lambda rec: rec.kind == 'external_leg' and rec.state == 'pending'
+        )[:1]
+        if attempt:
+            attempt.write({'external_sid': external_call_sid})
+        else:
+            self.env['connect.call.attempt'].sudo().create({
+                'kind': 'external_leg',
+                'call_id': self.id,
+                'parent_sid': self.call_sid or self.channels[:1].sid,
+                'external_sid': external_call_sid,
+            })
         logger.info(f"Call {self.id}: Stored external call leg SID: {external_call_sid}")
 
     def get_external_call_leg(self):
-        """Get external call leg SID for outgoing call transfers."""
+        """Get an external leg from runtime attempts, then legacy JSON."""
         self.ensure_one()
-        if not self.transfer_context:
-            return None
-        external_leg = self.transfer_context.get('_external_leg')
+        attempt = self.attempt_ids.filtered(
+            lambda rec: rec.kind == 'external_leg' and rec.external_sid
+        )[:1]
+        external_leg = attempt.external_sid if attempt else (
+            (self.transfer_context or {}).get('_external_leg'))
         if external_leg:
             logger.info(f"Call {self.id}: Retrieved external call leg SID: {external_leg}")
             return external_leg
         return None
 
     def clear_transfer_context(self):
-        """Clear temporary transfer context after call processing is complete."""
+        """Resolve runtime attempts; keep the legacy JSON field untouched."""
         self.ensure_one()
-        if self.transfer_context:
-            logger.info(f"Call {self.id}: Clearing transfer context")
-            self.transfer_context = None
-
-    @classmethod
-    def _cleanup_old_webhook_expectations(cls):
-        """Clean up old expectations (older than 10 minutes)"""
-        import datetime
-        if not hasattr(cls, '_webhook_expectations'):
-            return
-        cutoff = fields.Datetime.now() - datetime.timedelta(minutes=10)
-        to_remove = []
-        for call_key, expectations in cls._webhook_expectations.items():
-            empty_expectations = []
-            for source, data in expectations.items():
-                if data['timestamp'] < cutoff:
-                    empty_expectations.append(source)
-            for source in empty_expectations:
-                del expectations[source]
-            if not expectations:
-                to_remove.append(call_key)
-        for call_key in to_remove:
-            del cls._webhook_expectations[call_key]
-        if to_remove:
-            logger.info(f"Cleaned up webhook expectations for {len(to_remove)} completed calls")
+        self.attempt_ids.filtered(
+            lambda rec: rec.state == 'pending'
+        ).mark_resolved()
 
     def _set_webhook_expectation(self, source, data):
-        """Set expectation for incoming webhook data with per-CallSid tracking"""
-        import datetime
-        import random
-        if random.randint(1, 50) == 1:
-            self.__class__._cleanup_old_webhook_expectations()
-        if not hasattr(self.__class__, '_webhook_expectations'):
-            self.__class__._webhook_expectations = {}
-        call_key = f"call_{self.id}"
-        if call_key not in self.__class__._webhook_expectations:
-            self.__class__._webhook_expectations[call_key] = {}
+        """Create a persistent expectation shared by all Odoo workers."""
+        self.ensure_one()
+        kind = source if source in {
+            'direct_call', 'ring_group', 'transfer', 'external_leg',
+            'external_termination'
+        } else 'direct_call'
         expected_call_sids = data.get('expected_call_sids', [])
-        self.__class__._webhook_expectations[call_key][source] = {
-            'timestamp': fields.Datetime.now(),
+        vals = {
+            'kind': kind,
+            'call_id': self.id,
+            'parent_sid': self.call_sid or self.channels[:1].sid,
             'expected_count': data.get('expected_count', 1),
-            'received_count': 0,
-            'expected_call_sids': expected_call_sids,
-            'call_sid_states': {},
-            **{k: v for k, v in data.items() if k not in ['expected_count', 'received_count', 'expected_call_sids']}
+            'target_user_id': data.get('target_user_id'),
+            'dial_call_sid': expected_call_sids[0] if len(expected_call_sids) == 1 else False,
+            'context': data,
         }
+        attempt = self.env['connect.call.attempt'].sudo().create(vals)
         if expected_call_sids:
             logger.info(f"Call {self.id}: Set {source} webhook expectation - expecting CallSids: {expected_call_sids}")
         else:
             logger.info(f"Call {self.id}: Set {source} webhook expectation - expecting {data.get('expected_count', 1)} channels")
+        return attempt
 
     def _update_webhook_expectation_callsid(self, source, call_sid, call_status):
-        """Update CallSid state and check if expectation is complete based on terminal states"""
-        if not hasattr(self.__class__, '_webhook_expectations'):
-            return
-        call_key = f"call_{self.id}"
-        if call_key not in self.__class__._webhook_expectations:
-            return
-        expectations = self.__class__._webhook_expectations[call_key]
-        if source not in expectations:
-            return
-        expectation = expectations[source]
-        is_terminal = call_status in CALL_END_STATUSES
-        expectation['call_sid_states'][call_sid] = {
-            'status': call_status,
-            'terminal': is_terminal
-        }
-        logger.info(f"Call {self.id}: {source} CallSid tracking - {call_sid} status: {call_status} (terminal: {is_terminal})")
-        expected_count = expectation.get('expected_count', 1)
-        all_call_sids = list(expectation['call_sid_states'].keys())
-        terminal_sids = [sid for sid, state in expectation['call_sid_states'].items() if state['terminal']]
-        logger.info(f"Call {self.id}: {source} CallSids seen: {len(all_call_sids)}, terminal: {len(terminal_sids)}, expected: {expected_count}")
-        if len(all_call_sids) >= expected_count and len(terminal_sids) >= expected_count:
-            logger.info(f"Call {self.id}: {source} expectation fulfilled - all expected CallSids reached terminal states")
-            del expectations[source]
-            if not expectations:
-                logger.info(f"Call {self.id}: All webhook expectations complete - removing call from tracking")
-                del self.__class__._webhook_expectations[call_key]
-        else:
-            if len(all_call_sids) < expected_count:
-                reason = f"waiting for {expected_count - len(all_call_sids)} more CallSids"
-            else:
-                non_terminal = expected_count - len(terminal_sids)
-                reason = f"waiting for {non_terminal} CallSids to reach terminal state"
-            logger.info(f"Call {self.id}: {source} expectation not yet fulfilled - {reason}")
+        """Compatibility helper for code paths that still update a leg directly."""
+        attempts = self.attempt_ids.filtered(
+            lambda rec: rec.kind == source and rec.state == 'pending')
+        if call_status in CALL_END_STATUSES:
+            for attempt in attempts:
+                channels = self.channels.filtered(
+                    lambda channel: channel.call_source == source
+                    and channel.status in CALL_END_STATUSES)
+                if len(channels) >= attempt.expected_count:
+                    attempt.mark_resolved()
 
     def _has_pending_webhooks(self):
-        """Check if we're still expecting webhook data"""
-        if not hasattr(self.__class__, '_webhook_expectations'):
-            return False
-        call_key = f"call_{self.id}"
-        if call_key not in self.__class__._webhook_expectations:
-            return False
-        expectations = self.__class__._webhook_expectations[call_key]
-        if not expectations:
-            return False
-        import datetime
-        cutoff = fields.Datetime.now() - datetime.timedelta(seconds=60)
-        active_expectations = False
-        timed_out_sources = []
-        for source, data in expectations.items():
-            timestamp = data['timestamp']
-            if timestamp > cutoff:
-                active_expectations = True
-            else:
-                timed_out_sources.append(source)
-        for source in timed_out_sources:
-            logger.warning(f"Call {self.id}: {source} expectation timed out after 60 seconds")
-            del expectations[source]
-        if not expectations:
-            del self.__class__._webhook_expectations[call_key]
-        if timed_out_sources and not active_expectations:
-            logger.warning(f"Call {self.id}: All webhook expectations timed out, proceeding with finalization")
-        return active_expectations
+        """Check persistent, non-expired runtime expectations."""
+        now = fields.Datetime.now()
+        expired = self.attempt_ids.filtered(
+            lambda rec: rec.state == 'pending' and rec.expires_at <= now)
+        if expired:
+            expired.write({'state': 'expired', 'resolved_at': now})
+        return bool(self.attempt_ids.filtered(
+            lambda rec: rec.state == 'pending'
+            and rec.kind not in ('external_leg', 'external_termination')))
 
     def _clear_webhook_expectations(self, source=None):
-        """Clear webhook expectations for this call, optionally for a specific source"""
-        if not hasattr(self.__class__, '_webhook_expectations'):
-            return
-        call_key = f"call_{self.id}"
-        if call_key not in self.__class__._webhook_expectations:
-            return
-        if source:
-            expectations = self.__class__._webhook_expectations[call_key]
-            if source in expectations:
-                logger.info(f"Call {self.id}: Clearing {source} webhook expectation due to pattern change")
-                del expectations[source]
-                if not expectations:
-                    del self.__class__._webhook_expectations[call_key]
+        """Resolve persistent expectations, optionally filtered by kind."""
+        attempts = self.attempt_ids.filtered(
+            lambda rec: rec.state == 'pending'
+            and (not source or rec.kind == source))
+        attempts.mark_resolved()
+
+    @api.model
+    def ensure_initial_call(self, payload):
+        """Synchronously and idempotently create the root channel and call."""
+        self = self.sudo()
+        payload = dict(payload or {})
+        sid = payload.get('CallSid')
+        if not sid:
+            return self
+        channel_model = self.env['connect.channel']
+        channel = channel_model.search([('sid', '=', sid)], limit=1)
+        if not channel:
+            event_model = self.env['connect.call.event']
+            vals = event_model._channel_vals(payload, self, channel_model)
+            vals.update({
+                'sid': sid,
+                'sequence_number': int(payload.get('SequenceNumber') or 0),
+                'event_timestamp': event_model._parse_timestamp(payload)
+                    or fields.Datetime.now(),
+            })
+            channel = channel_model.with_context(
+                tracking_disable=True).create(vals)
+        return self._ensure_call_from_channel(channel)
+
+    @api.model
+    def _ensure_call_from_channel(self, channel):
+        """Create the aggregate for an already known root channel."""
+        self = self.sudo()
+        if channel.call:
+            return channel.call
+        if channel.parent_channel and channel.parent_channel.call:
+            channel.with_context(tracking_disable=True).write({
+                'call': channel.parent_channel.call.id,
+            })
+            return channel.parent_channel.call
+        if channel.parent_channel:
+            return self
+        if channel.technical_direction == 'outbound-api':
+            direction = 'outgoing'
+        elif channel.technical_direction == 'inbound' and channel.caller_pbx_user:
+            direction = 'outgoing'
+        elif channel.technical_direction == 'inbound':
+            direction = 'incoming'
         else:
-            logger.info(f"Call {self.id}: Clearing all webhook expectations")
-            del self.__class__._webhook_expectations[call_key]
+            direction = 'outgoing'
+        call = self.with_context(tracking_disable=True).create({
+            'partner': channel.partner.id,
+            'called': channel.called_number,
+            'caller': channel.caller_number,
+            'status': channel.status,
+            'caller_pbx_user': channel.caller_pbx_user.id,
+            'caller_user': channel.caller_user.id,
+            'direction': direction,
+            'call_type': channel.call_type or 'phone',
+            'call_pattern': (
+                'direct_call' if direction in ('outgoing', 'internal') else False
+            ),
+            'call_sid': channel.sid,
+        })
+        channel.with_context(tracking_disable=True).write({'call': call.id})
+        return call
+
+    def _after_call_projection(self, finalized, changed_fields):
+        """Extension hook invoked after an idempotent call projection."""
+        return True
 
     def write(self, vals: dict):
         if release.version_info[0] <= 15.0 and 'transfer_context' in vals:
@@ -785,7 +799,7 @@ class Call(models.Model):
         return records
 
     @api.model
-    def on_call_status(self, params):
+    def _on_call_status_legacy(self, params):
         self = self.sudo()
         # Create channel
         channel = self.env['connect.channel'].on_call_status(params)
@@ -958,26 +972,22 @@ class Call(models.Model):
         return channel.call.id
 
     @api.model
-    def on_vm_recording_status(self, params):
-        debug(self.sudo(), 'On recording status: %s' % json.dumps(params, indent=2))
-        channel = self.sudo().env['connect.channel'].search([('sid', '=', params['CallSid'])])
-        if channel and channel.call:
-            channel.call.write({
-                'voicemail_url': params.get('RecordingUrl'),
-                'voicemail_duration': int(params.get('RecordingDuration'))
-            })
+    def on_call_status(self, params, token=None):
+        """Compatibility entry point: enqueue lifecycle work."""
+        event = self.env['connect.call.event'].sudo().ingest(
+            'call_status', params, token=token)
+        return event.call_id.id if event.call_id else False
+
+    @api.model
+    def on_vm_recording_status(self, params, token=None):
+        self.env['connect.call.event'].sudo().ingest(
+            'voicemail_status', params, token=token)
         return True
 
     @api.model
-    def on_call_action(self, params):
-        debug(self, 'On call action: %s' % params)
-        # Check if this is a Dial action webhook with transfer completion data
-        if 'DialCallSid' in params and 'DialCallStatus' in params:
-            try:
-                self._process_transfer_completion(params)
-                logger.info(f"Successfully processed transfer completion")
-            except Exception as e:
-                logger.error(f"Failed to process transfer completion: {e}")
+    def on_call_action(self, params, token=None):
+        self.env['connect.call.event'].sudo().ingest(
+            'dial_action', params, token=token)
         return '<Response><Hangup/></Response>'
 
     def _process_transfer_completion(self, params):
@@ -1586,9 +1596,12 @@ class Call(models.Model):
                 debug(self, 'park_call: Redirected parent %s to park-%s' % (parent_call_sid, slot))
             except Exception as e:
                 logger.error('park_call: Failed to redirect parent call: %s', e)
+            else:
+                self._register_parked_call(parent_call_sid, slot, request)
         else:
             # No parent call — this is a direct call to *701, just enqueue it
             debug(self, 'park_call: No ParentCallSid, enqueueing CallSid=%s' % call_sid)
+            self._register_parked_call(call_sid, slot, request)
             response = VoiceResponse()
             response.enqueue('park-%s' % slot)
             return response
@@ -1599,17 +1612,236 @@ class Call(models.Model):
         return response
 
     @api.model
+    def _register_parked_call(self, parked_call_sid, slot, request):
+        """Remember which call is waiting in which parking slot.
+
+        Without this the retrieval leg has no way to know who is parked, so it
+        cannot present the original caller ID nor link the two calls together
+        in the call log.
+        """
+        call = self._get_call_by_sid(parked_call_sid)
+        if not call:
+            logger.warning('park_call: no call found for CallSid=%s, slot %s not tracked',
+                           parked_call_sid, slot)
+            return self.browse()
+        parked_by = self.env['connect.user'].sudo().get_user_by_uri(request.get('Caller'))[:1]
+        call.sudo().write({
+            'park_slot': slot,
+            'park_call_sid': parked_call_sid,
+            'parked_at': fields.Datetime.now(),
+            'parked_by_pbx_user': parked_by.id if parked_by else False,
+        })
+        call._message_log(body=Markup(_('Call parked in slot %(slot)s by %(user)s.')) % {
+            'slot': slot,
+            'user': parked_by.name if parked_by else _('an unknown user'),
+        })
+        debug(self, 'park_call: call %s parked in slot %s' % (call.id, slot))
+        return call
+
+    @api.model
+    def _get_call_by_sid(self, call_sid):
+        """Resolve the connect.call a Twilio CallSid belongs to."""
+        if not call_sid:
+            return self.browse()
+        channel = self.env['connect.channel'].sudo().search(
+            [('sid', '=', call_sid)], limit=1)
+        return channel.call.sudo() if channel.call else self.browse()
+
+    @api.model
+    def _get_parked_call(self, slot):
+        """The call to be retrieved from a slot.
+
+        Twilio dequeues the longest waiting caller, so when several calls share
+        a slot we must pick the oldest one to stay in sync with the queue.
+        """
+        if not slot:
+            return self.browse()
+        return self.sudo().search([
+            ('park_slot', '=', slot),
+            ('park_call_sid', '!=', False),
+        ], order='parked_at asc, id asc', limit=1)
+
+    @api.model
     def unpark_call(self, request, params):
         """Unpark (retrieve) a call from a parking slot.
 
         Called when someone dials extension 701-710.
         params['ExtenNumber'] contains the slot number.
+
+        The retrieving phone dialed the slot number, so its display shows the
+        slot (e.g. "702") and Twilio never re-signals the remote identity when
+        it bridges a queued caller into that established leg. To show the real
+        caller ID we hang up the retrieval leg and instead redirect the parked
+        call to dial the retriever back, presenting the original caller.
+        When the parked call is unknown (parked before this feature, tracking
+        lost, Twilio API error, ...) we fall back to the plain queue bridge.
         """
         slot = params.get('ExtenNumber', '')
         debug(self, 'unpark_call: Retrieving from slot %s' % slot)
-
+        retriever = self.env['connect.user'].sudo().get_user_by_uri(request.get('Caller'))[:1]
+        parked_call = self._get_parked_call(slot)
+        # Link the retrieval leg to the parked call so the call log keeps the
+        # customer's identity instead of showing a bare "exten -> slot" call.
+        self._link_park_retrieval_leg(request, slot, parked_call, retriever)
+        if parked_call and retriever:
+            if self._dial_back_parked_call(parked_call, retriever, slot, request):
+                # The parked call is now dialing the retriever, release the leg
+                # the retriever dialed the slot with.
+                response = VoiceResponse()
+                response.hangup()
+                return response
+        else:
+            debug(self, 'unpark_call: slot %s parked call %s retriever %s, using queue bridge' % (
+                slot, parked_call.id if parked_call else False,
+                retriever.username if retriever else False))
         response = VoiceResponse()
         dial = Dial(timeout=1)
         dial.queue('park-%s' % slot)
         response.append(dial)
+        return response
+
+    @api.model
+    def _link_park_retrieval_leg(self, request, slot, parked_call, retriever):
+        """Attach the "dialed the slot" call to the call being retrieved.
+
+        Retrieving a parked call creates its own <exten> -> <slot> call record.
+        Left alone it is an orphan with no partner, which is what made the call
+        log show "702" instead of the customer.
+        """
+        retrieval_call = self._get_call_by_sid(request.get('CallSid'))
+        if not retrieval_call or retrieval_call == parked_call:
+            return self.browse()
+        if parked_call:
+            vals = {'parent_call': parked_call.id}
+            if parked_call.partner and not retrieval_call.partner:
+                vals['partner'] = parked_call.partner.id
+            retrieval_call.sudo().write(vals)
+            parked_call.sudo()._message_log(body=Markup(_(
+                'Call retrieved from parking slot %(slot)s by %(user)s.')) % {
+                    'slot': slot,
+                    'user': retriever.name if retriever else _('an unknown user'),
+                })
+        retrieval_call.sudo()._message_log(body=Markup(_(
+            'Retrieval of the call parked in slot %(slot)s.')) % {'slot': slot})
+        return retrieval_call
+
+    @api.model
+    def _dial_back_parked_call(self, parked_call, retriever, slot, request):
+        """Take the parked call out of the queue and dial the retriever back.
+
+        Returns True when the redirect was accepted by Twilio, False to let the
+        caller fall back to the plain queue bridge.
+        """
+        # Serialize concurrent retrievals of the same slot: whoever gets the row
+        # lock first takes the call, the other one falls back to the queue.
+        parked_call.flush_recordset(['park_slot'])
+        self.env.cr.execute(
+            'SELECT park_slot FROM connect_call WHERE id = %s FOR UPDATE',
+            (parked_call.id,))
+        row = self.env.cr.fetchone()
+        if not row or not row[0]:
+            debug(self, 'unpark_call: call %s already retrieved' % parked_call.id)
+            return False
+        caller_uri = request.get('Caller') or ''
+        twiml = self._build_park_retrieval_twiml(
+            parked_call, retriever, slot, from_client=caller_uri.startswith('client:'))
+        if twiml is None:
+            return False
+        try:
+            client = self.env['connect.settings'].get_client()
+            client.calls(parked_call.park_call_sid).update(twiml=str(twiml))
+        except Exception as e:
+            logger.error('unpark_call: failed to redirect parked call %s: %s',
+                         parked_call.park_call_sid, e)
+            return False
+        debug(self, 'unpark_call: redirected parked call %s to %s' % (
+            parked_call.id, retriever.username))
+        # Keep park_call_sid: the retrieval Dial action re-parks the caller when
+        # the retriever does not answer.
+        parked_call.sudo().write({'park_slot': False})
+        return True
+
+    @api.model
+    def _build_park_retrieval_twiml(self, parked_call, retriever, slot, from_client=False):
+        """TwiML making the parked call ring the retriever with the real caller ID.
+
+        The retriever is called back on the device they retrieved from, so a
+        user with both a SIP phone and a web phone does not get both ringing.
+        Returns None when the retriever has no reachable endpoint.
+        """
+        caller_id = parked_call.caller
+        if not caller_id:
+            logger.warning('unpark_call: call %s has no caller number', parked_call.id)
+            return None
+        use_client = retriever.client_enabled and (from_client or not retriever.sip_enabled)
+        if not use_client and not retriever.sip_enabled:
+            logger.warning('unpark_call: user %s has no enabled endpoint', retriever.username)
+            return None
+        settings = self.env['connect.settings'].sudo()
+        api_url = settings.get_param('api_url')
+        edge = settings.get_param('twilio_edge')
+        status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
+        record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus#e={}'.format(edge))
+        refer_url = urljoin(api_url, 'twilio/webhook/sip_refer#e={}'.format(edge))
+        action_url = urljoin(api_url, 'twilio/webhook/park_retrieve/{}/{}#e={}'.format(
+            parked_call.id, slot, edge))
+        dial_kwargs = {
+            'timeout': (retriever.client_ring_timeout if use_client else retriever.sip_ring_timeout) or 30,
+            'callerId': caller_id,
+            'action': action_url,
+        }
+        if not use_client:
+            dial_kwargs['referUrl'] = refer_url
+        if retriever.record_calls and not parked_call.disable_recording:
+            dial_kwargs.update({
+                'record': 'record-from-answer-dual',
+                'recordingStatusCallback': record_status_url,
+            })
+        dial = Dial(**dial_kwargs)
+        if use_client:
+            client = Client(
+                statusCallbackEvent='initiated answered completed',
+                statusCallback=status_url)
+            client.identity(retriever.get_client_identity())
+            client.parameter(
+                name='CallerName',
+                value=parked_call.partner.name if parked_call.partner else caller_id)
+            client.parameter(
+                name='Partner',
+                value=parked_call.partner.id if parked_call.partner else False)
+            dial.append(client)
+        else:
+            dial.sip(
+                'sip:{}{}'.format(
+                    retriever.uri,
+                    ';secure=true' if retriever.domain.secure_media else ''),
+                statusCallbackEvent='initiated answered completed',
+                statusCallback=status_url)
+        response = VoiceResponse()
+        response.append(dial)
+        debug(self, 'unpark_call: retrieval TwiML for slot %s: %s' % (slot, str(response)))
+        return response
+
+    @api.model
+    def on_park_retrieve_action(self, call_id, slot, params):
+        """Dial action of the park retrieval leg.
+
+        The parked caller was taken out of the queue to ring the retriever. If
+        that call was not answered the caller must go back to their slot rather
+        than be dropped.
+        """
+        call = self.sudo().browse(call_id).exists()
+        dial_status = params.get('DialCallStatus')
+        debug(self, 'on_park_retrieve_action: call %s slot %s status %s' % (
+            call_id, slot, dial_status))
+        response = VoiceResponse()
+        if dial_status == 'completed' or not slot:
+            if call:
+                call.write({'park_slot': False, 'park_call_sid': False})
+            response.hangup()
+            return response
+        # Not answered: put the caller back into the parking slot.
+        if call:
+            call.write({'park_slot': slot, 'parked_at': fields.Datetime.now()})
+        response.enqueue('park-%s' % slot)
         return response
