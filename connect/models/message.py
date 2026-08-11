@@ -22,6 +22,8 @@ from phonenumbers import parse, format_number, PhoneNumberFormat
 from twilio.twiml.messaging_response import MessagingResponse
 
 from odoo import models, fields, api, release
+if release.version_info[0] >= 17:
+    from odoo.addons.mail.tools.discuss import Store
 from odoo.api import SUPERUSER_ID
 from odoo.exceptions import ValidationError
 from odoo.tools import mail
@@ -74,6 +76,13 @@ class ConnectMessage(models.Model):
     media_url = fields.Char()
     media_content_type = fields.Char()
     transcription_error = fields.Char()
+    mail_message_id = fields.Many2one(
+        'mail.message', index=True, string='Chatter Message', ondelete='set null')
+    channel_message_id = fields.Many2one(
+        'mail.message', index=True, string='Discuss Message', ondelete='set null')
+    channel_id = fields.Many2one(
+        'discuss.channel' if release.version_info[0] >= 17 else 'mail.channel',
+        index=True, string='Discuss Channel', ondelete='set null')
     if release.version_info[0] >= 17.0:
         media_widget = fields.Html(compute='_get_media_widget', string='Media', sanitize=False)
     else:
@@ -188,6 +197,25 @@ class ConnectMessage(models.Model):
             else:
                 record.name = f"New {record.message_type}"
 
+    @staticmethod
+    def _strip_provider_scheme(number):
+        """Return an E.164 number without Twilio's ``whatsapp:`` scheme."""
+        number = number or ''
+        return number[len('whatsapp:'):] if number.startswith('whatsapp:') else number
+
+    def _provider(self):
+        self.ensure_one()
+        return 'whatsapp' if self.message_type == 'whatsapp' else 'sms'
+
+    def _mail_message_type(self):
+        """Map Connect's normalized provider to mail's selection value."""
+        self.ensure_one()
+        return 'WhatsApp' if self.message_type == 'whatsapp' else self.message_type
+
+    @api.model
+    def _connect_channel_model(self):
+        return 'discuss.channel' if release.version_info[0] >= 17 else 'mail.channel'
+
     def transcribe_voice_message(self, openai_api_key, media_url):
         result = {}
         try:
@@ -214,12 +242,21 @@ class ConnectMessage(models.Model):
             return result
 
     def get_receive_message_values(self, params):
+        from_raw = params.get('From', '') or ''
+        num_media = int(params.get('NumMedia', 0))
+        if from_raw.startswith('whatsapp:'):
+            message_type = 'whatsapp'
+        elif num_media > 0:
+            message_type = 'mms'
+        else:
+            message_type = 'sms'
         values = {
             'message_sid': params.get('MessageSid'),
-            'from_number': params.get('From'),
-            'to_number': params.get('To'),
+            'from_number': self._strip_provider_scheme(from_raw),
+            'to_number': self._strip_provider_scheme(params.get('To')),
             'body': params.get('Body'),
-            'num_media': int(params.get('NumMedia', 0)),
+            'num_media': num_media,
+            'message_type': message_type,
             'from_city': params.get('FromCity'),
             'from_state': params.get('FromState'),
             'from_zip': params.get('FromZip'),
@@ -250,9 +287,9 @@ class ConnectMessage(models.Model):
                 return
             if params.get('SmsStatus') == 'received':
                 # Create SMS message record
-                from_number = params.get('From')
-                to_number = params.get('To')
                 values = self.get_receive_message_values(params)
+                from_number = values['from_number']
+                to_number = values['to_number']
                 # Media handling (image, audio, video)
                 try:
                     if int(params.get('NumMedia', '0') or 0) > 0:
@@ -313,7 +350,7 @@ class ConnectMessage(models.Model):
                             defaults = dict(ast.literal_eval(config.default_values or '{}'))
                         except Exception as e:
                             logger.error('Invalid default data: %s\n%s', config.default_values, e)
-                    if dest_model in self.env:
+                    if dest_model != 'res.partner' and dest_model in self.env:
                         try:
                             new_rec = self.env[dest_model].with_context(mail_create_nosubscribe=True).sudo().create_record_from_message(message, default_values=defaults)
                             target_msg.write({
@@ -322,32 +359,42 @@ class ConnectMessage(models.Model):
                             })
                         except Exception as e:
                             logger.warning('create_record_from_message failed for %s: %s', dest_model, e)
-                    else:
+                    elif dest_model not in self.env:
                         logger.warning('Destination model %s not found', dest_model)
-                # Add message to chatter at the target record when available and valid
+                chatter_targets = []
                 if valid_target and target_msg and target_msg.res_model and target_msg.res_id:
-                    obj = self.env[target_msg.res_model].with_user(SUPERUSER_ID).browse(target_msg.res_id)
-                    # Double-check existence to be safe in concurrent delete scenarios
-                    if obj.exists() and hasattr(obj, 'message_post'):
-                        body = Markup(f"<div class='d-flex flex-row px-1'>"
-                                f"<span class='px-1'>{values.get('body')}</span></div>")
-                        if message.media_url:
-                            body = Markup(f"<div class='d-flex flex-row'>"
-                                          f"<span class='px-1'>{values.get('body')}</span>"
-                                          f"<br/>{message.media_widget}</div>")
+                    target_rec = self.env[target_msg.res_model].with_user(
+                        SUPERUSER_ID).browse(target_msg.res_id)
+                    if target_rec.exists() and hasattr(target_rec, 'message_post'):
+                        chatter_targets.append(target_rec)
+                if partner and not any(
+                        rec._name == 'res.partner' and rec.id == partner.id
+                        for rec in chatter_targets):
+                    chatter_targets.append(partner.with_user(SUPERUSER_ID))
+                primary_chatter = False
+                for obj in chatter_targets:
+                    chatter = self._post_inbound_chatter_note(
+                        obj, message, values.get('body'), partner)
+                    if not chatter:
+                        continue
+                    if obj._name == 'res.partner' and partner and obj.id == partner.id:
+                        primary_chatter = chatter
+                    elif not primary_chatter:
+                        primary_chatter = chatter
+                if primary_chatter:
+                    message.mail_message_id = primary_chatter.id
 
-                        # Post as a comment to notify subscribed followers similar to incoming mail
-                        mt_comment = self.env.ref('mail.mt_comment').id
-                        kwargs = {
-                            'body': body,
-                            'subtype_id': mt_comment,
-                            'message_type': message.message_type
-                        }
-                        if partner:
-                            kwargs.update({'author_id': partner.id})
-                        chatter = obj.with_context(mail_create_nosubscribe=True).message_post(**kwargs)
-                        chatter.connect_message = message
-                        # Let Odoo generate notifications for followers automatically (no manual mail.notification)
+                try:
+                    channel = self.env[self._connect_channel_model()]._get_connect_channel(
+                        partner, number=from_number, provider=message._provider(),
+                        create_if_not_found=True)
+                    parent_id = False
+                    if (parent_msg and parent_msg.channel_message_id
+                            and parent_msg.channel_id.id == channel.id):
+                        parent_id = parent_msg.channel_message_id.id
+                    channel._connect_post_inbound(message, parent_id=parent_id)
+                except Exception as e:
+                    logger.warning('Connect Discuss mirror failed: %s', e)
             else:
                 # Update message status
                 logger.info("Received Update Twilio SMS webhook data:\n%s", params)
@@ -359,15 +406,47 @@ class ConnectMessage(models.Model):
                         'error_message': params.get('ErrorMessage'),
                         'has_error': True,
                     })
+                message._bus_send_connect_status()
         except Exception as e:
             logger.error(f"Error handling incoming SMS: {e}")
         return str(MessagingResponse())  # Return empty TwiML response, i.e. no reply.
 
-    def send(self, recipient, body, res_id=None, res_model=None, outgoing_callerid=None):
+    def _post_inbound_chatter_note(self, obj, message, body_text, partner):
+        if not (obj and obj.exists() and hasattr(obj, 'message_post')):
+            return False
+        body = Markup("<div class='d-flex flex-row px-1'>"
+                      "<span class='px-1'>{}</span></div>").format(body_text or '')
+        if message.media_url:
+            body = Markup("<div class='d-flex flex-row'>"
+                          "<span class='px-1'>{}</span><br/>{}</div>").format(
+                              body_text or '', message.media_widget)
+        kwargs = {
+            'body': body,
+            'subtype_id': self.env.ref('mail.mt_note').id,
+            'message_type': message._mail_message_type(),
+        }
+        if partner:
+            kwargs['author_id'] = partner.id
+        chatter = obj.with_context(mail_create_nosubscribe=True).message_post(**kwargs)
+        chatter.connect_message = message
+        if message._provider() == 'whatsapp':
+            notification_vals = {
+                'author_id': chatter.author_id.id,
+                'mail_message_id': chatter.id,
+                'res_partner_id': chatter.author_id.id,
+                'notification_type': 'WhatsApp',
+                'is_read': True,
+                'notification_status': 'ready',
+            }
+            self.env['mail.notification'].sudo().create(notification_vals)
+        return chatter
+
+    def send(self, recipient, body, res_id=None, res_model=None,
+             outgoing_callerid=None, media_urls=None, skip_chatter=False):
         self.env['oduist.license'].check_license('connect', silent=False)
         sender_user = self.env.user
         message_data = {
-            'message_type': 'sms',
+            'message_type': 'mms' if media_urls else 'sms',
             'to_number': recipient,
             'body': body,
             'sender_user': sender_user.id,
@@ -383,7 +462,7 @@ class ConnectMessage(models.Model):
             if not number:
                 raise ValidationError('You dont have an outgoing callerid number!')
             sender = number.number
-        message = self.client_send(recipient, sender, body)
+        message = self.client_send(recipient, sender, body, media_urls=media_urls)
         if not message:
             raise ValidationError('Unexpected error! Contact admin or maintainer!')
         # Create message record
@@ -401,7 +480,7 @@ class ConnectMessage(models.Model):
         message = self.env['connect.message'].sudo().create(message_data)
 
         # Add message to chatter
-        if res_model and res_id:
+        if res_model and res_id and not skip_chatter:
             mt_note = self.env.ref('mail.mt_note').id
             obj = self.env[res_model].with_user(SUPERUSER_ID).browse(res_id)
             if hasattr(obj, 'message_post'):
@@ -409,7 +488,7 @@ class ConnectMessage(models.Model):
                 kwargs = {
                     'body': chat_body,
                     'subtype_id': mt_note,
-                    'message_type': message.message_type
+                    'message_type': message._mail_message_type()
                 }
                 kwargs.update({'author_id': sender_user.partner_id.id})
                 chatter = obj.with_context(mail_create_nosubscribe=True).message_post(**kwargs)
@@ -418,25 +497,39 @@ class ConnectMessage(models.Model):
                     'mail_message_id': chatter.id,
                     'res_partner_id': chatter.author_id.id,
                     'sms_number': sender,
-                    'notification_type': message.message_type,
+                    'notification_type': message._mail_message_type(),
                     'is_read': True,
                     'notification_status': 'ready',
                 }]
                 self.env['mail.notification'].sudo().create(mail_notification_values)
 
-    def client_send(self, recipient, sender, body):
+        if not skip_chatter:
+            try:
+                channel = self.env[self._connect_channel_model()]._get_connect_channel(
+                    partner, number=recipient, provider=message._provider(),
+                    create_if_not_found=False)
+                if channel:
+                    channel._connect_post_outbound(message)
+            except Exception as e:
+                logger.warning('Connect Discuss outbound mirror failed: %s', e)
+        return message
+
+    def client_send(self, recipient, sender, body, media_urls=None):
         api_url = self.env['connect.settings'].get_param('api_url')
         status_callback_url = urljoin(api_url, 'twilio/webhook/message_status')
         try:
             # Messaging is only supported in the US region.
             client = self.env['connect.settings'].get_client(region=False)
             # Send message to twilio
-            message = client.messages.create(
+            message_kwargs = dict(
                 to=recipient,
                 from_=sender,
                 body=body,
                 status_callback=status_callback_url,
             )
+            if media_urls:
+                message_kwargs['media_url'] = media_urls
+            message = client.messages.create(**message_kwargs)
             if message.error_code:
                 return False
             logger.info('Message to %s is sent.', recipient)
@@ -502,9 +595,25 @@ class ConnectMessage(models.Model):
                 self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
             if vals:
                 message.write(vals)
+            message._bus_send_connect_status()
         except Exception as e:
             logger.warning('Failed to update message status for %s: %s', sid, e)
         return True
+
+    def _bus_send_connect_status(self):
+        for message in self.filtered(lambda rec: rec.channel_message_id and rec.channel_id):
+            if release.version_info[0] >= 17:
+                Store(bus_channel=message.channel_id).add(
+                    message.channel_message_id,
+                    {'connectStatus': message.status},
+                ).bus_send()
+            else:
+                self.env['bus.bus'].sudo()._sendone(
+                    message.channel_id,
+                    'mail.message/insert',
+                    {'id': message.channel_message_id.id,
+                     'connectStatus': message.status},
+                )
 
     def chatter_post(self, res_model, res_id, author, body):
         try:

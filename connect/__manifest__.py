@@ -2,7 +2,7 @@
 
 {
     "name": "Connect",
-    "version": "2.0.2",
+    "version": "2.0.3",
     "author": "Oduist",
     "maintainer": "Oduist",
     "live_test_url": "https://connect-demo.oduist.com/",
@@ -33,6 +33,7 @@
         "security/license.xml",
         "security/user_record_rules.xml",
         "security/admin_record_rules.xml",
+        "security/discuss_messages.xml",
         # Views
         "views/menu.xml",
         "views/settings.xml",
@@ -79,10 +80,12 @@
             "/connect/static/src/services/actions/*",
             # "/connect/static/src/services/active_calls/*",
             # "/connect/static/src/services/mail/*",
-            "/connect/static/src/core/common/*",
+            "/connect/static/src/mail15/*.js",
+            "/connect/static/src/mail15/*.scss",
         ],
         "web.assets_qweb": [
             "connect/static/src/components/license_banner/*.xml",
+            "connect/static/src/mail15/*.xml",
         ],
     },
     "post_init_hook": "post_init_hook",

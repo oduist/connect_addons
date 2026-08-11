@@ -1,4 +1,4 @@
-from odoo import api, fields, models
+from odoo import api, fields, models, release
 
 
 class MailMessage(models.Model):
@@ -6,8 +6,14 @@ class MailMessage(models.Model):
 
     connect_message = fields.Many2one('connect.message')
     message_type = fields.Selection(
-        selection_add=[('WhatsApp', 'WhatsApp')],
-        ondelete={'WhatsApp': lambda recs: recs.write({'message_type': 'comment'})},
+        selection_add=[
+            ('WhatsApp', 'WhatsApp'),
+            ('connect_message', 'Connect Message'),
+        ],
+        ondelete={
+            'WhatsApp': lambda recs: recs.write({'message_type': 'comment'}),
+            'connect_message': lambda recs: recs.write({'message_type': 'comment'}),
+        },
     )
 
     @api.model
@@ -19,6 +25,35 @@ class MailMessage(models.Model):
             return {'from_number': message.from_number, 'to_number': message.to_number}
         else:
             return False
+
+    if release.version_info[0] >= 17:
+        def _to_store(self, store, *args, **kwargs):
+            super()._to_store(store, *args, **kwargs)
+            linked = self.filtered(
+                lambda message: (
+                    message.message_type == 'connect_message'
+                    and message.connect_message
+                )
+            )
+            for message in linked:
+                connect_message = message.sudo().connect_message
+                store.add_records_fields(message, {
+                    'connectStatus': connect_message.status,
+                    'connectMessageType': connect_message.message_type,
+                })
+    else:
+        def message_format(self, format_reply=True):
+            values = super().message_format(format_reply=format_reply)
+            by_id = {message.id: message.sudo() for message in self}
+            for value in values:
+                message = by_id.get(value['id'])
+                if (message and message.message_type == 'connect_message'
+                        and message.connect_message):
+                    value.update({
+                        'connectStatus': message.connect_message.status,
+                        'connectMessageType': message.connect_message.message_type,
+                    })
+            return values
 
 
 class MailNotification(models.Model):

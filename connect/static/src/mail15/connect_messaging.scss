@@ -1,0 +1,13 @@
+.o_DiscussSidebar_categoryConnectMessages {
+    .o_DiscussSidebarCategoryItem_commandUnpin::before {
+        content: "\f187";
+    }
+}
+
+.o_connect_messages_header {
+    min-height: 24px;
+}
+
+.o_connect_message_status {
+    font-size: 0.75rem;
+}

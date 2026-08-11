@@ -85,3 +85,12 @@ class ResUser(models.Model):
                 })
 
         return True
+
+
+class ResUsersSettings(models.Model):
+    _inherit = 'res.users.settings'
+
+    is_discuss_sidebar_category_connect_messages_open = fields.Boolean(
+        string='Is discuss sidebar category connect messages open?',
+        default=True,
+    )
