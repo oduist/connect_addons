@@ -5,6 +5,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
+from werkzeug.exceptions import Unauthorized
+
 from odoo import http, release
 
 logger = logging.getLogger(__name__)
@@ -12,12 +14,35 @@ route_type = "json" if release.version_info[0] < 19.0 else 'jsonrpc'
 
 class CalendarController(http.Controller):
 
-    @http.route('/connect_elevenlabs/get_available_slots/<int:user_id>', methods=['POST'], type=route_type, auth='public',
+    def check_tool_token(self):
+        token = http.request.httprequest.headers.get('x-elevenlabs-agent-token')
+        if not token:
+            logger.warning('Tool token check failed: no x-elevenlabs-agent-token header in request')
+            return False
+        expected_token = http.request.env['connect.settings'].sudo().get_param('elevenlabs_agent_token')
+        if not expected_token:
+            logger.warning('Tool token check failed: elevenlabs_agent_token is not configured in settings')
+            return False
+        if token != expected_token:
+            logger.warning('Tool token check failed: token mismatch (received %s...)', token[:8])
+            return False
+        logger.info('Tool token check passed')
+        return True
+
+    @http.route('/connect_elevenlabs/get_available_slots', methods=['POST'], type=route_type, auth='public',
                 csrf=False)
-    def get_available_slots(self, user_id):
+    def get_available_slots(self):
+        logger.info('Incoming request: /connect_elevenlabs/get_available_slots')
+        if not self.check_tool_token():
+            raise Unauthorized()
         kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
+        user_id = kwargs.get('user_id')
         if kwargs.get('timezone'):
-            user_timezone = timezone(timedelta(hours=int(kwargs.get('timezone'))))
+            tz_val = kwargs['timezone']
+            try:
+                user_timezone = ZoneInfo(tz_val)
+            except (KeyError, ValueError):
+                user_timezone = timezone(timedelta(hours=int(tz_val)))
         else:
             user = http.request.env['res.users'].sudo().browse(user_id)
             tz = user.partner_id.tz
@@ -28,8 +53,8 @@ class CalendarController(http.Controller):
             date = datetime.strptime(kwargs.get('start'), '%Y-%m-%d').replace(tzinfo=user_timezone)
         else:
             current_date = datetime.now().date() + timedelta(days=1)
-            date = current_date.strftime('%Y-%m-%d')
-        date.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
+            date = datetime.combine(current_date, datetime.min.time()).replace(tzinfo=user_timezone)
+        date = date.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
 
         end_date = date + timedelta(days=1)
 
@@ -53,14 +78,23 @@ class CalendarController(http.Controller):
             "start": current_start,
             "stop": day_end
         })
+        print(free_intervals)
         return free_intervals
 
-    @http.route('/connect_elevenlabs/create_event/<int:user_id>', methods=['POST'], type=route_type, auth='public',
+    @http.route('/connect_elevenlabs/create_event', methods=['POST'], type=route_type, auth='public',
                 csrf=False)
-    def create_event(self, user_id):
+    def create_event(self):
+        logger.info('Incoming request: /connect_elevenlabs/create_event')
+        if not self.check_tool_token():
+            raise Unauthorized()
         kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
+        user_id = kwargs.get('user_id')
         if kwargs.get('timezone'):
-            user_timezone = timezone(timedelta(hours=int(kwargs.get('timezone'))))
+            tz_val = kwargs['timezone']
+            try:
+                user_timezone = ZoneInfo(tz_val)
+            except (KeyError, ValueError):
+                user_timezone = timezone(timedelta(hours=int(tz_val)))
         else:
             user = http.request.env['res.users'].sudo().browse(user_id)
             tz = user.partner_id.tz
@@ -90,4 +124,43 @@ class CalendarController(http.Controller):
 
     @http.route('/connect_elevenlabs/get_current_date', methods=['POST'], type=route_type, auth='public', csrf=False)
     def get_current_date(self):
+        logger.info('Incoming request: /connect_elevenlabs/get_current_date')
+        if not self.check_tool_token():
+            raise Unauthorized()
         return {'current_date': str(datetime.now())}
+
+    @http.route('/connect_elevenlabs/get_meetings', methods=['POST'], type=route_type, auth='public',
+                csrf=False)
+    def get_meetings(self):
+        logger.info('Incoming request: /connect_elevenlabs/get_meetings')
+        if not self.check_tool_token():
+            raise Unauthorized()
+        kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
+        partner_id = kwargs.get('partner_id')
+        if not partner_id:
+            return {'status': 400, 'detail': 'partner_id is required'}
+        events = http.request.env['calendar.event'].sudo().search(
+            [('attendee_ids.partner_id', '=', partner_id)],
+            order='start desc'
+        ).read(['id', 'name', 'start', 'stop', 'user_id', 'location', 'description'])
+        return {'status': 200, 'meetings': events}
+
+    @http.route('/connect_elevenlabs/remove_meeting', methods=['POST'], type=route_type, auth='public',
+                csrf=False)
+    def remove_meeting(self):
+        logger.info('Incoming request: /connect_elevenlabs/remove_meeting')
+        if not self.check_tool_token():
+            raise Unauthorized()
+        kwargs = json.loads(http.request.httprequest.get_data(as_text=True))
+        event_id = kwargs.get('event_id')
+        if not event_id:
+            return {'status': 400, 'detail': 'event_id is required'}
+        try:
+            event = http.request.env['calendar.event'].sudo().browse(event_id)
+            if not event.exists():
+                return {'status': 404, 'detail': 'Event not found'}
+            event.unlink()
+            return {'status': 200, 'detail': 'Event successfully removed'}
+        except Exception as e:
+            logger.error(f'Error removing event {event_id}: {str(e)}')
+            return {'status': 500, 'detail': f'Error removing event: {str(e)}'}

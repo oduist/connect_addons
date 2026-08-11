@@ -153,6 +153,24 @@ class CallFlow(models.Model):
             else:
                 dial = Dial(callerId=callerId, action=action_url, timeout=self.ring_timeout,
                         referUrl=refer_url)
+            # This enriches WebRTC client legs on modern versions only. The
+            # Odoo 15 package deliberately keeps the web phone disabled.
+            if release.version_info[0] >= 17:
+                channel = self.env['connect.channel'].sudo().search(
+                    [('sid', '=', request.get('CallSid'))], limit=1)
+                call = channel.call if channel else None
+                raw_caller = request.get('Caller') or ''
+                if call and call.partner:
+                    caller_partner = call.partner
+                elif channel and channel.caller_user:
+                    caller_partner = channel.caller_user.partner_id
+                elif raw_caller.startswith('+'):
+                    caller_partner = self.env['res.partner'].sudo().get_partner_by_number(
+                        raw_caller)
+                else:
+                    caller_partner = self.env['res.partner']
+                caller_partner_id = caller_partner.id if caller_partner else False
+                caller_name = caller_partner.name if caller_partner else False
             for user in self.ring_users:
                 callflows = self.env['connect.user_callflow'].sudo().search(
                     [('callflow_type', 'in', ['sip', 'client']), ('user', '=', user.id)], order='prio')
@@ -166,7 +184,12 @@ class CallFlow(models.Model):
                             statusCallbackEvent='answered completed',
                             statusCallback=status_url)
                         client.identity(user.get_client_identity())
-                        client.parameter(name='CallerName', value=callerId)
+                        if release.version_info[0] >= 17:
+                            if caller_name:
+                                client.parameter(name='CallerName', value=caller_name)
+                            client.parameter(name='Partner', value=caller_partner_id)
+                        else:
+                            client.parameter(name='CallerName', value=callerId)
                         dial.append(client)
             response.append(dial)
         else:

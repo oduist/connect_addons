@@ -3,7 +3,7 @@ import logging
 import os
 from xml.etree import ElementTree as ET
 
-from odoo import api
+from odoo import api, release
 from odoo.api import SUPERUSER_ID
 
 _logger = logging.getLogger(__name__)
@@ -14,17 +14,17 @@ _TABLE = 'connect_elevenlabs_agent_tool'
 
 
 def _env_from_args(args):
-    """Resolve an Environment from pre_init_hook arguments across Odoo versions.
+    """Resolve an Environment from hook arguments across Odoo versions.
 
-    Odoo 17+ calls ``pre_init_hook(env)``; Odoo <= 16 calls ``pre_init_hook(cr)``
-    with a bare cursor. Detect the type instead of the argument count so a single
-    cursor argument is never mistaken for an Environment (which would otherwise
-    break the install path on Odoo 15 and 16).
+    Modern Odoo passes an Environment; legacy Odoo passes a cursor (and may
+    also pass a registry). Keep this branch in the shared Python implementation.
     """
-    obj = args[0]
-    if isinstance(obj, api.Environment):
-        return obj
-    return api.Environment(obj, SUPERUSER_ID, {})
+    if release.version_info[0] >= 17:
+        return args[0]
+    cursor = args[0]
+    if isinstance(cursor, api.Environment):
+        return cursor
+    return api.Environment(cursor, SUPERUSER_ID, {})
 
 
 def _seed_tool_xmlids():

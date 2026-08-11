@@ -14,9 +14,22 @@ from odoo.api import SUPERUSER_ID
 from odoo.exceptions import UserError
 from odoo.addons.connect.models import s3_utils
 
+if release.version_info[0] < 17:
+    from odoo.addons.mail.controllers.discuss import DiscussController
+
 logger = logging.getLogger(__name__)
 
 route_type = "json" if release.version_info[0] < 19.0 else 'jsonrpc'
+
+
+if release.version_info[0] < 17:
+    class ConnectDiscussController(DiscussController):
+        """Allow Connect metadata through the Odoo 15 message-post route."""
+
+        def _get_allowed_message_post_params(self):
+            return super()._get_allowed_message_post_params() | {
+                'connect_provider', 'connect_sender_id',
+            }
 
 class ConnectController(http.Controller):
 

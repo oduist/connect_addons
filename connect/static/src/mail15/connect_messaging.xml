@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="mail.DiscussSidebar" t-inherit-mode="extension" owl="1">
+        <xpath expr="//DiscussSidebarCategory[@categoryLocalId='discuss.categoryChannel.localId']" position="after">
+            <DiscussSidebarCategory
+                class="o_DiscussSidebar_category o_DiscussSidebar_categoryConnectMessages"
+                categoryLocalId="discuss.categoryConnectMessages.localId"
+            />
+        </xpath>
+    </t>
+
+    <t t-inherit="mail.Composer" t-inherit-mode="extension" owl="1">
+        <xpath expr="//div[hasclass('o_Composer_coreMain')]" position="before">
+            <div t-if="composerView.composer.thread.channel_type === 'connect_messages'"
+                 class="o_connect_messages_header d-flex align-items-center mb-2 px-2">
+                <i t-if="composerView.composer.thread.connectChannelProvider === 'whatsapp'"
+                   class="fa fa-whatsapp text-success mr-2" title="WhatsApp"/>
+                <span class="text-muted text-truncate mr-2"
+                      t-esc="composerView.composer.thread.connectNumber"/>
+                <button t-if="!composerView.composer.thread.connectPartnerId"
+                        class="btn btn-sm btn-link p-0 mr-2" type="button"
+                        t-on-click="composerView.onClickConnectCreatePartner">
+                    Create Contact
+                </button>
+                <button t-if="composerView.composer.thread.connectPartnerId"
+                        class="btn btn-sm btn-link p-0 mr-2" type="button"
+                        t-on-click="composerView.onClickConnectOpenPartner">
+                    Open Contact
+                </button>
+                <button class="btn btn-sm btn-link p-0 ml-auto" type="button"
+                        t-on-click="composerView.onClickConnectArchive">
+                    <i class="fa fa-archive mr-1"/>Archive
+                </button>
+            </div>
+            <div t-if="composerView.composer.thread.channel_type === 'connect_messages' and composerView.composer.thread.connectChannelProvider === 'whatsapp' and !composerView.composer.thread.connectWhatsappWindowOpen"
+                 class="alert alert-warning py-1 px-2 mb-2">
+                WhatsApp 24h window closed — send a template from the contact form.
+            </div>
+        </xpath>
+        <xpath expr="//div[hasclass('o_Composer_primaryToolButtons')]" position="inside">
+            <button class="o_Composer_button o_Composer_toolButton btn btn-light fa fa-microchip"
+                    title="AI Completion" aria-label="AI Completion" type="button"
+                    t-on-click="composerView.onClickAiCompletion"/>
+        </xpath>
+    </t>
+
+    <t t-inherit="mail.DiscussSidebarCategoryItem" t-inherit-mode="extension" owl="1">
+        <xpath expr="//span[hasclass('o_DiscussSidebarCategoryItem_name')]" position="inside">
+            <i t-if="categoryItem.channel.connectChannelProvider === 'whatsapp'"
+               class="fa fa-whatsapp text-success ml-1" title="WhatsApp"/>
+        </xpath>
+    </t>
+
+    <t t-inherit="mail.Message" t-inherit-mode="extension" owl="1">
+        <xpath expr="//div[hasclass('o_Message_date')]" position="inside">
+            <span t-if="messageView.message.connectStatus"
+                  class="ml-2 text-muted o_connect_message_status"
+                  t-esc="messageView.message.connectStatus"/>
+        </xpath>
+    </t>
+</templates>
