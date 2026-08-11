@@ -233,9 +233,7 @@ class ConnectWhatsappSender(models.Model):
         any_sender = self.search([('status', '=', 'ONLINE'), ('no_sync', '=', False)], limit=1)
         return any_sender
 
-    def send_whatsapp(self, recipient, body, res_model=None, res_id=None,
-                      raise_on_error=True, content_sid=None,
-                      content_variables=None, skip_chatter=False):
+    def send_whatsapp(self, recipient, body, res_model=None, res_id=None, raise_on_error=True, content_sid=None, content_variables=None, skip_chatter=False):
         """Send a WhatsApp message using this sender and create connect.message + chatter.
 
         Args:
@@ -255,7 +253,7 @@ class ConnectWhatsappSender(models.Model):
             raise ValidationError('WhatsApp sender has no number configured.')
         # Check 24-hour window for WhatsApp - only if not using a content template
         if not content_sid:
-            # Numbers are stored without Twilio's ``whatsapp:`` scheme.
+            # Find last incoming WhatsApp message from this recipient (clean number).
             last_incoming = self.env['connect.message'].sudo().search([
                 ('message_type', '=', 'whatsapp'),
                 ('from_number', '=', recipient),
@@ -331,6 +329,9 @@ class ConnectWhatsappSender(models.Model):
             chatter_message = Markup(f"<div class='d-flex flex-row'>"
                                      f"<p class='px-1'>{body}</p></div>")
             self.chatter_post(res_model, res_id, self.env.user.partner_id.id, chatter_message)
+        # Mirror an outbound sent from a record's chatter into the existing Discuss
+        # thread (only when one already exists). The Discuss-composer path passes
+        # skip_chatter=True and already posts into the channel itself.
         if not skip_chatter:
             try:
                 channel_model = (
@@ -409,6 +410,7 @@ class ConnectWhatsappSender(models.Model):
                 self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
             if vals:
                 message.write(vals)
+            # ODU-37: push status onto the Discuss bubble if mirrored.
             message._bus_send_connect_status()
         except Exception as e:
             logger.warning('Failed to update message status for %s: %s', sid, e)

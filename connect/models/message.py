@@ -76,13 +76,21 @@ class ConnectMessage(models.Model):
     media_url = fields.Char()
     media_content_type = fields.Char()
     transcription_error = fields.Char()
+    # ODU-37: link to the mirrored Discuss message/channel.
+    # mail_message_id is the copy posted to a record's *chatter* (log note);
+    # channel_message_id is the mirror posted into the *Discuss* channel.
     mail_message_id = fields.Many2one(
-        'mail.message', index=True, string='Chatter Message', ondelete='set null')
+        'mail.message',
+        index='btree_not_null' if release.version_info[0] >= 17 else True,
+                                      string='Chatter Message', ondelete='set null')
     channel_message_id = fields.Many2one(
-        'mail.message', index=True, string='Discuss Message', ondelete='set null')
+        'mail.message',
+        index='btree_not_null' if release.version_info[0] >= 17 else True,
+                                         string='Discuss Message', ondelete='set null')
     channel_id = fields.Many2one(
         'discuss.channel' if release.version_info[0] >= 17 else 'mail.channel',
-        index=True, string='Discuss Channel', ondelete='set null')
+        index='btree_not_null' if release.version_info[0] >= 17 else True,
+                                 string='Discuss Channel', ondelete='set null')
     if release.version_info[0] >= 17.0:
         media_widget = fields.Html(compute='_get_media_widget', string='Media', sanitize=False)
     else:
@@ -199,16 +207,19 @@ class ConnectMessage(models.Model):
 
     @staticmethod
     def _strip_provider_scheme(number):
-        """Return an E.164 number without Twilio's ``whatsapp:`` scheme."""
+        """Return the bare E.164 number without the 'whatsapp:' Twilio scheme."""
         number = number or ''
         return number[len('whatsapp:'):] if number.startswith('whatsapp:') else number
 
     def _provider(self):
+        """Messaging provider for this message: 'whatsapp' or 'sms' (mms is sms)."""
         self.ensure_one()
         return 'whatsapp' if self.message_type == 'whatsapp' else 'sms'
 
     def _mail_message_type(self):
-        """Map Connect's normalized provider to mail's selection value."""
+        """Tag value for mail.message.message_type / mail.notification.notification_type,
+        whose selections use the capitalized 'WhatsApp' (see connect/models/mail.py).
+        sms/mms are passed through unchanged."""
         self.ensure_one()
         return 'WhatsApp' if self.message_type == 'whatsapp' else self.message_type
 
@@ -244,6 +255,7 @@ class ConnectMessage(models.Model):
     def get_receive_message_values(self, params):
         from_raw = params.get('From', '') or ''
         num_media = int(params.get('NumMedia', 0))
+        # Detect the provider from the scheme before stripping it for storage.
         if from_raw.startswith('whatsapp:'):
             message_type = 'whatsapp'
         elif num_media > 0:
@@ -350,6 +362,8 @@ class ConnectMessage(models.Model):
                             defaults = dict(ast.literal_eval(config.default_values or '{}'))
                         except Exception as e:
                             logger.error('Invalid default data: %s\n%s', config.default_values, e)
+                    # For res.partner destination: skip auto-creation; the agent will
+                    # create the contact manually from the Discuss channel if needed.
                     if dest_model != 'res.partner' and dest_model in self.env:
                         try:
                             new_rec = self.env[dest_model].with_context(mail_create_nosubscribe=True).sudo().create_record_from_message(message, default_values=defaults)
@@ -361,29 +375,34 @@ class ConnectMessage(models.Model):
                             logger.warning('create_record_from_message failed for %s: %s', dest_model, e)
                     elif dest_model not in self.env:
                         logger.warning('Destination model %s not found', dest_model)
+                # Mirror the inbound onto chatters: the resolved target record
+                # (when valid) and — for a known partner — always the partner's
+                # own record (deduped). A brand-new unknown number gets no chatter;
+                # it lives only in the Discuss channel.
                 chatter_targets = []
                 if valid_target and target_msg and target_msg.res_model and target_msg.res_id:
-                    target_rec = self.env[target_msg.res_model].with_user(
-                        SUPERUSER_ID).browse(target_msg.res_id)
+                    target_rec = self.env[target_msg.res_model].with_user(SUPERUSER_ID).browse(target_msg.res_id)
                     if target_rec.exists() and hasattr(target_rec, 'message_post'):
                         chatter_targets.append(target_rec)
                 if partner and not any(
-                        rec._name == 'res.partner' and rec.id == partner.id
-                        for rec in chatter_targets):
+                        r._name == 'res.partner' and r.id == partner.id for r in chatter_targets):
                     chatter_targets.append(partner.with_user(SUPERUSER_ID))
                 primary_chatter = False
                 for obj in chatter_targets:
-                    chatter = self._post_inbound_chatter_note(
-                        obj, message, values.get('body'), partner)
+                    chatter = self._post_inbound_chatter_note(obj, message, values.get('body'), partner)
                     if not chatter:
                         continue
+                    # Prefer the partner's own record as the canonical chatter copy.
                     if obj._name == 'res.partner' and partner and obj.id == partner.id:
                         primary_chatter = chatter
                     elif not primary_chatter:
                         primary_chatter = chatter
                 if primary_chatter:
                     message.mail_message_id = primary_chatter.id
-
+                # Mirror inbound into Discuss: use partner channel when known,
+                # otherwise a phone-number-only channel so the agent can see it.
+                # When the inbound is a reply (WhatsApp OriginalRepliedMessageSid),
+                # quote the parent's Discuss mirror so the thread shows the reply.
                 try:
                     channel = self.env[self._connect_channel_model()]._get_connect_channel(
                         partner, number=from_number, provider=message._provider(),
@@ -406,20 +425,25 @@ class ConnectMessage(models.Model):
                         'error_message': params.get('ErrorMessage'),
                         'has_error': True,
                     })
-                message._bus_send_connect_status()
         except Exception as e:
             logger.error(f"Error handling incoming SMS: {e}")
         return str(MessagingResponse())  # Return empty TwiML response, i.e. no reply.
 
     def _post_inbound_chatter_note(self, obj, message, body_text, partner):
+        """Post an inbound connect.message as a quiet log note on obj's chatter.
+
+        Returns the created mail.message (or False). Kept as a log note (mt_note)
+        so followers are not emailed — agents see it in the Discuss channel anyway;
+        a comment would yield a red delivery-failure envelope when no SMTP is set.
+        """
         if not (obj and obj.exists() and hasattr(obj, 'message_post')):
             return False
         body = Markup("<div class='d-flex flex-row px-1'>"
                       "<span class='px-1'>{}</span></div>").format(body_text or '')
         if message.media_url:
             body = Markup("<div class='d-flex flex-row'>"
-                          "<span class='px-1'>{}</span><br/>{}</div>").format(
-                              body_text or '', message.media_widget)
+                          "<span class='px-1'>{}</span>"
+                          "<br/>{}</div>").format(body_text or '', message.media_widget)
         kwargs = {
             'body': body,
             'subtype_id': self.env.ref('mail.mt_note').id,
@@ -429,20 +453,20 @@ class ConnectMessage(models.Model):
             kwargs['author_id'] = partner.id
         chatter = obj.with_context(mail_create_nosubscribe=True).message_post(**kwargs)
         chatter.connect_message = message
+        # Display-only WhatsApp marker so the note shows the WhatsApp logo
+        # (is_read + 'ready' => icon only: no email, no delivery-failure envelope).
         if message._provider() == 'whatsapp':
-            notification_vals = {
+            self.env['mail.notification'].sudo().create([{
                 'author_id': chatter.author_id.id,
                 'mail_message_id': chatter.id,
                 'res_partner_id': chatter.author_id.id,
                 'notification_type': 'WhatsApp',
                 'is_read': True,
                 'notification_status': 'ready',
-            }
-            self.env['mail.notification'].sudo().create(notification_vals)
+            }])
         return chatter
 
-    def send(self, recipient, body, res_id=None, res_model=None,
-             outgoing_callerid=None, media_urls=None, skip_chatter=False):
+    def send(self, recipient, body, res_id=None, res_model=None, outgoing_callerid=None, media_urls=None, skip_chatter=False):
         self.env['oduist.license'].check_license('connect', silent=False)
         sender_user = self.env.user
         message_data = {
@@ -488,7 +512,7 @@ class ConnectMessage(models.Model):
                 kwargs = {
                     'body': chat_body,
                     'subtype_id': mt_note,
-                    'message_type': message._mail_message_type()
+                    'message_type': message._mail_message_type(),
                 }
                 kwargs.update({'author_id': sender_user.partner_id.id})
                 chatter = obj.with_context(mail_create_nosubscribe=True).message_post(**kwargs)
@@ -502,7 +526,9 @@ class ConnectMessage(models.Model):
                     'notification_status': 'ready',
                 }]
                 self.env['mail.notification'].sudo().create(mail_notification_values)
-
+        # Mirror an outbound sent from a record's chatter into the existing Discuss
+        # thread (only when one already exists). The Discuss-composer path passes
+        # skip_chatter=True and already posts into the channel itself.
         if not skip_chatter:
             try:
                 channel = self.env[self._connect_channel_model()]._get_connect_channel(
@@ -521,15 +547,15 @@ class ConnectMessage(models.Model):
             # Messaging is only supported in the US region.
             client = self.env['connect.settings'].get_client(region=False)
             # Send message to twilio
-            message_kwargs = dict(
-                to=recipient,
-                from_=sender,
-                body=body,
-                status_callback=status_callback_url,
-            )
+            create_kwargs = {
+                'to': recipient,
+                'from_': sender,
+                'body': body,
+                'status_callback': status_callback_url,
+            }
             if media_urls:
-                message_kwargs['media_url'] = media_urls
-            message = client.messages.create(**message_kwargs)
+                create_kwargs['media_url'] = media_urls
+            message = client.messages.create(**create_kwargs)
             if message.error_code:
                 return False
             logger.info('Message to %s is sent.', recipient)
@@ -595,13 +621,14 @@ class ConnectMessage(models.Model):
                 self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
             if vals:
                 message.write(vals)
+            # ODU-37: push status onto the Discuss bubble if mirrored.
             message._bus_send_connect_status()
         except Exception as e:
             logger.warning('Failed to update message status for %s: %s', sid, e)
         return True
 
     def _bus_send_connect_status(self):
-        for message in self.filtered(lambda rec: rec.channel_message_id and rec.channel_id):
+        for message in self.filtered(lambda m: m.channel_message_id and m.channel_id):
             if release.version_info[0] >= 17:
                 Store(bus_channel=message.channel_id).add(
                     message.channel_message_id,
@@ -611,8 +638,10 @@ class ConnectMessage(models.Model):
                 self.env['bus.bus'].sudo()._sendone(
                     message.channel_id,
                     'mail.message/insert',
-                    {'id': message.channel_message_id.id,
-                     'connectStatus': message.status},
+                    {
+                        'id': message.channel_message_id.id,
+                        'connectStatus': message.status,
+                    },
                 )
 
     def chatter_post(self, res_model, res_id, author, body):

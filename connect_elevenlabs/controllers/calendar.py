@@ -78,6 +78,7 @@ class CalendarController(http.Controller):
             "start": current_start,
             "stop": day_end
         })
+        print(free_intervals)
         return free_intervals
 
     @http.route('/connect_elevenlabs/create_event', methods=['POST'], type=route_type, auth='public',
@@ -161,5 +162,5 @@ class CalendarController(http.Controller):
             event.unlink()
             return {'status': 200, 'detail': 'Event successfully removed'}
         except Exception as e:
-            logger.error('Error removing event %s: %s', event_id, e)
-            return {'status': 500, 'detail': 'Error removing event: %s' % e}
+            logger.error(f'Error removing event {event_id}: {str(e)}')
+            return {'status': 500, 'detail': f'Error removing event: {str(e)}'}

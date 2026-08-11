@@ -30,16 +30,13 @@ class MailMessage(models.Model):
         def _to_store(self, store, *args, **kwargs):
             super()._to_store(store, *args, **kwargs)
             linked = self.filtered(
-                lambda message: (
-                    message.message_type == 'connect_message'
-                    and message.connect_message
-                )
-            )
+                lambda m: m.message_type == 'connect_message' and m.connect_message)
             for message in linked:
-                connect_message = message.sudo().connect_message
+                cmsg = message.sudo().connect_message
+                # add_records_fields (not add) avoids re-entering _to_store recursively.
                 store.add_records_fields(message, {
-                    'connectStatus': connect_message.status,
-                    'connectMessageType': connect_message.message_type,
+                    'connectStatus': cmsg.status,
+                    'connectMessageType': cmsg.message_type,
                 })
     else:
         def message_format(self, format_reply=True):
