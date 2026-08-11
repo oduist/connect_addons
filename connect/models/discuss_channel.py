@@ -89,7 +89,14 @@ class DiscussChannel(models.Model):
                     for partner in members
                 ],
             }
-        return {'channel_partner_ids': [Command.set(members.ids)]}
+        # Odoo 15's ``mail.channel.create`` expands command 6 incorrectly into
+        # a nested list before de-duplicating the partner IDs.  Link commands
+        # are the supported equivalent for this legacy API.
+        return {
+            'channel_partner_ids': [
+                Command.link(partner_id) for partner_id in members.ids
+            ],
+        }
 
     def _connect_member_partners(self):
         self.ensure_one()
