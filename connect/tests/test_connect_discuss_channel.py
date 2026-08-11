@@ -482,7 +482,7 @@ class TestConnectDiscussChannel(TransactionCase):
             ch.with_user(self.agent).channel_pin(pinned=False)
             member.invalidate_recordset(['is_pinned', 'unpin_dt'])
         else:
-            ch.with_user(self.agent).channel_pin(False)
+            self.Channel.with_user(self.agent).channel_pin(ch.uuid, pinned=False)
             member.invalidate_cache(['is_pinned'], member.ids)
         self.assertFalse(member.is_pinned, 'archive must unpin the agent member')
         # A new inbound un-archives (re-pins) it.

@@ -456,14 +456,16 @@ class ConnectMessage(models.Model):
         # Display-only WhatsApp marker so the note shows the WhatsApp logo
         # (is_read + 'ready' => icon only: no email, no delivery-failure envelope).
         if message._provider() == 'whatsapp':
-            self.env['mail.notification'].sudo().create([{
-                'author_id': chatter.author_id.id,
+            notification_values = {
                 'mail_message_id': chatter.id,
                 'res_partner_id': chatter.author_id.id,
                 'notification_type': 'WhatsApp',
                 'is_read': True,
                 'notification_status': 'ready',
-            }])
+            }
+            if release.version_info[0] >= 17:
+                notification_values['author_id'] = chatter.author_id.id
+            self.env['mail.notification'].sudo().create(notification_values)
         return chatter
 
     def send(self, recipient, body, res_id=None, res_model=None, outgoing_callerid=None, media_urls=None, skip_chatter=False):
@@ -517,7 +519,6 @@ class ConnectMessage(models.Model):
                 kwargs.update({'author_id': sender_user.partner_id.id})
                 chatter = obj.with_context(mail_create_nosubscribe=True).message_post(**kwargs)
                 mail_notification_values = [{
-                    'author_id': chatter.author_id.id,
                     'mail_message_id': chatter.id,
                     'res_partner_id': chatter.author_id.id,
                     'sms_number': sender,
@@ -525,6 +526,8 @@ class ConnectMessage(models.Model):
                     'is_read': True,
                     'notification_status': 'ready',
                 }]
+                if release.version_info[0] >= 17:
+                    mail_notification_values[0]['author_id'] = chatter.author_id.id
                 self.env['mail.notification'].sudo().create(mail_notification_values)
         # Mirror an outbound sent from a record's chatter into the existing Discuss
         # thread (only when one already exists). The Discuss-composer path passes
@@ -655,14 +658,16 @@ class ConnectMessage(models.Model):
                     message_type='sms',
                     author_id=author,
                 )
-                self.env['mail.notification'].sudo().create([{
-                    'author_id': chatter.author_id.id,
+                notification_values = {
                     'mail_message_id': chatter.id,
                     'res_partner_id': chatter.author_id.id,
                     #'sms_number': self.number, # NO number field.
                     'notification_type': 'sms',
                     'is_read': True,
                     'notification_status': 'ready',
-                }])
+                }
+                if release.version_info[0] >= 17:
+                    notification_values['author_id'] = chatter.author_id.id
+                self.env['mail.notification'].sudo().create(notification_values)
         except Exception as e:
             logger.warning('Failed to post SMS chatter message on %s,%s: %s', res_model, res_id, e)
