@@ -17,6 +17,16 @@ class TestConnectBook(TransactionCase):
     def setUp(self):
         super().setUp()
         self.book = self.env["connect.book"]
+        # TransactionCase runs as the technical superuser (uid=1), a
+        # different record from base.user_admin -- the one
+        # connect/security/groups.xml actually grants
+        # connect.group_connect_admin to. That user already has
+        # base.group_system (see test_get_admin_book_allows_system_group);
+        # grant it the Connect role too so get_book()/get_changes() behave
+        # the same way for tests that call them directly on self.book.
+        self.env.user.write({
+            "group_ids": [(4, self.env.ref("connect.group_connect_admin").id)]
+        })
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.module_path = self.tmp.name
