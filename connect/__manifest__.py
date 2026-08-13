@@ -56,7 +56,6 @@
         "views/message_configuration.xml",
         "views/message_content_template.xml",
         "views/whatsapp_sender.xml",
-        "views/documentation.xml",
         # Wizard
         "wizard/transfer.xml",
         "wizard/sms_composer_views.xml",

@@ -23,6 +23,7 @@
       groups="base.group_no_one"
       sequence="500" parent="connect_top_menu"/>
 
+  <!-- leading "-" unlinks the group explicitly: dropping the attribute would not clear group_ids when connect is upgraded -->
   <menuitem id="connect_documentation_menu" name="Documentation"
       groups="-base.group_no_one"
       sequence="600" parent="connect_top_menu"/>
