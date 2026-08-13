@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_connect_book" model="ir.actions.client">
+        <field name="name">User Guide</field>
+        <field name="tag">connect_book.book</field>
+    </record>
+
+    <record id="action_connect_book_admin" model="ir.actions.client">
+        <field name="name">Admin Guide</field>
+        <field name="tag">connect_book.admin</field>
+    </record>
+
+    <record id="action_connect_book_changes" model="ir.actions.client">
+        <field name="name">Changes</field>
+        <field name="tag">connect_book.changes</field>
+    </record>
+
+    <menuitem id="menu_connect_book_doc"
+              name="User Guide"
+              parent="connect.connect_documentation_menu"
+              action="action_connect_book"
+              sequence="5"/>
+
+    <menuitem id="menu_connect_book_admin"
+              name="Admin Guide"
+              parent="connect.connect_documentation_menu"
+              action="action_connect_book_admin"
+              groups="base.group_system"
+              sequence="7"/>
+
+    <menuitem id="menu_connect_book_changes"
+              name="Changes"
+              parent="connect.connect_documentation_menu"
+              action="action_connect_book_changes"
+              sequence="10"/>
+</odoo>

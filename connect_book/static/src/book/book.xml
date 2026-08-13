@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="connect_book.BookApp">
+        <div class="o_connect_book d-flex h-100">
+            <div class="o_connect_book_sidebar d-flex flex-column">
+                <div class="o_connect_book_search p-2">
+                    <input type="text" class="form-control form-control-sm"
+                           placeholder="Search the documentation…"
+                           t-att-value="state.search"
+                           t-on-input="onSearch"/>
+                </div>
+                <div class="o_connect_book_toc flex-grow-1 overflow-auto">
+                    <t t-if="!state.loaded">
+                        <div class="text-muted p-3">Loading…</div>
+                    </t>
+                    <t t-elif="filteredPages.length === 0">
+                        <div class="text-muted p-3">No documentation found.</div>
+                    </t>
+                    <t t-foreach="filteredPages" t-as="page" t-key="page.id">
+                        <div class="o_connect_book_page_link"
+                             t-att-class="{ o_active: page.id === state.activeId }"
+                             t-on-click="() => this.selectPage(page.id)"
+                             t-esc="page.title"/>
+                    </t>
+                </div>
+            </div>
+            <div class="o_connect_book_content flex-grow-1 overflow-auto">
+                <t t-if="activePage">
+                    <div class="o_connect_book_doc" t-out="activePage.body"/>
+                </t>
+                <t t-else="">
+                    <div class="o_connect_book_placeholder text-muted">
+                        Select a section on the left to start reading.
+                    </div>
+                </t>
+            </div>
+        </div>
+    </t>
+</templates>
