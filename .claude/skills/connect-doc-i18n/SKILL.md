@@ -38,7 +38,7 @@ Invoke as `connect-doc-i18n <command> [lang]`.
 
 ### `add <lang>`
 1. Confirm `<lang>` is a valid short ISO code (e.g. `fr`, `de`); refuse the `source`.
-2. For **every** active `connect*` module, for each file in `translate` that
+2. For **every** installed `connect*` module, for each file in `translate` that
    exists in the source: translate it and write the mirror at
    `doc/i18n/<lang>/<file>` (create dirs as needed).
 3. Stamp each mirror with the provenance marker (see below).

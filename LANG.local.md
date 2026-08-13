@@ -7,7 +7,7 @@ Read by the agent and by the `connect-doc-i18n` skill.
 
 ## Agent communication
 
-- primary: en
+- primary: ru
 
 ## Documentation
 
