@@ -89,6 +89,20 @@ MAX_DOC_BYTES = 1 MiB
   отдаётся только имя/shortdesc установленных модулей.
 - Admin Guide: `groups="base.group_system"` на menuitem **и** `AccessError` в модели
   (контроллер сам не проверяет — проверку делает модель).
+- User Guide и Changes: изначально решение №3 фиксировало гейт только для Admin
+  Guide, оставляя `get_book()`/`get_changes()` без явной проверки — на уровне
+  меню доступ был ограничен ролью Connect (`connect.group_connect_user` /
+  `connect.group_connect_admin`, унаследовано от `connect_top_menu`), но роуты
+  `/connect_book/book` и `/connect_book/changes` были доступны любому
+  аутентифицированному пользователю, включая portal — в частности, сервисному
+  portal-пользователю `connect` (`connect/data/res_users.xml`), чей пароль
+  передаётся внешним telephony-вебхукам. Это разрыв между декларируемым UI-доступом
+  и фактическим API-доступом, обнаруженный код-ревью и закрытый в той же итерации:
+  **`get_book()` и `get_changes()` теперь тоже проверяют `AccessError`** в модели —
+  тем же паттерном, что и `get_admin_book()` — по членству в
+  `connect.group_connect_user` **или** `connect.group_connect_admin`.
+  `base.group_system` сам по себе этого не даёт: администратор без роли Connect
+  не видит меню Connect вовсе, и серверная проверка должна с этим согласовываться.
 - `markdown.py`: всё экранируется через `markupsafe.escape`, в ссылках/картинках
   разрешены только `http`, `https`, `mailto` (иначе `#`), лимит вложенности списков 12.
 - `_doc_lang()` отбрасывает любой `lang`, не подходящий под `LANG_CODE_RE`, — крафтовый
