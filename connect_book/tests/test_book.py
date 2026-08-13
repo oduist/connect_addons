@@ -67,7 +67,7 @@ class TestConnectBook(TransactionCase):
         user = self.env["res.users"].create({
             "name": "Book Reader",
             "login": "book.reader@example.com",
-            "groups_id": [(6, 0, [self.env.ref("base.group_user").id])],
+            "group_ids": [(6, 0, [self.env.ref("base.group_user").id])],
         })
         with self.assertRaises(AccessError):
             self.env["connect.book"].with_user(user).get_admin_book()
