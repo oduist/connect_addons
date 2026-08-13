@@ -73,8 +73,9 @@ Reverse-buildable contract for the module. Rules and shapes, not source.
 
 - The module serves **three views**, each aggregating **one page (or entry) per
   crawled module** that ships the matching file:
-  - **Userbook** -- `doc/user_guide.md`, for every internal user.
-  - **Adminbook** -- `doc/admin_guide.md`, administrators only.
+  - **Userbook** -- `doc/user_guide.md`, for any user who can reach the Connect
+    menu (see Security for the effective access rule).
+  - **Adminbook** -- `doc/admin_guide.md`, system administrators only.
   - **Changes** -- `doc/changes/*.md`, the per-day documentation timeline.
 - **Module selection (all three views).** Search `ir.module.module` with
   `sudo()` for `state = "installed"` AND `name =like "connect%"`, ordered by
@@ -94,9 +95,14 @@ Reverse-buildable contract for the module. Rules and shapes, not source.
     take `context["lang"]`, else `user.lang`, else `"en"`; keep the part before
     the first `_` (so `en_US` -> `en`); if the result does not match
     `LANG_CODE_RE`, use `"en"`.
-  - Candidate order for a module's file, first hit wins:
+  - Candidate order for a module's file:
     1. `<module_path>/doc/i18n/<lang>/<filename>`
     2. `<module_path>/doc/<filename>`
+  - The selection is made on **existence alone**: the first candidate that is an
+    existing file is rendered and returned, whatever the render outcome. A
+    translated mirror that exists but is oversized or unreadable therefore
+    yields `None` for that module -- there is **no** second attempt on the source
+    file. Do not implement the candidate walk as a "try until one renders" loop.
   - The fallback is **per file**, so a partially translated installation renders
     fully, mixing translated and source pages.
   - There is **no runtime dependency on `LANG.md` / `LANG.local.md`**. Those
@@ -176,17 +182,40 @@ The renderer's public contract, `md_to_html(text) -> str`:
 
 - Empty or falsy input returns `""`. Line endings are normalised (`\r\n`, `\r`
   -> `\n`) before parsing.
-- Block syntax supported: ATX headings `#`..`######` (each emitted with an `id`
-  slug derived from the heading text: tags stripped, non-word characters
-  dropped, lower-cased, runs of whitespace/underscores replaced by `-`);
-  paragraphs (consecutive non-blank lines joined by a single space); unordered
-  (`-`, `*`, `+`) and ordered (`1.`, `1)`) lists with nesting by indentation and
-  lazy continuation of an indented, marker-less line into the previous item;
-  fenced code blocks (three or more backticks or tildes, optional language token
-  emitted as `class="language-<lang>"`); blockquotes (`>` prefix, content
-  rendered recursively); GFM pipe tables (a header row plus a dash/colon
-  separator row, then body rows until a blank or pipe-less line); horizontal
-  rules (three or more `-`, `*` or `_`).
+- Block syntax supported:
+  - **ATX headings** `#`..`######`. The `#` run must be followed by at least one
+    whitespace character (`#Heading` is a paragraph, not a heading), and a
+    trailing run of `#`s, with surrounding spaces, is trimmed off the text. Each
+    heading is emitted with an `id` slug built from its text in this order:
+    strip anything that looks like an HTML tag; drop every character that is not
+    a word character, whitespace or a hyphen (Unicode-aware, so an em dash goes
+    but accented letters stay); trim; lower-case; finally collapse each run of
+    whitespace and/or underscores into a single `-`. Hyphens already present are
+    kept. Worked example: `Connect Book — Administration` ->
+    `connect-book-administration`.
+  - **Paragraphs** -- consecutive non-blank lines, each stripped and joined by a
+    single space.
+  - **Lists** -- unordered (`-`, `*`, `+`) and ordered (`1.`, `1)`), nested by
+    indentation (a tab counts as four columns), with lazy continuation: an
+    indented, marker-less, non-blank line is appended to the previous item's
+    text after a space. A list block ends at the first line that is neither a
+    marker line nor a lazy continuation -- so a blank line between an unordered
+    and an ordered list yields two independent lists, as expected.
+    **Known defect, reproduce with care:** inside one uninterrupted block, an
+    item that switches kind at the same indentation (ordered to unordered or
+    back, with no blank line between) terminates the rendered list, and that
+    item *and every item after it in the block are dropped from the output*.
+    `- a`/`- b`/`1. c` renders as `<ul><li>a</li><li>b</li></ul>` and `c` is
+    silently lost. Authors must separate lists of different kinds with a blank
+    line. (Cause: the block consumer collects every marker line into one item
+    list, then discards the position at which the renderer stopped.)
+  - **Fenced code blocks** -- three or more backticks or tildes, closed by a run
+    of the same character; an optional language token is emitted as
+    `class="language-<lang>"`.
+  - **Blockquotes** -- `>` prefix, content rendered recursively.
+  - **GFM pipe tables** -- a header row plus a dash/colon separator row, then
+    body rows until a blank or pipe-less line.
+  - **Horizontal rules** -- three or more `-`, `*` or `_`.
 - Inline syntax: `**bold**`, `*italic*`, backtick-delimited inline code,
   `[text](url)` links rendered with `target="_blank" rel="noreferrer noopener"`,
   and `![alt](src)` images. Underscores are deliberately **not** emphasis
@@ -207,18 +236,35 @@ The renderer's public contract, `md_to_html(text) -> str`:
 ## Security
 
 - No security groups of its own, no record rules, no `ir.model.access.csv`.
-- All three HTTP routes are `auth="user"` -- an authenticated internal user.
+- All three HTTP routes are `auth="user"` -- any authenticated user reaches the
+  endpoints; only `/connect_book/admin` narrows further (below). Note that the
+  route-level access is **wider than the menu-level access** described next.
+- **Effective UI access: a Connect role is required for all three sections.**
+  The three menu items themselves carry no `groups` (except the Admin Guide),
+  but they are children of `connect.connect_documentation_menu`, whose ancestor
+  `connect.connect_top_menu` carries
+  `groups="connect.group_connect_user,connect.group_connect_admin"`. Odoo drops
+  a menu subtree whose parent is filtered out, so a user in neither Connect
+  group sees no Book at all. Neither Connect group implies, nor is implied by,
+  `base.group_user` or `base.group_system` -- they are independent axes.
+  Consequences a rebuilder must preserve: a plain internal user with no Connect
+  role gets nothing; a `base.group_system` administrator with no Connect role
+  sees no menu even though `get_admin_book` would serve them over RPC.
 - **The Adminbook is admin-only, enforced in two independent layers:**
   1. UI: the `Admin Guide` menu item carries `groups="base.group_system"`, so it
-     is hidden from everyone else.
+     is hidden from everyone else. This is *in addition to* the inherited
+     Connect-role requirement above -- both must hold for the menu to appear.
   2. Server: `get_admin_book` itself raises `AccessError` for a caller outside
      `base.group_system`. **The method is the defence of record**; hiding the
      menu is convenience only, and calling `/connect_book/admin` directly gains
-     nothing.
-- The Userbook and Changes menus and actions carry **no** group restriction.
-- `sudo()` is used in exactly one place: the `ir.module.module` search that
-  enumerates installed modules. It grants no other elevated access, and the user
-  never reaches the registry directly.
+     nothing. The server check knows nothing about the Connect groups.
+- The Userbook and Changes menu items and all three actions carry **no** group
+  restriction of their own; their access is entirely inherited from the Connect
+  top menu.
+- `sudo()` is used only on the `ir.module.module` search that enumerates
+  installed modules -- in both collectors (the shared guide collector and the
+  changes collector), which is two call sites of the same query. It grants no
+  other elevated access, and the user never reaches the registry directly.
 - **Rendered-HTML trust boundary.** Guide and change HTML is injected
   client-side through OWL `markup()` / `t-out` with no further sanitisation.
   `md_to_html` is therefore the sanitiser of record: it escapes all text and
@@ -249,6 +295,10 @@ Menu items -- the module defines **no root menu**; all three hang under the
 
 OWL components, registered in the `actions` registry under the tags above:
 
+Both root components declare `static props = { "*": true }` -- they accept the
+arbitrary props a client action receives, and omitting it makes OWL prop
+validation fail under debug assets.
+
 - `BookApp` (template `connect_book.BookApp`, tag `connect_book.book`).
   - Two-pane viewer: left = search input + table of contents, right = the
     rendered guide inside `.o_connect_book_doc`.
@@ -257,7 +307,8 @@ OWL components, registered in the `actions` registry under the tags above:
     property** defaulting to `/connect_book/book`, which is the whole extension
     point -- stores `data.pages || []`, sets `loaded`, and auto-selects the
     first page when there is one.
-  - The table of contents lists pages whose `title`, lower-cased, contains the
+  - The search input carries the placeholder `Search the documentation…`. The
+    table of contents lists pages whose `title`, lower-cased, contains the
     trimmed lower-cased search string; an empty search shows all. Filtering is
     by title only, never by body text.
   - The active page's `html` is wrapped in `markup()` and rendered with `t-out`;
@@ -269,8 +320,8 @@ OWL components, registered in the `actions` registry under the tags above:
   overrides `static endpoint = "/connect_book/admin"`. Nothing else differs:
   same template, same state, same behaviour.
 - `ChangesApp` (template `connect_book.ChangesApp`, tag `connect_book.changes`).
-  - Two-pane archive: left = the day timeline, right = every module's entry for
-    the selected day.
+  - Two-pane archive: left = a fixed sidebar header reading `Change archive`
+    above the day timeline, right = every module's entry for the selected day.
   - Reactive state: `days`, `activeDate`, `loaded`. On start it fetches
     `/connect_book/changes` and auto-selects the most recent day.
   - The timeline groups the (already descending) days by their `YYYY-MM` prefix

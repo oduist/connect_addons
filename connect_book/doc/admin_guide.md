@@ -17,12 +17,21 @@ change the files.
 
 | Section | Reads | Who can open it |
 |---|---|---|
-| **User Guide** | each module's `doc/user_guide.md` | every internal user |
-| **Admin Guide** | each module's `doc/admin_guide.md` | administrators only |
-| **Changes** | each module's `doc/changes/YYYY-MM-DD.md` | every internal user |
+| **User Guide** | each module's `doc/user_guide.md` | any Connect user or Connect admin |
+| **Admin Guide** | each module's `doc/admin_guide.md` | a Connect user or admin who is *also* a system administrator |
+| **Changes** | each module's `doc/changes/YYYY-MM-DD.md` | any Connect user or Connect admin |
 
-The **Admin Guide** is restricted to the *Settings* group
-(`base.group_system`), and the restriction is enforced twice:
+**A Connect role is the entry ticket to all three.** The three Book menu items
+themselves carry no group restriction (apart from the Admin Guide, below), but
+they hang under `Connect ▸ Documentation`, and the whole **Connect** top menu is
+restricted to `connect.group_connect_user` or `connect.group_connect_admin`.
+Odoo hides a menu subtree whose parent is filtered out, so a user without one of
+those two groups sees no Documentation menu and no Book at all -- being an
+internal user (`base.group_user`) is not enough. Neither Connect group is
+implied by, nor implies, `base.group_user` or `base.group_system`.
+
+The **Admin Guide** adds a second requirement on top: the *Settings* group
+(`base.group_system`). That one is enforced twice:
 
 - **In the menu** -- `Connect ▸ Documentation ▸ Admin Guide` carries
   `groups="base.group_system"`, so a user outside that group never sees it.
@@ -31,8 +40,15 @@ The **Admin Guide** is restricted to the *Settings* group
   directly from a browser or a script returns nothing but that error, so hiding
   the menu is a convenience, not the actual protection.
 
-The **User Guide** and **Changes** menus carry no group restriction: any
-authenticated internal user can open them.
+The two requirements are independent, and the practical consequences are worth
+spelling out:
+
+- A **system administrator with no Connect role** never sees the Documentation
+  menu -- yet the server-side check would let them through if they called the
+  admin endpoint directly. Grant them a Connect role if they are meant to read
+  the Admin Guide in the UI.
+- A **Connect user who is not a system administrator** sees only **User Guide**
+  and **Changes**. That is the intended, normal case.
 
 ## Where documentation files must live
 
@@ -56,7 +72,8 @@ database. Inside a module, the layout is fixed:
 Rules that follow from that layout:
 
 - The two guide file names are exact: `user_guide.md` and `admin_guide.md`.
-  Any other file in `doc/` is ignored.
+  Any other file sitting directly in `doc/` is ignored -- only the `changes/`
+  and `i18n/` sub-folders below are read as well.
 - `doc/tech_spec.md` is deliberately **not** part of the Book. It is the
   technical contract for developers and agents, and it is never rendered for
   human readers.
@@ -116,6 +133,11 @@ reader's Odoo language, and falls back to the source file when that mirror does
 not exist. The fallback is per file, so a partially translated installation
 still reads cleanly. The language code is taken from the user's Odoo language
 (`en_US` becomes `en`); an unrecognised value falls back to English.
+
+The fallback is on **existence only**. A mirror that exists but is oversized or
+unreadable makes that page disappear for readers of that language -- the Book
+does *not* quietly serve them the source file instead. If a page is missing for
+one language but present for another, look at the mirror, not at the source.
 
 - Translations are **pre-generated files** committed next to the code, not live
   machine translation. There is no per-request cost and no external service.

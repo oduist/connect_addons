@@ -9,10 +9,12 @@ installed on this database, so what you read always matches what you run.
 ## Opening the books
 
 Everything sits under the **Connect** top menu, in the **Documentation**
-section:
+section. The whole **Connect** menu is reserved for users who have a Connect
+role, so if you do not see it at all, ask your administrator to give you one --
+the Book lives inside it and is not reachable otherwise.
 
-- **Connect ▸ Documentation ▸ User Guide** -- the everyday guides, for all
-  internal users. This page you are reading now is one of them.
+- **Connect ▸ Documentation ▸ User Guide** -- the everyday guides, for everyone
+  who can open Connect. This page you are reading now is one of them.
 - **Connect ▸ Documentation ▸ Admin Guide** -- settings and tasks that need
   administrator rights.
 - **Connect ▸ Documentation ▸ Changes** -- a day-by-day archive of what changed
@@ -59,8 +61,8 @@ whoever maintains that module, to add it.
 
 ## Why you may not see the Admin Guide
 
-The **Admin Guide** menu is reserved for administrators. If your user is not one,
-the menu is not shown to you at all, and the two remaining entries -- **User
-Guide** and **Changes** -- are the ones you work with. That is expected, not a
-problem with your installation: the Admin Guide describes settings and
+The **Admin Guide** menu is reserved for system administrators. If your user is
+not one, the menu is not shown to you at all, and the two remaining entries --
+**User Guide** and **Changes** -- are the ones you work with. That is expected,
+not a problem with your installation: the Admin Guide describes settings and
 privileged operations, and it is protected on the server as well as in the menu.
