@@ -20,19 +20,6 @@ Changes archive.
 The documentation lives next to the module code -- no separate wiki.
 """,
     "depends": ["connect", "web"],
-    "data": [
-        "views/connect_book_views.xml",
-    ],
-    "assets": {
-        "web.assets_backend": [
-            "/connect_book/static/src/book/book.scss",
-            "/connect_book/static/src/book/book.js",
-            "/connect_book/static/src/book/book.xml",
-            "/connect_book/static/src/admin/adminbook.js",
-            "/connect_book/static/src/changes/changes.js",
-            "/connect_book/static/src/changes/changes.xml",
-        ],
-    },
     "installable": True,
     "application": False,
     "auto_install": False,
