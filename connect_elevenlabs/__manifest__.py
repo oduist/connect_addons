@@ -39,7 +39,6 @@
         'views/agent_tool_params.xml',
         'views/number.xml',
         'views/recording.xml',
-        'views/documentation.xml',
     ],
     'demo': [],
     'installable': True,
