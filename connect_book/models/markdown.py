@@ -205,8 +205,17 @@ def _consume_list(lines, i, n):
             break
     if not items:
         return "", i
-    html, _ = _render_list(items, 0, items[0][0])
-    return html, i
+    # A single block can contain several runs of the same kind (a run ends
+    # when the kind flips at the same indent -- see _render_list). Keep
+    # rendering runs from wherever the previous one stopped until every
+    # collected item has been placed, so a kind switch mid-block no longer
+    # drops the rest of the items that the scanner already consumed.
+    htmls = []
+    pos = 0
+    while pos < len(items):
+        run_html, pos = _render_list(items, pos, items[pos][0])
+        htmls.append(run_html)
+    return "\n".join(htmls), i
 
 
 def _render_list(items, pos, base_indent, depth=0):

@@ -40,3 +40,27 @@ class TestMarkdown(BaseCase):
     def test_https_url_is_kept(self):
         html = md_to_html("[docs](https://oduist.com/docs)\n")
         self.assertIn('href="https://oduist.com/docs"', html)
+
+    def test_list_switches_from_unordered_to_ordered_at_same_indent(self):
+        html = md_to_html("- a\n- b\n1. c\n2. d\n")
+        for item in ("a", "b", "c", "d"):
+            self.assertIn("<li>%s</li>" % item, html)
+        self.assertIn("<ul>", html)
+        self.assertIn("<ol>", html)
+
+    def test_list_switches_from_ordered_to_unordered_at_same_indent(self):
+        html = md_to_html("1. a\n2. b\n- c\n- d\n")
+        for item in ("a", "b", "c", "d"):
+            self.assertIn("<li>%s</li>" % item, html)
+        self.assertIn("<ol>", html)
+        self.assertIn("<ul>", html)
+
+    def test_nested_list_is_not_broken_by_the_kind_switch_fix(self):
+        html = md_to_html("- a\n  - b\n  - c\n- d\n")
+        # "a" is followed by a nested <ul>, not a closing </li>, so match on
+        # its text boundaries rather than assuming an immediate </li>.
+        self.assertIn(">a<", html)
+        self.assertIn("<li>b</li>", html)
+        self.assertIn("<li>c</li>", html)
+        self.assertIn("<li>d</li>", html)
+        self.assertEqual(html.count("<ul>"), 2)

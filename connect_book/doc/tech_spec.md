@@ -200,15 +200,16 @@ The renderer's public contract, `md_to_html(text) -> str`:
     indented, marker-less, non-blank line is appended to the previous item's
     text after a space. A list block ends at the first line that is neither a
     marker line nor a lazy continuation -- so a blank line between an unordered
-    and an ordered list yields two independent lists, as expected.
-    **Known defect, reproduce with care:** inside one uninterrupted block, an
-    item that switches kind at the same indentation (ordered to unordered or
-    back, with no blank line between) terminates the rendered list, and that
-    item *and every item after it in the block are dropped from the output*.
-    `- a`/`- b`/`1. c` renders as `<ul><li>a</li><li>b</li></ul>` and `c` is
-    silently lost. Authors must separate lists of different kinds with a blank
-    line. (Cause: the block consumer collects every marker line into one item
-    list, then discards the position at which the renderer stopped.)
+    and an ordered list yields two independent lists, as expected. Within one
+    uninterrupted block, an item that switches kind at the same indentation
+    (ordered to unordered or back, with no blank line between) starts a new
+    `<ul>`/`<ol>` run instead of ending the block: every collected item is
+    still rendered, in source order, as a sequence of sibling lists. `- a`/
+    `- b`/`1. c`/`2. d` renders as `<ul><li>a</li><li>b</li></ul>` followed by
+    `<ol><li>c</li><li>d</li></ol>` -- no content is dropped. (The block
+    consumer collects every marker line into one item list, then renders it in
+    successive runs, resuming each run from the position the previous one
+    stopped at, until all items are placed.)
   - **Fenced code blocks** -- three or more backticks or tildes, closed by a run
     of the same character; an optional language token is emitted as
     `class="language-<lang>"`.
