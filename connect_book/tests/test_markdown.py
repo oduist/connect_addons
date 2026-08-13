@@ -9,7 +9,7 @@ from odoo.addons.connect_book.models.markdown import md_to_html
 class TestMarkdown(BaseCase):
     def test_heading_and_paragraph(self):
         html = md_to_html("# Title\n\nHello world\n")
-        self.assertIn("<h1>Title</h1>", html)
+        self.assertIn('<h1 id="title">Title</h1>', html)
         self.assertIn("<p>Hello world</p>", html)
 
     def test_unordered_list(self):

@@ -262,7 +262,7 @@ def _inline(text):
         text,
     )
     # Handle bold before italic; leave underscores alone so we don't break
-    # technical identifiers like res_partner or odu_book.
+    # technical identifiers like res_partner or connect_book.
     text = re.sub(r"\*\*([^*]+?)\*\*", r"<strong>\1</strong>", text)
     text = re.sub(r"\*([^*]+?)\*", r"<em>\1</em>", text)
     text = re.sub(r"\x00(\d+)\x00", lambda m: "<code>%s</code>" % codes[int(m.group(1))], text)
