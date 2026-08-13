@@ -42,6 +42,8 @@ Reverse-buildable contract for the module. Rules and shapes, not source.
 | `I18N_MARKER_RE` | leading `<!-- i18n … -->` line, with its trailing newline | Provenance marker stripped before render |
 | `MODULE_PREFIX` | `"connect"` | Only modules whose name starts with this are crawled |
 | `ADMIN_GROUP` | `"base.group_system"` | Group required to read the Adminbook |
+| `USER_GROUP` | `"connect.group_connect_user"` | One of the two groups required to read the Userbook and the Changes archive |
+| `CONNECT_ADMIN_GROUP` | `"connect.group_connect_admin"` | The other group required to read the Userbook and the Changes archive |
 | `LANG_CODE_RE` | `^[a-z]{2,3}(@[a-z0-9]+)?$` | Accepts a documentation-language tag |
 | `MAX_DOC_BYTES` | `1024 * 1024` (1 MiB) | Files above this size are skipped |
 | `_RENDER_CACHE` | module-level `dict` | `(filepath, strip_marker) -> (mtime, html)` |
@@ -73,8 +75,9 @@ Reverse-buildable contract for the module. Rules and shapes, not source.
 
 - The module serves **three views**, each aggregating **one page (or entry) per
   crawled module** that ships the matching file:
-  - **Userbook** -- `doc/user_guide.md`, for any user who can reach the Connect
-    menu (see Security for the effective access rule).
+  - **Userbook** -- `doc/user_guide.md`, gated to `connect.group_connect_user`
+    or `connect.group_connect_admin` (see Security for the effective access
+    rule).
   - **Adminbook** -- `doc/admin_guide.md`, system administrators only.
   - **Changes** -- `doc/changes/*.md`, the per-day documentation timeline.
 - **Module selection (all three views).** Search `ir.module.module` with
@@ -140,6 +143,10 @@ beyond logging and the in-memory render cache), and take no arguments.
 
 - `get_book()`
   - Assembles the Userbook in the reader's documentation language.
+  - **Access rule:** raises `AccessError` ("A Connect role is required to read
+    the User Guide.", translatable) unless the caller `has_group` on
+    `connect.group_connect_user` **or** `connect.group_connect_admin`. The
+    check precedes any file access.
   - Returns `{"pages": [{"id", "module", "title", "html"}, ...]}` where `id` and
     `module` are both the technical module name, `title` is
     `shortdesc or name`, and `html` is the rendered `user_guide.md`.
@@ -149,10 +156,17 @@ beyond logging and the in-memory render cache), and take no arguments.
   - Same shape and same ordering as `get_book`, reading `admin_guide.md`.
   - **Access rule:** raises `AccessError` ("Administrator access is required to
     read the Admin Book.", translatable) unless the caller
-    `has_group("base.group_system")`. The check precedes any file access.
+    `has_group("base.group_system")`. The check precedes any file access. This
+    is a separate, narrower gate than `get_book`'s -- it does not check the
+    Connect groups at all.
   - Triggered by `POST /connect_book/admin` and by any server-side caller.
 - `get_changes()`
-  - Assembles the archive. Returns
+  - Assembles the archive.
+  - **Access rule:** same as `get_book` -- raises `AccessError` ("A Connect
+    role is required to read the Changes archive.", translatable) unless the
+    caller `has_group` on `connect.group_connect_user` or
+    `connect.group_connect_admin`. The check precedes any file access.
+  - Returns
     `{"days": [{"date": "YYYY-MM-DD", "entries": [{"module", "title", "html"}, ...]}, ...]}`,
     days descending, entries by module name.
   - Not language-aware: it reads only the source `doc/changes/*.md`.
@@ -237,20 +251,36 @@ The renderer's public contract, `md_to_html(text) -> str`:
 ## Security
 
 - No security groups of its own, no record rules, no `ir.model.access.csv`.
-- All three HTTP routes are `auth="user"` -- any authenticated user reaches the
-  endpoints; only `/connect_book/admin` narrows further (below). Note that the
-  route-level access is **wider than the menu-level access** described next.
-- **Effective UI access: a Connect role is required for all three sections.**
-  The three menu items themselves carry no `groups` (except the Admin Guide),
-  but they are children of `connect.connect_documentation_menu`, whose ancestor
-  `connect.connect_top_menu` carries
-  `groups="connect.group_connect_user,connect.group_connect_admin"`. Odoo drops
-  a menu subtree whose parent is filtered out, so a user in neither Connect
-  group sees no Book at all. Neither Connect group implies, nor is implied by,
-  `base.group_user` or `base.group_system` -- they are independent axes.
-  Consequences a rebuilder must preserve: a plain internal user with no Connect
-  role gets nothing; a `base.group_system` administrator with no Connect role
-  sees no menu even though `get_admin_book` would serve them over RPC.
+- All three HTTP routes are `auth="user"` -- any authenticated user (portal
+  included) reaches them at the transport layer -- but each of the three
+  underlying model methods enforces its own group requirement before doing any
+  work, so route-level access is **not** wider than menu-level access: the
+  controller deliberately performs no checks of its own and delegates entirely
+  to the model.
+- **Effective UI access: a Connect role is required for all three sections,
+  enforced in two independent layers, matching for `get_book`/`get_changes`
+  the same shape `get_admin_book` uses for its own extra requirement:**
+  1. UI: the three menu items themselves carry no `groups` (except the Admin
+     Guide), but they are children of `connect.connect_documentation_menu`,
+     whose ancestor `connect.connect_top_menu` carries
+     `groups="connect.group_connect_user,connect.group_connect_admin"`. Odoo
+     drops a menu subtree whose parent is filtered out, so a user in neither
+     Connect group sees no Book at all.
+  2. Server: `get_book()` and `get_changes()` each raise `AccessError` ("A
+     Connect role is required to read the User Guide." / "... the Changes
+     archive.", both translatable) unless the caller `has_group` on
+     `connect.group_connect_user` **or** `connect.group_connect_admin`. The
+     check precedes any file access. `base.group_system` alone does **not**
+     satisfy it -- an administrator with no Connect role is refused by the
+     server exactly as they are hidden from the menu, because they have no
+     Connect menus either.
+  Neither Connect group implies, nor is implied by, `base.group_user` or
+  `base.group_system` -- they are independent axes. Consequences a rebuilder
+  must preserve: a plain internal user with no Connect role gets nothing from
+  either the menu or `get_book`/`get_changes`; a `base.group_system`
+  administrator with no Connect role sees no menu and is refused by
+  `get_book`/`get_changes`, but `get_admin_book` would still serve them (next
+  point) -- the Admin Guide's gate is a separate, narrower axis.
 - **The Adminbook is admin-only, enforced in two independent layers:**
   1. UI: the `Admin Guide` menu item carries `groups="base.group_system"`, so it
      is hidden from everyone else. This is *in addition to* the inherited
@@ -346,12 +376,13 @@ parameters and returning the corresponding model payload verbatim:
 
 | Route | Model call | Response |
 |---|---|---|
-| `/connect_book/book` | `connect.book.get_book()` | `{"pages": [{id, module, title, html}, ...]}` |
+| `/connect_book/book` | `connect.book.get_book()` | `{"pages": [{id, module, title, html}, ...]}`; `AccessError` for a caller with no Connect role |
 | `/connect_book/admin` | `connect.book.get_admin_book()` | same shape, admin guides; `AccessError` for non-administrators |
-| `/connect_book/changes` | `connect.book.get_changes()` | `{"days": [{date, entries: [{module, title, html}, ...]}, ...]}` |
+| `/connect_book/changes` | `connect.book.get_changes()` | `{"days": [{date, entries: [{module, title, html}, ...]}, ...]}`; `AccessError` for a caller with no Connect role |
 
 The controller adds no logic of its own -- no argument parsing, no access check
-(the model performs the admin check), no response reshaping.
+of its own (every access check, for all three routes, is performed by the
+model), no response reshaping.
 
 ## Automation
 

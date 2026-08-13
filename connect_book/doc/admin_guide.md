@@ -21,14 +21,32 @@ change the files.
 | **Admin Guide** | each module's `doc/admin_guide.md` | a Connect user or admin who is *also* a system administrator |
 | **Changes** | each module's `doc/changes/YYYY-MM-DD.md` | any Connect user or Connect admin |
 
-**A Connect role is the entry ticket to all three.** The three Book menu items
-themselves carry no group restriction (apart from the Admin Guide, below), but
-they hang under `Connect ▸ Documentation`, and the whole **Connect** top menu is
-restricted to `connect.group_connect_user` or `connect.group_connect_admin`.
-Odoo hides a menu subtree whose parent is filtered out, so a user without one of
-those two groups sees no Documentation menu and no Book at all -- being an
-internal user (`base.group_user`) is not enough. Neither Connect group is
-implied by, nor implies, `base.group_user` or `base.group_system`.
+**A Connect role is the entry ticket to all three, enforced in two independent
+layers** -- the same pattern the Admin Guide uses below for its own extra
+requirement:
+
+- **In the menu** -- the three Book menu items themselves carry no group
+  restriction of their own (apart from the Admin Guide, below), but they hang
+  under `Connect ▸ Documentation`, and the whole **Connect** top menu is
+  restricted to `connect.group_connect_user` or `connect.group_connect_admin`.
+  Odoo hides a menu subtree whose parent is filtered out, so a user without one
+  of those two groups sees no Documentation menu and no Book at all -- being an
+  internal user (`base.group_user`) is not enough.
+- **On the server** -- `get_book()` and `get_changes()` re-check the same
+  requirement themselves and refuse anyone without a Connect role with an
+  access error. This matters beyond the UI: the `connect` module ships a
+  portal service user (login `connect`, whose password is handed to external
+  telephony webhooks) that holds no Connect role, and any other portal user is
+  in the same position. Without this server check, that account -- or any
+  authenticated user, portal included -- could call `/connect_book/book` or
+  `/connect_book/changes` directly and read every user guide and the whole
+  change archive, and use the module list to learn which `connect*` modules
+  are installed. The server check closes that: calling either route directly
+  with no Connect role returns nothing but the same access error the menu
+  implies.
+
+Neither Connect group is implied by, nor implies, `base.group_user` or
+`base.group_system`.
 
 The **Admin Guide** adds a second requirement on top: the *Settings* group
 (`base.group_system`). That one is enforced twice:

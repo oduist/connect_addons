@@ -7,6 +7,8 @@ from odoo.exceptions import AccessError
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 
+from odoo.addons.connect_book.models.connect_book import MAX_DOC_BYTES
+
 
 @tagged("post_install", "-at_install", "connect_book")
 class TestConnectBook(TransactionCase):
@@ -75,6 +77,68 @@ class TestConnectBook(TransactionCase):
     def test_get_admin_book_allows_system_group(self):
         result = self.book.get_admin_book()   # test env user is a superuser
         self.assertIn("pages", result)
+
+    def test_get_book_requires_connect_role(self):
+        user = self.env["res.users"].create({
+            "name": "No Connect Role",
+            "login": "no.connect.role@example.com",
+            "group_ids": [(6, 0, [self.env.ref("base.group_user").id])],
+        })
+        with self.assertRaises(AccessError):
+            self.env["connect.book"].with_user(user).get_book()
+
+    def test_get_changes_requires_connect_role(self):
+        user = self.env["res.users"].create({
+            "name": "No Connect Role",
+            "login": "no.connect.role.changes@example.com",
+            "group_ids": [(6, 0, [self.env.ref("base.group_user").id])],
+        })
+        with self.assertRaises(AccessError):
+            self.env["connect.book"].with_user(user).get_changes()
+
+    def test_get_book_allows_connect_user_group(self):
+        user = self.env["res.users"].create({
+            "name": "Connect User",
+            "login": "connect.user.book@example.com",
+            "group_ids": [(6, 0, [
+                self.env.ref("base.group_user").id,
+                self.env.ref("connect.group_connect_user").id,
+            ])],
+        })
+        self._write("user_guide.md", "# Guide\n")
+        with self._patch_path():
+            result = self.env["connect.book"].with_user(user).get_book()
+        self.assertIn("pages", result)
+
+    def test_get_changes_allows_connect_user_group(self):
+        user = self.env["res.users"].create({
+            "name": "Connect User",
+            "login": "connect.user.changes@example.com",
+            "group_ids": [(6, 0, [
+                self.env.ref("base.group_user").id,
+                self.env.ref("connect.group_connect_user").id,
+            ])],
+        })
+        self._write("changes/2026-08-13.md", "### Added\nsomething\n")
+        with self._patch_path():
+            result = self.env["connect.book"].with_user(user).get_changes()
+        self.assertIn("days", result)
+
+    def test_read_module_doc_skips_oversized_file(self):
+        self._write("user_guide.md", "x" * (MAX_DOC_BYTES + 1))
+        with self._patch_path():
+            html = self.book._read_module_doc("connect", "user_guide.md", "en")
+        self.assertIsNone(html)
+
+    def test_render_doc_html_returns_none_on_render_failure(self):
+        self._write("user_guide.md", "# Guide\n")
+        filepath = os.path.join(self.module_path, "doc", "user_guide.md")
+        with patch(
+            "odoo.addons.connect_book.models.connect_book.md_to_html",
+            side_effect=RuntimeError("boom"),
+        ):
+            html = self.book._render_doc_html(filepath, strip_marker=True)
+        self.assertIsNone(html)
 
     def test_get_changes_groups_by_day_and_ignores_stray_files(self):
         self._write("changes/2026-08-13.md", "### Added\nsomething\n")

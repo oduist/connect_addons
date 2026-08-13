@@ -30,6 +30,12 @@ I18N_MARKER_RE = re.compile(r"\A<!--\s*i18n\b[^>]*-->[ \t]*\r?\n?")
 MODULE_PREFIX = "connect"
 #: Group required to read the administrator documentation.
 ADMIN_GROUP = "base.group_system"
+#: Groups required to read the Userbook and the Changes archive -- either
+#: Connect role. ``base.group_system`` alone is deliberately not enough: an
+#: administrator with no Connect role has no Connect menus either, and the
+#: server check must match that.
+USER_GROUP = "connect.group_connect_user"
+CONNECT_ADMIN_GROUP = "connect.group_connect_admin"
 #: A documentation-language code is a short lowercase tag (optionally ``@variant``).
 #: Anything else is rejected so a crafted ``lang`` cannot escape the doc folder
 #: when it is joined into a filesystem path.
@@ -69,9 +75,18 @@ class ConnectBook(models.AbstractModel):
         Served in the reader's documentation language (see :meth:`_doc_lang`),
         falling back to the source file per module.
 
+        :raise AccessError: when the caller holds neither Connect role
+            (:data:`USER_GROUP` nor :data:`CONNECT_ADMIN_GROUP`).
         :return: ``{"pages": [{"id", "module", "title", "html"}, ...]}`` --
             one page per module (its ``doc/user_guide.md``).
         """
+        if not (
+            self.env.user.has_group(USER_GROUP)
+            or self.env.user.has_group(CONNECT_ADMIN_GROUP)
+        ):
+            raise AccessError(
+                self.env._("A Connect role is required to read the User Guide.")
+            )
         return {"pages": self._collect_pages(GUIDE_FILENAME, self._doc_lang())}
 
     @api.model
@@ -205,10 +220,19 @@ class ConnectBook(models.AbstractModel):
         calendar day, named ``YYYY-MM-DD.md``. This collects them all and
         groups them by day so the UI can render a blog-like archive.
 
+        :raise AccessError: when the caller holds neither Connect role
+            (:data:`USER_GROUP` nor :data:`CONNECT_ADMIN_GROUP`).
         :return: ``{"days": [{"date": "YYYY-MM-DD", "entries": [{"module",
             "title", "html"}, ...]}, ...]}`` -- days ordered most-recent first,
             entries within a day ordered by module name.
         """
+        if not (
+            self.env.user.has_group(USER_GROUP)
+            or self.env.user.has_group(CONNECT_ADMIN_GROUP)
+        ):
+            raise AccessError(
+                self.env._("A Connect role is required to read the Changes archive.")
+            )
         modules = self.env["ir.module.module"].sudo().search(
             [
                 ("state", "=", "installed"),
@@ -235,7 +259,7 @@ class ConnectBook(models.AbstractModel):
         }
 
     def _read_module_changes(self, module_name):
-        """Yield ``(date_str, html)`` for the module's ``doc/changes/*.md``.
+        """Return ``(date_str, html)`` for the module's ``doc/changes/*.md``.
 
         Only files named ``YYYY-MM-DD.md`` are considered; anything else is
         ignored. Unreadable / non-UTF-8 files are skipped with a warning.
