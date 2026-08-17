@@ -588,8 +588,7 @@ class ConnectMessage(models.Model):
                 logger.info('Message not found for SID %s', sid)
                 return True
             vals = {'status': status} if status else {}
-            connect_user = self.env.ref("connect.user_connect_webhook")
-            connect_partner = connect_user.partner_id
+            connect_partner = self.env.ref("base.partner_root")
             if (status or '').lower() == 'failed':
                 # Some callbacks include error details
                 code = data.get('ErrorCode')

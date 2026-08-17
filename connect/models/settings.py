@@ -12,9 +12,7 @@ import inspect
 import json
 import logging
 import os
-import random
 import re
-import string
 from urllib.parse import urljoin
 
 import httpx
@@ -214,19 +212,6 @@ def format_connect_response(text):
     return text
 
 
-def generate_password():
-    special_chars = "@!#$%^&*"
-    characters = [
-        random.choice(string.ascii_lowercase),
-        random.choice(string.ascii_uppercase),
-        random.choice(string.digits),
-        random.choice(special_chars),
-    ]
-    characters += random.choices(string.ascii_letters + string.digits + special_chars, k=19)
-    random.shuffle(characters)
-    return "".join(characters)
-
-
 def strip_number(number):
     """Strip number formating"""
     if not isinstance(number, str):
@@ -253,13 +238,9 @@ class Settings(models.Model):
     ], default='us1', required=True)
     twilio_edge = fields.Selection(selection=TWILIO_EDGES, required=True, default='ashburn')
     account_sid = fields.Char(string="Account SID")
-    auth_token = fields.Char(
-        groups="base.group_erp_manager,connect.group_connect_webhook"
-    )
+    auth_token = fields.Char(groups="base.group_erp_manager")
     display_auth_token = fields.Char()
-    region_auth_token = fields.Char(
-        groups="base.group_erp_manager,connect.group_connect_webhook"
-    )
+    region_auth_token = fields.Char(groups="base.group_erp_manager")
     display_region_auth_token = fields.Char()
     twilio_api_key = fields.Char()
     twilio_api_secret = fields.Char(groups="base.group_erp_manager")
@@ -349,9 +330,6 @@ class Settings(models.Model):
     ############################################################
     api_url = fields.Char("API URL", compute="_get_instance_data")
     api_fallback_url = fields.Char("API Fallback URL")
-    twilio_verify_requests = fields.Boolean(
-        default=True, string="Verify Twilio Requests"
-    )
     call_duration_limit = fields.Integer(
         default=7200, string="Call Duration Limit (seconds)"
     )
@@ -374,10 +352,6 @@ class Settings(models.Model):
                 )
                 self.env["ir.config_parameter"].sudo().set_param("connect.api_url", web_base_url)
                 api_url = web_base_url
-                # Reset webhook user password from the default value set in data file.
-                user = self.env.ref("connect.user_connect_webhook")
-                password = generate_password()
-                user.write({'password': password})
             rec.api_url = api_url
 
     @api.model

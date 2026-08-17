@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 {
     'name': 'Twilio Odoo CRM integration',
-    'version': '1.0.2',
+    'version': '1.0.3',
     'author': 'Oduist',
     'price': 0,
     'currency': 'EUR',
@@ -14,7 +14,6 @@
     'description': "",
     'depends': ['crm', 'utm', 'connect'],
     'data': [
-        'security/webhook.xml',
         'views/crm_lead.xml',
         'views/call.xml',
         'views/utm.xml',
