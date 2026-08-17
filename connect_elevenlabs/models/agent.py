@@ -235,8 +235,6 @@ class ElevenlabsAgent(models.Model):
                 )
         if not self.env.context.get("skip_elevenlabs"):
             self.update_elevenlabs_agent()
-            if not self.knowledge_base_note and self.knowledge_base_id:
-                self.delete_elevenlabs_knowledge_base()
         return res
 
     def unlink(self):
