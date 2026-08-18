@@ -36,12 +36,24 @@ Two habits are worth adopting:
 
 ## What the agent tells customers about stock
 
-The agent reports a **fixed placeholder availability** for every product rather
-than your real stock level. It does not read inventory.
+The agent reports the **real on-hand quantity** of each product, as Odoo knows
+it at that moment.
 
-This matters in practice: a customer can be told an item is available when it is
-not. Until this is changed, do not treat anything the agent said about
-availability as a commitment, and confirm stock before promising delivery.
+Three cases, and the agent is told to distinguish them:
+
+- **a number** — that many are physically in stock;
+- **zero** — none are left;
+- **not tracked** — the product is a service, or inventory management is not
+  installed. The agent should say it will confirm availability rather than
+  invent one.
+
+Two caveats worth keeping in mind on the phone:
+
+- The figure is the quantity **on hand**, not the quantity free to promise. Units
+  already reserved for other orders are still counted, so a low number is
+  softer than it looks.
+- It is a snapshot taken during the call. On fast-moving stock, confirm before
+  promising a delivery date.
 
 ## Products the agent knows about
 

@@ -24,12 +24,21 @@ request is rejected. They are called by ElevenLabs, not by browsers.
 
 ## Two behaviours to know before going live
 
-**Stock is a placeholder.** `get_products` reports a fixed availability value
-for every product — it does not read inventory. An agent using this tool can
-therefore tell a caller an out-of-stock item is available. Decide deliberately
-whether that is acceptable for your business: if it is not, either do not attach
-`get_products`, or make the agent's prompt state explicitly that availability is
-confirmed later by a human.
+**Stock is the real on-hand quantity.** `get_products` returns
+`items_in_stock` read from inventory: a number is the quantity on hand, `0`
+means none are left, and `null` means the quantity is not tracked — the product
+is not storable, or the `stock` module is not installed. The tool description
+instructs the agent to state an availability only when it has a number, and to
+promise a call-back otherwise.
+
+Two properties to understand before an agent quotes these figures to customers:
+
+- It is **on-hand**, not free-to-promise: units reserved for other orders are
+  still included. If your business commits stock at order time, treat a low
+  number as "check first" rather than "yes".
+- The module does not depend on `stock`. On a database without inventory
+  management every product reports `null`, which is correct — but it means an
+  agent there can never confirm availability.
 
 **Only published products are exposed.** `get_products` filters on the same
 published flag that governs website visibility. This is the lever for controlling
@@ -75,9 +84,10 @@ to use the tool, so editing it changes behaviour as surely as editing the prompt
 
 ## Health check
 
-1. Publish a test product.
+1. Publish a test product with a known quantity on hand.
 2. Call the agent and ask what is available — the product is named, with its
-   price.
+   price, and the quantity the agent states matches Odoo. Change the quantity in
+   Inventory and ask again: the new figure must be the one the agent reports.
 3. Ask for your orders as a known customer — the agent lists them.
 4. Ask about one order by reference — the details match Odoo.
 5. If order creation is attached: place a small order, then check quantity,
