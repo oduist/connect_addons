@@ -135,7 +135,7 @@
         <!-- Elevenlabs Agent Tool: get_products -->
         <record id="get_products_tool" model="connect.elevenlabs_agent_tool">
             <field name="name">get_products</field>
-            <field name="description">Get list of product and categories.</field>
+            <field name="description">Get list of product and categories. Each product carries items_in_stock, the real on-hand quantity: a number means that many are in stock, 0 means none are left, and null means the quantity is not tracked for that product (a service, or no inventory management). Never state an availability when items_in_stock is null -- say you will confirm it instead.</field>
             <field name="tool_type">webhook</field>
             <field name="path">/connect_elevenlabs_sale/get_products</field>
             <field name="method">POST</field>
