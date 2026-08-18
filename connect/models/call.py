@@ -49,6 +49,16 @@ class Call(models.Model):
     name = fields.Char(compute='_get_name')
     channels = fields.One2many('connect.channel', 'call', readonly=True)
     recording = fields.Many2one('connect.recording', compute='_get_recording_data')
+    recording_ids = fields.Many2many('connect.recording', string='Recordings',
+        compute='_get_recording_data',
+        help='Every recording of this conversation. Parking splits a call into '
+             'one recording per segment, and they are all stored on the call '
+             'the <Dial> ran on, so a retrieval leg lists the recordings of '
+             'the call it was retrieved from.')
+    # The web client cannot call len() in a view modifier, so the segment list
+    # keys its visibility off this count instead of len(recording_ids).
+    recording_count = fields.Integer(compute='_get_recording_data',
+        string='Recordings Count')
     transcript = fields.Text(compute='_get_recording_data')
     if release.version_info[0] >= 17.0:
         recording_widget = fields.Html(compute='_get_recording_data', sanitize=False)
@@ -191,13 +201,22 @@ class Call(models.Model):
                 rec.ref = False
 
     def _get_recording_data(self):
+        # Parking splits one conversation into a recording per segment, and each
+        # segment is stored on the call its <Dial> ran on — the original inbound
+        # one. The leg that retrieves the call from the slot therefore owns no
+        # recording at all, so it surfaces the recordings of its parent call
+        # instead of showing the agent who picked up an empty Recording tab.
         # Make one query to get all records.
-        recordings = self.env['connect.recording'].search([('call', 'in', [k.id for k in self])])
+        calls = self | self.parent_call
+        recordings = self.env['connect.recording'].search([('call', 'in', calls.ids)])
         for rec in self:
-            recording = recordings.filtered(lambda x: x.call.id == rec.id)
-            if recording:
+            segments = recordings.filtered(
+                lambda x: x.call.id in (rec.id, rec.parent_call.id))
+            rec.recording_ids = segments
+            rec.recording_count = len(segments)
+            if segments:
                 # Make sure we take the last recording (fix for Elevenlabs agent recording)
-                recording = max(recording, key=lambda x: x.id)
+                recording = max(segments, key=lambda x: x.id)
                 rec.recording = recording
                 rec.transcript = recording.transcript
                 rec.recording_icon = '<span class="fa fa-file-sound-o"/>'
@@ -1653,12 +1672,17 @@ class Call(models.Model):
 
         Twilio dequeues the longest waiting caller, so when several calls share
         a slot we must pick the oldest one to stay in sync with the queue.
+        Calls that have already ended are skipped: their Twilio call is gone,
+        so the retrieval redirect fails and the caller is bridged through the
+        plain queue instead. That bridge carries no referUrl, which leaves the
+        agent who picked the call up unable to park it a second time.
         """
         if not slot:
             return self.browse()
         return self.sudo().search([
             ('park_slot', '=', slot),
             ('park_call_sid', '!=', False),
+            ('status', 'not in', CALL_END_STATUSES),
         ], order='parked_at asc, id asc', limit=1)
 
     @api.model
@@ -1761,6 +1785,23 @@ class Call(models.Model):
         parked_call.sudo().write({'park_slot': False})
         return True
 
+    def _should_record_park_retrieval(self, retriever):
+        """Whether the leg retrieving this call from a slot is recorded.
+
+        Recording is a property of the conversation, settled when the call was
+        first answered. Deciding it from the retrieving agent's own
+        record_calls flag instead loses the second half of every parked
+        conversation that is picked up by someone who does not record, while
+        the first half stays on file.
+        """
+        self.ensure_one()
+        if self.disable_recording:
+            return False
+        # parked_by_pbx_user is not a reliable fallback on its own: Twilio sends
+        # the customer as Caller on the park webhook, so it is often unset.
+        policy_user = self.answered_pbx_user or self.parked_by_pbx_user
+        return (policy_user or retriever).record_calls
+
     @api.model
     def _build_park_retrieval_twiml(self, parked_call, retriever, slot, from_client=False):
         """TwiML making the parked call ring the retriever with the real caller ID.
@@ -1792,7 +1833,7 @@ class Call(models.Model):
         }
         if not use_client:
             dial_kwargs['referUrl'] = refer_url
-        if retriever.record_calls and not parked_call.disable_recording:
+        if parked_call._should_record_park_retrieval(retriever):
             dial_kwargs.update({
                 'record': 'record-from-answer-dual',
                 'recordingStatusCallback': record_status_url,
@@ -1829,12 +1870,30 @@ class Call(models.Model):
         The parked caller was taken out of the queue to ring the retriever. If
         that call was not answered the caller must go back to their slot rather
         than be dropped.
+
+        The action can also arrive after the agent who took the call parked it
+        again — parking, retrieving and re-parking the same customer is
+        ordinary use. Such an action belongs to a retrieval that is already
+        over, and it must not touch the parking state the newer park has just
+        written: clearing it leaves the caller waiting in a Twilio queue that
+        Odoo no longer tracks, so the next retrieval falls back to the plain
+        queue bridge and presents the slot number instead of the customer's
+        own.
         """
         call = self.sudo().browse(call_id).exists()
         dial_status = params.get('DialCallStatus')
         debug(self, 'on_park_retrieve_action: call %s slot %s status %s' % (
             call_id, slot, dial_status))
         response = VoiceResponse()
+        # A retrieval clears park_slot, so a call that has one is parked again
+        # rather than being retrieved right now — whatever slot it went into.
+        current_slot = call.park_slot if call else False
+        if current_slot:
+            debug(self, 'on_park_retrieve_action: call %s is parked in slot %s, '
+                        'ignoring the stale action of slot %s' % (
+                            call_id, current_slot, slot))
+            response.enqueue('park-%s' % current_slot)
+            return response
         if dial_status == 'completed' or not slot:
             if call:
                 call.write({'park_slot': False, 'park_call_sid': False})

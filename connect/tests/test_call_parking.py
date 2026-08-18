@@ -116,12 +116,104 @@ class TestCallParking(TransactionCase):
         self.assertIn('<Enqueue>park-702</Enqueue>', str(response))
         self.assertEqual(parked.park_slot, '702')
 
+    def test_a_call_can_be_parked_and_retrieved_repeatedly(self):
+        """The same customer is parked, taken back and parked again.
+
+        Covers both halves of the cycle: the slot bookkeeping has to survive
+        the retrieval Dial action clearing it when the previous retrieval
+        finished, and every retrieval must still dial back presenting the
+        customer's own number rather than the parking slot.
+        """
+        parked = self._make_call('CAcustomer', '+12898283865', '+13658257665',
+                                 'incoming', self.partner)
+        for round_no, slot in enumerate(('701', '702', '701'), start=1):
+            where = 'round %s (slot %s)' % (round_no, slot)
+            self._park('CAcustomer', slot=slot)
+            parked.invalidate_recordset()
+            self.assertEqual(parked.park_slot, slot, where)
+            self.assertEqual(parked.park_call_sid, 'CAcustomer', where)
+
+            twilio = MagicMock()
+            with patch.object(type(self.env['connect.settings']), 'get_client',
+                              return_value=twilio):
+                response = self.env['connect.call'].unpark_call(
+                    {'CallSid': 'CAslotleg%s' % round_no, 'Caller': self.agent_uri},
+                    {'ExtenNumber': slot})
+            # The parked call dials the agent back, so the leg that dialled the
+            # slot is released rather than bridged through the queue.
+            self.assertIn('<Hangup', str(response), where)
+            twiml = twilio.calls.return_value.update.call_args.kwargs['twiml']
+            self.assertIn('callerId="+12898283865"', twiml, where)
+            self.assertNotIn('<Queue', twiml, where)
+
+            # Twilio reports the retrieval Dial as finished, as it does live.
+            self.env['connect.call'].on_park_retrieve_action(
+                parked.id, slot, {'DialCallStatus': 'completed'})
+            parked.invalidate_recordset()
+
+    def test_a_stale_action_does_not_clear_a_re_park_into_the_same_slot(self):
+        """Taking a call back and parking it in the slot it came from is the
+        most common way to re-park, so the slot number alone cannot tell a
+        stale action apart from a live one."""
+        parked = self._make_call('CAcustomer', '+12898283865', '+13658257665',
+                                 'incoming', self.partner)
+        self._park('CAcustomer')
+        parked.park_slot = False  # retrieved
+        self._park('CAcustomer')  # ...and parked again, same slot
+        response = self.env['connect.call'].on_park_retrieve_action(
+            parked.id, '702', {'DialCallStatus': 'completed'})
+        self.assertIn('<Enqueue>park-702</Enqueue>', str(response))
+        self.assertEqual(parked.park_slot, '702')
+        self.assertEqual(parked.park_call_sid, 'CAcustomer')
+
     def test_answered_retrieval_clears_the_parking_state(self):
         parked = self._make_call('CAcustomer', '+12898283865', '+13658257665',
                                  'incoming', self.partner)
         self._park('CAcustomer')
+        # Retrieval takes the call out of its slot before the Dial even runs,
+        # so a completed action always sees a call that is no longer parked.
+        parked.park_slot = False
         response = self.env['connect.call'].on_park_retrieve_action(
             parked.id, '702', {'DialCallStatus': 'completed'})
         self.assertIn('<Hangup', str(response))
         self.assertFalse(parked.park_slot)
         self.assertFalse(parked.park_call_sid)
+
+    def test_an_ended_call_does_not_hold_its_slot(self):
+        """A caller who hung up while on hold must release the slot.
+
+        Retrieving a dead call cannot work — Twilio refuses to redirect it —
+        and the fallback queue bridge that follows carries no referUrl, so the
+        agent who picks the call up can never park it again.
+        """
+        stale = self._make_call('CAstale', '+12898283865', '+13658257665',
+                                'incoming')
+        self._park('CAstale')
+        stale.status = 'completed'
+        self.assertFalse(self.env['connect.call']._get_parked_call('702'))
+
+    def test_a_stale_slot_registration_does_not_hijack_a_retrieval(self):
+        """The live caller is retrieved even when a dead one holds the slot."""
+        stale = self._make_call('CAstale', '+12898283865', '+13658257665',
+                                'incoming')
+        self._park('CAstale')
+        stale.status = 'completed'
+        live = self._make_call('CAlive', '+12898283866', '+13658257665',
+                               'incoming', self.partner)
+        self._park('CAlive')
+
+        twilio = MagicMock()
+        with patch.object(type(self.env['connect.settings']), 'get_client',
+                          return_value=twilio):
+            response = self.env['connect.call'].unpark_call(
+                {'CallSid': 'CAslotleg', 'Caller': self.agent_uri},
+                {'ExtenNumber': '702'})
+
+        self.assertIn('<Hangup', str(response))
+        self.assertEqual(twilio.calls.call_args.args[0], 'CAlive')
+        self.assertEqual(live.park_slot, False)
+        twiml = twilio.calls.return_value.update.call_args.kwargs['twiml']
+        self.assertIn('callerId="+12898283866"', twiml)
+        # The retrieval Dial keeps a referUrl, which is what lets the agent
+        # park the very same conversation a second time.
+        self.assertIn('referUrl=', twiml)

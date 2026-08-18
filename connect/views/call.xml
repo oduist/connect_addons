@@ -106,15 +106,28 @@
                             </group>
                         </page>
                         <page name="recording" string="Recording"
-                              invisible="recording == False">
+                              invisible="not recording_ids">
                             <group>
                                 <group>
                                     <field name="recording_widget" widget="html" nolabel="1"/>
                                 </group>
                                 <group>
-                                    <field name="recording"/>
+                                    <field name="recording" string="Latest Recording"/>
                                 </group>
                             </group>
+                            <!-- A parked call has one recording per segment, so
+                                 the player above is never the whole story. -->
+                            <field name="recording_count" invisible="1"/>
+                            <field name="recording_ids" nolabel="1" readonly="1"
+                                   invisible="recording_count &lt; 2">
+                                <list create="false" delete="false">
+                                    <field name="start_time"/>
+                                    <field name="duration_human" string="Duration"/>
+                                    <field name="called_user"/>
+                                    <field name="call" string="Recorded On"/>
+                                    <field name="recording_widget" widget="html" string="Play"/>
+                                </list>
+                            </field>
                             <group>
                                 <field name="transcript"
                                     invisible="not transcript"/>

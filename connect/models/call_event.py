@@ -920,6 +920,11 @@ class CallEvent(models.Model):
                     "finalized_at": call.finalized_at or fields.Datetime.now(),
                     "finalization_event_id": max(events.ids),
                     "registration_done": True,
+                    # A call that ended is not waiting in a slot any more. Left
+                    # registered, it is what the next retrieval of that slot
+                    # resolves to — and redirecting its dead Twilio call fails.
+                    "park_slot": False,
+                    "park_call_sid": False,
                 }
             )
             if (

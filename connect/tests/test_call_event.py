@@ -243,3 +243,29 @@ class TestCallEventProjector(TransactionCase):
             ),
             1,
         )
+
+    def test_finalization_releases_the_parking_slot(self):
+        """A parked caller who hangs up must not keep holding the slot.
+
+        The registration outlives the call otherwise, and every later
+        retrieval of that slot resolves to it instead of the caller actually
+        waiting there.
+        """
+        self.call.write(
+            {"park_slot": "705", "park_call_sid": self.root_sid}
+        )
+        payload = dict(
+            self.base_payload,
+            CallStatus="completed",
+            SequenceNumber="7",
+            CallDuration="30",
+        )
+        self.event_model.ingest("call_status", payload, token="park-release")
+        self.event_model.process_pending_events()
+        self.call.invalidate_recordset()
+        self.assertIn(self.call.status, ("completed", "no-answer"))
+        self.assertFalse(self.call.park_slot)
+        self.assertFalse(self.call.park_call_sid)
+        self.assertFalse(
+            self.env["connect.call"]._get_parked_call("705")
+        )
