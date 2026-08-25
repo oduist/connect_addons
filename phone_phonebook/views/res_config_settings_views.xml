@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.phone.phonebook</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base_setup.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="Phonebook" name="phone_phonebook">
+                    <block title="Remote XML Phonebook" name="phone_phonebook_remote">
+                        <setting string="Phonebook URL" help="Set this URL as a Remote Phone Book on the phone (Directory / Remote Phone Book), or push it via auto-provisioning (remote_phonebook.data.1.url).">
+                            <field name="phone_phonebook_url" readonly="1" widget="CopyClipboardChar" nolabel="1"/>
+                            <div class="mt8">
+                                <a href="/phone_phonebook/static/description/phone_setup.html" target="_blank">
+                                    <i class="fa fa-book" role="img" aria-label="Documentation"/> Yealink phone setup guide
+                                </a>
+                            </div>
+                        </setting>
+                        <setting string="Access Token" help="Phones must include this token in the phonebook URL. Regenerate it to revoke access for every phone using the old URL.">
+                            <field name="phone_phonebook_token" nolabel="1"/>
+                            <div class="mt8">
+                                <button name="action_regenerate_phonebook_token" type="object" string="Regenerate Token" icon="fa-refresh" class="btn-secondary"/>
+                            </div>
+                        </setting>
+                        <setting string="Served Directory" help="The size of a remote phone book file should be less than 1.5 M.">
+                            <field name="phone_phonebook_stats" readonly="1" nolabel="1"/>
+                        </setting>
+                        <setting string="Recent Callers Only" help="Serve only contacts with an incoming or outgoing call within this many months (uses the Connect telephony call log; ignored when Connect is not installed). Set to 0 to serve every contact with a phone number.">
+                            <field name="phone_phonebook_recent_call_months"/>
+                        </setting>
+                        <setting string="Contact Filter" help="Extra filter on the served contacts, applied on top of the recent-callers window. Validated when settings are saved.">
+                            <field name="phone_phonebook_extra_domain" widget="domain" options="{'model': 'res.partner', 'in_dialog': True}" nolabel="1"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>
