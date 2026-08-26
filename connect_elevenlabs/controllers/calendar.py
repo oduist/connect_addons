@@ -2,7 +2,7 @@
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from werkzeug.exceptions import Unauthorized
@@ -10,6 +10,9 @@ from werkzeug.exceptions import Unauthorized
 from odoo import http, release
 
 logger = logging.getLogger(__name__)
+
+UTC = ZoneInfo('UTC')
+DT_FMT = '%Y-%m-%d %H:%M:%S'
 route_type = "json" if release.version_info[0] < 19.0 else 'jsonrpc'
 
 class CalendarController(http.Controller):
@@ -50,36 +53,53 @@ class CalendarController(http.Controller):
                 tz = 'UTC'
             user_timezone = ZoneInfo(tz)
         if kwargs.get('start'):
-            date = datetime.strptime(kwargs.get('start'), '%Y-%m-%d').replace(tzinfo=user_timezone)
+            local_day = datetime.strptime(kwargs['start'], '%Y-%m-%d').date()
         else:
-            current_date = datetime.now().date() + timedelta(days=1)
-            date = datetime.combine(current_date, datetime.min.time()).replace(tzinfo=user_timezone)
-        date = date.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
+            local_day = datetime.now(user_timezone).date() + timedelta(days=1)
 
-        end_date = date + timedelta(days=1)
+        # The working window is wall-clock time on the requested day, in the
+        # caller's timezone. Deriving it from a UTC-converted datetime shifted
+        # the whole answer onto the previous day for any zone east of UTC.
+        day_start = datetime.combine(local_day, time(8, 0), tzinfo=user_timezone)
+        day_end = datetime.combine(local_day, time(18, 0), tzinfo=user_timezone)
+
+        # calendar.event stores naive UTC, so search over the whole local day
+        # expressed in UTC.
+        utc_from = datetime.combine(
+            local_day, time.min, tzinfo=user_timezone
+        ).astimezone(UTC).replace(tzinfo=None)
+        utc_to = utc_from + timedelta(days=1)
 
         events = http.request.env['calendar.event'].sudo().search(
-            [('user_id', '=', user_id), ('start', '>', date), ('start', '<', end_date)], order='start asc').read(
-            ['name', 'start', 'stop'])
+            [('user_id', '=', user_id), ('start', '>=', utc_from), ('start', '<', utc_to)],
+            order='start asc').read(['name', 'start', 'stop'])
 
-        day_start = "{} 08:00:00".format(date.date())
-        day_end = "{} 18:00:00".format(date.date())
+        def to_local(naive_utc):
+            """Attach UTC before converting: a naive datetime would otherwise be
+            read as the server's local time, which is only harmless while the
+            server happens to run on UTC."""
+            return naive_utc.replace(tzinfo=UTC).astimezone(user_timezone)
 
         free_intervals = []
-        current_start = day_start
+        cursor = day_start
+        for event in events:
+            start, stop = to_local(event['start']), to_local(event['stop'])
+            if stop <= cursor or start >= day_end:
+                continue  # entirely outside the working window
+            if start > cursor:
+                free_intervals.append((cursor, min(start, day_end)))
+            cursor = max(cursor, stop)
+            if cursor >= day_end:
+                break
+        if cursor < day_end:
+            free_intervals.append((cursor, day_end))
 
-        for interval in events:
-            free_intervals.append({
-                "start": current_start,
-                "stop": interval["start"].astimezone(user_timezone).replace(tzinfo=None)
-            })
-            current_start = interval["stop"].astimezone(user_timezone).replace(tzinfo=None)
-        free_intervals.append({
-            "start": current_start,
-            "stop": day_end
-        })
-        logger.debug('Available slots for user %s: %s', user_id, free_intervals)
-        return free_intervals
+        slots = [
+            {'start': a.strftime(DT_FMT), 'stop': b.strftime(DT_FMT)}
+            for a, b in free_intervals if b > a
+        ]
+        logger.debug('Available slots for user %s on %s: %s', user_id, local_day, slots)
+        return slots
 
     @http.route('/connect_elevenlabs/create_event', methods=['POST'], type=route_type, auth='public',
                 csrf=False)
