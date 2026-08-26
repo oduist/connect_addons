@@ -33,6 +33,7 @@ The documentation lives next to the module code -- no separate wiki.
             "/connect_book/static/src/changes/changes.xml",
         ],
     },
+    "images": ["static/description/icon.png"],
     "installable": True,
     "application": False,
     "auto_install": False,
