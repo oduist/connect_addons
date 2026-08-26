@@ -465,10 +465,16 @@ export class Phone extends Component {
 
             self.state.callPhoneNumber = phoneNumber
 
-            if (callPartnerId !== 'false') {
+            // Treat the caller as a known partner only when a real numeric Partner
+            // id was supplied. A missing/empty/'false'/non-numeric value (e.g. a
+            // code path that omits the parameter) must fall through to
+            // searchPartner() so the contact is resolved by number instead of
+            // rendering NaN / the raw number in the name slot.
+            const callPartnerIdInt = parseInt(callPartnerId)
+            if (callPartnerId && callPartnerId !== 'false' && !Number.isNaN(callPartnerIdInt)) {
                 self.state.isPartner = true
                 self.state.callerId = {
-                    partnerId: parseInt(callPartnerId),
+                    partnerId: callPartnerIdInt,
                     partnerName: callCallerName,
                     partnerIconUrl: self.computePartnerIconUrl(callPartnerId),
                     partnerUrl: self.computePartnerUrl(callPartnerId),
