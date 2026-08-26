@@ -180,7 +180,7 @@ class Call(models.Model):
         for rec in self:
             recording = recordings.filtered(lambda x: x.call.id == rec.id)
             if recording:
-                # Make sure we take the last recording (fix for Elevenlabs agent recording)
+                # Take the last recording when multiple are attached to one call.
                 recording = max(recording, key=lambda x: x.id)
                 rec.recording = recording
                 rec.transcript = recording.transcript

@@ -250,4 +250,55 @@
     <field name="perm_create" eval="0"/>
     <field name="perm_unlink" eval="0"/>
   </record>
+
+  <!-- SIP Trunk -->
+  <record id="connect_sip_trunk_user" model="ir.model.access">
+    <field name="name">connect_sip_trunk_user</field>
+    <field name="model_id" ref="connect.model_connect_sip_trunk"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+  <record id="connect_sip_trunk_credential_user" model="ir.model.access">
+    <field name="name">connect_sip_trunk_credential_user</field>
+    <field name="model_id" ref="connect.model_connect_sip_trunk_credential"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+  <record id="connect_sip_trunk_ip_acl_user" model="ir.model.access">
+    <field name="name">connect_sip_trunk_ip_acl_user</field>
+    <field name="model_id" ref="connect.model_connect_sip_trunk_ip_acl"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+  <record id="connect_sip_trunk_origination_url_user" model="ir.model.access">
+    <field name="name">connect_sip_trunk_origination_url_user</field>
+    <field name="model_id" ref="connect.model_connect_sip_trunk_origination_url"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
+
+  <record id="connect_sip_trunk_recording_rule_user" model="ir.model.access">
+    <field name="name">connect_sip_trunk_recording_rule_user</field>
+    <field name="model_id" ref="connect.model_connect_sip_trunk_recording_rule"/>
+    <field name="group_id" ref="connect.group_connect_user"/>
+    <field name="perm_read" eval="1"/>
+    <field name="perm_write" eval="0"/>
+    <field name="perm_create" eval="0"/>
+    <field name="perm_unlink" eval="0"/>
+  </record>
 </odoo>

@@ -6,14 +6,33 @@ import logging
 import warnings
 
 import requests
+from elevenlabs.conversational_ai.phone_numbers.types import (
+    PhoneNumbersCreateRequestBody_SipTrunk,
+)
 from elevenlabs.core.api_error import ApiError
-from elevenlabs.types import AgentPlatformSettingsRequestModel, ConversationalConfig
+from elevenlabs.types import (
+    AgentPlatformSettingsRequestModel,
+    ConversationalConfig,
+    InboundSipTrunkConfigRequestModel,
+)
 from odoo import api, fields, models, release
 from odoo.addons.connect.models.settings import debug
 from odoo.addons.connect.models.twiml import pretty_xml
 from odoo.exceptions import ValidationError
 from pydantic.warnings import PydanticDeprecatedSince20
-from twilio.twiml.voice_response import Connect, VoiceResponse
+from twilio.twiml.voice_response import Dial, VoiceResponse
+
+TWILIO_SIP_SIGNALING_IPS = (
+    "54.172.60.0/23",
+    "54.244.51.0/24",
+    "54.171.127.192/30",
+    "35.156.191.128/25",
+    "35.162.40.0/23",
+    "54.65.63.192/26",
+    "54.169.127.128/26",
+    "54.252.254.64/26",
+    "177.71.206.192/26",
+)
 
 warnings.filterwarnings("ignore", category=PydanticDeprecatedSince20)
 
@@ -90,7 +109,6 @@ llm_list = [
     # ElevenLabs hosted (open-source)
     ("glm-4.5-air", "GLM 4.5 Air"),
     ("qwen3-30b-a3b", "Qwen3 30B A3B"),
-    # Другие (если поддерживаются)
     ("grok-beta", "Grok Beta"),
 ]
 
@@ -183,6 +201,20 @@ class ElevenlabsAgent(models.Model):
     silence_end_call_timeout = fields.Integer(required=True, default=10)
     exten = fields.Many2one("connect.exten", ondelete="set null", readonly=True)
     exten_number = fields.Char(related="exten.number")
+    el_virtual_number_uid = fields.Char(
+        string="ElevenLabs Virtual Number ID",
+        readonly=True,
+        groups="base.group_erp_manager",
+        help="ElevenLabs phone_number entity ID registered with agent_uid as "
+             "identifier — used for SIP routing when no real DID is attached.",
+    )
+    el_inbound_allowed_ips = fields.Text(
+        string="Inbound Allowed IPs",
+        default="\n".join(TWILIO_SIP_SIGNALING_IPS),
+        help="Comma- or newline-separated IP/CIDR list ElevenLabs will accept "
+             "SIP INVITEs from. Defaults to Twilio's SIP signaling ranges. "
+             "Empty allows all sources.",
+    )
     template = fields.Many2one("connect.elevenlabs_agent_template", ondelete="set null")
     transfer_to_agent = fields.One2many("connect.elevenlabs_agent_transfer", "agent")
     has_transfer_tool = fields.Boolean(compute="_compute_has_transfer_tool")
@@ -233,11 +265,26 @@ class ElevenlabsAgent(models.Model):
                 rec.with_context(skip_elevenlabs=True).write(
                     {"active_prompt_version": version.id}
                 )
-        if not self.env.context.get("skip_elevenlabs"):
+        if "el_inbound_allowed_ips" in vals and not self.env.context.get("skip_el_sync"):
+            for rec in self:
+                if rec.el_virtual_number_uid:
+                    rec._ensure_el_virtual_number()
+        _el_skip_fields = {
+            'active_prompt_version', 'exten', 'agent_uid',
+            'el_virtual_number_uid', 'el_inbound_allowed_ips',
+        }
+        if (not self.env.context.get("skip_elevenlabs")
+                and set(vals.keys()) - _el_skip_fields):
             self.update_elevenlabs_agent()
         return res
 
     def unlink(self):
+        for rec in self:
+            if rec.el_virtual_number_uid:
+                try:
+                    rec._remove_el_virtual_number()
+                except Exception as e:
+                    logger.warning("EL virtual number remove failed on unlink: %s", e)
         try:
             self.delete_elevenlabs_agent()
         except Exception as e:
@@ -284,36 +331,168 @@ class ElevenlabsAgent(models.Model):
         agent = self.create_elevenlabs_agent()
         self.with_context(skip_elevenlabs=True).write({"agent_uid": agent.agent_id})
         self.update_elevenlabs_agent()
+        try:
+            self._ensure_el_virtual_number()
+        except Exception as e:
+            logger.warning("EL virtual number registration failed: %s", e)
 
     def create_extension(self):
         self.ensure_one()
         return self.env["connect.exten"].create_extension(self, "elevenlabs_agent")
 
-    def render(self, request, params={}):
+    def render(self, request=None, params=None):
+        """Return TwiML to route the call to this agent via ElevenLabs SIP ingress.
+
+        Identifier in the SIP URI:
+          * Called E.164 DID if the call hit a real number routed to this agent
+          * agent_uid (virtual registration) otherwise — e.g. exten-only path
+        """
         self.ensure_one()
+        request = request or {}
         if not self.env["oduist.license"].check_license('connect_elevenlabs'):
             return "<Response><Pause length='1'/><Say>This is Oduist Connect. Your trial period is over. Please buy a license to continue.</Say><Pause length='1'/></Response>"
-        channel_sid = request.get("CallSid")
-        call_id = (
-            self.env["connect.channel"]
-            .search([("sid", "=", channel_sid)], limit=1)
-            .call.id
-        )
-        elevenlabs_agent_url = (
-            self.env["connect.settings"]
-            .sudo()
-            .get_param("elevenlabs_agent_url")
-            .replace("https://", "wss://")
-        )
-        agent_uid = self.agent_uid
-        connect = Connect()
-        connect.stream(
-            url=f"{elevenlabs_agent_url}/twilio/stream/{agent_uid}/{call_id}/{channel_sid}",
-        )
+        # Tag the existing connect.call so the agent shows up immediately on form.
+        call_sid = request.get("CallSid")
+        if call_sid:
+            channel = self.env["connect.channel"].sudo().search(
+                [("sid", "=", call_sid)], limit=1)
+            if channel and channel.call and not channel.call.elevenlabs_agent:
+                channel.call.sudo().elevenlabs_agent = self.id
+        identifier = self._el_sip_identifier(request)
+        if not identifier:
+            response = VoiceResponse()
+            response.say("ElevenLabs agent is not configured.")
+            return response
+        target_url = "sip:{}@sip.rtc.elevenlabs.io:5060;transport=tcp".format(identifier)
         response = VoiceResponse()
-        response.append(connect)
+        dial = Dial(callerId=self._resolve_caller_id(request))
+        dial.sip(target_url)
+        response.append(dial)
         debug(self, pretty_xml(response))
         return response
+
+    def _el_sip_identifier(self, request):
+        """Pick the SIP-URI user part: E.164 DID if present, else agent_uid."""
+        self.ensure_one()
+        called = (request or {}).get("Called") or ""
+        if called.startswith("+") and called[1:].isdigit():
+            return called
+        return self.agent_uid or False
+
+    def _resolve_caller_id(self, request):
+        """Pick a Twilio-acceptable callerId for the Dial->Sip.
+
+        Twilio rejects non-E.164 chars on SIP Dial (error 13247), so reject
+        SIP-client URIs and fall back to a real DID.
+        """
+        self.ensure_one()
+        caller = (request or {}).get("Caller") or ""
+        if caller.startswith("+") and caller[1:].isdigit():
+            return caller
+        default = self.env["connect.outgoing_callerid"].sudo().search(
+            [("is_default", "=", True)], limit=1)
+        if default and default.number:
+            return default.number
+        return "anonymous"
+
+    # ------------------------------------------------------------------
+    # ElevenLabs virtual phone-number lifecycle (SIP routing identifier)
+    # ------------------------------------------------------------------
+
+    def _ensure_el_virtual_number(self):
+        """Register agent_uid as a virtual EL phone number for SIP routing.
+
+        ElevenLabs requires any SIP identifier (DID or virtual) to be
+        registered before it will accept INVITEs for it. This covers the
+        no-real-DID case — e.g. an exten routed directly to this agent.
+        """
+        self.ensure_one()
+        if not self.agent_uid:
+            return
+        identifier = self.agent_uid
+
+        try:
+            client = self.env["connect.settings"].get_elevenlabs_client()
+        except Exception as e:
+            logger.warning("EL client unavailable for virtual number sync: %s", e)
+            return
+
+        allowed_text = self.el_inbound_allowed_ips or ""
+        allowed = [
+            ip.strip()
+            for ip in allowed_text.replace("\n", ",").split(",")
+            if ip.strip()
+        ]
+        inbound_cfg = InboundSipTrunkConfigRequestModel(
+            allowed_addresses=allowed if allowed else None,
+        )
+
+        if self.el_virtual_number_uid:
+            try:
+                client.conversational_ai.phone_numbers.update(
+                    self.el_virtual_number_uid,
+                    agent_id=self.agent_uid,
+                    inbound_trunk_config=inbound_cfg,
+                )
+                return
+            except ApiError as e:
+                if e.status_code != 404:
+                    logger.warning("EL virtual number update failed: %s", e)
+                    return
+                self.with_context(skip_el_sync=True).el_virtual_number_uid = False
+
+        try:
+            result = client.conversational_ai.phone_numbers.create(
+                request=PhoneNumbersCreateRequestBody_SipTrunk(
+                    provider="sip_trunk",
+                    phone_number=identifier,
+                    label="EL Agent SIP Route ({})".format(identifier[:12]),
+                    inbound_trunk_config=inbound_cfg,
+                )
+            )
+            uid = result.phone_number_id
+        except ApiError as e:
+            if e.status_code == 409:
+                uid = None
+                try:
+                    for pn in client.conversational_ai.phone_numbers.list():
+                        if getattr(pn, "phone_number", None) == identifier:
+                            uid = getattr(pn, "phone_number_id", None)
+                            break
+                except Exception as list_err:
+                    logger.warning("EL phone number list failed: %s", list_err)
+                if not uid:
+                    logger.warning("EL virtual number conflict but no uid found")
+                    return
+            else:
+                logger.warning("EL virtual number create failed: %s", e)
+                return
+
+        try:
+            client.conversational_ai.phone_numbers.update(uid, agent_id=self.agent_uid)
+        except Exception as e:
+            logger.warning("EL virtual number agent assign failed: %s", e)
+
+        self.with_context(skip_el_sync=True).el_virtual_number_uid = uid
+        logger.info("EL virtual number registered: %s -> agent %s",
+                    identifier, self.agent_uid)
+
+    def _remove_el_virtual_number(self):
+        """Delete the virtual EL phone number registration from ElevenLabs."""
+        self.ensure_one()
+        if not self.el_virtual_number_uid:
+            return
+        try:
+            client = self.env["connect.settings"].get_elevenlabs_client()
+            client.conversational_ai.phone_numbers.delete(self.el_virtual_number_uid)
+            logger.info("EL virtual number deleted: %s", self.el_virtual_number_uid)
+        except ApiError as e:
+            if e.status_code != 404:
+                logger.warning("EL virtual number delete failed: %s", e)
+        except Exception as e:
+            logger.warning("EL virtual number delete failed: %s", e)
+        finally:
+            self.with_context(skip_el_sync=True).el_virtual_number_uid = False
 
     @api.model
     def transfer(self, channel_sid=None, exten=None):
@@ -333,7 +512,7 @@ class ElevenlabsAgent(models.Model):
             published_extens = self.env['connect.exten'].search([('is_published', '=', True)])
             if published_extens:
                 available = ", ".join(
-                    ['<{}> "{}"'.format(k.number, k.dst.name if k.dst else '') for k in published_extens]
+                    ['<{}> "{}"'.format(k.number, k.dst.display_name if k.dst else '') for k in published_extens]
                 )
                 if len(published_extens) == 1:
                     exten_rec = published_extens[0]
@@ -357,6 +536,78 @@ class ElevenlabsAgent(models.Model):
         debug(self, "Transfer to: {}".format(pretty_xml(twiml)))
         client.calls(channel_sid).update(twiml=twiml)
         return "Transfer Successful"
+
+    @api.model
+    def build_initiation_payload(self, caller="", called="", agent_uid="", call_sid=""):
+        """Build the JSON envelope EL expects from the conversation_initiation webhook.
+
+        Looks up the in-flight connect.call and its partner to populate
+        dynamic_variables referenced by the agent prompt
+        (`{{previous_topics}}`, `{{available_extensions}}`, etc).
+        """
+        agent = self.search([("agent_uid", "=", agent_uid)], limit=1) if agent_uid else self.browse()
+        call = self.env["connect.call"]
+        if call_sid:
+            channel = self.env["connect.channel"].sudo().search(
+                [("sid", "=", call_sid)], limit=1)
+            if channel and channel.call:
+                call = channel.call
+                if agent and not call.elevenlabs_agent:
+                    call.sudo().elevenlabs_agent = agent.id
+
+        partner = call.partner if call else self.env["res.partner"]
+        if not partner and caller:
+            partner = self.env["res.partner"].sudo().get_partner_by_number(caller) or partner
+        if not partner and call and call.direction in ("outgoing", "internal"):
+            partner = call.caller_user.partner_id
+
+        dyn = {
+            "caller_number": caller or (call.caller if call else ""),
+            "called_number": called or (call.called if call else ""),
+            "partner_name": partner.name if partner else "Not registered",
+            "existing_partner": "Yes" if partner else "No",
+            "partner_phone": partner.phone if partner else "",
+            "partner_id": str(partner.id) if partner else "",
+            "partner_tz": partner.tz if partner else "",
+            "greeting": partner.name if partner else "Dear customer",
+            "previous_conversation_id": "",
+            "previous_topics": "",
+            "available_extensions": "",
+        }
+        users = self.env["connect.user"].sudo().search([])
+        dyn["users_directory"] = ", ".join(
+            "{} <{}>".format(u.user.name, u.exten.number)
+            for u in users if u.user and u.exten
+        )
+
+        if caller and called:
+            prev = self.env["connect.call"].sudo().search([
+                ("caller", "=", caller),
+                ("called", "=", called),
+                ("elevenlabs_conversation_id", "!=", False),
+            ], order="id desc", limit=1)
+            if prev:
+                dyn["previous_conversation_id"] = prev.elevenlabs_conversation_id or ""
+                dyn["previous_topics"] = prev.elevenlabs_summary or ""
+
+        published_extens = self.env["connect.exten"].sudo().search(
+            [("is_published", "=", True)])
+        if published_extens:
+            dyn["available_extensions"] = ", ".join(
+                '<{}> "{}"'.format(e.number, e.dst.display_name if e.dst else "")
+                for e in published_extens
+            )
+
+        payload = {
+            "type": "conversation_initiation_client_data",
+            "dynamic_variables": dyn,
+        }
+        # Language override if partner has a language preference (EL expects
+        # short codes; pt_BR → pt-br is the documented exception).
+        if partner and partner.lang:
+            lang = "pt-br" if partner.lang == "pt_BR" else partner.lang.split("_")[0]
+            payload["conversation_config_override"] = {"agent": {"language": lang}}
+        return payload
 
     def create_elevenlabs_agent(self):
         client = self.env["connect.settings"].get_elevenlabs_client()
