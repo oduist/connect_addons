@@ -392,9 +392,8 @@ class Channel(models.Model):
     def transfer(self, to=None):
         self.ensure_one()
         client = self.env['connect.settings'].get_client()
-        call = client.calls(self.sid).update(
+        client.calls(self.sid).update(
             twiml="<Response><Say>Ahoy there</Say></Response>")
-        print(call.to)
 
     def connect_notify(self, title='Connect', sticky=False, warning=False):
         """Notify user about incoming call.
