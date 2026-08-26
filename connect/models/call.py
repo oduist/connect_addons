@@ -1325,14 +1325,38 @@ class Call(models.Model):
         }
 
     def transfer(self, user=None):
+        """Unfinished conference-based transfer. Not wired to anything.
+
+        TODO: finish or delete this, together with transfer_button() above.
+        Nothing in the repo calls either one. The transfer the phone panel
+        actually performs is connect.transfer_wizard.execute_transfer(),
+        called from static/src/components/phone/phone/phone.js.
+
+        The idea here was to transfer by conference: put the far end into a
+        fresh conference room, then move the user's own leg to the target so
+        both meet inside it. What is written below never gets that far — see
+        the TODOs in the body.
+        """
         self.ensure_one()
+        # TODO: the state guard is switched off, so a transfer is attempted on
+        # any call whatever its status.
         if False:  # self.status not in ['in-progress', 'ringing']:
             logger.warning('Call not in progress, cannot transfer')
             return
         # Get the PBX user doing trasnfer
+        # TODO: the first assignment is immediately discarded, so the user who
+        # asked for the transfer is ignored and whoever sits on channels[0] is
+        # used instead. On a call with more than two channels that picks the
+        # wrong leg.
         if not user:
             user = self.env.user.connect_user
             user = self.channels[0].caller_pbx_user or self.channels[0].called_pbx_user
+        # TODO: disabled probe, left as a record of the unsolved problem above:
+        # working out which channel belongs to the user doing the transfer. It
+        # took the primary channel (the one with no parent_channel), checked
+        # whether that user is its caller or its called party, and dumped every
+        # channel for inspection. Deleting it is fine once the line above picks
+        # the leg correctly.
         """
         # Case 1: User is on primary channel.
         primary_channel = self.channels.filtered(lambda x: x.parent_channel == False)
@@ -1367,6 +1391,11 @@ class Call(models.Model):
 
         def transfer_user():
             # Dial a new call party.
+            # TODO: the destination is hard-coded to a developer's test SIP URI
+            # and the method never receives the number to transfer to, so this
+            # dials that endpoint whoever the target was. The conference join
+            # below it -- the line that would actually complete the transfer --
+            # is commented out, so the two legs never meet.
             response = VoiceResponse()
             response.say('Transfer')
             dial = Dial()
