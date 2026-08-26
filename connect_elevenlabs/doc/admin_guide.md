@@ -139,9 +139,14 @@ Three things need your attention; the first will bite you if you skip it.
    user whose calendar should actually be booked.
 2. **Set the agent token.** All five endpoints are `auth="public"` and are
    protected only by the `elevenlabs_agent_token` setting, which the tool sends
-   in an `x-elevenlabs-agent-token` header. A request without a matching token is
-   refused with `401 Unauthorized`. An empty setting refuses everything, so
-   booking silently fails until it is filled in.
+   in an `x-elevenlabs-agent-token` header. An empty setting refuses everything,
+   so booking silently fails until it is filled in.
+
+   Worth knowing when you debug one of these calls: the refusal does **not**
+   come back as HTTP 401. These are jsonrpc routes, so Odoo answers `200 OK`
+   with an error envelope in the body -- `error.data.name` reads
+   `werkzeug.exceptions.Unauthorized`, and there is no `result` key. A monitor
+   watching status codes will call a rejected request a success.
 3. **Press SYNC TOOLS** after any edit, as with every other tool — until then
    ElevenLabs still holds the previous definition.
 
