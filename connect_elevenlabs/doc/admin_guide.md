@@ -112,6 +112,60 @@ tool at the wrong moment, or never.
 After editing a tool press **SYNC TOOLS** on the settings page. Until then
 ElevenLabs still holds the previous definition.
 
+## The calendar tools that ship with the module
+
+You do not have to build appointment booking yourself. The module installs five
+ready-made webhook tools, all pointing at its own endpoints, plus an
+**Appointment Assistant** agent template that already knows how to use them.
+
+| Tool | Endpoint | What it does |
+| --- | --- | --- |
+| `calendar_get_available_slots` | `/connect_elevenlabs/get_available_slots` | Free intervals for one user on one day. |
+| `calendar_create_event` | `/connect_elevenlabs/create_event` | Books the meeting. |
+| `calendar_get_current_date` | `/connect_elevenlabs/get_current_date` | Server date and time, so the agent can resolve "tomorrow". |
+| `calendar_get_meetings` | `/connect_elevenlabs/get_meetings` | Meetings a given contact attends. |
+| `calendar_remove_meeting` | `/connect_elevenlabs/remove_meeting` | Deletes a meeting by id. |
+
+This is why the module depends on `calendar`.
+
+### Before you point a number at the Appointment Assistant
+
+Three things need your attention; the first will bite you if you skip it.
+
+1. **The template hard-codes `user_id=2`.** The shipped system prompt books
+   against Odoo user 2 — the administrator on a stock database. Until you change
+   it, every appointment the agent takes lands in that one person's calendar.
+   Edit the prompt on the agent (or on your own copy of the template) and set the
+   user whose calendar should actually be booked.
+2. **Set the agent token.** All five endpoints are `auth="public"` and are
+   protected only by the `elevenlabs_agent_token` setting, which the tool sends
+   in an `x-elevenlabs-agent-token` header. A request without a matching token is
+   refused with `401 Unauthorized`. An empty setting refuses everything, so
+   booking silently fails until it is filled in.
+3. **Press SYNC TOOLS** after any edit, as with every other tool — until then
+   ElevenLabs still holds the previous definition.
+
+### Limits worth knowing before you promise them
+
+- **Working hours are hard-coded 08:00–18:00** in the endpoint. They do not come
+  from `resource.calendar`, so working schedules, part-time patterns, public
+  holidays and time off have no effect. A caller can be offered a slot on a day
+  the person is away.
+- **Only `calendar.event` records count as busy.** Availability is the gaps
+  between events; nothing else blocks a slot.
+- **One user, one day per query.** There is no "next free slot across the team"
+  and no multi-day search; the agent asks day by day.
+- **`get_meetings` matches on attendee**, not on organiser — a contact sees every
+  meeting they are an attendee of.
+- **`remove_meeting` unlinks the event.** It is a real delete, not a cancel, and
+  it is not restricted to meetings that caller owns: any event id the agent
+  passes is removed. Treat the tool as privileged and leave it off agents that
+  do not need it.
+- **A duplicate booking is refused** — same user, same start and stop returns
+  "Event already exist!" and creates nothing.
+- **An event booked without a name** is stored as `Unknowns`. If your calendar
+  starts filling with that, the agent is not being asked to confirm a subject.
+
 ## Connecting callers to an agent
 
 An agent answers calls once something points at it:
