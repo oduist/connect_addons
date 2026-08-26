@@ -6,8 +6,14 @@ class MailMessage(models.Model):
 
     connect_message = fields.Many2one('connect.message')
     message_type = fields.Selection(
-        selection_add=[('WhatsApp', 'WhatsApp')],
-        ondelete={'WhatsApp': lambda recs: recs.write({'message_type': 'comment'})},
+        selection_add=[
+            ('WhatsApp', 'WhatsApp'),
+            ('connect_message', 'Connect Message'),
+        ],
+        ondelete={
+            'WhatsApp': lambda recs: recs.write({'message_type': 'comment'}),
+            'connect_message': lambda recs: recs.write({'message_type': 'comment'}),
+        },
     )
 
     @api.model
@@ -19,6 +25,18 @@ class MailMessage(models.Model):
             return {'from_number': message.from_number, 'to_number': message.to_number}
         else:
             return False
+
+    def _to_store(self, store, *args, **kwargs):
+        super()._to_store(store, *args, **kwargs)
+        linked = self.filtered(
+            lambda m: m.message_type == 'connect_message' and m.connect_message)
+        for message in linked:
+            cmsg = message.sudo().connect_message
+            # add_records_fields (not add) avoids re-entering _to_store recursively.
+            store.add_records_fields(message, {
+                'connectStatus': cmsg.status,
+                'connectMessageType': cmsg.message_type,
+            })
 
 
 class MailNotification(models.Model):
