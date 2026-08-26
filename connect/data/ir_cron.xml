@@ -20,5 +20,15 @@
             <field name="active">True</field>
         </record>
 
+        <record id="sync_sip_trunks" model="ir.cron">
+            <field name="name">Sync SIP Trunks from Twilio</field>
+            <field name="interval_number">15</field>
+            <field name="interval_type">minutes</field>
+            <field name="model_id" ref="model_connect_sip_trunk"/>
+            <field name="code">model.sync()</field>
+            <field name="state">code</field>
+            <field name="active">False</field>
+        </record>
+
     </data>
 </odoo>

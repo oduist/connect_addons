@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Memory configuration lives on connect.settings (Connect > Settings >
+         Memory); see connect_memory/models/settings.py for the field defaults. -->
+
+    <record id="cron_memory_outbox_vacuum" model="ir.cron">
+        <field name="name">Memory: vacuum sent outbox</field>
+        <field name="model_id" ref="model_connect_memory_outbox"/>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="nextcall" eval="datetime.now().strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_vacuum_sent()</field>
+    </record>
+
+    <record id="cron_memory_backfill" model="ir.cron">
+        <field name="name">Memory: process backfill jobs</field>
+        <field name="model_id" ref="model_connect_memory_backfill"/>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="nextcall" eval="datetime.now().strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_run()</field>
+    </record>
+</odoo>

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_memory_inbox_tree" model="ir.ui.view">
+        <field name="name">connect.memory.inbox.tree</field>
+        <field name="model">connect.memory.inbox</field>
+        <field name="arch" type="xml">
+            <list default_order="id desc" create="false">
+                <field name="id"/>
+                <field name="create_date"/>
+                <field name="query_type"/>
+                <field name="query"/>
+                <field name="commercial_partner_id"/>
+                <field name="engine"/>
+                <field name="state"
+                       decoration-info="state == 'processing'"
+                       decoration-success="state == 'done'"
+                       decoration-danger="state == 'failed'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_memory_inbox_form" model="ir.ui.view">
+        <field name="name">connect.memory.inbox.form</field>
+        <field name="model">connect.memory.inbox</field>
+        <field name="arch" type="xml">
+            <form string="Memory Request" create="false">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="query_type"/>
+                            <field name="state"/>
+                            <field name="engine"/>
+                            <field name="commercial_partner_id"/>
+                        </group>
+                        <group>
+                            <field name="requested_by"/>
+                            <field name="res_model"/>
+                            <field name="res_id"/>
+                            <field name="done_at"/>
+                        </group>
+                    </group>
+                    <separator string="Query"/>
+                    <field name="query" readonly="1"/>
+                    <separator string="Answer"/>
+                    <field name="answer_text" readonly="1"
+                           placeholder="Waiting for the memory service…"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_memory_inbox_search" model="ir.ui.view">
+        <field name="name">connect.memory.inbox.search</field>
+        <field name="model">connect.memory.inbox</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="query"/>
+                <field name="commercial_partner_id"/>
+                <filter name="pending" string="Pending"
+                        domain="[('state', '=', 'pending')]"/>
+                <filter name="done" string="Done"
+                        domain="[('state', '=', 'done')]"/>
+                <group>
+                    <filter name="g_state" string="State"
+                            context="{'group_by': 'state'}"/>
+                    <filter name="g_type" string="Type"
+                            context="{'group_by': 'query_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_memory_inbox" model="ir.actions.act_window">
+        <field name="name">Inbox</field>
+        <field name="res_model">connect.memory.inbox</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_memory_inbox_search"/>
+    </record>
+</odoo>

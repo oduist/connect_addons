@@ -30,6 +30,7 @@ from . import recording_transcription_rules
 from . import res_partner
 from . import res_users
 from . import settings
+from . import sip_trunk
 from . import sms_sms
 from . import twiml
 from . import user

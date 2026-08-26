@@ -55,24 +55,35 @@
           <page name="webhook" string="Webhook"
               invisible="not elevenlabs_enabled or not display_elevenlabs_api_key">
             <group>
+                <field name="elevenlabs_conversation_initiation_webhook_url"
+                       string="Conversation Initiation Webhook URL"/>
                 <div colspan="2">
-                  <small><strong>Add Elevenlabs post call webhook URL in <a href="https://elevenlabs.io/app/conversational-ai/settings" target="_blank">Elevenlabs Settings</a></strong>.</small>
+                  <small class="text-muted">
+                    The Conversation Initiation Webhook URL is pushed to
+                    ElevenLabs workspace settings automatically on
+                    <strong>SYNC</strong>, together with a shared secret token
+                    that EL sends back as header
+                    <code>x-elevenlabs-agent-token</code> on every webhook
+                    (transfer, calendar tools, conversation initiation, server
+                    tools). To rotate the secret, run <strong>SYNC</strong> —
+                    it regenerates the token and re-pushes it to EL workspace
+                    settings and every server tool.
+                  </small>
                 </div>
-                <field name="elevenlabs_post_call_webhook_url" string="Post Call Webhook URL"/>
-                <field name="display_elevenlabs_post_call_webhook_secret" string="Post Call Webhook Secret" password="True"/>
             </group>
             <group>
+                <field name="elevenlabs_post_call_webhook_url"
+                       string="Post-call Webhook URL"/>
+                <div colspan="2">
+                  <small class="text-muted">
+                    The Post-call Webhook is created in the ElevenLabs
+                    workspace automatically on <strong>SYNC</strong> and
+                    selected for post-call delivery. EL authenticates it by
+                    <strong>HMAC</strong> signature; the shared secret is stored
+                    server-side and never shown here.
+                  </small>
+                </div>
             </group>
-          </page>
-          <page name="agent" string="Agent"
-              invisible="not elevenlabs_enabled or not display_elevenlabs_api_key">
-            <group>
-              <group>
-                <field name="elevenlabs_agent_url"/>
-                <field name="elevenlabs_agent_parameters" placeholder="param=value"/>
-              </group>
-            </group>
-            <button type="object" string="Agent Ping" icon="fa-check" name="ping_agent" style="width: 130px"/>
           </page>
         </notebook>
       </sheet>

@@ -16,7 +16,6 @@
     'data': [
         'views/ticket.xml',
         'views/call.xml',
-        'views/settings.xml',
     ],
     'demo': [],
     'installable': True,

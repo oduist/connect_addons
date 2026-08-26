@@ -2,7 +2,7 @@
 
 {
     "name": "Connect",
-    "version": "2.0.3",
+    "version": "2.0.5",
     "author": "Oduist",
     "maintainer": "Oduist",
     "live_test_url": "https://connect-demo.oduist.com/",
@@ -50,6 +50,7 @@
         "views/pbx_group.xml",
         "views/recording.xml",
         "views/number.xml",
+        "views/sip_trunk.xml",
         "views/favorite.xml",
         "views/res_partner.xml",
         "views/message.xml",

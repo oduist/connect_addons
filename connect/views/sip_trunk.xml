@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="sip_trunk_action" model="ir.actions.act_window">
+        <field name="name">SIP Trunks</field>
+        <field name="res_model">connect.sip_trunk</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="sip_trunks_menu"
+            sequence="1900"
+            parent="connect.connect_voice_menu"
+            name="SIP Trunks"
+            action="sip_trunk_action"/>
+
+    <record id="connect_sip_trunk_list" model="ir.ui.view">
+        <field name="name">connect_sip_trunk_list</field>
+        <field name="model">connect.sip_trunk</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="friendly_name"/>
+                <field name="domain_name"/>
+                <field name="transfer_mode"/>
+                <field name="recording_mode"/>
+                <field name="number_count" string="Numbers"/>
+                <field name="exten_number" string="Exten"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="connect_sip_trunk_form" model="ir.ui.view">
+        <field name="name">connect_sip_trunk_form</field>
+        <field name="model">connect.sip_trunk</field>
+        <field name="arch" type="xml">
+            <form string="SIP Trunk">
+                <header>
+                    <button name="create_extension" type="object" string="Extension"
+                            class="btn btn-primary" invisible="id == False"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_numbers"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-phone"
+                                invisible="id == False">
+                            <field name="number_count" widget="statinfo" string="Numbers"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="friendly_name"/>
+                        <h1><field name="friendly_name" placeholder="My SIP Trunk"/></h1>
+                    </div>
+                    <group>
+                        <group string="Termination">
+                            <field name="domain_name"
+                                   placeholder="auto-generated, e.g. mycorp.pstn.twilio.com"/>
+                            <field name="secure"/>
+                            <field name="cnam_lookup_enabled"/>
+                        </group>
+                        <group string="Call Behaviour">
+                            <field name="transfer_mode"/>
+                            <field name="transfer_caller_id"/>
+                            <field name="recording_mode"/>
+                            <field name="recording_trim"
+                                   invisible="recording_mode == 'do-not-record'"/>
+                            <field name="exten"
+                                   options="{'no_create': True}"
+                                   help="Internal extension that, when dialed, routes the call through this trunk's first enabled Origination URL."/>
+                            <field name="effective_sip_url" readonly="1"
+                                   help="SIP URI used when Odoo Extension dials this trunk; derived from the first enabled Origination URL."/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Origination URLs">
+                            <p class="text-muted">
+                                Where Twilio sends inbound PSTN calls
+                                destined for numbers on this trunk. Lower
+                                priority wins; weight load-shares within
+                                the same priority.
+                            </p>
+                            <group>
+                                <field name="effective_sip_url" readonly="1"
+                                       string="Effective SIP URL"
+                                       help="The first enabled origination URL (priority asc, weight desc) — what Odoo Extensions and the Twilio routing will use."/>
+                            </group>
+                            <field name="origination_url_ids"
+                                   invisible="id == False">
+                                <list editable="bottom">
+                                    <field name="friendly_name"/>
+                                    <field name="sip_url"
+                                           placeholder="sip:pbx.example.com:5060"/>
+                                    <field name="priority"/>
+                                    <field name="weight"/>
+                                    <field name="enabled"/>
+                                    <field name="origination_url_sid" readonly="1"/>
+                                </list>
+                            </field>
+                            <p class="text-muted" invisible="id != False">
+                                Save the trunk first, then add origination URLs.
+                            </p>
+                        </page>
+                        <page string="Credentials">
+                            <field name="credential_ids"
+                                   invisible="id == False">
+                                <list editable="bottom">
+                                    <field name="username"/>
+                                    <field name="password" password="True"/>
+                                    <field name="credential_sid" readonly="1"/>
+                                </list>
+                            </field>
+                            <p class="text-muted" invisible="id != False">
+                                Save the trunk first, then add credentials.
+                            </p>
+                        </page>
+                        <page string="IP Access Control">
+                            <field name="ip_acl_ids"
+                                   invisible="id == False">
+                                <list editable="bottom">
+                                    <field name="friendly_name"/>
+                                    <field name="ip_address" placeholder="203.0.113.5"/>
+                                    <field name="cidr_prefix_length"/>
+                                </list>
+                            </field>
+                            <p class="text-muted" invisible="id != False">
+                                Save the trunk first, then add IP entries.
+                            </p>
+                        </page>
+                        <page string="Recording Rules">
+                            <p class="text-muted">
+                                Per-call recording overrides. Twilio applies the
+                                first matching rule (by SIP-header filter); rules
+                                without a filter apply to all calls on this trunk.
+                                Independent of the trunk-level Recording setting.
+                            </p>
+                            <field name="recording_rule_ids"
+                                   invisible="id == False">
+                                <list editable="bottom">
+                                    <field name="recording_type"/>
+                                    <field name="start_condition"
+                                           placeholder='X-Recording-Required = "true"'/>
+                                    <field name="rule_sid" readonly="1"/>
+                                </list>
+                            </field>
+                            <p class="text-muted" invisible="id != False">
+                                Save the trunk first, then add recording rules.
+                            </p>
+                        </page>
+                        <page string="Disaster Recovery">
+                            <group>
+                                <field name="disaster_recovery_url"
+                                       placeholder="https://your-fallback.example.com/twiml"/>
+                                <field name="disaster_recovery_method"/>
+                            </group>
+                        </page>
+                        <page string="Numbers" invisible="id == False">
+                            <field name="number_ids" readonly="1">
+                                <list>
+                                    <field name="phone_number"/>
+                                    <field name="friendly_name"/>
+                                    <field name="destination"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Technical">
+                            <group>
+                                <field name="sid" readonly="1"/>
+                                <field name="credential_list_sid" readonly="1"/>
+                                <field name="ip_acl_sid" readonly="1"/>
+                                <field name="auth_type" readonly="1"/>
+                                <field name="symmetric_rtp_enabled" readonly="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="connect_sip_trunk_search" model="ir.ui.view">
+        <field name="name">connect_sip_trunk_search</field>
+        <field name="model">connect.sip_trunk</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="friendly_name"/>
+                <field name="domain_name"/>
+                <field name="sid"/>
+            </search>
+        </field>
+    </record>
+
+</odoo>

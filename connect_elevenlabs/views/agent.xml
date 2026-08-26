@@ -81,6 +81,18 @@
                                 </group>
                             </group>
                         </page>
+                        <page name="sip" string="SIP" groups="base.group_no_one">
+                            <group>
+                                <group>
+                                    <field name="el_virtual_number_uid" readonly="1"/>
+                                </group>
+                                <group>
+                                    <field name="el_inbound_allowed_ips"
+                                           widget="text"
+                                           placeholder="One IP/CIDR per line, e.g.&#10;54.172.60.0/23"/>
+                                </group>
+                            </group>
+                        </page>
                         <page name="llm" string="LLM / TTS">
                             <group>
                                 <group>

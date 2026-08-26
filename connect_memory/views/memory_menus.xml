@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Memory sits under Connect, right after Messaging (sequence 150). -->
+    <menuitem id="menu_memory_root" name="Memory"
+              parent="connect.connect_top_menu" sequence="160"/>
+    <menuitem id="menu_memory_outbox" name="Outbox"
+              parent="menu_memory_root" action="action_memory_outbox"
+              sequence="10"/>
+    <menuitem id="menu_memory_inbox" name="Inbox"
+              parent="menu_memory_root" action="action_memory_inbox"
+              sequence="20"/>
+</odoo>

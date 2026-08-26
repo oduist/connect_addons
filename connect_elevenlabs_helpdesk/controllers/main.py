@@ -5,16 +5,15 @@ import logging
 
 from werkzeug.exceptions import Unauthorized
 
-from odoo import http, release
+from odoo import http
 from odoo.addons.connect_elevenlabs.controllers.main import ConnectElevenlabsController
 
 logger = logging.getLogger(__name__)
-route_type = "json" if release.version_info[0] < 19.0 else 'jsonrpc'
 
 
 class ConnectElevenlabsHelpdeskController(ConnectElevenlabsController):
 
-    @http.route('/connect_elevenlabs_helpdesk/create_ticket', methods=['POST'], type=route_type,
+    @http.route('/connect_elevenlabs_helpdesk/create_ticket', methods=['POST'], type='http',
                 auth='public', csrf=False)
     def helpdesk_create_ticket(self):
         if not self.check_tool_token():
@@ -47,14 +46,14 @@ class ConnectElevenlabsHelpdeskController(ConnectElevenlabsController):
             connect_call_id=call_id).create(ticket_vals)
         logger.info('Helpdesk ticket %s (%s) created', ticket.name, ticket.id)
         call.ticket = ticket.id
-        return {
+        return http.request.make_json_response({
             'ticket_id': ticket.id,
             'ticket_number': ticket.id,
             'ticket_name': ticket.name,
             'message': 'Ticket created successfully'
-        }
+        })
 
-    @http.route('/connect_elevenlabs_helpdesk/search_tickets', methods=['POST'], type=route_type,
+    @http.route('/connect_elevenlabs_helpdesk/search_tickets', methods=['POST'], type='http',
                 auth='public', csrf=False)
     def helpdesk_search_tickets(self):
         if not self.check_tool_token():
@@ -63,14 +62,14 @@ class ConnectElevenlabsHelpdeskController(ConnectElevenlabsController):
         logger.info('Agent search_tickets data: %s', data)
         partner_id = data.get('partner_id')
         if not partner_id:
-            return {'error': 'Partner ID is required to search tickets'}
+            return http.request.make_json_response({'error': 'Partner ID is required to search tickets'})
         domain = [('partner_id', '=', int(partner_id))]
         if data.get('only_open'):
             open_stages = http.request.env['helpdesk.stage'].sudo().search([('fold', '=', False)])
             domain.append(('stage_id', 'in', open_stages.ids))
         tickets = http.request.env['helpdesk.ticket'].sudo().search(domain, order='id desc', limit=10)
         if not tickets:
-            return {'message': 'No tickets found for this partner', 'tickets': []}
+            return http.request.make_json_response({'message': 'No tickets found for this partner', 'tickets': []})
         result = []
         for ticket in tickets:
             result.append({
@@ -81,9 +80,9 @@ class ConnectElevenlabsHelpdeskController(ConnectElevenlabsController):
                 'description': ticket.description or '',
             })
         logger.info('Found %s tickets for partner %s', len(result), partner_id)
-        return {'tickets': result}
+        return http.request.make_json_response({'tickets': result})
 
-    @http.route('/connect_elevenlabs_helpdesk/fetch_ticket', methods=['POST'], type=route_type,
+    @http.route('/connect_elevenlabs_helpdesk/fetch_ticket', methods=['POST'], type='http',
                 auth='public', csrf=False)
     def helpdesk_fetch_ticket(self):
         if not self.check_tool_token():
@@ -92,10 +91,10 @@ class ConnectElevenlabsHelpdeskController(ConnectElevenlabsController):
         logger.info('Agent fetch_ticket data: %s', data)
         ticket_id = data.get('ticket_id')
         if not ticket_id:
-            return {'error': 'Ticket ID is required'}
+            return http.request.make_json_response({'error': 'Ticket ID is required'})
         ticket = http.request.env['helpdesk.ticket'].sudo().browse(int(ticket_id))
         if not ticket.exists():
-            return {'error': 'Ticket not found'}
+            return http.request.make_json_response({'error': 'Ticket not found'})
         result = {
             'ticket_id': ticket.id,
             'ticket_name': ticket.name,
@@ -110,9 +109,9 @@ class ConnectElevenlabsHelpdeskController(ConnectElevenlabsController):
             'priority': ticket.priority or '0',
         }
         logger.info('Fetched ticket %s: %s', ticket_id, result)
-        return result
+        return http.request.make_json_response(result)
 
-    @http.route('/connect_elevenlabs_helpdesk/update_ticket', methods=['POST'], type=route_type,
+    @http.route('/connect_elevenlabs_helpdesk/update_ticket', methods=['POST'], type='http',
                 auth='public', csrf=False)
     def helpdesk_update_ticket(self):
         if not self.check_tool_token():
@@ -121,10 +120,10 @@ class ConnectElevenlabsHelpdeskController(ConnectElevenlabsController):
         logger.info('Agent update_ticket data: %s', data)
         ticket_id = data.get('ticket_id')
         if not ticket_id:
-            return {'error': 'Ticket ID is required'}
+            return http.request.make_json_response({'error': 'Ticket ID is required'})
         ticket = http.request.env['helpdesk.ticket'].sudo().browse(int(ticket_id))
         if not ticket.exists():
-            return {'error': 'Ticket not found'}
+            return http.request.make_json_response({'error': 'Ticket not found'})
         update_vals = {}
         if data.get('subject'):
             update_vals['name'] = data['subject']
@@ -140,10 +139,10 @@ class ConnectElevenlabsHelpdeskController(ConnectElevenlabsController):
         if update_vals:
             ticket.write(update_vals)
             logger.info('Ticket %s updated with: %s', ticket_id, update_vals)
-            return {'message': 'Ticket updated successfully', 'ticket_id': ticket.id}
-        return {'message': 'No updates provided', 'ticket_id': ticket.id}
+            return http.request.make_json_response({'message': 'Ticket updated successfully', 'ticket_id': ticket.id})
+        return http.request.make_json_response({'message': 'No updates provided', 'ticket_id': ticket.id})
 
-    @http.route('/connect_elevenlabs_helpdesk/ticket_activity', methods=['POST'], type=route_type,
+    @http.route('/connect_elevenlabs_helpdesk/ticket_activity', methods=['POST'], type='http',
                 auth='public', csrf=False)
     def helpdesk_ticket_activity(self):
         if not self.check_tool_token():
@@ -152,13 +151,13 @@ class ConnectElevenlabsHelpdeskController(ConnectElevenlabsController):
         logger.info('Agent ticket_activity data: %s', data)
         ticket_id = data.get('ticket_id')
         if not ticket_id:
-            return {'error': 'Ticket ID is required'}
+            return http.request.make_json_response({'error': 'Ticket ID is required'})
         ticket = http.request.env['helpdesk.ticket'].sudo().browse(int(ticket_id))
         if not ticket.exists():
-            return {'error': 'Ticket not found'}
+            return http.request.make_json_response({'error': 'Ticket not found'})
         note = data.get('note', '')
         if not note:
-            return {'error': 'Note content is required'}
+            return http.request.make_json_response({'error': 'Note content is required'})
         ticket.message_post(body=note, message_type='comment')
         logger.info('Added note to ticket %s: %s', ticket_id, note[:100])
-        return {'message': 'Note added to ticket successfully', 'ticket_id': ticket.id}
+        return http.request.make_json_response({'message': 'Note added to ticket successfully', 'ticket_id': ticket.id})

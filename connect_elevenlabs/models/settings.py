@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import urllib.parse
 from urllib.parse import urljoin
-import requests
 import uuid
 from elevenlabs import ElevenLabs
 
@@ -17,7 +15,6 @@ ODUIST_MODULES.append('connect_elevenlabs')
 logger = logging.getLogger(__name__)
 
 PROTECTED_FIELDS.append('display_elevenlabs_api_key')
-PROTECTED_FIELDS.append('display_elevenlabs_post_call_webhook_secret')
 
 class Elevenlabsettings(models.Model):
     _inherit = 'connect.settings'
@@ -28,11 +25,17 @@ class Elevenlabsettings(models.Model):
     display_elevenlabs_api_key = fields.Char()
     elevenlabs_voice = fields.Many2one('connect.elevenlabs_voice', ondelete='set null', string='Selected Voice')
     elevenlabs_enabled = fields.Boolean()
-    elevenlabs_agent_url = fields.Char(string='Agent URL', required=True, default='https://elevenlabs-agent.ngrok.io')
-    elevenlabs_agent_parameters = fields.Text(string='Agent Parameters')
-    elevenlabs_post_call_webhook_url = fields.Char(compute='_get_post_call_webhook_url')
-    display_elevenlabs_post_call_webhook_secret = fields.Char()
-    elevenlabs_post_call_webhook_secret = fields.Char(groups="base.group_erp_manager")
+    elevenlabs_conversation_initiation_webhook_url = fields.Char(
+        compute='_get_conversation_initiation_webhook_url')
+    elevenlabs_post_call_webhook_url = fields.Char(
+        compute='_get_post_call_webhook_url')
+    # Post-call webhook the module owns (HMAC): EL only authenticates post-call
+    # webhooks by HMAC signature, so we create the webhook entity ourselves and
+    # keep its secret to verify inbound deliveries.
+    elevenlabs_post_call_webhook_id = fields.Char(
+        groups="base.group_erp_manager", readonly=True)
+    elevenlabs_post_call_webhook_secret = fields.Char(
+        groups="base.group_erp_manager", readonly=True)
     # Transcript elevenlabs webhook
     transcript_provider = fields.Selection(
         selection_add=[('elevenlabs', 'Elevenlabs')], ondelete={'elevenlabs': 'set default'})
@@ -53,17 +56,129 @@ class Elevenlabsettings(models.Model):
             'target': 'current',
         }
 
+    def _get_conversation_initiation_webhook_url(self):
+        api_url = self.env['connect.settings'].sudo().get_param('api_url')
+        self.elevenlabs_conversation_initiation_webhook_url = urljoin(
+            api_url, 'connect_elevenlabs/conversation_initiation')
+
     def _get_post_call_webhook_url(self):
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
-        self.elevenlabs_post_call_webhook_url = urljoin(api_url, 'connect_elevenlabs/post_call')
+        self.elevenlabs_post_call_webhook_url = urljoin(
+            api_url, 'connect_elevenlabs/post_call')
 
     def get_elevenlabs_client(self):
         # Take this using super access because nobody must be able to access it.
-        key = self.sudo().get_param('elevenlabs_api_key')
+        # Strip stray whitespace: a leading/trailing space in the pasted key
+        # makes httpx reject the xi-api-key header (LocalProtocolError:
+        # "Illegal header value").
+        key = (self.sudo().get_param('elevenlabs_api_key') or '').strip()
         if not key:
             raise ValidationError('Elevenlabs API key not set!')
         return ElevenLabs(api_key=key)
 
+    def _push_elevenlabs_initiation_webhook(self):
+        """Push the Conversation Initiation Client Data Webhook to EL workspace settings.
+
+        This is the workspace-level webhook (PATCH /v1/convai/settings) — one
+        config for all agents in the account. URL and token come from this
+        record; agent-level overrides are intentionally not used.
+        """
+        rec = self.sudo()
+        if not rec.elevenlabs_enabled:
+            return
+        url = rec.elevenlabs_conversation_initiation_webhook_url
+        token = rec.elevenlabs_agent_token
+        if not url or not token:
+            return
+        try:
+            client = rec.get_elevenlabs_client()
+        except ValidationError:
+            return
+        try:
+            client.conversational_ai.settings.update(
+                conversation_initiation_client_data_webhook={
+                    "url": url,
+                    "request_headers": {
+                        "x-elevenlabs-agent-token": token,
+                    },
+                },
+            )
+            logger.info("EL initiation webhook pushed: %s", url)
+        except Exception as e:
+            logger.exception("EL initiation webhook push failed: %s", e)
+
+    def _push_elevenlabs_post_call_webhook(self):
+        """Own the workspace post-call webhook so we can verify its HMAC.
+
+        EL authenticates post-call webhooks only by HMAC signature (no custom
+        header like the initiation webhook), so the module creates the webhook
+        entity itself, stores the returned secret, and selects it for post-call
+        delivery. Re-creates it when the api_url drifts (the secret is rotated
+        and re-stored). The controller verifies ElevenLabs-Signature with the
+        stored secret.
+        """
+        import httpx
+        rec = self.sudo()
+        if not rec.elevenlabs_enabled:
+            return
+        api_url = self.env['connect.settings'].sudo().get_param('api_url')
+        if not api_url:
+            return
+        url = urljoin(api_url, 'connect_elevenlabs/post_call')
+        key = rec.get_param('elevenlabs_api_key')
+        if not key:
+            return
+        base = "https://api.elevenlabs.io/v1/workspace/webhooks"
+        headers = {"xi-api-key": key}
+        webhook_id = rec.get_param('elevenlabs_post_call_webhook_id')
+        secret = rec.get_param('elevenlabs_post_call_webhook_secret')
+        # Reuse the existing webhook if it still points at the current url and
+        # we already hold its secret; otherwise (re)create it.
+        reuse = False
+        if webhook_id and secret:
+            try:
+                resp = httpx.get(base, headers=headers, timeout=20)
+                for w in (resp.json().get('webhooks') or []):
+                    if (w.get('webhook_id') == webhook_id
+                            and w.get('webhook_url') == url
+                            and not w.get('is_disabled')):
+                        reuse = True
+                        break
+            except Exception as e:
+                logger.warning("EL post-call webhook lookup failed: %s", e)
+        if not reuse:
+            try:
+                resp = httpx.post(base, headers=headers, timeout=20, json={
+                    "settings": {
+                        "auth_type": "hmac",
+                        "name": "connect post_call ({})".format(
+                            rec.get_param('db_name') or self.env.cr.dbname),
+                        "webhook_url": url,
+                    }
+                })
+                resp.raise_for_status()
+                data = resp.json()
+                webhook_id = data.get('webhook_id')
+                secret = data.get('webhook_secret') or secret
+                self.set_param('elevenlabs_post_call_webhook_id', webhook_id)
+                if data.get('webhook_secret'):
+                    self.set_param('elevenlabs_post_call_webhook_secret',
+                                   data['webhook_secret'])
+                logger.info("EL post-call webhook created: %s -> %s", webhook_id, url)
+            except Exception as e:
+                logger.exception("EL post-call webhook create failed: %s", e)
+                return
+        # Select it as the workspace post-call webhook.
+        try:
+            rec.get_elevenlabs_client().conversational_ai.settings.update(webhooks={
+                "post_call_webhook_id": webhook_id,
+                "events": ["transcript"],
+                "transcript_format": "json",
+                "send_audio": False,
+            })
+            logger.info("EL post-call webhook selected: %s", webhook_id)
+        except Exception as e:
+            logger.exception("EL post-call webhook select failed: %s", e)
 
     def elevenlabs_get_voices(self):
         self.env['connect.elevenlabs_voice'].get_voices()
@@ -80,6 +195,8 @@ class Elevenlabsettings(models.Model):
     def elevenlabs_reset_token(self):
         # Generate new token.
         self.set_param('elevenlabs_agent_token', str(uuid.uuid4()))
+        self._push_elevenlabs_initiation_webhook()
+        self._push_elevenlabs_post_call_webhook()
 
 
     def elevenlabs_sync_tools(self):
@@ -115,14 +232,3 @@ class Elevenlabsettings(models.Model):
             {'tool_id': None, 'synced': False})
 
         self.connect_notify('Unbind done!', title='Elevenlabs Agent', notify_uid=self.env.user.id)
-
-    def ping_agent(self):
-        self.ensure_one()
-        try:
-            response = requests.post(urljoin(self.elevenlabs_agent_url, '/agent/ping'))
-            if response.text == 'true':
-                self.connect_notify('Pong', title='Elevenlabs Agent', notify_uid=self.env.user.id)
-            else:
-                self.connect_notify('Error! Check the Agent error log.', title='Elevenlabs Agent', notify_uid=self.env.user.id)
-        except Exception as e:
-            raise ValidationError(str(e))

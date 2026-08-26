@@ -531,6 +531,16 @@ class Domain(models.Model):
         else:
             found_num = to_val
         exten = self.env["connect.exten"].sudo().search([("number", "=", found_num)])
+        # No exten? Fall back to a locally-owned number's destination
+        # (e.g. destination=elevenlabs_agent) so the call routes to whatever the
+        # connect.number is pointed at — mirroring inbound DID voice handling in
+        # connect.number.render(). This is what lets WhatsApp calls reach the
+        # agent assigned to the number even when no exten carries that number.
+        if not exten:
+            number = self.env["connect.number"].sudo().search(
+                [("phone_number", "=", found_num)], limit=1)
+            if number and number.destination:
+                return number.render(request=request, params=params)
         # Do not let whatsapp calls to go for external calling
         if not exten and is_whatsapp:
             return "<Response><Say>Oops</Say><Pause length='1'/><Say>Whatsapp Extension not found! Please create an extenstion for this Whatsapp number!</Say></Response>"

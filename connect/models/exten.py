@@ -27,7 +27,8 @@ class Exten(models.Model):
         selection=[
             ('connect.user', 'User'),
             ('connect.callflow', 'Call Flow'),
-            ('connect.twiml', 'TwiML')],
+            ('connect.twiml', 'TwiML'),
+            ('connect.sip_trunk', 'SIP Trunk')],
         compute='_get_dst', inverse='_set_dst')
     dst_name = fields.Char(compute='_get_dst')
     twiml = fields.Text('TwiML', compute='_get_twiml', readonly=True)
@@ -44,7 +45,7 @@ class Exten(models.Model):
     def _get_name(self):
         for rec in self:
             try:
-                rec.name = "{} <{}>".format(rec.number, rec.dst.name if rec.dst else '')
+                rec.name = "{} <{}>".format(rec.number, rec.dst.display_name if rec.dst else '')
             except Exception as e:
                 logger.exception('Exten name error:')
                 rec.name = 'See Odoo Error Log'
@@ -84,7 +85,7 @@ class Exten(models.Model):
 
     def unlink(self):
         for rec in self:
-            if hasattr(rec.dst, 'exten'):
+            if hasattr(rec.dst, 'exten') and rec.dst.exten == rec:
                 rec.dst.exten = False
         return super().unlink()
 

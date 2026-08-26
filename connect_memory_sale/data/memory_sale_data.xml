@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record forcecreate="True" id="digest_cron_payment_behavior" model="ir.cron">
+        <field name="name">Memory Sale: Payment Behavior Digest</field>
+        <field name="model_id" ref="model_res_partner"/>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="state">code</field>
+        <field name="code">model._memory_sale_payment_digest()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">hours</field>
+    </record>
+
+    <record forcecreate="True" id="config_digest_period_months" model="ir.config_parameter">
+        <field name="key">connect_memory_sale.digest_period_months</field>
+        <field name="value">6</field>
+    </record>
+    <record forcecreate="True" id="config_digest_min_invoices" model="ir.config_parameter">
+        <field name="key">connect_memory_sale.digest_min_invoices</field>
+        <field name="value">3</field>
+    </record>
+    <record forcecreate="True" id="config_digest_batch_size" model="ir.config_parameter">
+        <field name="key">connect_memory_sale.digest_batch_size</field>
+        <field name="value">50</field>
+    </record>
+</odoo>

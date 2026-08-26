@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Wizard -->
+    <record id="view_memory_backfill_wizard_form" model="ir.ui.view">
+        <field name="name">connect.memory.backfill.wizard.form</field>
+        <field name="model">connect.memory.backfill.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Backfill all partners">
+                <p class="text-muted">
+                    Queue historical correspondence of <b>all</b> partners (emails
+                    and chatter messages on any document, from the chosen date) into
+                    the memory engine. Runs in the background; idempotent.
+                </p>
+                <group>
+                    <field name="date_from"/>
+                    <field name="date_to"/>
+                    <field name="batch_size"/>
+                    <field name="estimate"
+                           invisible="estimate == 0"/>
+                </group>
+                <footer>
+                    <button name="action_preview" type="object"
+                            string="Preview count" class="btn-secondary"/>
+                    <button name="action_start" type="object"
+                            string="Start backfill" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_memory_backfill_wizard" model="ir.actions.act_window">
+        <field name="name">Backfill all partners</field>
+        <field name="res_model">connect.memory.backfill.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Job -->
+    <record id="view_memory_backfill_tree" model="ir.ui.view">
+        <field name="name">connect.memory.backfill.tree</field>
+        <field name="model">connect.memory.backfill</field>
+        <field name="arch" type="xml">
+            <list string="Backfill jobs">
+                <field name="create_date"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="estimate"/>
+                <field name="processed"/>
+                <field name="enqueued"/>
+                <field name="skipped"/>
+                <field name="last_message_id"/>
+                <field name="state"
+                       decoration-info="state == 'running'"
+                       decoration-success="state == 'done'"
+                       decoration-muted="state == 'cancelled'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_memory_backfill_form" model="ir.ui.view">
+        <field name="name">connect.memory.backfill.form</field>
+        <field name="model">connect.memory.backfill</field>
+        <field name="arch" type="xml">
+            <form string="Backfill job">
+                <header>
+                    <button name="action_run_now" type="object"
+                            string="Run a batch now" class="btn-primary"
+                            invisible="state != 'running'"/>
+                    <button name="action_cancel" type="object"
+                            string="Cancel" invisible="state != 'running'"/>
+                    <button name="action_resume" type="object"
+                            string="Resume" invisible="state != 'cancelled'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="running,done"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="batch_size"/>
+                            <field name="last_message_id"/>
+                        </group>
+                        <group>
+                            <field name="estimate"/>
+                            <field name="processed"/>
+                            <field name="enqueued"/>
+                            <field name="skipped"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_memory_backfill_jobs" model="ir.actions.act_window">
+        <field name="name">Backfill</field>
+        <field name="res_model">connect.memory.backfill</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_memory_backfill" name="Backfill"
+              parent="menu_memory_root" action="action_memory_backfill_jobs"
+              sequence="30"/>
+</odoo>

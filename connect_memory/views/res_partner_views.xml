@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_memory" model="ir.ui.view">
+        <field name="name">res.partner.form.memory</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_memory_events" type="object"
+                        class="oe_stat_button" icon="fa-database">
+                    <field name="memory_event_count" widget="statinfo"
+                           string="Memory"/>
+                </button>
+            </xpath>
+            <xpath expr="//sheet" position="before">
+                <header>
+                    <button name="action_memory_summary" type="object"
+                            string="Customer summary" class="btn-secondary"/>
+                    <button name="action_memory_backfill" type="object"
+                            string="Load correspondence to memory"
+                            class="btn-secondary"
+                            confirm="Queue this customer's existing email correspondence to the memory engine?"/>
+                </header>
+            </xpath>
+        </field>
+    </record>
+</odoo>
