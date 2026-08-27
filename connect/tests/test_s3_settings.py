@@ -12,9 +12,14 @@ class TestS3Settings(TransactionCase):
             "aws_region": "eu-central-1",
             "aws_s3_prefix": "recordings",
         })
+        # The URL is built from aws_s3_bucket_name, which is the bucket prefix
+        # plus what was typed -- not the typed value on its own.
+        self.assertEqual(s.aws_s3_bucket_name, s.aws_s3_bucket_prefix + "my-bucket")
         self.assertEqual(
             s.aws_s3_url,
-            "https://my-bucket.s3.eu-central-1.amazonaws.com/recordings",
+            "https://{}my-bucket.s3.eu-central-1.amazonaws.com/recordings".format(
+                s.aws_s3_bucket_prefix
+            ),
         )
 
     def test_aws_s3_url_empty_without_bucket(self):

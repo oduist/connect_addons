@@ -2,7 +2,7 @@
 
 {
     "name": "Connect",
-    "version": "2.0.3",
+    "version": "2.0.4",
     "author": "Oduist",
     "maintainer": "Oduist",
     "live_test_url": "https://connect-demo.oduist.com/",
@@ -56,7 +56,6 @@
         "views/message_configuration.xml",
         "views/message_content_template.xml",
         "views/whatsapp_sender.xml",
-        "views/documentation.xml",
         # Wizard
         "wizard/transfer.xml",
         "wizard/sms_composer_views.xml",
