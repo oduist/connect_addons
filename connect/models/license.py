@@ -17,8 +17,8 @@ import jwt
 import requests
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
-from odoo import api, fields, models, release
-from odoo.exceptions import ValidationError
+from odoo import api, fields, models, release, tools
+from odoo.exceptions import MissingError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -107,6 +107,8 @@ class OduistLicense(models.Model):
         for vals in vals_list:
             if not vals.get("instance_uid"):
                 vals["instance_uid"] = str(uuid.uuid4())
+        # _license_record_id() may have cached the absence of the row.
+        self.env.registry.clear_cache()
         return super().create(vals_list)
 
     def write(self, vals):
@@ -141,16 +143,28 @@ class OduistLicense(models.Model):
             )
 
     @api.model
+    @tools.ormcache()
+    def _license_record_id(self):
+        """id of the singleton license row, cached like
+        connect.settings._settings_record_id(): the license check runs on
+        every webhook and re-ran `search([])` twice per call."""
+        return self.search([], order="id", limit=1).id
+
+    @api.model
     def get_param(self, param, default=False):
         """Get parameter value from single record. Creates record if not exists."""
-        data = self.search([])
-        if not data:
+        rec_id = self._license_record_id()
+        if not rec_id:
             data = self.sudo().with_context(no_constrains=True).create({})
         else:
-            data = data[0]
+            data = self.browse(rec_id)
         if not data:
             return default
-        value = getattr(data, param, None)
+        try:
+            value = getattr(data, param, None)
+        except MissingError:
+            self.env.registry.clear_cache()
+            return self.get_param(param, default)
         return value if value is not None else default
 
     @api.model

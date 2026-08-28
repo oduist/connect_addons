@@ -21,8 +21,8 @@ from urllib.parse import urljoin
 import httpx
 import openai
 import requests
-from odoo import api, fields, models, release
-from odoo.exceptions import ValidationError
+from odoo import api, fields, models, release, tools
+from odoo.exceptions import MissingError, ValidationError
 from twilio.base.exceptions import TwilioRestException
 from twilio.http.http_client import TwilioHttpClient
 from twilio.rest import Client
@@ -644,15 +644,32 @@ class Settings(models.Model):
         }
 
     @api.model
-    # @ormcache('param')
+    @tools.ormcache()
+    def _settings_record_id(self):
+        """id of the singleton settings row.
+
+        get_param() runs ~20 times per Twilio webhook; without this cache
+        every call re-ran `search([])` — one SQL query each. The id is
+        stable (the row is created once and never deleted in normal
+        operation) and create() clears the registry cache, which includes
+        this entry.
+        """
+        return self.search([], order='id', limit=1).id
+
+    @api.model
     def get_param(self, param, default=False):
         """ """
-        data = self.search([])
-        if not data:
+        rec_id = self._settings_record_id()
+        if not rec_id:
             data = self.sudo().with_context(no_constrains=True).create({})
         else:
-            data = data[0]
-        return getattr(data, param, default)
+            data = self.browse(rec_id)
+        try:
+            return getattr(data, param, default)
+        except MissingError:
+            # The cached row was deleted under us: recompute and retry once.
+            self.env.registry.clear_cache()
+            return self.get_param(param, default)
 
     @api.model
     def set_param(self, param, value):
