@@ -4,8 +4,9 @@ import json
 import logging
 import re
 from urllib.parse import urljoin
-from psycopg2 import IntegrityError, errors as pg_errors
+from psycopg2 import IntegrityError
 from odoo import fields, models, api, release
+from odoo.exceptions import ConcurrencyError
 from odoo.tools import sql
 from .settings import debug
 
@@ -426,7 +427,7 @@ class Channel(models.Model):
             except IntegrityError:
                 channel = self.search([('sid', '=', call_sid)])
                 if not channel:
-                    raise pg_errors.SerializationFailure(
+                    raise ConcurrencyError(
                         'concurrent connect.channel INSERT for CallSid %s'
                         % call_sid)
                 logger.warning(

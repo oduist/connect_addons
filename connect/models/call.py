@@ -21,10 +21,10 @@ from datetime import timedelta
 
 import openai
 import requests
-from psycopg2 import IntegrityError, errors as pg_errors
+from psycopg2 import IntegrityError
 
 from odoo import fields, models, api, release, SUPERUSER_ID, tools, _
-from odoo.exceptions import ValidationError, AccessError
+from odoo.exceptions import ValidationError, AccessError, ConcurrencyError
 from twilio.twiml.voice_response import VoiceResponse, Say, Dial, Conference, Client, Number, Sip
 from .settings import debug, MAX_EXTEN_LEN
 from .res_partner import strip_number
@@ -874,9 +874,10 @@ class Call(models.Model):
         # still may NOT see what the previous holder committed. The lock
         # provides ordering, not visibility. Visibility races are caught by
         # the UNIQUE constraints (sid / root_call_sid) and escalated to
-        # SerializationFailure, which odoo.service.model.retrying answers by
+        # ConcurrencyError, which odoo.service.model.retrying answers by
         # replaying the whole request on a fresh snapshot; concurrent writes
-        # to the same rows raise the same replay via PostgreSQL itself.
+        # to the same rows take the same replay path via PostgreSQL's own
+        # serialization failures.
         self._acquire_webhook_sid_lock(
             params.get('ParentCallSid') or params.get('CallSid'))
         # Create channel
@@ -937,13 +938,13 @@ class Call(models.Model):
                 # UNIQUE(root_call_sid): a concurrent webhook created the
                 # conversation's call. Under REPEATABLE READ its committed
                 # row may be invisible to our snapshot even now — then only
-                # a fresh transaction can adopt it, so escalate to the
-                # framework's concurrency retry (odoo.service.model.retrying
+                # a fresh transaction can adopt it, so raise ConcurrencyError
+                # for the framework's retry (odoo.service.model.retrying
                 # replays the whole request up to 5 times).
                 existing = self.search(
                     [('root_call_sid', '=', root_sid)], limit=1)
                 if not existing:
-                    raise pg_errors.SerializationFailure(
+                    raise ConcurrencyError(
                         'concurrent connect.call INSERT for root SID %s'
                         % root_sid)
                 logger.warning(
