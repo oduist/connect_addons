@@ -199,6 +199,31 @@ class TestWebhookConcurrency(TransactionCase):
                            CallDuration='40'))
         self.assertEqual(call.status, 'completed')
 
+    def test_out_of_order_parent_completion_still_finalizes(self):
+        """Twilio does not order webhooks across legs: when the parent's
+        completed webhook lands before the last child's terminal webhook,
+        the closing child webhook must finalize the call — otherwise it is
+        stuck on a live status forever (no cron exists to repair it)."""
+        parent_sid, child_sid = 'CAoooparent', 'CAooochild'
+        call_id = self._webhook(dict(
+            self.base, CallSid=parent_sid, Direction='inbound',
+            CallStatus='ringing', SequenceNumber='0'))
+        call = self.env['connect.call'].browse(call_id)
+        self.agents[0]._ensure_direct_call_attempt(call, {})
+        child = self._child(child_sid, parent_sid, 0)
+        self._webhook(dict(child, CallStatus='in-progress', SequenceNumber='1'))
+        # The parent's completed webhook is processed FIRST.
+        self._webhook(dict(self.base, CallSid=parent_sid, Direction='inbound',
+                           CallStatus='completed', SequenceNumber='1',
+                           CallDuration='18'))
+        self.assertNotEqual(call.status, 'completed',
+                            'child leg still active, no finalization yet')
+        # The child's terminal webhook closes the conversation.
+        self._webhook(dict(child, CallStatus='completed', SequenceNumber='2',
+                           CallDuration='12'))
+        self.assertEqual(call.status, 'completed')
+        self.assertEqual(call.answered_user, self.users[0])
+
     def test_park_retrieval_claim_is_atomic(self):
         """Only one retrieval claims a parked call; a failed Twilio redirect
         compensates by restoring the slot."""

@@ -1033,8 +1033,19 @@ class Call(models.Model):
                 can_trigger_finalization = parent_completed
             else:
                 can_trigger_finalization = True
+        elif is_parent_call_webhook:
+            can_trigger_finalization = True
         else:
-            can_trigger_finalization = is_parent_call_webhook
+            # Twilio does not order webhooks across legs: the parent's
+            # completed webhook may be processed before the last child's
+            # terminal webhook. Parent authority alone then leaves the call
+            # stuck on its live status forever (no cron exists to repair
+            # it), so the closing child webhook may finalize once the root
+            # leg itself has already ended.
+            root_channel = channel.call.channels.filtered(
+                lambda ch: not ch.parent_channel)[:1]
+            can_trigger_finalization = bool(root_channel) and \
+                root_channel.status in CALL_END_STATUSES
         # Register call only when ALL channels have ended AND no pending webhook expectations AND can trigger finalization
         all_channels_ended = all(ch.status in CALL_END_STATUSES for ch in channel.call.channels)
         has_pending_webhooks = channel.call._has_pending_webhooks()
