@@ -21,6 +21,7 @@ from datetime import timedelta
 
 import openai
 import requests
+from psycopg2 import IntegrityError, errors as pg_errors
 
 from odoo import fields, models, api, release, SUPERUSER_ID, tools, _
 from odoo.exceptions import ValidationError, AccessError
@@ -139,10 +140,21 @@ class Call(models.Model):
     price_unit = fields.Char(string='Price Unit', readonly=True, help='The currency unit for call price (e.g., USD)')
     price_currency = fields.Char(string='Price Currency', readonly=True, default='USD')
     call_sid = fields.Char(string='Twilio Call SID', readonly=True, index=True, help='Twilio CallSid for fetching price information')
+    # Twilio SID of the conversation's root leg (ParentCallSid or CallSid of
+    # the first webhook). UNIQUE so the database itself guarantees one
+    # connect.call per conversation: Odoo runs in REPEATABLE READ, so two
+    # concurrent webhooks may both miss each other's uncommitted call even
+    # while serialized by the advisory lock — the constraint catches what the
+    # snapshot cannot see. NULL for calls not created by status webhooks.
+    root_call_sid = fields.Char(string='Root Call SID', readonly=True, index=True)
     is_price_fetched = fields.Boolean(string='Price Fetched', default=False, readonly=True, index=True, help='Indicates if call price has been fetched from Twilio API')
     price_fetch_attempts = fields.Integer(string='Price Fetch Attempts', default=0, readonly=True)
     attempt_ids = fields.One2many(
         'connect.call.attempt', 'call_id', string='Runtime Attempts', readonly=True)
+
+    _root_call_sid_unique = models.Constraint(
+        'UNIQUE(root_call_sid)',
+        'A Twilio conversation can only have one call.')
     pbx_group_user_ids = fields.Many2many(
         'res.users', 'connect_call_pbx_group_users_rel',
         string='PBX Group Users',
@@ -854,8 +866,17 @@ class Call(models.Model):
         # contended resource, before ANY database write — so the acquisition
         # order is always advisory → row, never row → advisory, which removes
         # the lock-ordering cycle that produced "deadlock detected ...
-        # FOR UPDATE" on connect_call. It also makes the duplicate-webhook
-        # sequence filter and the call-creation check below race-free.
+        # FOR UPDATE" on connect_call.
+        #
+        # NOTE on visibility: Odoo cursors run in REPEATABLE READ, and the
+        # transaction snapshot is established by the framework's own queries
+        # before this handler runs — so a webhook that waited on this lock
+        # still may NOT see what the previous holder committed. The lock
+        # provides ordering, not visibility. Visibility races are caught by
+        # the UNIQUE constraints (sid / root_call_sid) and escalated to
+        # SerializationFailure, which odoo.service.model.retrying answers by
+        # replaying the whole request on a fresh snapshot; concurrent writes
+        # to the same rows raise the same replay via PostgreSQL itself.
         self._acquire_webhook_sid_lock(
             params.get('ParentCallSid') or params.get('CallSid'))
         # Create channel
@@ -865,26 +886,18 @@ class Call(models.Model):
             return False
         if not self.env['oduist.license'].check_license('connect', silent=True):
             return False
-        if not channel.parent_channel and not channel.call:
+        root_sid = params.get('ParentCallSid') or params.get('CallSid')
+        if not channel.parent_channel and not channel.call and root_sid:
             # Legs of one conversation may reach us before the leg they were
             # spawned from: without this lookup each of them would create its
-            # own connect.call and the conversation would never converge (the
-            # root-SID lock serializes the webhooks, but every one of them
-            # still sees no parent channel). Adopt the call already created by
-            # a sibling (same ParentCallSid) or by our own children (their
-            # parent_sid is our CallSid).
-            Channel = self.env['connect.channel'].sudo()
-            parent_sid = params.get('ParentCallSid')
-            if parent_sid:
-                relative = Channel.search(
-                    [('parent_sid', '=', parent_sid), ('call', '!=', False),
-                     ('id', '!=', channel.id)], limit=1)
-            else:
-                relative = Channel.search(
-                    [('parent_sid', '=', params.get('CallSid')),
-                     ('call', '!=', False)], limit=1)
-            if relative:
-                channel.call = relative.call
+            # own connect.call and the conversation would never converge
+            # (every one of them sees no parent channel). All legs of a
+            # conversation share the same root SID, so adopt the call it
+            # already carries — created by a sibling or by our own children.
+            existing = self.search(
+                [('root_call_sid', '=', root_sid)], limit=1)
+            if existing:
+                channel.call = existing
         if not channel.parent_channel and not channel.call:
             # Create a new call.
             if channel.technical_direction == 'outbound-api':
@@ -905,7 +918,7 @@ class Call(models.Model):
                 direction = 'outgoing'
             # Set call pattern for outgoing and internal calls (always direct_call since they're one-to-one)
             call_pattern = 'direct_call' if direction in ('outgoing', 'internal') else False
-            call = self.create({
+            call_vals = {
                 'partner': channel.partner.id,
                 'called': channel.called_number,
                 'caller': channel.caller_number,
@@ -915,8 +928,28 @@ class Call(models.Model):
                 'direction': direction,
                 'call_type': channel.call_type or 'phone',
                 'call_pattern': call_pattern,
-            })
-            channel.call = call
+                'root_call_sid': root_sid or False,
+            }
+            try:
+                with self.env.cr.savepoint():
+                    channel.call = self.create(call_vals)
+            except IntegrityError:
+                # UNIQUE(root_call_sid): a concurrent webhook created the
+                # conversation's call. Under REPEATABLE READ its committed
+                # row may be invisible to our snapshot even now — then only
+                # a fresh transaction can adopt it, so escalate to the
+                # framework's concurrency retry (odoo.service.model.retrying
+                # replays the whole request up to 5 times).
+                existing = self.search(
+                    [('root_call_sid', '=', root_sid)], limit=1)
+                if not existing:
+                    raise pg_errors.SerializationFailure(
+                        'concurrent connect.call INSERT for root SID %s'
+                        % root_sid)
+                logger.warning(
+                    'Call create lost a concurrent-webhook race for root '
+                    'SID %s, adopting call %s', root_sid, existing.id)
+                channel.call = existing
         elif channel.parent_channel and channel.parent_channel.call \
                 and channel.call != channel.parent_channel.call:
             # Secondary channel, assign the call from the parent.

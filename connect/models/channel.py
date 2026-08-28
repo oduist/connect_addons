@@ -4,7 +4,7 @@ import json
 import logging
 import re
 from urllib.parse import urljoin
-from psycopg2 import IntegrityError
+from psycopg2 import IntegrityError, errors as pg_errors
 from odoo import fields, models, api, release
 from odoo.tools import sql
 from .settings import debug
@@ -412,23 +412,27 @@ class Channel(models.Model):
                 data['call_source'] = None  # Will be set when pattern is determined
 
             # Idempotent creation: a concurrent webhook (or a redelivery after
-            # a timeout) may have inserted this SID between our search and the
-            # INSERT — the UNIQUE(sid) constraint then turns the race into an
-            # IntegrityError. The savepoint confines the failed INSERT, and
-            # the retry re-enters through the update path on the winner row
-            # instead of aborting the whole webhook transaction (a lost
-            # webhook is unrecoverable: there is no catching-up cron).
+            # a timeout) may have inserted this SID — the UNIQUE(sid)
+            # constraint then turns the race into an IntegrityError. The
+            # savepoint confines the failed INSERT (a poisoned transaction
+            # would lose the webhook for good: there is no catching-up cron).
+            # If the winner's committed row is visible, re-enter through the
+            # update path; under REPEATABLE READ it may be invisible to our
+            # snapshot — then only a fresh transaction can see it, so raise a
+            # concurrency error the framework retries (up to 5 replays).
             try:
                 with self.env.cr.savepoint():
                     channel = self.with_context(tracking_disable=True).create(data)
             except IntegrityError:
-                if self.env.context.get('connect_sid_race_retry'):
-                    raise
+                channel = self.search([('sid', '=', call_sid)])
+                if not channel:
+                    raise pg_errors.SerializationFailure(
+                        'concurrent connect.channel INSERT for CallSid %s'
+                        % call_sid)
                 logger.warning(
                     'Channel create lost a duplicate-SID race for %s, '
                     'retrying as update', call_sid)
-                return self.with_context(
-                    connect_sid_race_retry=True).on_call_status(params)
+                return self.on_call_status(params)
             debug(self, 'Channel %s created.' % channel.id)
 
             # Store external call leg for outgoing call transfers

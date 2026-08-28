@@ -88,6 +88,22 @@ class TestWebhookConcurrency(TransactionCase):
             CallStatus='ringing', SequenceNumber='0'))
         self.assertEqual(call_id, channels.mapped('call').id,
                          'the late parent must adopt the children\'s call')
+        call = self.env['connect.call'].browse(call_id)
+        self.assertEqual(call.root_call_sid, parent_sid,
+                         'the conversation call must carry its root SID')
+
+    def test_duplicate_root_sid_is_refused_by_the_database(self):
+        """UNIQUE(root_call_sid) is the backstop for call-creation races the
+        snapshot cannot see."""
+        self._webhook(dict(self.base, CallSid='CAuroot', Direction='inbound',
+                           CallStatus='ringing', SequenceNumber='0'))
+        with self.assertRaises(Exception):
+            with self.env.cr.savepoint():
+                self.env['connect.call'].create({
+                    'caller': '+15550001111', 'called': '+15550002222',
+                    'direction': 'incoming', 'status': 'ringing',
+                    'root_call_sid': 'CAuroot',
+                })
 
     def test_duplicate_sid_create_race_recovers(self):
         """A lost duplicate-SID race converges on the winner row instead of
