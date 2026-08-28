@@ -138,12 +138,6 @@ class Call(models.Model):
     price_fetch_attempts = fields.Integer(string='Price Fetch Attempts', default=0, readonly=True)
     attempt_ids = fields.One2many(
         'connect.call.attempt', 'call_id', string='Runtime Attempts', readonly=True)
-    projection_event_id = fields.Integer(readonly=True, index=True)
-    finalization_event_id = fields.Integer(readonly=True, index=True)
-    finalized_at = fields.Datetime(readonly=True, index=True)
-    registration_done = fields.Boolean(default=False, readonly=True, index=True)
-    ring_notification_done = fields.Boolean(default=False, readonly=True)
-    error_notification_done = fields.Boolean(default=False, readonly=True)
     pbx_group_user_ids = fields.Many2many(
         'res.users', 'connect_call_pbx_group_users_rel',
         string='PBX Group Users',
@@ -369,6 +363,11 @@ class Call(models.Model):
             logger.warning(f"Call {self.id}: Unknown call pattern '{self.call_pattern}', using fallback logic")
             self._populate_user_fields_fallback()
         self._set_final_call_status()
+        if self.park_slot or self.park_call_sid:
+            # A call that ended is not waiting in a slot any more. Left
+            # registered, it is what the next retrieval of that slot resolves
+            # to — and redirecting its dead Twilio call fails.
+            self.write({'park_slot': False, 'park_call_sid': False})
         logger.info(f"Call {self.id}: Final status='{self.status}', answered_user='{self.answered_user.login if self.answered_user else None}', completed_by_user='{self.completed_by_user.login if self.completed_by_user else None}', transferred_users={len(self.transferred_users)}")
 
     def _set_final_call_status(self):
@@ -739,70 +738,44 @@ class Call(models.Model):
             and (not source or rec.kind == source))
         attempts.mark_resolved()
 
-    @api.model
-    def ensure_initial_call(self, payload):
-        """Synchronously and idempotently create the root channel and call."""
-        self = self.sudo()
-        payload = dict(payload or {})
-        sid = payload.get('CallSid')
-        if not sid:
-            return self
-        channel_model = self.env['connect.channel']
-        channel = channel_model.search([('sid', '=', sid)], limit=1)
-        if not channel:
-            event_model = self.env['connect.call.event']
-            vals = event_model._channel_vals(payload, self, channel_model)
-            vals.update({
-                'sid': sid,
-                'sequence_number': int(payload.get('SequenceNumber') or 0),
-                'event_timestamp': event_model._parse_timestamp(payload)
-                    or fields.Datetime.now(),
-            })
-            channel = channel_model.with_context(
-                tracking_disable=True).create(vals)
-        return self._ensure_call_from_channel(channel)
+    def _refresh_runtime_attempts(self):
+        """Resolve pending runtime attempts from the channels' terminal states.
 
-    @api.model
-    def _ensure_call_from_channel(self, channel):
-        """Create the aggregate for an already known root channel."""
-        self = self.sudo()
-        if channel.call:
-            return channel.call
-        if channel.parent_channel and channel.parent_channel.call:
-            channel.with_context(tracking_disable=True).write({
-                'call': channel.parent_channel.call.id,
-            })
-            return channel.parent_channel.call
-        if channel.parent_channel:
-            return self
-        if channel.technical_direction == 'outbound-api':
-            direction = 'outgoing'
-        elif channel.technical_direction == 'inbound' and channel.caller_pbx_user:
-            direction = 'outgoing'
-        elif channel.technical_direction == 'inbound':
-            direction = 'incoming'
-        else:
-            direction = 'outgoing'
-        call = self.with_context(tracking_disable=True).create({
-            'partner': channel.partner.id,
-            'called': channel.called_number,
-            'caller': channel.caller_number,
-            'status': channel.status,
-            'caller_pbx_user': channel.caller_pbx_user.id,
-            'caller_user': channel.caller_user.id,
-            'direction': direction,
-            'call_type': channel.call_type or 'phone',
-            'call_pattern': (
-                'direct_call' if direction in ('outgoing', 'internal') else False
-            ),
-            'call_sid': channel.sid,
-        })
-        channel.with_context(tracking_disable=True).write({'call': call.id})
-        return call
-
-    def _after_call_projection(self, finalized, changed_fields):
-        """Extension hook invoked after an idempotent call projection."""
-        return True
+        Ported from the removed event projector: an attempt is matched by its
+        dial CallSid, then by its target user, then by the channels'
+        call_source, and resolves once enough matched legs have ended. The
+        external kinds are consumed by their own handlers, not by leg counts.
+        """
+        self.ensure_one()
+        now = fields.Datetime.now()
+        # Once every leg of the call has ended, no further leg can ever be
+        # created (the Dial died with its call), so an unmet expected_count
+        # is permanently unsatisfiable — e.g. Twilio dials at most ten
+        # parallel targets, so a thirteen-noun ring group registers three
+        # legs that never come to exist.
+        all_legs_ended = bool(self.channels) and all(
+            channel.status in CALL_END_STATUSES for channel in self.channels)
+        for attempt in self.attempt_ids.filtered(
+                lambda item: item.state == 'pending'):
+            if attempt.expires_at <= now:
+                attempt.write({'state': 'expired', 'resolved_at': now})
+                continue
+            if attempt.kind in ('external_leg', 'external_termination'):
+                continue
+            channels = self.channels
+            if attempt.dial_call_sid:
+                channels = channels.filtered(
+                    lambda channel: channel.sid == attempt.dial_call_sid)
+            elif attempt.target_user_id:
+                channels = channels.filtered(
+                    lambda channel: channel.called_user == attempt.target_user_id)
+            elif attempt.kind in ('ring_group', 'direct_call', 'transfer'):
+                channels = channels.filtered(
+                    lambda channel: channel.call_source == attempt.kind)
+            terminal = channels.filtered(
+                lambda channel: channel.status in CALL_END_STATUSES)
+            if len(terminal) >= attempt.expected_count or all_legs_ended:
+                attempt.mark_resolved()
 
     def write(self, vals: dict):
         if release.version_info[0] <= 15.0 and 'transfer_context' in vals:
@@ -818,7 +791,7 @@ class Call(models.Model):
         return records
 
     @api.model
-    def _on_call_status_legacy(self, params):
+    def on_call_status(self, params):
         self = self.sudo()
         # Create channel
         channel = self.env['connect.channel'].on_call_status(params)
@@ -924,6 +897,11 @@ class Call(models.Model):
             else:
                 expectation_source = 'ring_group'
             channel.call._update_webhook_expectation_callsid(expectation_source, call_sid, call_status)
+        # Resolve runtime attempts from the legs' terminal states. Legs are only
+        # tagged with a call_source when the call pattern is already known at
+        # their creation, so the compatibility helper above cannot resolve e.g.
+        # a direct_call expectation; match by SID and target user as well.
+        channel.call._refresh_runtime_attempts()
         # Determine finalization authority
         is_parent_call_webhook = not params.get('ParentCallSid')
         if channel.call.direction == 'outgoing':
@@ -991,22 +969,26 @@ class Call(models.Model):
         return channel.call.id
 
     @api.model
-    def on_call_status(self, params, token=None):
-        """Compatibility entry point: enqueue lifecycle work."""
-        event = self.env['connect.call.event'].sudo().ingest(
-            'call_status', params, token=token)
-        return event.call_id.id if event.call_id else False
-
-    @api.model
-    def on_vm_recording_status(self, params, token=None):
-        self.env['connect.call.event'].sudo().ingest(
-            'voicemail_status', params, token=token)
+    def on_vm_recording_status(self, params):
+        debug(self.sudo(), 'On recording status: %s' % json.dumps(params, indent=2))
+        channel = self.sudo().env['connect.channel'].search([('sid', '=', params['CallSid'])])
+        if channel and channel.call:
+            channel.call.write({
+                'voicemail_url': params.get('RecordingUrl'),
+                'voicemail_duration': int(params.get('RecordingDuration'))
+            })
         return True
 
     @api.model
-    def on_call_action(self, params, token=None):
-        self.env['connect.call.event'].sudo().ingest(
-            'dial_action', params, token=token)
+    def on_call_action(self, params):
+        debug(self, 'On call action: %s' % params)
+        # Check if this is a Dial action webhook with transfer completion data
+        if 'DialCallSid' in params and 'DialCallStatus' in params:
+            try:
+                self._process_transfer_completion(params)
+                logger.info(f"Successfully processed transfer completion")
+            except Exception as e:
+                logger.error(f"Failed to process transfer completion: {e}")
         return '<Response><Hangup/></Response>'
 
     def _process_transfer_completion(self, params):

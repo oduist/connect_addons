@@ -23,20 +23,25 @@ class CrmCall(models.Model):
             else:
                 super()._get_ref()
 
-    def _after_call_projection(self, finalized, changed_fields):
-        res = super()._after_call_projection(finalized, changed_fields)
-        self.ensure_one()
+    @api.model
+    def on_call_status(self, params):
         if not self.env['oduist.license'].check_license('connect_crm', silent=True):
-            return res
-        call = self
+            return super().on_call_status(params)
+        call_id = super().on_call_status(params)
+        if not call_id:
+            debug(self, 'CRM on_call_status error, no call.')
+            return call_id
+        call = self.browse(call_id)
+        if call.lead:
+            return call_id
         # Update call source
-        if call.direction == 'incoming' and not call.source:
+        if call.direction == 'incoming':
             call.source = self.env['utm.source'].sudo().search(
                 [('phone', '=', call.called)], limit=1)
-        if call.lead:
-            return res
+            # Update reference if not set.
         try:
             lead = None
+            # No reference was set, so we have a change to set it to a lead
             if call.direction == 'incoming':
                 lead = self.env['crm.lead'].get_lead_by_number(call.caller)
             else:
@@ -46,13 +51,12 @@ class CrmCall(models.Model):
                 call.lead = lead
             else:
                 try:
-                    if finalized:
-                        call.sudo()._auto_create_lead()
+                    call.sudo()._auto_create_lead()
                 except Exception as e:
                     logger.exception('Auto create lead error: (handled):')
         except Exception:
             logger.exception('Update call lead error:')
-        return res
+        return call_id
 
     def _auto_create_lead(self, country=None):
         self.ensure_one()

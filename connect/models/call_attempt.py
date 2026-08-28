@@ -61,8 +61,8 @@ class CallAttempt(models.Model):
                 }
             )
 
-    @api.model
-    def vacuum(self):
+    @api.autovacuum
+    def _vacuum(self):
         now = fields.Datetime.now()
         expired = self.search(
             [("state", "=", "pending"), ("expires_at", "<=", now)]
@@ -70,17 +70,11 @@ class CallAttempt(models.Model):
         if expired:
             expired.write({"state": "expired", "resolved_at": now})
 
-        settings = self.env["connect.settings"].sudo()
-        delete_immediately = settings.get_param("delete_processed_call_events")
         terminal = self.search(
             [
                 ("state", "in", ["resolved", "expired"]),
                 ("resolved_at", "<=", now - timedelta(hours=1)),
             ]
         )
-        if delete_immediately:
-            terminal |= self.search(
-                [("state", "=", "resolved")]
-            )
         if terminal:
             terminal.unlink()

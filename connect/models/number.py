@@ -186,9 +186,8 @@ class Number(models.Model):
     @api.model
     def route_call(self, request, params={}):
         debug(self, 'Route number call: %s' % json.dumps(request, indent=2))
-        # Routing needs the root aggregate synchronously; lifecycle projection is
-        # handled independently by the status callback inbox.
-        self.env['connect.call'].ensure_initial_call(request)
+        # Create call
+        self.env['connect.call'].on_call_status(request)
         # Find the number
         number = self.sudo().search([('phone_number', '=', request['Called'])])
         if not number:

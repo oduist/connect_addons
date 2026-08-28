@@ -20,15 +20,5 @@
             <field name="active">True</field>
         </record>
 
-        <record id="process_call_events" model="ir.cron">
-            <field name="name">Project Twilio Call Events</field>
-            <field name="interval_number">1</field>
-            <field name="interval_type">minutes</field>
-            <field name="model_id" ref="model_connect_call_event"/>
-            <field name="code">model.process_pending_events(limit=200)</field>
-            <field name="state">code</field>
-            <field name="active">True</field>
-        </record>
-
     </data>
 </odoo>

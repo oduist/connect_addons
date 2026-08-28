@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*
 
 import logging
-from odoo import models, fields
+from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 from odoo.addons.connect.models.settings import debug
 
@@ -13,16 +13,20 @@ class HelpdeskCall(models.Model):
 
     ticket = fields.Many2one('helpdesk.ticket', ondelete='set null', tracking=True)
 
-    def _after_call_projection(self, finalized, changed_fields):
-        res = super()._after_call_projection(finalized, changed_fields)
-        self.ensure_one()
+    @api.model
+    def on_call_status(self, params):
         if not self.env["oduist.license"].check_license('connect_helpdesk'):
-            return res
-        call = self
+            return super().on_call_status(params)
+        call_id = super().on_call_status(params)
+        if not call_id:
+            debug(self, 'CRM on_call_status error, no call.')
+            return call_id
+        call = self.browse(call_id)
         if call.ticket:
-            return res
+            return call_id
         try:
             ticket = None
+            # No reference was set, so we have a change to set it to a ticket
             if call.direction == 'incoming':
                 ticket = self.env['helpdesk.ticket'].get_ticket_by_number(call.caller)
             else:
@@ -35,7 +39,7 @@ class HelpdeskCall(models.Model):
                 # TODO: Auto create ticket
         except Exception:
             logger.exception('Update call ticket error:')
-        return res
+        return call_id
 
     def create_ticket_button(self):
         self.ensure_one()

@@ -60,19 +60,6 @@ def migrate(cr, version):
     """Backfill database-backed runtime state for unfinished legacy calls."""
     cr.execute(
         """
-        UPDATE connect_call
-           SET finalized_at = COALESCE(finalized_at, write_date, create_date),
-               registration_done = TRUE,
-               ring_notification_done = TRUE,
-               error_notification_done = COALESCE(has_error, FALSE)
-         WHERE status IN %s
-           AND finalized_at IS NULL
-        """,
-        (END_STATUSES,),
-    )
-
-    cr.execute(
-        """
         SELECT id, call_sid, transfer_context
           FROM connect_call
          WHERE status IS NULL OR status NOT IN %s

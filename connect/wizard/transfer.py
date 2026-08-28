@@ -631,7 +631,38 @@ class CallForwardHandler(models.TransientModel):
 
     @api.model
     def handle_transfer_continuation(self, webhook_params):
-        """Return TwiML immediately; the inbox projects transfer state."""
+        """
+        Handle the action callback from transfer dial completion.
+        For successful transfers, update completion status.
+        For failed transfers, route the external caller to the transfer target's voicemail.
+        """
+        call_sid = webhook_params.get('CallSid')
+        dial_call_status = webhook_params.get('DialCallStatus')
+        dial_call_sid = webhook_params.get('DialCallSid')
+
+        # Find the call record
+        call_channel = self.env['connect.channel'].sudo().search([('sid', '=', call_sid)], limit=1)
+        if not call_channel or not call_channel.call:
+            logger.warning(f'Could not find call for transfer continuation: {call_sid}')
+            response = VoiceResponse()
+            response.hangup()
+            return response
+
+        call = call_channel.call
+
+        # If transfer recipient answered (DialCallStatus: completed), update completion status
+        if dial_call_status == 'completed' and call.transferred_users:
+            # Runtime attempts (with a legacy JSON fallback) know who answered.
+            transfer_recipient = call.get_transfer_target(call_sid)
+            if not transfer_recipient and dial_call_sid:
+                transfer_recipient = call.get_transfer_target(dial_call_sid)
+
+            if transfer_recipient:
+                call.completed_by_user = transfer_recipient
+            else:
+                # Fallback: use the first transfer recipient
+                call.completed_by_user = call.transferred_users[0]
+
         response = VoiceResponse()
         response.hangup()
         return response

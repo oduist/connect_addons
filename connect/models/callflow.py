@@ -5,11 +5,16 @@ from datetime import datetime
 from urllib.parse import urljoin
 from pytz import utc
 from odoo import fields, models, api, release
+from odoo.exceptions import ValidationError
 from twilio.twiml.voice_response import Gather, VoiceResponse, Say, Client, Sip, Dial
 from .twiml import pretty_xml
 from .settings import debug
 
 logger = logging.getLogger(__name__)
+
+# Twilio dials at most ten parallel targets per <Dial>; ring users past
+# that are never dialed, and their legs never come to exist.
+MAX_RING_USERS = 10
 
 class CallflowChoice(models.Model):
     _name = 'connect.callflow_choice'
@@ -61,6 +66,15 @@ class CallFlow(models.Model):
     voicemail_prompt = fields.Text()
     voicemail_enabled = fields.Boolean()
     # fallback_extension
+
+    @api.constrains('ring_users')
+    def _check_ring_users_limit(self):
+        for rec in self:
+            if len(rec.ring_users) > MAX_RING_USERS:
+                raise ValidationError(
+                    'A call flow can ring at most %s users: Twilio dials no '
+                    'more than %s targets in parallel, so extra users would '
+                    'never be called.' % (MAX_RING_USERS, MAX_RING_USERS))
 
     def create_extension(self):
         self.ensure_one()

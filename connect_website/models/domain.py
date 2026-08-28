@@ -34,15 +34,17 @@ class Domain(models.Model):
             debug(self, 'Routing call from Website {}'.format(request.get('Caller')))
             request.update({'From': request.get('From').replace('client:', '')})
             request.update({'Caller': request.get('Caller').replace('client:', '')})
-            # Create the root aggregate synchronously for website routing.
-            call = self.env['connect.call'].ensure_initial_call(request)
+            # Create call
+            call_id = self.env['connect.call'].on_call_status(request)
             caller_name = None
             partner = self.env['res.partner'].sudo().get_partner_by_number(request['Caller'])
             if partner:
+                call = self.env['connect.call'].browse(call_id)
                 call.partner = partner.id
                 caller_name = partner.name
             elif request.get('UserId') != "null":
                 user = self.env['res.users'].sudo().browse(int(request.get('UserId')))
+                call = self.env['connect.call'].browse(call_id)
                 call.partner = user.partner_id
                 caller_name = user.partner_id.name
 
@@ -75,7 +77,7 @@ class Domain(models.Model):
             dial_client.append(client)
             response = VoiceResponse()
             response.append(dial_client)
-            self.env['connect.call'].ensure_initial_call(request)
+            self.env['connect.call'].on_call_status(request)
             return response
         else:
             return super().route_call(request, params)

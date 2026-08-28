@@ -58,10 +58,6 @@ class Channel(models.Model):
     sip_call_id = fields.Char('SIP Call-ID', index=True)
     # Webhook sequence tracking for duplicate filtering
     sequence_number = fields.Integer(string='Sequence Number', default=0, help='Twilio webhook sequence number for duplicate filtering')
-    event_timestamp = fields.Datetime(
-        string='Last Event Timestamp', readonly=True, index=True)
-    last_event_id = fields.Integer(
-        string='Last Event ID', readonly=True, index=True)
     pbx_group_user_ids = fields.Many2many(
         'res.users', 'connect_channel_pbx_group_users_rel',
         string='PBX Group Users',
@@ -316,6 +312,10 @@ class Channel(models.Model):
             channel.write(data)
             debug(self, 'Channel %s updated.' % channel.id)
 
+            # Check for external call termination after transfer recipient hangs up
+            if params['CallStatus'] in CALL_END_STATUSES and channel.call:
+                self._handle_external_call_termination_on_hangup(channel, params)
+
             # Note: Outgoing transfer failures now handled by direct extension redirect
             # No longer need complex failure detection logic
         # Channel not found by sid, create it.
@@ -470,6 +470,44 @@ class Channel(models.Model):
 
         except Exception as e:
             logger.error(f'Error handling failed outgoing transfer: {e}')
+
+    def _handle_external_call_termination_on_hangup(self, channel, params):
+        """
+        Handle external call termination when transfer recipients hang up completed calls.
+        This prevents external callers from going to voicemail when internal users end calls.
+        """
+        try:
+            call = channel.call
+            call_sid = params.get('CallSid')
+
+            # The transfer completion handler registers a pending
+            # external_termination attempt for the recipient's leg.
+            attempts = call.attempt_ids.filtered(
+                lambda attempt: attempt.kind == 'external_termination'
+                and attempt.state == 'pending'
+                and attempt.dial_call_sid == call_sid
+                and attempt.external_sid
+            )
+            if not attempts:
+                return
+            attempt = attempts[0]
+            external_call_sid = attempt.external_sid
+
+            # Terminate the external call
+            client = self.env['connect.settings'].get_client()
+            try:
+                # Check if external call is still active
+                external_call = client.calls(external_call_sid).fetch()
+                if external_call.status in ['in-progress', 'ringing']:
+                    # Terminate the external call
+                    client.calls(external_call_sid).update(status='completed')
+            except Exception as e:
+                logger.error(f'Failed to terminate external call {external_call_sid}: {e}')
+
+            attempt.mark_resolved()
+
+        except Exception as e:
+            logger.error(f'Error handling external call termination: {e}', exc_info=True)
 
     def transfer(self, to=None):
         self.ensure_one()

@@ -175,29 +175,9 @@
     <field name="perm_unlink" eval="1"/>
   </record>
 
-  <record id="connect_call_event_admin" model="ir.model.access">
-    <field name="name">connect_call_event_admin</field>
-    <field name="model_id" ref="connect.model_connect_call_event"/>
-    <field name="group_id" ref="connect.group_connect_admin"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="0"/>
-    <field name="perm_create" eval="0"/>
-    <field name="perm_unlink" eval="0"/>
-  </record>
-
   <record id="connect_call_attempt_admin" model="ir.model.access">
     <field name="name">connect_call_attempt_admin</field>
     <field name="model_id" ref="connect.model_connect_call_attempt"/>
-    <field name="group_id" ref="connect.group_connect_admin"/>
-    <field name="perm_read" eval="1"/>
-    <field name="perm_write" eval="0"/>
-    <field name="perm_create" eval="0"/>
-    <field name="perm_unlink" eval="0"/>
-  </record>
-
-  <record id="connect_call_event_dedup_admin" model="ir.model.access">
-    <field name="name">connect_call_event_dedup_admin</field>
-    <field name="model_id" ref="connect.model_connect_call_event_dedup"/>
     <field name="group_id" ref="connect.group_connect_admin"/>
     <field name="perm_read" eval="1"/>
     <field name="perm_write" eval="0"/>

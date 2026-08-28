@@ -22,6 +22,7 @@ import openai
 import requests
 from odoo import api, fields, models, release
 from odoo.exceptions import ValidationError
+from twilio.base.exceptions import TwilioRestException
 from twilio.rest import Client
 from . import s3_utils
 from odoo.addons.connect.models.license import ODUIST_MODULES
@@ -183,6 +184,21 @@ SYSTEM_VOICE_CHOICES = [
 ]
 
 
+def twilio_error_message(error):
+    """Turn a Twilio REST error into something the user can act on."""
+    if error.status == 401 or error.code == 20003:
+        return (
+            "Error authenticating requests to the Twilio API! "
+            "Check your Account SID and Auth Token."
+        )
+    message = "Twilio API error {}: {}".format(error.status, error.msg)
+    if error.code:
+        message = "{}\nSee https://www.twilio.com/docs/errors/{}".format(
+            message, error.code
+        )
+    return message
+
+
 def debug(rec, message, level="info"):
     caller_module = inspect.stack()[1][3]
     if level == "info":
@@ -245,14 +261,6 @@ class Settings(models.Model):
 
     name = fields.Char(compute="_get_name")
     debug_mode = fields.Boolean()
-    delete_processed_call_events = fields.Boolean(
-        string="Delete processed call events",
-        default=True,
-        help=(
-            "Delete successfully projected Twilio lifecycle events and completed "
-            "runtime attempts immediately. Disable to retain them for one hour."
-        ),
-    )
     twilio_auto_sync = fields.Boolean(default=True)
     twilio_region = fields.Selection([
         ('us1', 'US'),
@@ -788,12 +796,14 @@ class Settings(models.Model):
         if api_url_check:
             raise ValidationError(api_url_check)
         try:
-            self.env["connect.twiml"].sync()
+            twiml_errors = self.env["connect.twiml"].sync()
             self.env["connect.domain"].sync()
             self.env["connect.number"].sync()
             self.env["connect.outgoing_callerid"].sync()
             self.env["connect.whatsapp_sender"].sync()
             self.env["connect.message_content_template"].sync()
+        except TwilioRestException as e:
+            raise ValidationError(twilio_error_message(e)) from e
         except Exception as e:
             if "errors/20003" in str(e):
                 raise ValidationError(
@@ -801,6 +811,17 @@ class Settings(models.Model):
                 )
             else:
                 raise
+        if twiml_errors:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": "Twilio account synced with errors",
+                    "message": "\n".join(twiml_errors),
+                    "type": "warning",
+                    "sticky": True,
+                },
+            }
 
     # Called from the settings.
     def reformat_numbers_button(self):
