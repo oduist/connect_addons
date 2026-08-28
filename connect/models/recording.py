@@ -263,12 +263,15 @@ class Recording(models.Model):
         transcript_calls = self.env['connect.settings'].sudo().get_param('transcript_calls')
         recs = super(Recording, self.with_context(
             mail_create_nosubscribe=True, mail_create_nolog=True)).create(vals_list)
-        # Commit to the database so that transcription error will not break the recording.
-        self.env.cr.commit()
+        # A transcription failure must not break the recording, but that is a
+        # savepoint's job, not a commit's: committing mid-request released the
+        # transaction-scoped advisory locks serializing the call's webhooks
+        # and broke the webhook's atomicity (half-applied state on rollback).
         if transcript_calls:
             for rec in recs:
                 try:
-                    rec.get_transcript(fail_silently=True)
+                    with self.env.cr.savepoint():
+                        rec.get_transcript(fail_silently=True)
                 except Exception as e:
                     logger.exception('Transcript error: %s', e)
         return recs

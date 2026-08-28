@@ -15,6 +15,7 @@ import os
 import random
 import re
 import string
+import sys
 from urllib.parse import urljoin
 
 import httpx
@@ -23,6 +24,7 @@ import requests
 from odoo import api, fields, models, release
 from odoo.exceptions import ValidationError
 from twilio.base.exceptions import TwilioRestException
+from twilio.http.http_client import TwilioHttpClient
 from twilio.rest import Client
 from . import s3_utils
 from odoo.addons.connect.models.license import ODUIST_MODULES
@@ -31,6 +33,11 @@ ODUIST_MODULES.append('connect')
 logger = logging.getLogger(__name__)
 
 TWILIO_LOG_LEVEL = logging.WARNING
+# Upper bound for every Twilio REST call. Webhook transactions hold
+# per-call advisory locks (and sometimes row locks) across these calls,
+# so an unbounded request must never pin a lock until the worker times
+# out. Overridable per deployment without a schema change.
+TWILIO_HTTP_TIMEOUT = float(os.environ.get('TWILIO_HTTP_TIMEOUT', '15'))
 
 MAX_EXTEN_LEN = 4
 
@@ -200,7 +207,10 @@ def twilio_error_message(error):
 
 
 def debug(rec, message, level="info"):
-    caller_module = inspect.stack()[1][3]
+    # sys._getframe is orders of magnitude cheaper than inspect.stack(),
+    # which reads and parses source files on every call — debug() sits on
+    # the webhook hot path and runs even when debug_mode is off.
+    caller_module = sys._getframe(1).f_code.co_name
     if level == "info":
         fun = logger.info
     elif level == "warning":
@@ -741,11 +751,12 @@ class Settings(models.Model):
             )
             account_sid = self.sudo().get_param("account_sid")
             auth_token = self.sudo().get_param("auth_token")
-            client = Client(account_sid, auth_token)
+            http_client = TwilioHttpClient(timeout=TWILIO_HTTP_TIMEOUT)
+            client = Client(account_sid, auth_token, http_client=http_client)
             if region:
                 region_auth_token = self.sudo().get_param("region_auth_token")
                 token_to_use = region_auth_token if region_auth_token else auth_token
-                client = Client(account_sid, token_to_use)
+                client = Client(account_sid, token_to_use, http_client=http_client)
                 twilio_region = self.sudo().get_param("twilio_region")
                 if twilio_region:
                     client.region = twilio_region
