@@ -2,7 +2,7 @@
 
 {
     "name": "Connect",
-    "version": "2.0.3",
+    "version": "2.0.4",
     "author": "Oduist",
     "maintainer": "Oduist",
     "live_test_url": "https://connect-demo.oduist.com/",
@@ -49,6 +49,7 @@
         "views/outgoing_callerid.xml",
         "views/pbx_group.xml",
         "views/recording.xml",
+        "views/voicemail.xml",
         "views/number.xml",
         "views/favorite.xml",
         "views/res_partner.xml",

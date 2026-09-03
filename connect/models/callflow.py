@@ -112,7 +112,7 @@ class CallFlow(models.Model):
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
         edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
         voicemail_record_status_url = urljoin(api_url,
-                                            'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
+                                            'twilio/webhook/vm_recordingstatus?vm_callflow_id={}#e={}'.format(self.id, edge))
         status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
         action_url = urljoin(api_url, 'twilio/webhook/connect.callflow/call_action/{}#e={}'.format(self.id, edge))
         record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus#e={}'.format(edge))
@@ -260,7 +260,8 @@ class CallFlow(models.Model):
             if callflow.voicemail_prompt:
                 api_url = self.env['connect.settings'].sudo().get_param('api_url')
                 edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
-                record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
+                record_status_url = urljoin(
+                    api_url, 'twilio/webhook/vm_recordingstatus?vm_callflow_id={}#e={}'.format(callflow.id, edge))
                 response.pause(length=1)
                 callflow.get_voicemail_prompt_message(response)
                 response.record(

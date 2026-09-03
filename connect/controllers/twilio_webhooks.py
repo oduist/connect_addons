@@ -71,10 +71,14 @@ class ConnectController(Controller):
 
     @route('/twilio/webhook/vm_recordingstatus', methods=['POST'], type='http', auth='public', csrf=False)
     def vm_recording_status_webhook(self, **kw):
-        if not self.check_signature(kw):
+        # The URL carries query args (vm_user_id / vm_callflow_id) but the Twilio
+        # signature covers the full URL + POST params only, so validate against
+        # the form data and not against kw (Odoo merges query args into kw).
+        post_params = dict(request.httprequest.form)
+        if not self.check_signature(post_params):
             return '<Response><Say>Invalid Twilio request!</Say></Response>'
-        call = request.env['connect.call'].with_user(request.env.ref("connect.user_connect_webhook"))
-        res = call.on_vm_recording_status(kw)
+        voicemail = request.env['connect.voicemail'].with_user(request.env.ref("connect.user_connect_webhook"))
+        res = voicemail.on_vm_recording_status(kw)
         return f'{res}'
 
     @route('/twilio/webhook/<string:model_name>/call_action/<int:record_id>', methods=['POST'], type='http', auth='public', csrf=False)

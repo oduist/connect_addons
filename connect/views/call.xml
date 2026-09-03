@@ -141,11 +141,18 @@
                             </group>
                         </page>
                         <page name="voicemail" string="VoiceMail"
-                              invisible="voicemail_widget == ''">
+                              invisible="voicemail == False">
                             <group>
-                                <field name="voicemail_widget" widget="html"/>
-                                <field name="voicemail_transcript" string="Transcript"/>
-                                <field name="voicemail_transcription_error" invisible="not voicemail_transcription_error" string="Transcript Error"/>
+                                <group>
+                                    <field name="voicemail_widget" widget="html" nolabel="1"/>
+                                </group>
+                                <group>
+                                    <field name="voicemail"/>
+                                </group>
+                            </group>
+                            <group>
+                                <field name="voicemail_transcript" string="Transcript"
+                                    invisible="not voicemail_transcript"/>
                             </group>
                         </page>
                         <page name="channels" string="Channels" groups="base.group_no_one">

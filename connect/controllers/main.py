@@ -4,6 +4,7 @@ import json
 import logging
 import os
 from datetime import timedelta
+from urllib.parse import urljoin
 
 import openai
 import requests
@@ -47,11 +48,11 @@ class ConnectController(http.Controller):
 
     @http.route('/connect/voicemail/<int:record_id>', type='http', auth='user')
     def serve_voicemail(self, record_id):
-        # Access the recording as logged in user.
-        call = http.request.env['connect.call'].browse(record_id)
-        if not call.exists() or not call.voicemail_url:
+        # Access the voicemail as logged in user.
+        voicemail = http.request.env['connect.voicemail'].browse(record_id)
+        if not voicemail.exists() or not voicemail.media_url:
             return http.Response(status=404)
-        return self._serve_media(call.voicemail_url)
+        return self._serve_media(voicemail.media_url)
 
     def _serve_media(self, media_url):
         settings = http.request.env['connect.settings'].sudo()
@@ -106,6 +107,7 @@ class ConnectController(http.Controller):
         if dial_status == 'completed':
             response.hangup()
         else:
+            vm_pbx_user = None
             try:
                 original_call = self._find_original_call_for_redirect_completion(original_call_sid, dial_call_sid)
                 if original_call:
@@ -129,6 +131,7 @@ class ConnectController(http.Controller):
                         pbx_user = http.request.env['connect.user'].sudo().search([
                             ('user', '=', transfer_recipient.id)
                         ], limit=1)
+                        vm_pbx_user = pbx_user or None
 
                         if pbx_user and pbx_user.voicemail_enabled and pbx_user.voicemail_prompt:
                             personalized_prompt = pbx_user.render_voicemail_prompt()
@@ -155,7 +158,18 @@ class ConnectController(http.Controller):
                 processed_text = http.request.env['connect.settings'].process_pronunciation('Please leave a message after the tone.')
                 response.say(processed_text, voice=system_voice)
 
-            response.record(maxLength=120, finishOnKey='#', playBeep=True)
+            # Report the voicemail recording to the vm_recordingstatus webhook so
+            # it is stored as connect.voicemail (was silently lost before).
+            settings = http.request.env['connect.settings'].sudo()
+            api_url = settings.get_param('api_url')
+            edge = settings.get_param('twilio_edge')
+            if vm_pbx_user:
+                record_status_url = urljoin(
+                    api_url, 'twilio/webhook/vm_recordingstatus?vm_user_id={}#e={}'.format(vm_pbx_user.id, edge))
+            else:
+                record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
+            response.record(maxLength=120, finishOnKey='#', playBeep=True,
+                            recordingStatusCallback=record_status_url)
 
         return response.to_xml()
 
