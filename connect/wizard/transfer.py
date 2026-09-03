@@ -363,12 +363,15 @@ class CallForwardHandler(models.TransientModel):
                 return False
                 
             user = extension.dst
-            
+
+            # The target may have no linked Odoo user (connect.user.user is
+            # optional); `call` is read after this block either way, so it
+            # must exist even when the tracking below is skipped.
+            call = None
             # Track the transfer in the call record
             if user.user:
                 try:
                     # Try to find the call record from the session_id
-                    call = None
                     if call_id:
                         call = self.env['connect.call'].sudo().browse(call_id)
                     
@@ -504,14 +507,22 @@ class CallForwardHandler(models.TransientModel):
             edge = self.env['connect.settings'].get_param('twilio_edge')
             extension_url = urljoin(api_url, f'connect/{user.exten.number}#e={edge}')
             
+            external_call_sid = None
             if is_outgoing_call:
-                # OUTGOING CALL: Redirect the external call leg, hang up the original caller
-                
                 external_call_sid = call.get_external_call_leg()
                 if not external_call_sid:
-                    logger.error('Could not find external call leg for outgoing transfer')
-                    return False
-                
+                    # Not every outgoing call has an external leg to redirect:
+                    # the "agent -> slot" record of a park retrieval is
+                    # outgoing, yet the leg to move is simply call_sid (the
+                    # customer). Fall back to the direct redirect instead of
+                    # failing the transfer.
+                    logger.warning(
+                        'No external call leg for outgoing transfer, '
+                        'redirecting %s directly', call_sid)
+                    is_outgoing_call = False
+            if is_outgoing_call:
+                # OUTGOING CALL: Redirect the external call leg, hang up the original caller
+
                 # Play transfer message to external caller, then redirect
                 transfer_response = VoiceResponse()
                 system_voice = self.env['connect.settings'].get_system_voice()
@@ -639,7 +650,7 @@ class CallForwardHandler(models.TransientModel):
         call_sid = webhook_params.get('CallSid')
         dial_call_status = webhook_params.get('DialCallStatus')
         dial_call_sid = webhook_params.get('DialCallSid')
-        
+
         # Find the call record
         call_channel = self.env['connect.channel'].sudo().search([('sid', '=', call_sid)], limit=1)
         if not call_channel or not call_channel.call:
@@ -647,36 +658,22 @@ class CallForwardHandler(models.TransientModel):
             response = VoiceResponse()
             response.hangup()
             return response
-        
+
         call = call_channel.call
-        
+
         # If transfer recipient answered (DialCallStatus: completed), update completion status
         if dial_call_status == 'completed' and call.transferred_users:
-            # Find the transfer recipient who answered by looking at transfer context
-            transfer_context = call.transfer_context or {}
-            transfer_recipient_login = None
-            
-            # Look for the transfer recipient in the context using call SID or dial call SID
-            for context_key, context_value in transfer_context.items():
-                if context_key.startswith('_'):  # Skip internal keys like _external_leg
-                    continue
-                if context_key in (call_sid, dial_call_sid):
-                    if isinstance(context_value, dict) and 'user_id' in context_value:
-                        transfer_recipient_login = context_value.get('user_login')
-                        break
-            
-            if transfer_recipient_login:
-                # Find the user and set as completed_by_user
-                transfer_recipient = self.env['res.users'].sudo().search([('login', '=', transfer_recipient_login)], limit=1)
-                if transfer_recipient:
-                    call.completed_by_user = transfer_recipient
-                else:
-                    logger.warning(f'Could not find user with login {transfer_recipient_login}')
+            # Runtime attempts (with a legacy JSON fallback) know who answered.
+            transfer_recipient = call.get_transfer_target(call_sid)
+            if not transfer_recipient and dial_call_sid:
+                transfer_recipient = call.get_transfer_target(dial_call_sid)
+
+            if transfer_recipient:
+                call.completed_by_user = transfer_recipient
             else:
                 # Fallback: use the first transfer recipient
-                if call.transferred_users:
-                    call.completed_by_user = call.transferred_users[0]
-        
+                call.completed_by_user = call.transferred_users[0]
+
         response = VoiceResponse()
         response.hangup()
         return response

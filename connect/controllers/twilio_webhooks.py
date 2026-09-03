@@ -105,6 +105,14 @@ class ConnectController(Controller):
         res = call.on_call_action(kw)
         return f'{res}'
 
+    @route('/twilio/webhook/park_retrieve/<int:call_id>/<string:slot>', methods=['POST'], type='http', auth='public', csrf=False)
+    def park_retrieve_action_webhook(self, call_id, slot, **kw):
+        if not self.check_signature(kw):
+            return '<Response><Say>Invalid Twilio request!</Say></Response>'
+        call = request.env['connect.call'].with_user(request.env.ref("connect.user_connect_webhook"))
+        res = call.on_park_retrieve_action(call_id, slot, kw)
+        return f'{res}'
+
     @route('/twilio/webhook/twiml/<int:twiml_id>', methods=['POST'], type='http', auth='public', csrf=False)
     def twiml_webhook(self, twiml_id, **kw):
         if not self.check_signature(kw):

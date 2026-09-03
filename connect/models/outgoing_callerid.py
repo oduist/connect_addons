@@ -40,6 +40,34 @@ class OutgoingCallerID(models.Model):
         for rec in self:
             rec.name = '{} "{}"'.format(rec.number, rec.friendly_name)
 
+    @api.model
+    def _get_sms_lines(self):
+        """Caller IDs a message can be sent from.
+
+        Only real Twilio numbers: a verified caller ID is voice-only and
+        Twilio rejects it as the From of a message.
+        """
+        return self.sudo().search([('callerid_type', '=', 'number')])
+
+    @api.model
+    def _get_default_number(self):
+        """Line outgoing messages leave from by default, or False.
+
+        ``is_default`` is the *voice* caller ID: every other reader of it fills
+        a Dial callerId, so it is routinely the business's published line and
+        need not be a number Twilio will send messages from. Handing such a
+        number to the messaging API fails silently -- Twilio takes the request
+        when the number is on the account, and the carrier then refuses the
+        sender (30024) long after we replied to the agent. So the flag counts
+        only when it is on a Twilio number, and a database with a single
+        Twilio number does not need the flag at all.
+        """
+        lines = self._get_sms_lines()
+        default = lines.filtered('is_default')
+        if default:
+            return default[0].number
+        return lines.number if len(lines) == 1 else False
+
     def sync_outgoing_callerid(self, callerid_type):
         client = self.env['connect.settings'].get_client(region=False)
         if callerid_type == 'outgoing_callerid':

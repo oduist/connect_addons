@@ -3,14 +3,14 @@
 import json
 import logging
 import os
-from datetime import timedelta
 from urllib.parse import urljoin
 
 import openai
 import requests
+from twilio.request_validator import RequestValidator
 from werkzeug.exceptions import NotFound
 
-from odoo import fields, http, release, tools
+from odoo import http, release, tools
 from odoo.api import SUPERUSER_ID
 from odoo.exceptions import UserError
 from odoo.addons.connect.models import s3_utils
@@ -20,6 +20,21 @@ logger = logging.getLogger(__name__)
 route_type = "json" if release.version_info[0] < 19.0 else 'jsonrpc'
 
 class ConnectController(http.Controller):
+
+    @staticmethod
+    def _check_twilio_signature(data):
+        settings = http.request.env['connect.settings'].sudo()
+        if not settings.get_param('twilio_verify_requests'):
+            return True
+        auth_token = (
+            settings.get_param('region_auth_token')
+            or settings.get_param('auth_token')
+        )
+        validator = RequestValidator(auth_token)
+        url = http.request.httprequest.url.replace('http:', 'https:')
+        signature = http.request.httprequest.headers.get(
+            'X-Twilio-Signature', '')
+        return validator.validate(url, data, signature)
 
     @http.route('/connect/transcript/<int:rec_id>', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
@@ -93,6 +108,8 @@ class ConnectController(http.Controller):
         """Handle Dial action completion for transfer redirects and update call completion fields"""
         from twilio.twiml.voice_response import VoiceResponse
 
+        if not self._check_twilio_signature(kw):
+            return '<Response><Say>Invalid Twilio request!</Say></Response>'
         dial_status = kw.get('DialCallStatus')
         dial_call_sid = kw.get('DialCallSid')
         original_call_sid = kw.get('CallSid')
@@ -215,13 +232,26 @@ class ConnectController(http.Controller):
             self._create_or_update_transfer_channel(original_call, dial_call_sid, transfer_recipient, dial_call_status, webhook_params)
 
     def _find_original_call_for_redirect_completion(self, original_call_sid, dial_call_sid):
-        """Find the original call that initiated this transfer redirect"""
+        """Find the call from database-backed transfer runtime state."""
+        sid_values = [
+            sid for sid in (original_call_sid, dial_call_sid) if sid
+        ]
+        if sid_values:
+            attempt = http.request.env['connect.call.attempt'].sudo().search([
+                ('kind', '=', 'transfer'),
+                ('state', '=', 'pending'),
+                '|',
+                ('parent_sid', 'in', sid_values),
+                ('dial_call_sid', 'in', sid_values),
+            ], order='id desc', limit=1)
+            if attempt:
+                return attempt.call_id
+
+        # Compatibility fallback for calls created before the 2.0.3 migration.
         Call = http.request.env['connect.call'].sudo()
-        cutoff = fields.Datetime.now() - timedelta(minutes=5)
 
         recent_calls = Call.search([
             ('transfer_context', '!=', False),
-            ('create_date', '>=', cutoff),
         ])
 
         for call in recent_calls:
@@ -234,14 +264,10 @@ class ConnectController(http.Controller):
         # Fallback: find recent calls with transfers still in progress
         recent_transfers = Call.search([
             ('transferred_users', '!=', False),
-            ('create_date', '>=', cutoff),
             ('status', 'not in', ['completed', 'failed', 'busy', 'no-answer']),
         ], limit=5)
 
-        if recent_transfers:
-            return recent_transfers[0]
-
-        return None
+        return recent_transfers[:1]
 
     def _create_or_update_transfer_channel(self, call, dial_call_sid, transfer_recipient, status, webhook_params):
         """Create or update a channel record for the transfer recipient to ensure proper field population"""
@@ -329,15 +355,15 @@ class ConnectController(http.Controller):
             logger.error(f'Failed to set up external call termination: {e}', exc_info=True)
 
     def _store_external_call_termination_context(self, call, external_call_sid, transfer_recipient_sid):
-        """Store context for terminating external calls when transfer recipients hang up"""
+        """Register the external leg to hang up when the transfer recipient ends the call."""
         try:
-            current_context = call.transfer_context or {}
-            current_context['_external_termination'] = {
-                'external_call_sid': external_call_sid,
-                'transfer_recipient_sid': transfer_recipient_sid,
-                'setup_time': http.request.env.cr.now()
-            }
-            call.transfer_context = current_context
+            http.request.env['connect.call.attempt'].sudo().create({
+                'kind': 'external_termination',
+                'call_id': call.id,
+                'parent_sid': call.call_sid or call.channels[:1].sid,
+                'dial_call_sid': transfer_recipient_sid,
+                'external_sid': external_call_sid,
+            })
         except Exception as e:
             logger.error(f'Failed to store external termination context: {e}')
 

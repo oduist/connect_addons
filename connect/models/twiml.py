@@ -9,6 +9,7 @@ from urllib.parse import urljoin
 from xml.dom.minidom import parseString
 from odoo import fields, models, api, release
 from odoo.exceptions import ValidationError
+from twilio.base.exceptions import TwilioRestException
 from .settings import debug
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,17 @@ def pretty_xml(content):
     except Exception as e:
         logger.error('Pretty XML parse error: %s', e)
         return 'Pretty XML parse error: {}\n{}'.format(e, str(content))
+
+
+# Twilio answers 404/20404 when an application SID is unknown to the account.
+# Any other failure - a 401 on a rejected token, a rate limit, a 5xx blip - is
+# not a missing app: recreating it would leak a duplicate app in Twilio. The
+# message check stays as a fallback for exceptions raised outside the REST
+# client.
+def is_not_found(error):
+    if isinstance(error, TwilioRestException):
+        return error.status == 404 or error.code == 20404
+    return 'not found' in str(error)
 
 
 class TwiML(models.Model):
@@ -69,7 +81,7 @@ class TwiML(models.Model):
                 application.friendly_name, self.old_sid))
             return application
         except Exception as e:
-            if 'not found' in str(e):
+            if is_not_found(e):
                 debug(self, 'No existing TwiML app found by old_sid {} during region migration.'.format(self.old_sid))
                 return None
             else:
@@ -135,7 +147,7 @@ class TwiML(models.Model):
                 debug(self, 'TwiML app {} updated.'.format(self.name))
                 return application
             except Exception as e:
-                if 'not found' in str(e):
+                if is_not_found(e):
                     debug(self, 'TwiML app {} not found by current sid {}, checking for region migration.'.format(
                         self.name, self.sid))
                     # App not found by current sid, try to find by old_sid for region migration
@@ -186,7 +198,7 @@ class TwiML(models.Model):
                 try:
                     client.applications(rec.sid).delete()
                 except Exception as e:
-                    if 'not found' in str(e):
+                    if is_not_found(e):
                         logger.warning('Cannot delete app %s in Twilio, not found', rec.name)
                     else:
                         raise
@@ -194,9 +206,25 @@ class TwiML(models.Model):
 
     @api.model
     def sync(self):
+        """Push every TwiML app to Twilio and return the ones that failed.
+
+        One app failing must not abort the whole account sync: the apps
+        already pushed are kept by Twilio while Odoo rolls the request back,
+        so aborting leaves orphan apps behind and loses their SIDs.
+        Authentication errors are the exception, they apply to every app so
+        there is nothing left to salvage.
+        """
         client = self.env['connect.settings'].get_client()
+        errors = []
         for rec in self.search([]):
-            rec.update_twilio_app(client)
+            try:
+                rec.update_twilio_app(client)
+            except TwilioRestException as e:
+                if e.status == 401:
+                    raise
+                logger.warning('Cannot sync TwiML app %s: %s', rec.name, e)
+                errors.append('{}: {}'.format(rec.name, e.msg or e))
+        return errors
 
     def _get_twilio_urls(self):
         api_url = self.env['connect.settings'].get_param('api_url')
