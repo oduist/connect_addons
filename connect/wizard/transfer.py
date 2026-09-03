@@ -363,12 +363,15 @@ class CallForwardHandler(models.TransientModel):
                 return False
                 
             user = extension.dst
-            
+
+            # The target may have no linked Odoo user (connect.user.user is
+            # optional); `call` is read after this block either way, so it
+            # must exist even when the tracking below is skipped.
+            call = None
             # Track the transfer in the call record
             if user.user:
                 try:
                     # Try to find the call record from the session_id
-                    call = None
                     if call_id:
                         call = self.env['connect.call'].sudo().browse(call_id)
                     
@@ -504,14 +507,22 @@ class CallForwardHandler(models.TransientModel):
             edge = self.env['connect.settings'].get_param('twilio_edge')
             extension_url = urljoin(api_url, f'connect/{user.exten.number}#e={edge}')
             
+            external_call_sid = None
             if is_outgoing_call:
-                # OUTGOING CALL: Redirect the external call leg, hang up the original caller
-                
                 external_call_sid = call.get_external_call_leg()
                 if not external_call_sid:
-                    logger.error('Could not find external call leg for outgoing transfer')
-                    return False
-                
+                    # Not every outgoing call has an external leg to redirect:
+                    # the "agent -> slot" record of a park retrieval is
+                    # outgoing, yet the leg to move is simply call_sid (the
+                    # customer). Fall back to the direct redirect instead of
+                    # failing the transfer.
+                    logger.warning(
+                        'No external call leg for outgoing transfer, '
+                        'redirecting %s directly', call_sid)
+                    is_outgoing_call = False
+            if is_outgoing_call:
+                # OUTGOING CALL: Redirect the external call leg, hang up the original caller
+
                 # Play transfer message to external caller, then redirect
                 transfer_response = VoiceResponse()
                 system_voice = self.env['connect.settings'].get_system_voice()

@@ -4,7 +4,9 @@ import json
 import logging
 import re
 from urllib.parse import urljoin
+from psycopg2 import IntegrityError
 from odoo import fields, models, api, release
+from odoo.exceptions import ConcurrencyError
 from odoo.tools import sql
 from .settings import debug
 
@@ -244,7 +246,9 @@ class Channel(models.Model):
 
     @api.model
     def on_call_status(self, params):
-        debug(self, 'On channel status: %s' % json.dumps(params, indent=2))
+        if logger.isEnabledFor(logging.DEBUG):
+            # json.dumps of every webhook is too expensive for the hot path.
+            logger.debug('On channel status: %s', json.dumps(params, indent=2))
         # Pre-process for WhatsApp and E.164 normalization
         def strip_whatsapp(v):
             return v.split(':', 1)[1] if isinstance(v, str) and v.startswith('whatsapp:') else v
@@ -256,19 +260,17 @@ class Channel(models.Model):
         to_clean = strip_whatsapp(to_raw)
         call_type = 'whatsapp' if any(isinstance(x, str) and x.startswith('whatsapp:') for x in [caller_raw, called_raw, to_raw]) else 'phone'
 
-        # ENHANCED BLIND TRANSFER LOGGING
-        logger.info(f"=== WEBHOOK RECEIVED ===")
-        logger.info(f"CallSid: {params.get('CallSid')}")
-        logger.info(f"CallStatus: {params.get('CallStatus')}")
-        logger.info(f"Direction: {params.get('Direction')}")
-        logger.info(f"From: {params.get('From')} | To: {params.get('To')}")
-        logger.info(f"Called: {params.get('Called')} | Caller: {params.get('Caller')}")
-        logger.info(f"ParentCallSid: {params.get('ParentCallSid')}")
-        logger.info(f"Duration: {params.get('CallDuration', 0)}")
-        logger.info(f"SequenceNumber: {params.get('SequenceNumber')}")
-        logger.info(f"=== END WEBHOOK INFO ===")
+        # One line instead of the former ten-logger.info block per webhook.
+        logger.info(
+            'Webhook: CallSid=%s status=%s seq=%s dir=%s parent=%s dur=%s',
+            params.get('CallSid'), params.get('CallStatus'),
+            params.get('SequenceNumber'), params.get('Direction'),
+            params.get('ParentCallSid'), params.get('CallDuration', 0))
 
-        # SEQUENCE-BASED DUPLICATE FILTERING: Check for duplicate webhooks
+        # SEQUENCE-BASED DUPLICATE FILTERING: Check for duplicate webhooks.
+        # The compare-then-write below is race-free because every callstatus
+        # webhook transaction holds the root-SID advisory lock (acquired in
+        # connect.call.on_call_status before any database access).
         call_sid = params.get('CallSid')
         sequence_number = int(params.get('SequenceNumber', 0))
         call_status = params.get('CallStatus')
@@ -280,8 +282,6 @@ class Channel(models.Model):
             if sequence_number < channel.sequence_number or (sequence_number == channel.sequence_number and call_status == channel.status):
                 logger.warning(f"DUPLICATE WEBHOOK FILTERED: CallSid {call_sid} SequenceNumber {sequence_number} (existing: {channel.sequence_number}) CallStatus {call_status} (existing: {channel.status}) - ignoring webhook")
                 return
-            else:
-                logger.info(f"VALID WEBHOOK: CallSid {call_sid} SequenceNumber {sequence_number} CallStatus {call_status} - processing status update")
         if channel:
             # Update channel data.
             data = {
@@ -344,6 +344,11 @@ class Channel(models.Model):
                     data['parent_channel'] = parent_channel.id
                     data['parent_sid'] = parent_channel.parent_channel.sid
                 else:
+                    # The parent's own webhook has not arrived yet. Keep the
+                    # SID anyway: it lets a later webhook link the parent
+                    # channel, and it lets connect.call.on_call_status gather
+                    # the orphan legs of one conversation onto a single call.
+                    data['parent_sid'] = params['ParentCallSid']
                     logger.warning(f"NEW CHANNEL: ParentCallSid {params.get('ParentCallSid')} not found in existing channels!")
             # Find caller user
             caller_pbx_user = None
@@ -407,7 +412,28 @@ class Channel(models.Model):
                 # This is a parent channel (inbound call)
                 data['call_source'] = None  # Will be set when pattern is determined
 
-            channel = self.with_context(tracking_disable=True).create(data)
+            # Idempotent creation: a concurrent webhook (or a redelivery after
+            # a timeout) may have inserted this SID — the UNIQUE(sid)
+            # constraint then turns the race into an IntegrityError. The
+            # savepoint confines the failed INSERT (a poisoned transaction
+            # would lose the webhook for good: there is no catching-up cron).
+            # If the winner's committed row is visible, re-enter through the
+            # update path; under REPEATABLE READ it may be invisible to our
+            # snapshot — then only a fresh transaction can see it, so raise a
+            # concurrency error the framework retries (up to 5 replays).
+            try:
+                with self.env.cr.savepoint():
+                    channel = self.with_context(tracking_disable=True).create(data)
+            except IntegrityError:
+                channel = self.search([('sid', '=', call_sid)])
+                if not channel:
+                    raise ConcurrencyError(
+                        'concurrent connect.channel INSERT for CallSid %s'
+                        % call_sid)
+                logger.warning(
+                    'Channel create lost a duplicate-SID race for %s, '
+                    'retrying as update', call_sid)
+                return self.on_call_status(params)
             debug(self, 'Channel %s created.' % channel.id)
 
             # Store external call leg for outgoing call transfers
