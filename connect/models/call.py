@@ -13,14 +13,11 @@ import logging
 import os
 import re
 import time
-from tempfile import NamedTemporaryFile
 from urllib.parse import urljoin
 from markupsafe import Markup
 import uuid
 from datetime import timedelta
 
-import openai
-import requests
 from psycopg2 import IntegrityError
 
 from odoo import fields, models, api, release, SUPERUSER_ID, tools, _
@@ -121,15 +118,14 @@ class Call(models.Model):
     # Scheduled fields.
     scheduled_datetime = fields.Datetime()
     # Voicemail fields
-    voicemail_url = fields.Char(readonly=True)
-    voicemail_duration = fields.Integer(readonly=True)
-    voicemail_icon = fields.Html(compute='_get_voicemail_icon', string='V', store=True)
+    voicemails = fields.One2many('connect.voicemail', 'call', readonly=True)
+    voicemail = fields.Many2one('connect.voicemail', compute='_get_voicemail_data')
+    voicemail_icon = fields.Html(compute='_get_voicemail_data', string='V')
     if release.version_info[0] >= 17.0:
-        voicemail_widget = fields.Html(compute='_get_voicemail_widget', string='VoiceMail', sanitize=False)
+        voicemail_widget = fields.Html(compute='_get_voicemail_data', string='VoiceMail', sanitize=False)
     else:
-        voicemail_widget = fields.Char(compute='_get_voicemail_widget', string='VoiceMail')
-    voicemail_transcript = fields.Text()
-    voicemail_transcription_error = fields.Char()
+        voicemail_widget = fields.Char(compute='_get_voicemail_data', string='VoiceMail')
+    voicemail_transcript = fields.Text(compute='_get_voicemail_data')
     # Reference, to submit call history and summary.
     ref = fields.Reference(selection=[('res.partner', 'Partner')], compute='_get_ref')
     has_error = fields.Boolean(index=True)
@@ -253,66 +249,23 @@ class Call(models.Model):
             calls.invalidate_recordset(['activity_ids'])
             calls._compute_has_activity()
 
-    def _get_voicemail_widget(self):
-        proxy_recordings = self.env['connect.settings'].sudo().get_param('proxy_recordings')
+    def _get_voicemail_data(self):
+        # Make one query to get all records.
+        voicemails = self.env['connect.voicemail'].search([('call', 'in', [k.id for k in self])])
         for rec in self:
-            if rec.voicemail_url:
-                if proxy_recordings:
-                    media_url = '/connect/voicemail/{}'.format(rec.id)
-                else:
-                    media_url = rec.voicemail_url
-                rec.voicemail_widget = '<audio id="sound_file" preload="auto" ' \
-                    'controls="controls"> ' \
-                    '<source src="{}"/>' \
-                    '</audio>'.format(media_url)
-            else:
-                rec.voicemail_widget = ''
-
-    @api.depends('voicemail_url')
-    def _get_voicemail_icon(self):
-        for rec in self:
-            if rec.voicemail_url:
+            voicemail = voicemails.filtered(lambda x: x.call.id == rec.id)
+            if voicemail:
+                # Make sure we take the last voicemail.
+                voicemail = max(voicemail, key=lambda x: x.id)
+                rec.voicemail = voicemail
+                rec.voicemail_transcript = voicemail.transcript
                 rec.voicemail_icon = '<span class="fa fa-envelope-o"/>'
+                rec.voicemail_widget = voicemail.voicemail_widget
             else:
+                rec.voicemail = False
+                rec.voicemail_transcript = ''
                 rec.voicemail_icon = ''
-
-    @api.constrains('voicemail_url')
-    def _transcribe_voicemail(self):
-        self.ensure_one()
-        openai_key = self.env['connect.settings'].sudo().get_param('openai_api_key')
-        if not openai_key:
-            logger.warning('OpenAI key is not set! Transcription will not be available.')
-            return False
-        if self.voicemail_url:
-            self.transcribe_voicemail(openai_key)
-        else:
-            logger.warning('Voicemail is not available yet!')
-
-    def transcribe_voicemail(self, openai_api_key):
-        result = {}
-        try:
-            client = openai.OpenAI(api_key=openai_api_key)
-            response = requests.get(self.voicemail_url, stream=True)
-            response.raise_for_status()
-            with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        temp_file.write(chunk)
-                temp_file_path = temp_file.name
-            with open(temp_file_path, 'rb') as audio_file:
-                transcript = client.audio.transcriptions.create(
-                    model="whisper-1", file=audio_file,
-                    response_format='verbose_json', timestamp_granularities=["segment"])
-            segments = ''
-            for s in transcript.segments:
-                segments += '{}\n'.format(s.text)
-            result['voicemail_transcript'] = segments.strip()
-            result['voicemail_transcription_error'] = False
-        except Exception as e:
-            logger.exception('Voicemail transcribe error:')
-            result['voicemail_transcription_error'] = str(e)
-        finally:
-            self.write(result)
+                rec.voicemail_widget = ''
 
     @api.depends('duration')
     def _get_duration_human(self):
@@ -1110,17 +1063,6 @@ class Call(models.Model):
         return channel.call.id
 
     @api.model
-    def on_vm_recording_status(self, params):
-        debug(self.sudo(), 'On recording status: %s' % json.dumps(params, indent=2))
-        channel = self.sudo().env['connect.channel'].search([('sid', '=', params['CallSid'])])
-        if channel and channel.call:
-            channel.call.write({
-                'voicemail_url': params.get('RecordingUrl'),
-                'voicemail_duration': int(params.get('RecordingDuration'))
-            })
-        return True
-
-    @api.model
     def on_call_action(self, params):
         debug(self, 'On call action: %s' % params)
         # Check if this is a Dial action webhook with transfer completion data
@@ -1436,6 +1378,19 @@ class Call(models.Model):
             channel.call.clear_transfer_context()
         except Exception as e:
             logger.exception('Register call error:', e)
+
+    def message_post(self, **kwargs):
+        message = super().message_post(**kwargs)
+        # Users tagged in the chatter must be able to open the call: the
+        # follower record rule grants them read access, so subscribe mentioned
+        # internal users (sudo as the poster cannot manage followers).
+        partner_ids = kwargs.get('partner_ids')
+        if partner_ids:
+            partners = self.env['res.partner'].sudo().browse(partner_ids)
+            internal = partners.filtered(lambda p: any(not u.share for u in p.user_ids))
+            if internal:
+                self.sudo().message_subscribe(partner_ids=internal.ids)
+        return message
 
     def register_call_post_message(self, obj, **kwargs):
         try:

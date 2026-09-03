@@ -486,7 +486,8 @@ class User(models.Model):
     def render_voicemail(self, response, request, params):
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
         edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
-        voicemail_record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
+        voicemail_record_status_url = urljoin(
+            api_url, 'twilio/webhook/vm_recordingstatus?vm_user_id={}#e={}'.format(self.id, edge))
         self.get_voicemail_prompt(response)
         response.record(
             maxLength=120,
@@ -681,7 +682,8 @@ class User(models.Model):
             if user.voicemail_enabled:
                 api_url = self.env['connect.settings'].sudo().get_param('api_url')
                 edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
-                record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
+                record_status_url = urljoin(
+                    api_url, 'twilio/webhook/vm_recordingstatus?vm_user_id={}#e={}'.format(user.id, edge))
                 response.pause(length=1)
                 if user.voicemail_prompt:
                     personalized_prompt = user.render_voicemail_prompt()

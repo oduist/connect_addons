@@ -9,3 +9,5 @@ from . import test_twiml_sync
 from . import test_direct_call_finalization
 from . import test_ring_group_size_limit
 from . import test_webhook_concurrency
+from . import test_connect_voicemail
+from . import test_exten

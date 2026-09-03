@@ -15,7 +15,7 @@ class Exten(models.Model):
     _description = 'Exten'
     _order = 'number'
 
-    name = fields.Char(compute='_get_name', copy=False)
+    name = fields.Char(compute='_get_name', search='_search_name', copy=False)
     number = fields.Char('Extension Number', required=True, copy=False)
     model = fields.Char('AppModel')
     model_friendly = fields.Char('Model', compute='_get_model_friendly', store=True, copy=False)
@@ -48,6 +48,13 @@ class Exten(models.Model):
             except Exception as e:
                 logger.exception('Exten name error:')
                 rec.name = 'See Odoo Error Log'
+
+    def _search_name(self, operator, value):
+        # `name` is computed and not stored, so the ORM cannot turn a domain on
+        # it into SQL. It is also _rec_name, so every Many2one autocomplete on
+        # connect.exten searches it. Redirect to the number, the only part of
+        # the label backed by a column.
+        return [('number', operator, value)]
 
     @api.depends('model')
     def _get_model_friendly(self):
