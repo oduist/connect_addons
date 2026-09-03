@@ -258,3 +258,37 @@ class TestParkTransfer(TransactionCase):
             result = self.env['connect.transfer_wizard'].execute_transfer(
                 '7803', 'blind', None, 'CAagentleg')
         self.assertTrue(result['success'], result.get('error'))
+
+    # ------------------------------------------------------------------
+    # Outgoing transfer without a tracked external leg
+    # ------------------------------------------------------------------
+
+    def test_outgoing_transfer_without_external_leg_is_refused(self):
+        """An ordinary outgoing call must not have its agent leg redirected.
+
+        When the external leg is untracked (a late or lost child webhook),
+        the SID the wizard holds is the agent leg running the <Dial>.
+        Replacing its TwiML would tear that Dial down and drop the customer,
+        so the transfer has to fail and leave the call up instead.
+        """
+        self._make_call('CAoutgoing', '7801', '+12898283865', 'outgoing')
+        result, client = self._execute_widget_transfer('CAoutgoing', None)
+        self.assertFalse(result['success'])
+        client.calls.return_value.update.assert_not_called()
+
+    def test_park_retrieval_without_external_leg_still_redirects(self):
+        """The retrieval leg keeps the direct-redirect fallback.
+
+        Its "agent -> slot" record is outgoing and never has an external leg;
+        _link_park_retrieval_leg attaches it to the parked call, which is what
+        tells the wizard the fallback is safe here.
+        """
+        self._park_and_retrieve()
+        retrieval = self.env['connect.channel'].search(
+            [('sid', '=', 'CAretrieval')]).call
+        self.assertTrue(retrieval._is_park_retrieval())
+        result, client = self._execute_widget_transfer('CAretrieval', None)
+        self.assertTrue(result['success'], result.get('error'))
+        updated_sids = [c.args[0] for c in client.calls.call_args_list
+                        if c.args and isinstance(c.args[0], str)]
+        self.assertIn('CAretrieval', updated_sids)
