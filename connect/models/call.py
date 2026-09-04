@@ -835,6 +835,13 @@ class Call(models.Model):
         may still be attached (connect.channel.call cascades, so deleting it
         under them would delete their channels too), and a call that already
         carries recordings, voicemails or child calls is not a placeholder.
+
+        The runtime state the leg produced while it was here — its webhook
+        expectations and the callflow steps it has already played — describes
+        the leg, not the placeholder, so it is moved onto the keeper first.
+        Both those foreign keys cascade, and leaving them behind would lose
+        the callflow progress even without the unlink: their lookups are
+        keyed on the call id, which the leg no longer has.
         """
         if not call or call == keeper or not call.exists():
             return
@@ -850,6 +857,17 @@ class Call(models.Model):
             return
         if self.search_count([('parent_call', '=', call.id)]):
             return
+        call.attempt_ids.sudo().write({'call_id': keeper.id})
+        CallflowCall = self.env['connect.user_callflow_call'].sudo()
+        played = CallflowCall.search([('call', '=', call.id)])
+        if played:
+            # A step the keeper already recorded stays recorded once; the
+            # duplicate goes away with the placeholder.
+            done = CallflowCall.search([
+                ('call', '=', keeper.id),
+                ('callflow', 'in', played.callflow.ids)]).callflow
+            played.filtered(
+                lambda rec: rec.callflow not in done).write({'call': keeper.id})
         logger.info(
             'Dropping placeholder call %s (root SID %s): its leg joined '
             'call %s once the parent channel appeared',

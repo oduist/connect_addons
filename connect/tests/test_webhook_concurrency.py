@@ -143,6 +143,47 @@ class TestWebhookConcurrency(TransactionCase):
                 [('sid', 'in', ['CAnested0', 'CAnested1'])])), 2,
             'dropping the placeholder cascaded onto its former legs')
 
+    def test_placeholder_hands_its_runtime_state_to_the_keeper(self):
+        """Webhook expectations and played callflow steps follow the leg.
+
+        A nested leg can reach /connect/<exten> and play a callflow step
+        while its parent webhook is still late, so that progress is recorded
+        against the placeholder — as are any webhook expectations it set. Both
+        foreign keys cascade, and both lookups are keyed on the call id the
+        leg is about to leave, so they have to move with it.
+        """
+        CallflowCall = self.env['connect.user_callflow_call']
+        callflow = self.env['connect.user_callflow'].create({
+            'user': self.agents[0].id, 'prio': 1,
+            'callflow_type': 'test', 'method': 'get_greeting_message',
+        })
+        self._webhook(dict(self._child('CAstateful', 'CAstatemid', 0),
+                           CallStatus='ringing', SequenceNumber='0'))
+        placeholder = self.env['connect.call'].search(
+            [('root_call_sid', '=', 'CAstatemid')])
+        # The leg greets the caller and sets an expectation, both booked on
+        # the placeholder it currently belongs to.
+        CallflowCall.create(
+            {'call': placeholder.id, 'callflow': callflow.id})
+        placeholder._set_webhook_expectation(
+            'ring_group', {'expected_call_sids': ['CAstateful']})
+        attempt = placeholder.attempt_ids
+        self.assertTrue(attempt)
+        # Root and mid legs arrive, then the leg's next webhook converges it.
+        root_call_id = self._webhook(dict(
+            self.base, CallSid='CAstateroot', Direction='inbound',
+            CallStatus='ringing', SequenceNumber='0'))
+        self._webhook(dict(self._child('CAstatemid', 'CAstateroot', 0),
+                           CallStatus='ringing', SequenceNumber='0'))
+        self._webhook(dict(self._child('CAstateful', 'CAstatemid', 0),
+                           CallStatus='in-progress', SequenceNumber='1'))
+        self.assertFalse(placeholder.exists())
+        self.assertEqual(attempt.call_id.id, root_call_id,
+                         'the webhook expectation was cascaded away')
+        self.assertEqual(
+            CallflowCall.search([('call', '=', root_call_id)]).callflow,
+            callflow, 'the played callflow step was cascaded away')
+
     def test_placeholder_with_a_recording_is_kept(self):
         """Only an empty placeholder may be dropped."""
         self._webhook(dict(self._child('CArecnested', 'CArecmid', 0),
