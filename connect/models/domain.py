@@ -588,17 +588,23 @@ class Domain(models.Model):
         edge = self.env['connect.settings'].get_param('twilio_edge')
         status_url = urljoin(api_url, "twilio/webhook/callstatus#e={}".format(edge))
         record_status_url = urljoin(api_url, "twilio/webhook/recordingstatus#e={}".format(edge))
+        # Without referUrl Twilio has nowhere to deliver the SIP REFER the desk
+        # phone sends when the agent transfers or parks, so the phone tears the
+        # call down instead: an outgoing call could not be parked at all.
+        refer_url = urljoin(api_url, "twilio/webhook/sip_refer#e={}".format(edge))
         call_duration_limit = int(self.env['connect.settings'].sudo().get_param('call_duration_limit'))
         if user.record_calls:
             dial = Dial(
                 timeout=60,
                 callerId=callerId,
                 timeLimit=call_duration_limit,
+                referUrl=refer_url,
                 record="record-from-answer",
                 recordingStatusCallback=record_status_url,
             )
         else:
-            dial = Dial(timeout=60, callerId=callerId, timeLimit=call_duration_limit)
+            dial = Dial(timeout=60, callerId=callerId, timeLimit=call_duration_limit,
+                        referUrl=refer_url)
         dial.number(
             number,
             statusCallback=status_url,
@@ -627,16 +633,19 @@ class Domain(models.Model):
         call_duration_limit = int(self.env['connect.settings'].sudo().get_param('call_duration_limit'))
         # Reuse recording preference from user's settings if available
         record_calls = bool(getattr(pbx_user, 'record_calls', False))
+        refer_url = urljoin(api_url, "twilio/webhook/sip_refer#e={}".format(edge))
         if record_calls:
             dial = Dial(
                 timeout=60,
                 callerId=f"whatsapp:{caller_number}",
                 timeLimit=call_duration_limit,
+                referUrl=refer_url,
                 record="record-from-answer",
                 recordingStatusCallback=record_status_url,
             )
         else:
-            dial = Dial(timeout=60, callerId=f"whatsapp:{caller_number}", timeLimit=call_duration_limit)
+            dial = Dial(timeout=60, callerId=f"whatsapp:{caller_number}",
+                        timeLimit=call_duration_limit, referUrl=refer_url)
         dial.number(
             f"whatsapp:{number}",
             statusCallback=status_url,
