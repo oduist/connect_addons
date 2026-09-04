@@ -258,3 +258,66 @@ class TestParkTransfer(TransactionCase):
             result = self.env['connect.transfer_wizard'].execute_transfer(
                 '7803', 'blind', None, 'CAagentleg')
         self.assertTrue(result['success'], result.get('error'))
+
+    # ------------------------------------------------------------------
+    # Feature codes dialled from the web phone (no SIP REFER)
+    # ------------------------------------------------------------------
+
+    def _twiml_sent(self, client):
+        """Map each Twilio call SID to the TwiML that was pushed onto it."""
+        sids = [c.args[0] for c in client.calls.call_args_list
+                if c.args and isinstance(c.args[0], str)]
+        twimls = [c.kwargs.get('twiml', '')
+                  for c in client.calls.return_value.update.call_args_list]
+        return dict(zip(sids, twimls))
+
+    def _bridged_call(self):
+        """An answered incoming call: customer leg with the agent leg on it."""
+        call = self._make_call('CAparkcust', '+12898283865', '+13658257665',
+                               'incoming', self.partner)
+        customer = self.env['connect.channel'].search([('sid', '=', 'CAparkcust')])
+        self.env['connect.channel'].create({
+            'sid': 'CAparkagent', 'call': call.id,
+            'parent_channel': customer.id, 'caller': '+12898283865',
+            'called': self.retriever_uri, 'status': 'in-progress',
+            'technical_direction': 'outbound-dial',
+        })
+        return call
+
+    def test_park_feature_code_from_the_web_phone_parks_the_customer(self):
+        """*701 typed into the transfer field must park, not dial.
+
+        The web phone cannot send a SIP REFER, so the wizard renders the
+        extension against the agent's own leg: park_call then walks up to the
+        customer, moves them into the queue and hangs the agent leg up.
+        """
+        call = self._bridged_call()
+        client = MagicMock()
+        with patch.object(type(self.env['connect.settings']), 'get_client',
+                          return_value=client):
+            result = self.env['connect.transfer_wizard'].execute_transfer(
+                '*701', 'blind', None, 'CAparkagent')
+        self.assertTrue(result['success'], result.get('error'))
+        sent = self._twiml_sent(client)
+        self.assertIn('<Enqueue>park-701</Enqueue>', sent.get('CAparkcust', ''),
+                      'the customer was not moved into the parking queue')
+        self.assertIn('<Hangup', sent.get('CAparkagent', ''),
+                      'the agent leg was not released')
+        call.invalidate_recordset()
+        self.assertEqual(call.park_slot, '701')
+        self.assertEqual(call.park_call_sid, 'CAparkcust')
+
+    def test_unknown_feature_code_is_never_dialled_as_a_number(self):
+        """A target that is neither an extension nor a number is refused.
+
+        "*999" used to be formatted into "+1*999" and pushed onto the agent
+        leg as a <Dial>, which tore down the bridge and dropped the customer.
+        """
+        self._bridged_call()
+        client = MagicMock()
+        with patch.object(type(self.env['connect.settings']), 'get_client',
+                          return_value=client):
+            result = self.env['connect.transfer_wizard'].execute_transfer(
+                '*999', 'blind', None, 'CAparkagent')
+        self.assertFalse(result['success'])
+        client.calls.return_value.update.assert_not_called()

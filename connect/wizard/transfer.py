@@ -2,6 +2,7 @@ from odoo import models, fields, api
 from twilio.twiml.voice_response import VoiceResponse, Dial
 from urllib.parse import urljoin
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +46,22 @@ class CallForwardHandler(models.TransientModel):
                     'error': 'Twilio client not configured'
                 }
 
+            # Feature codes (*701-*710 park, 701-710 unpark, IVRs, queues) are
+            # dialplan entries rather than people: they run against the leg
+            # that dialled them, the way a SIP phone's REFER does.
+            feature_code = self._execute_feature_code(
+                client, session_id, phone_number)
+            if feature_code is not None:
+                return feature_code
+
             # Determine if phone_number is an extension or external number
             target_number = self._resolve_phone_number(phone_number)
             logger.info('Resolved transfer target: %s -> %s', phone_number, target_number)
+            if not target_number:
+                return {
+                    'success': False,
+                    'error': f'{phone_number} is neither a known extension nor a dialable number'
+                }
             
             if transfer_type == 'blind':
                 success = self._execute_blind_transfer(client, session_id, target_number, call_id)
@@ -153,6 +167,39 @@ class CallForwardHandler(models.TransientModel):
             logger.error(f'Could not get call state: {e}')
             return {'error': str(e)}
 
+    def _execute_feature_code(self, client, session_id, phone_number):
+        """Run an extension that is not a person against the caller's own leg.
+
+        Park (*701-*710), unpark (701-710) and any other connect.twiml
+        extension are dialplan entries: dialing one from a SIP phone renders it
+        for the leg that asked (connect.user.handle_sip_refer), and park_call()
+        relies on that — it walks the channel tree up from CallSid to find the
+        customer to move into the queue, then hangs the asking leg up. The web
+        phone has no REFER, so the wizard renders the extension itself and
+        pushes the result onto the same leg.
+
+        Returns an execute_transfer result dict, or None when phone_number is
+        not such an extension and the normal transfer path applies.
+        """
+        exten = self.env['connect.exten'].sudo().search(
+            [('number', '=', phone_number)], limit=1)
+        if not exten or not exten.dst or exten.dst._name == 'connect.user':
+            return None
+        pbx_user = self.env['connect.user'].sudo().search(
+            [('user', '=', self.env.user.id)], limit=1)
+        # The dict handle_sip_refer() passes on: CallSid is the leg running the
+        # code, Caller is who to credit the action to (park_call records it as
+        # the parking user).
+        request = {'CallSid': session_id, 'Caller': pbx_user.uri or ''}
+        twiml = str(exten.sudo().render(request=request, params={}))
+        logger.info('Feature code %s (%s) on leg %s',
+                    phone_number, exten.name, session_id)
+        client.calls(session_id).update(twiml=twiml)
+        return {
+            'success': True,
+            'message': f'{exten.name} executed',
+        }
+
     def _resolve_phone_number(self, phone_number):
         """
         Convert extension numbers to Twilio Client identities with enhanced debugging
@@ -204,6 +251,16 @@ class CallForwardHandler(models.TransientModel):
                 return client_target
         else:
             # External phone number - ensure it has proper formatting
+            phone_number = re.sub(r'[\s().-]', '', phone_number.strip())
+            if not phone_number.lstrip('+').isdigit():
+                # A feature code such as "*701" used to end up here and become
+                # "+1*701": the blind transfer then replaced the agent leg's
+                # TwiML with an unroutable <Dial>, which tore down the bridge
+                # and dropped the customer. Refuse instead of dialing junk.
+                logger.error(
+                    'Transfer target %s is neither a known extension nor a '
+                    'dialable number', phone_number)
+                return False
             if not phone_number.startswith('+'):
                 # Try to get default country code from settings, fallback to US
                 try:
