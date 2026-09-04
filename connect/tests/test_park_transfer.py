@@ -258,3 +258,77 @@ class TestParkTransfer(TransactionCase):
             result = self.env['connect.transfer_wizard'].execute_transfer(
                 '7803', 'blind', None, 'CAagentleg')
         self.assertTrue(result['success'], result.get('error'))
+
+    # ------------------------------------------------------------------
+    # Parking an outgoing call (agent leg is the root, customer is the child)
+    # ------------------------------------------------------------------
+
+    def _outgoing_call_with_external_leg(self):
+        """The agent dialled out: their own leg is the root of the call."""
+        call = self._make_call('CAagentroot', self.retriever_uri, '+12898283865',
+                               'outgoing', self.partner)
+        agent = self.env['connect.channel'].search([('sid', '=', 'CAagentroot')])
+        self.env['connect.channel'].create({
+            'sid': 'CAexternalleg', 'call': call.id, 'parent_channel': agent.id,
+            'caller': '+13658257665', 'called': '+12898283865',
+            'status': 'in-progress', 'technical_direction': 'outbound-dial',
+        })
+        return call
+
+    def test_parking_an_outgoing_call_parks_the_external_party(self):
+        """The leg to park is the one we dialled out on, not an ancestor.
+
+        On an outgoing call the agent's leg is the root, so the old
+        walk-up-the-tree lookup found nobody and enqueued the agent instead of
+        the customer.
+        """
+        call = self._outgoing_call_with_external_leg()
+        client = MagicMock()
+        with patch.object(type(self.env['connect.settings']), 'get_client',
+                          return_value=client):
+            response = self.env['connect.call'].park_call(
+                {'CallSid': 'CAagentroot', 'Caller': self.retriever_uri},
+                {'ExtenNumber': '*703'})
+        updated = [c.args[0] for c in client.calls.call_args_list
+                   if c.args and isinstance(c.args[0], str)]
+        self.assertEqual(updated, ['CAexternalleg'],
+                         'the wrong leg was moved into the parking slot')
+        twiml = client.calls.return_value.update.call_args.kwargs.get('twiml', '')
+        self.assertIn('<Enqueue>park-703</Enqueue>', twiml)
+        self.assertIn('<Hangup', str(response), 'the agent leg was not released')
+        call.invalidate_recordset()
+        self.assertEqual(call.park_slot, '703')
+        self.assertEqual(call.park_call_sid, 'CAexternalleg')
+
+    def test_outgoing_dial_carries_a_refer_target(self):
+        """A desk phone can only park if its <Dial> has referUrl.
+
+        Without it Twilio drops the SIP REFER — and the phone tears the call
+        down — so an outgoing call could not be parked or transferred at all.
+        """
+        self.env['connect.outgoing_callerid'].create({
+            'friendly_name': 'Test DID', 'number': '+13658257660',
+            'callerid_type': 'number', 'is_default': True,
+        })
+        twiml = str(self.domain.originate_external_call(
+            '+12898283865', {'Caller': self.retriever_uri}))
+        self.assertIn('referUrl=', twiml)
+        self.assertIn('twilio/webhook/sip_refer', twiml)
+
+    def test_sip_refer_to_a_park_code_on_an_outgoing_call_parks_the_customer(self):
+        """The whole desk-phone path: REFER to *704 while dialled out."""
+        call = self._outgoing_call_with_external_leg()
+        client = MagicMock()
+        with patch.object(type(self.env['connect.settings']), 'get_client',
+                          return_value=client):
+            response = self.env['connect.user'].handle_sip_refer({
+                'CallSid': 'CAagentroot',
+                'Caller': self.retriever_uri,
+                'ReferTransferTarget': '<sip:*704@%s>' % self.domain.domain_name,
+            })
+        twiml = client.calls.return_value.update.call_args.kwargs.get('twiml', '')
+        self.assertIn('<Enqueue>park-704</Enqueue>', twiml)
+        self.assertIn('<Hangup', str(response))
+        call.invalidate_recordset()
+        self.assertEqual(call.park_slot, '704')
+        self.assertEqual(call.park_call_sid, 'CAexternalleg')

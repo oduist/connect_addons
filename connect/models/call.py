@@ -1685,36 +1685,26 @@ class Call(models.Model):
         exten = params.get('ExtenNumber', '')
         slot = exten.lstrip('*')
         call_sid = request.get('CallSid')
-        parent_call_sid = request.get('ParentCallSid')
-        # Twilio omits ParentCallSid for SIP REFER fired from a Dial inside a
-        # callflow path. Fall back to our channel records, where the parent
-        # relation is stored from prior status webhooks.
-        if not parent_call_sid and call_sid:
-            channel = self.env['connect.channel'].sudo().search(
-                [('sid', '=', call_sid)], limit=1)
-            root = channel
-            while root.parent_channel:
-                root = root.parent_channel
-            if root and root.sid and root.sid != call_sid:
-                parent_call_sid = root.sid
-                debug(self, 'park_call: resolved parent via channel: %s' % parent_call_sid)
-        debug(self, 'park_call: CallSid=%s ParentCallSid=%s slot=%s' % (call_sid, parent_call_sid, slot))
+        party_call_sid = self._get_park_party_sid(call_sid, request.get('ParentCallSid'))
+        debug(self, 'park_call: CallSid=%s party=%s slot=%s' % (
+            call_sid, party_call_sid, slot))
 
-        # Redirect the parent call (customer) to the parking queue
-        if parent_call_sid:
+        # Redirect the other party (the customer) to the parking queue
+        if party_call_sid:
             try:
                 client = self.env['connect.settings'].get_client()
                 enqueue_twiml = VoiceResponse()
                 enqueue_twiml.enqueue('park-%s' % slot)
-                client.calls(parent_call_sid).update(twiml=str(enqueue_twiml))
-                debug(self, 'park_call: Redirected parent %s to park-%s' % (parent_call_sid, slot))
+                client.calls(party_call_sid).update(twiml=str(enqueue_twiml))
+                debug(self, 'park_call: Redirected %s to park-%s' % (party_call_sid, slot))
             except Exception as e:
-                logger.error('park_call: Failed to redirect parent call: %s', e)
+                logger.error('park_call: Failed to redirect the parked call: %s', e)
             else:
-                self._register_parked_call(parent_call_sid, slot, request)
+                self._register_parked_call(party_call_sid, slot, request)
         else:
-            # No parent call — this is a direct call to *701, just enqueue it
-            debug(self, 'park_call: No ParentCallSid, enqueueing CallSid=%s' % call_sid)
+            # Nobody on the other side — this is a direct call to *701, so the
+            # asking leg is the one that waits in the slot.
+            debug(self, 'park_call: No other party, enqueueing CallSid=%s' % call_sid)
             self._register_parked_call(call_sid, slot, request)
             response = VoiceResponse()
             response.enqueue('park-%s' % slot)
@@ -1724,6 +1714,39 @@ class Call(models.Model):
         response = VoiceResponse()
         response.hangup()
         return response
+
+    @api.model
+    def _get_park_party_sid(self, call_sid, parent_call_sid=None):
+        """Find the leg to move into the slot when call_sid asks to park.
+
+        It is the *other* side of the bridge, and which side that is depends
+        on the direction. On an incoming call the agent is the child leg and
+        the customer is an ancestor — Twilio names it in ParentCallSid, except
+        for a SIP REFER fired from a Dial inside a callflow, where the channel
+        records are the only source. On an outgoing call the topology is
+        inverted: the agent's own leg is the root and the customer is the leg
+        we dialled out on, so walking up finds nobody and the party has to be
+        picked from the call's other live legs.
+        """
+        if parent_call_sid or not call_sid:
+            return parent_call_sid
+        channel = self.env['connect.channel'].sudo().search(
+            [('sid', '=', call_sid)], limit=1)
+        root = channel
+        while root.parent_channel:
+            root = root.parent_channel
+        if root.sid and root.sid != call_sid:
+            debug(self, 'park_call: resolved party via ancestry: %s' % root.sid)
+            return root.sid
+        live = channel.call.channels.filtered(
+            lambda rec: rec.sid and rec.sid != call_sid
+            and rec.status not in CALL_END_STATUSES)
+        party_sid = live.sorted('id', reverse=True)[:1].sid
+        if not party_sid:
+            party_sid = channel.call.get_external_call_leg() if channel.call else False
+        if party_sid:
+            debug(self, 'park_call: resolved party via call legs: %s' % party_sid)
+        return party_sid
 
     @api.model
     def _register_parked_call(self, parked_call_sid, slot, request):
