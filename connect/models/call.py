@@ -634,6 +634,20 @@ class Call(models.Model):
             })
         logger.info(f"Call {self.id}: Stored external call leg SID: {external_call_sid}")
 
+    def _is_park_retrieval(self):
+        """True for the legs of a call retrieved from a parking slot.
+
+        Retrieval is the one flow where an outgoing call legitimately has no
+        tracked external leg, so the transfer wizard needs to recognise it
+        positively rather than infer it from that absence. Two records take
+        part: the parked call itself, which keeps park_call_sid after
+        unpark_call() clears only park_slot, and the "agent -> slot" retrieval
+        leg, which _link_park_retrieval_leg() attaches to it via parent_call.
+        """
+        self.ensure_one()
+        return bool(self.park_call_sid
+                    or (self.parent_call and self.parent_call.park_call_sid))
+
     def get_external_call_leg(self):
         """Get an external leg from runtime attempts, then legacy JSON."""
         self.ensure_one()
@@ -806,6 +820,61 @@ class Call(models.Model):
             (CALL_SID_LOCK_CLASS, sid))
 
     @api.model
+    def _drop_orphan_call(self, call, keeper):
+        """Delete the placeholder call an orphan leg created for itself.
+
+        ParentCallSid is only the *immediate* parent, so a nested leg (a
+        transfer target dialed from a child leg, the park dial-back) whose
+        parent channel has not been created yet cannot know the conversation
+        root: it keys a new call on that mid-level SID. Once the parent
+        channel shows up the leg is moved onto the real conversation call by
+        the caller of this method, and the placeholder is left behind with no
+        channels, stuck on a live status, holding a wrong SID against
+        UNIQUE(root_call_sid) — which would also make the next orphan sibling
+        adopt it. Drop it, but only once it owns nothing: other orphan legs
+        may still be attached (connect.channel.call cascades, so deleting it
+        under them would delete their channels too), and a call that already
+        carries recordings, voicemails or child calls is not a placeholder.
+
+        The runtime state the leg produced while it was here — its webhook
+        expectations and the callflow steps it has already played — describes
+        the leg, not the placeholder, so it is moved onto the keeper first.
+        Both those foreign keys cascade, and leaving them behind would lose
+        the callflow progress even without the unlink: their lookups are
+        keyed on the call id, which the leg no longer has.
+        """
+        if not call or call == keeper or not call.exists():
+            return
+        # The channel was just re-pointed in cache; the checks below must see
+        # it, so push that write out before asking what the call still owns.
+        self.env['connect.channel'].flush_model(['call'])
+        if call.channels or call.voicemails:
+            return
+        # recording_ids is computed and walks up parent_call, so ask the
+        # recordings themselves whether any is stored on this call.
+        if self.env['connect.recording'].sudo().search_count(
+                [('call', '=', call.id)]):
+            return
+        if self.search_count([('parent_call', '=', call.id)]):
+            return
+        call.attempt_ids.sudo().write({'call_id': keeper.id})
+        CallflowCall = self.env['connect.user_callflow_call'].sudo()
+        played = CallflowCall.search([('call', '=', call.id)])
+        if played:
+            # A step the keeper already recorded stays recorded once; the
+            # duplicate goes away with the placeholder.
+            done = CallflowCall.search([
+                ('call', '=', keeper.id),
+                ('callflow', 'in', played.callflow.ids)]).callflow
+            played.filtered(
+                lambda rec: rec.callflow not in done).write({'call': keeper.id})
+        logger.info(
+            'Dropping placeholder call %s (root SID %s): its leg joined '
+            'call %s once the parent channel appeared',
+            call.id, call.root_call_sid, keeper.id)
+        call.sudo().unlink()
+
+    @api.model
     def on_call_status(self, params):
         # tracking_disable: the webhook hot path must not spend queries on
         # mail.thread field tracking of connect.call / connect.channel rows.
@@ -907,7 +976,9 @@ class Call(models.Model):
         elif channel.parent_channel and channel.parent_channel.call \
                 and channel.call != channel.parent_channel.call:
             # Secondary channel, assign the call from the parent.
+            abandoned = channel.call
             channel.call = channel.parent_channel.call
+            self._drop_orphan_call(abandoned, channel.call)
         # DATABASE LOCKING, level 2 of 2: per-call advisory lock. Webhooks of
         # nested legs (e.g. a transfer target dialed from a child leg) carry
         # the mid-level SID as ParentCallSid, so their level-1 key differs
