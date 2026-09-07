@@ -80,9 +80,10 @@ class TestCallParking(TransactionCase):
         # Slot is freed, the SID is kept so an unanswered retrieval can re-park.
         self.assertFalse(parked.park_slot)
         self.assertEqual(parked.park_call_sid, 'CAcustomer')
-        # The retrieval leg is no longer an orphan "206 -> 702" call.
-        self.assertEqual(retrieval.parent_call, parked)
-        self.assertEqual(retrieval.partner, self.partner)
+        # No phantom "206 -> 702" call is left behind: the retrieval leg's
+        # channel joins the customer's call and the stray record is dropped.
+        self.assertFalse(retrieval.exists())
+        self.assertIn('CAretrieval', parked.channels.mapped('sid'))
 
     def test_retrieval_falls_back_to_queue_when_nothing_is_tracked(self):
         self._make_call('CAretrieval', '206', '702', 'outgoing')

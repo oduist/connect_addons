@@ -224,14 +224,17 @@ class TestParkTransfer(TransactionCase):
                          'The transfer redirected back to the retriever.')
 
     def test_widget_transfer_works_when_bound_to_the_retrieval_call(self):
-        """The agent leg may resolve to the "agent -> slot" retrieval record,
-        which is an outgoing call with no external leg to redirect."""
-        self._park_and_retrieve()
-        retrieval = self.env['connect.channel'].search(
+        """A widget still holding the "agent -> slot" leg's SID must work.
+
+        That leg is absorbed into the customer's call on retrieval, so its
+        SID now resolves to the incoming conversation and the transfer takes
+        the ordinary incoming-call path instead of the outgoing special case.
+        """
+        parked = self._park_and_retrieve()
+        absorbed = self.env['connect.channel'].search(
             [('sid', '=', 'CAretrieval')], limit=1).call
-        self.assertEqual(retrieval.direction, 'outgoing')
-        self._attach_agent_leg(retrieval, sid='CAagentleg2')
-        result, client = self._execute_widget_transfer('CAagentleg2', 'CAcustomer')
+        self.assertEqual(absorbed, parked)
+        result, client = self._execute_widget_transfer('CAretrieval', None)
         self.assertTrue(result['success'], result.get('error'))
         twiml = client.calls.return_value.update.call_args.kwargs['twiml']
         self.assertIn('/connect/7802', twiml)
@@ -277,13 +280,27 @@ class TestParkTransfer(TransactionCase):
         client.calls.return_value.update.assert_not_called()
 
     def test_park_retrieval_without_external_leg_still_redirects(self):
-        """The retrieval leg keeps the direct-redirect fallback.
+        """The queue-bridge retrieval leg keeps the direct-redirect fallback.
 
-        Its "agent -> slot" record is outgoing and never has an external leg;
-        _link_park_retrieval_leg attaches it to the parked call, which is what
+        When the dial-back is impossible (Twilio error) the caller is bridged
+        through the plain queue, and the "agent -> slot" record survives as
+        the conversation: outgoing, never with an external leg.
+        _link_park_retrieval_leg attached it to the parked call, which is what
         tells the wizard the fallback is safe here.
         """
-        self._park_and_retrieve()
+        self._make_call('CAcustomer', '+12898283865', '+13658257665',
+                        'incoming', self.partner)
+        self.env['connect.call'].park_call(
+            {'CallSid': 'CAcustomer', 'Caller': self.retriever_uri},
+            {'ExtenNumber': '*702'})
+        self._make_call('CAretrieval', '7801', '702', 'outgoing')
+        twilio = MagicMock()
+        twilio.calls.return_value.update.side_effect = Exception('Twilio is down')
+        with patch.object(type(self.env['connect.settings']), 'get_client',
+                          return_value=twilio):
+            self.env['connect.call'].unpark_call(
+                {'CallSid': 'CAretrieval', 'Caller': self.retriever_uri},
+                {'ExtenNumber': '702'})
         retrieval = self.env['connect.channel'].search(
             [('sid', '=', 'CAretrieval')]).call
         self.assertTrue(retrieval._is_park_retrieval())
