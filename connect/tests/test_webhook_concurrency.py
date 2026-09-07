@@ -92,6 +92,119 @@ class TestWebhookConcurrency(TransactionCase):
         self.assertEqual(call.root_call_sid, parent_sid,
                          'the conversation call must carry its root SID')
 
+    def test_nested_orphan_leg_leaves_no_placeholder_call_behind(self):
+        """A grandchild that beats its parent must not litter the call log.
+
+        ParentCallSid is the immediate parent, so a leg of a nested chain
+        (root -> mid -> target, as produced by a transfer redirect or the park
+        dial-back) that arrives before the mid leg keys a call on the mid SID.
+        Once the mid leg shows up the target joins the real conversation, and
+        the call it created must go away instead of sitting in the log on a
+        live status and holding mid SID against UNIQUE(root_call_sid).
+        """
+        Call = self.env['connect.call']
+        # Two targets dialed from the mid leg arrive first: no parent channel
+        # exists yet, so they share a call keyed on the mid SID.
+        self._webhook(dict(self._child('CAnested0', 'CAmid', 0),
+                           CallStatus='ringing', SequenceNumber='0'))
+        self._webhook(dict(self._child('CAnested1', 'CAmid', 1),
+                           CallStatus='ringing', SequenceNumber='0'))
+        placeholder = Call.search([('root_call_sid', '=', 'CAmid')])
+        self.assertEqual(len(placeholder), 1,
+                         'the orphan legs must share one placeholder call')
+        # The root and then the mid leg arrive; the mid leg joins the root.
+        root_call_id = self._webhook(dict(
+            self.base, CallSid='CAroot', Direction='inbound',
+            CallStatus='ringing', SequenceNumber='0'))
+        self._webhook(dict(self._child('CAmid', 'CAroot', 0),
+                           CallStatus='ringing', SequenceNumber='0'))
+        self.assertEqual(
+            self.env['connect.channel'].search(
+                [('sid', '=', 'CAmid')]).call.id, root_call_id)
+        # The first target's next webhook links its parent and converges. The
+        # placeholder still carries its sibling, so it must survive.
+        self.assertEqual(
+            self._webhook(dict(self._child('CAnested0', 'CAmid', 0),
+                               CallStatus='in-progress', SequenceNumber='1')),
+            root_call_id)
+        self.assertTrue(placeholder.exists(),
+                        'a placeholder still holding a leg was deleted')
+        # The sibling converges too: nothing is left on the placeholder.
+        self.assertEqual(
+            self._webhook(dict(self._child('CAnested1', 'CAmid', 1),
+                               CallStatus='in-progress', SequenceNumber='1')),
+            root_call_id)
+        self.assertFalse(placeholder.exists(),
+                         'the emptied placeholder call was not dropped')
+        self.assertFalse(Call.search([('root_call_sid', '=', 'CAmid')]),
+                         'the mid SID still blocks UNIQUE(root_call_sid)')
+        self.assertEqual(
+            len(self.env['connect.channel'].search(
+                [('sid', 'in', ['CAnested0', 'CAnested1'])])), 2,
+            'dropping the placeholder cascaded onto its former legs')
+
+    def test_placeholder_hands_its_runtime_state_to_the_keeper(self):
+        """Webhook expectations and played callflow steps follow the leg.
+
+        A nested leg can reach /connect/<exten> and play a callflow step
+        while its parent webhook is still late, so that progress is recorded
+        against the placeholder — as are any webhook expectations it set. Both
+        foreign keys cascade, and both lookups are keyed on the call id the
+        leg is about to leave, so they have to move with it.
+        """
+        CallflowCall = self.env['connect.user_callflow_call']
+        callflow = self.env['connect.user_callflow'].create({
+            'user': self.agents[0].id, 'prio': 1,
+            'callflow_type': 'test', 'method': 'get_greeting_message',
+        })
+        self._webhook(dict(self._child('CAstateful', 'CAstatemid', 0),
+                           CallStatus='ringing', SequenceNumber='0'))
+        placeholder = self.env['connect.call'].search(
+            [('root_call_sid', '=', 'CAstatemid')])
+        # The leg greets the caller and sets an expectation, both booked on
+        # the placeholder it currently belongs to.
+        CallflowCall.create(
+            {'call': placeholder.id, 'callflow': callflow.id})
+        placeholder._set_webhook_expectation(
+            'ring_group', {'expected_call_sids': ['CAstateful']})
+        attempt = placeholder.attempt_ids
+        self.assertTrue(attempt)
+        # Root and mid legs arrive, then the leg's next webhook converges it.
+        root_call_id = self._webhook(dict(
+            self.base, CallSid='CAstateroot', Direction='inbound',
+            CallStatus='ringing', SequenceNumber='0'))
+        self._webhook(dict(self._child('CAstatemid', 'CAstateroot', 0),
+                           CallStatus='ringing', SequenceNumber='0'))
+        self._webhook(dict(self._child('CAstateful', 'CAstatemid', 0),
+                           CallStatus='in-progress', SequenceNumber='1'))
+        self.assertFalse(placeholder.exists())
+        self.assertEqual(attempt.call_id.id, root_call_id,
+                         'the webhook expectation was cascaded away')
+        self.assertEqual(
+            CallflowCall.search([('call', '=', root_call_id)]).callflow,
+            callflow, 'the played callflow step was cascaded away')
+
+    def test_placeholder_with_a_recording_is_kept(self):
+        """Only an empty placeholder may be dropped."""
+        self._webhook(dict(self._child('CArecnested', 'CArecmid', 0),
+                           CallStatus='ringing', SequenceNumber='0'))
+        placeholder = self.env['connect.call'].search(
+            [('root_call_sid', '=', 'CArecmid')])
+        self.env['connect.recording'].create({
+            'call': placeholder.id, 'sid': 'REtest', 'call_sid': 'CArecnested',
+        })
+        root_call_id = self._webhook(dict(
+            self.base, CallSid='CArecroot', Direction='inbound',
+            CallStatus='ringing', SequenceNumber='0'))
+        self._webhook(dict(self._child('CArecmid', 'CArecroot', 0),
+                           CallStatus='ringing', SequenceNumber='0'))
+        self._webhook(dict(self._child('CArecnested', 'CArecmid', 0),
+                           CallStatus='in-progress', SequenceNumber='1'))
+        self.assertTrue(placeholder.exists(),
+                        'a call carrying a recording was deleted')
+        self.assertEqual(root_call_id, self.env['connect.channel'].search(
+            [('sid', '=', 'CArecnested')]).call.id)
+
     def test_duplicate_root_sid_is_refused_by_the_database(self):
         """UNIQUE(root_call_sid) is the backstop for call-creation races the
         snapshot cannot see."""

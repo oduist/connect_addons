@@ -514,10 +514,22 @@ class CallForwardHandler(models.TransientModel):
                     # Not every outgoing call has an external leg to redirect:
                     # the "agent -> slot" record of a park retrieval is
                     # outgoing, yet the leg to move is simply call_sid (the
-                    # customer). Fall back to the direct redirect instead of
-                    # failing the transfer.
+                    # customer), so there the direct redirect is the right
+                    # move. It is NOT for an ordinary outgoing call: call_sid
+                    # is then the agent leg running the <Dial>, and replacing
+                    # its TwiML tears that Dial down and drops the external
+                    # party. A missing external leg there only means the child
+                    # leg is late or was never tracked, so fail the transfer
+                    # and leave the call up for the agent to retry.
+                    if not call._is_park_retrieval():
+                        logger.error(
+                            'No external call leg for outgoing call %s '
+                            '(sid %s), aborting transfer instead of '
+                            'redirecting the agent leg',
+                            call.id, call_sid)
+                        return False
                     logger.warning(
-                        'No external call leg for outgoing transfer, '
+                        'Park retrieval without a tracked external leg, '
                         'redirecting %s directly', call_sid)
                     is_outgoing_call = False
             if is_outgoing_call:
