@@ -1012,9 +1012,15 @@ class Call(models.Model):
         # Check if we need to set a partner from child channel
         if not call.partner and channel.partner:
             call_vals['partner'] = channel.partner.id
-        # Update call duration based on all channels
+        # The call duration is the Twilio parent leg's: it spans the whole
+        # conversation. Summing every channel double-counts — the agent legs
+        # run inside the parent leg, so a parked/transferred call reported
+        # far more seconds than it lasted.
         if call.channels:
-            total_duration = sum(call.channels.mapped('duration') or [0])
+            root_channels = call.channels.filtered(
+                lambda c: c.sid and c.sid == call.root_call_sid
+            ) or call.channels.filtered(lambda c: not c.parent_channel)
+            total_duration = sum(root_channels.mapped('duration') or [0])
             if call.duration != total_duration:
                 call_vals['duration'] = total_duration
         # Pattern detection from explicit tagging
@@ -1872,11 +1878,12 @@ class Call(models.Model):
         parked_call = self._get_parked_call(slot)
         # Link the retrieval leg to the parked call so the call log keeps the
         # customer's identity instead of showing a bare "exten -> slot" call.
-        self._link_park_retrieval_leg(request, slot, parked_call, retriever)
+        retrieval_call = self._link_park_retrieval_leg(request, slot, parked_call, retriever)
         if parked_call and retriever:
             if self._dial_back_parked_call(parked_call, retriever, slot, request):
                 # The parked call is now dialing the retriever, release the leg
                 # the retriever dialed the slot with.
+                self._absorb_park_retrieval_call(retrieval_call, parked_call)
                 response = VoiceResponse()
                 response.hangup()
                 return response
@@ -1914,6 +1921,35 @@ class Call(models.Model):
         retrieval_call.sudo()._message_log(body=Markup(_(
             'Retrieval of the call parked in slot %(slot)s.')) % {'slot': slot})
         return retrieval_call
+
+    @api.model
+    def _absorb_park_retrieval_call(self, retrieval_call, parked_call):
+        """Fold the "agent dialed the slot" call into the retrieved call.
+
+        Once the dial-back is accepted, the leg the agent dialed the slot with
+        is hung up and never carries the conversation, yet it already created
+        its own connect.call: left alone, every retrieval adds a phantom
+        "completed" call to the log. Its Twilio call is still real though — a
+        final status webhook for it arrives after this transaction — so the
+        record cannot simply be deleted: with no channel to match, that
+        webhook would recreate the phantom. Re-home the channel onto the
+        conversation call first, then the webhook updates it there, and the
+        emptied call row qualifies for _drop_orphan_call.
+
+        Only the dial-back path may absorb: in the queue-bridge fallback the
+        "dialed the slot" leg IS the conversation and its call must stay.
+        """
+        if not retrieval_call or not parked_call or retrieval_call == parked_call:
+            return
+        # Serialize with the conversation's own webhooks before touching its
+        # channel list. Consistent with the documented order: this transaction
+        # holds the retrieval leg's SID lock, and call locks always come after
+        # SID locks.
+        self.env.cr.execute(
+            "SELECT pg_advisory_xact_lock(%s, %s)",
+            (CALL_LOCK_CLASS, parked_call.id))
+        retrieval_call.sudo().channels.write({'call': parked_call.id})
+        self._drop_orphan_call(retrieval_call, parked_call)
 
     @api.model
     def _dial_back_parked_call(self, parked_call, retriever, slot, request):

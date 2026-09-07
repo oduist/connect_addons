@@ -78,7 +78,9 @@ class TestDirectCallFinalization(TransactionCase):
                          'terminal client leg must resolve the expectation')
         self.assertEqual(call.status, 'completed')
         self.assertEqual(call.answered_user, self.agent.user)
-        self.assertEqual(call.duration, 30)
+        # The duration is the Twilio parent leg's (18s): the client leg runs
+        # inside it, so summing both would double-count the talk time.
+        self.assertEqual(call.duration, 18)
 
     def test_unanswered_leg_still_blocks_until_it_ends(self):
         """The expectation keeps doing its job: a live leg defers finalization."""
