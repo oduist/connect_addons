@@ -26,12 +26,23 @@ class TestTwiMLSync(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         settings = cls.env['connect.settings']
-        settings.set_param('api_url', 'https://pbx.example.com/')
+        # api_url is computed from the connect.api_url system parameter and has
+        # no inverse, so set_param() would only write the field cache: the first
+        # invalidation drops it and sync() sees the default http://localhost:8069
+        # and refuses to run. Set the parameter it computes from instead.
+        cls.env['ir.config_parameter'].sudo().set_param(
+            'connect.api_url', 'https://pbx.example.com/')
         settings.set_param('account_sid', 'AC' + '0' * 30)
         settings.set_param('auth_token', 'a' * 32)
         # write() would push each change straight to Twilio, these tests call
         # sync() explicitly instead.
         settings.set_param('twilio_auto_sync', False)
+        # On a freshly installed database the apps shipped by the module carry
+        # no SID, so sync() would create one in Twilio for each of them and the
+        # create() assertions below could not tell them apart from the app under
+        # test. Give them SIDs the fake client answers normally for.
+        for app in cls.env['connect.twiml'].search([]):
+            app.sid = 'APshipped{}'.format(app.id)
 
     def _app(self, name, sid, old_sid=False):
         return self.env['connect.twiml'].with_context(install_mode=True).create({
