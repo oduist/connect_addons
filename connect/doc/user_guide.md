@@ -120,7 +120,16 @@ You send messages the same way you send anything else in Odoo:
 - from a contact or record, using the SMS or WhatsApp composer;
 - from Discuss, where a conversation with a customer appears as a normal chat
   thread — you type, they receive it on their phone, and their reply comes back
-  into the same thread.
+  into the same thread;
+- to many records at once — tick them in a list, or press a button your
+  administrator has added to a form. Each record is messaged on its own
+  contact's number, and a template is filled in per record, so everyone reads
+  their own name and details rather than the raw template.
+
+A batch goes out whole or not at all. If any record you picked has no usable
+phone number, nothing is sent and the message names the records to correct, so
+you fix them and send the batch once. Contacts on the blacklist have opted out:
+they are passed over and everyone else still receives the message.
 
 WhatsApp has a rule that is not Odoo's doing: outside a 24-hour window after the
 customer's last message, WhatsApp only accepts pre-approved template messages.
@@ -149,6 +158,10 @@ Open any contact and Connect adds:
 - **A message failed.** Open it in **Messaging ▸ Messages** — the error from the
   provider is on the record, and it usually says exactly what is wrong (invalid
   number, missing template, insufficient balance).
+- **Sending was refused outright.** When the message never reached the provider
+  there is nothing to open in **Messages**: the reason is in the error itself,
+  either the records that have no number or the provider's own words for why it
+  would not take the message.
 
 Anything involving credentials, numbers, routing or storage needs an
 administrator — those are in the Admin Guide.

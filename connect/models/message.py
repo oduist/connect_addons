@@ -559,12 +559,20 @@ class ConnectMessage(models.Model):
                 create_kwargs['media_url'] = media_urls
             message = client.messages.create(**create_kwargs)
             if message.error_code:
-                return False
+                raise ValidationError(
+                    'The message to %s was refused: %s %s' % (
+                        recipient, message.error_code, message.error_message or ''))
             logger.info('Message to %s is sent.', recipient)
             return message
+        except ValidationError:
+            raise
         except Exception as e:
             logger.exception(e)
-            return False
+            # Say what the provider refused; 'contact your admin' sent everyone
+            # looking through the container log for the one line that explains it.
+            raise ValidationError(
+                'Could not send the message to %s: %s' % (
+                    recipient or 'no number', getattr(e, 'msg', None) or e)) from e
 
     def action_retry(self):
         for rec in self:

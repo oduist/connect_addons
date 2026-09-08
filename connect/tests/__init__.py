@@ -11,3 +11,4 @@ from . import test_ring_group_size_limit
 from . import test_webhook_concurrency
 from . import test_connect_voicemail
 from . import test_exten
+from . import test_sms_composer
