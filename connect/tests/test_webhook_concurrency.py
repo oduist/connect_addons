@@ -205,6 +205,58 @@ class TestWebhookConcurrency(TransactionCase):
         self.assertEqual(root_call_id, self.env['connect.channel'].search(
             [('sid', '=', 'CArecnested')]).call.id)
 
+    def test_ring_group_leg_links_called_user_without_touching_the_call(self):
+        """Adding a called user must not UPDATE the connect_call row.
+
+        Ring-group legs land in parallel transactions whose snapshots all
+        predate each other's commits. A many2many write still bumps
+        write_date, so every leg after the winner used to die on that UPDATE
+        with "could not serialize access due to concurrent update" and replay
+        the whole webhook. The link rows the legs add are disjoint, so the
+        call row must be left alone.
+        """
+        root = 'CAringroot'
+        call = self.env['connect.call'].browse(self._webhook(dict(
+            self.base, CallSid=root, Direction='inbound',
+            CallStatus='ringing', SequenceNumber='0')))
+        # The first leg would otherwise write call_pattern, a legitimate row
+        # change that has nothing to do with the many2many.
+        call.call_pattern = 'ring_group'
+        call.flush_recordset()
+        # Backdate the row: cr.now() is constant inside one transaction, so a
+        # bump is only observable against an older value.
+        stale = fields.Datetime.now() - timedelta(days=1)
+        self.env.cr.execute(
+            'UPDATE connect_call SET write_date = %s WHERE id = %s',
+            (stale, call.id))
+        call.invalidate_recordset(['write_date'])
+        for n in range(2):
+            self._webhook(dict(self._child('CAringleg%d' % n, root, n),
+                               CallStatus='ringing', SequenceNumber='0'))
+        call.flush_recordset()
+        call.invalidate_recordset()
+        self.assertEqual(call.called_users, self.users,
+                         'both ring-group legs must land in called_users')
+        self.assertEqual(call.called_pbx_users, self.agents,
+                         'both ring-group legs must land in called_pbx_users')
+        self.assertEqual(call.write_date, stale,
+                         'linking a called user rewrote the call row')
+
+    def test_linking_an_already_linked_user_is_a_no_op(self):
+        """A replayed webhook must not duplicate the relation row."""
+        root = 'CAringidem'
+        call = self.env['connect.call'].browse(self._webhook(dict(
+            self.base, CallSid=root, Direction='inbound',
+            CallStatus='ringing', SequenceNumber='0')))
+        call._link_m2m('called_users', self.users[0].ids)
+        call._link_m2m('called_users', self.users[0].ids)
+        self.assertEqual(call.called_users, self.users[0])
+        field = call._fields['called_users']
+        self.env.cr.execute(
+            'SELECT count(*) FROM "{}" WHERE "{}" = %s'.format(
+                field.relation, field.column1), (call.id,))
+        self.assertEqual(self.env.cr.fetchone()[0], 1)
+
     def test_duplicate_root_sid_is_refused_by_the_database(self):
         """UNIQUE(root_call_sid) is the backstop for call-creation races the
         snapshot cannot see."""

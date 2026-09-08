@@ -819,6 +819,42 @@ class Call(models.Model):
             "SELECT pg_advisory_xact_lock(%s, hashtext(%s))",
             (CALL_SID_LOCK_CLASS, sid))
 
+    def _link_m2m(self, field_name, ids):
+        """Add ids to a stored many2many without UPDATEing the call row.
+
+        write() on a many2many still bumps write_date/write_uid, i.e. it
+        UPDATEs connect_call itself even when no column of the call changes.
+        Ring-group webhooks arrive in parallel — one transaction per leg,
+        each adding *its own* user — and their snapshots are all taken
+        before the first of them commits, so under REPEATABLE READ every
+        leg after the winner fails that UPDATE with "could not serialize
+        access due to concurrent update". odoo.service.model.retrying then
+        replays the whole webhook, redoing the channel work, and with a
+        ten-leg ring group the retries pile up on each other.
+
+        The rows the legs actually add are disjoint, so write them straight
+        into the relation table: concurrent INSERTs of different pairs never
+        conflict, and ON CONFLICT DO NOTHING makes a repeated pair a no-op
+        (DO NOTHING, unlike DO UPDATE, does not raise a serialization error
+        under REPEATABLE READ). The relation is a plain link table with no
+        stored dependents, and nothing keys off the call's write_date, so
+        skipping the row touch loses nothing.
+        """
+        self.ensure_one()
+        field = self._fields[field_name]
+        # Reading the field flushes anything pending on it first.
+        current = set(self[field_name].ids)
+        new_ids = [rec_id for rec_id in dict.fromkeys(ids)
+                   if rec_id and rec_id not in current]
+        if not new_ids:
+            return
+        self.env.cr.execute(
+            'INSERT INTO "{}" ("{}", "{}") SELECT %s, unnest(%s) '
+            'ON CONFLICT DO NOTHING'.format(
+                field.relation, field.column1, field.column2),
+            (self.id, new_ids))
+        self.invalidate_recordset([field_name])
+
     @api.model
     def _drop_orphan_call(self, call, keeper):
         """Delete the placeholder call an orphan leg created for itself.
@@ -1007,8 +1043,10 @@ class Call(models.Model):
         if channel.parent_channel and channel.parent_channel.technical_direction == 'outbound-api':
             call_vals['called'] = channel.called_number
         # User processing moved to earlier in webhook processing to prevent race conditions
+        # Linked outside call_vals: a many2many write would UPDATE the call
+        # row for its write_date and collide with the sibling legs' webhooks.
         if channel.called_pbx_user and channel.called_pbx_user.id not in call.called_pbx_users.ids:
-            call_vals['called_pbx_users'] = [(4, channel.called_pbx_user.id)]
+            call._link_m2m('called_pbx_users', channel.called_pbx_user.ids)
         # Check if we need to set a partner from child channel
         if not call.partner and channel.partner:
             call_vals['partner'] = channel.partner.id
@@ -1031,7 +1069,7 @@ class Call(models.Model):
                 logger.info(f"Call {call.id}: Pattern detection set to '{detected_pattern}'")
         # Set called users - all called users including transfer recipients
         if channel.called_user and channel.called_user.id not in call.called_users.ids:
-            call_vals['called_users'] = [(4, channel.called_user.id)]
+            call._link_m2m('called_users', channel.called_user.ids)
             debug(self, f"Added {channel.called_user.login} to called_users "
                         f"(call_source: {channel.call_source or 'None'}) for call {call.id}")
         if call_vals:

@@ -34,10 +34,18 @@ class CrmCall(models.Model):
         call = self.browse(call_id)
         if call.lead:
             return call_id
-        # Update call source
+        # Update call source. Assigning an unchanged value — normally an
+        # empty utm.source, since most called numbers carry none — still
+        # bumps write_date, i.e. UPDATEs the connect_call row. Every leg of a
+        # ring group runs this in its own parallel transaction, and under
+        # REPEATABLE READ all but the first then die with "could not
+        # serialize access due to concurrent update" and replay the whole
+        # webhook. Only write a real change.
         if call.direction == 'incoming':
-            call.source = self.env['utm.source'].sudo().search(
+            source = self.env['utm.source'].sudo().search(
                 [('phone', '=', call.called)], limit=1)
+            if call.source != source:
+                call.source = source
             # Update reference if not set.
         try:
             lead = None
@@ -48,7 +56,8 @@ class CrmCall(models.Model):
                 lead = self.env['crm.lead'].get_lead_by_number(call.called)
             if lead:
                 debug(self, 'Call {} assign <{}> "{}"'.format(call.id, lead.id, lead.name))
-                call.lead = lead
+                if call.lead != lead:
+                    call.lead = lead
             else:
                 try:
                     call.sudo()._auto_create_lead()
