@@ -374,6 +374,21 @@ class User(models.Model):
             caller_name = caller_user.name
         return caller_name
 
+    def _ensure_direct_call_attempt(self, call, params):
+        """Record the leg expected from a synchronous Dial response."""
+        if not call or params.get('_is_transfer_redirect'):
+            return
+        pending = call.attempt_ids.filtered(
+            lambda attempt: attempt.kind == 'direct_call'
+            and attempt.state == 'pending'
+            and attempt.target_user_id == self.user
+        )[:1]
+        if not pending:
+            call._set_webhook_expectation('direct_call', {
+                'expected_count': 1,
+                'target_user_id': self.user.id,
+            })
+
     def render_client(self, response, request, params):
         caller_name = self._get_caller_name(request, params)
         callerId = self._get_caller_id(request, params)
@@ -427,6 +442,7 @@ class User(models.Model):
             partner_id = False
         client.parameter(name='Partner', value=partner_id)
         dial_client.append(client)
+        self._ensure_direct_call_attempt(call, params)
         response.append(dial_client)
 
     def render_sip(self, response, request, params):
@@ -463,13 +479,15 @@ class User(models.Model):
             'sip:{}{}'.format(self.uri, ';secure=true' if self.domain.secure_media else ''),
             statusCallbackEvent='initiated answered completed',
             statusCallback=status_url)
+        self._ensure_direct_call_attempt(call, params)
         response.append(dial_sip)
 
 
     def render_voicemail(self, response, request, params):
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
         edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
-        voicemail_record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
+        voicemail_record_status_url = urljoin(
+            api_url, 'twilio/webhook/vm_recordingstatus?vm_user_id={}#e={}'.format(self.id, edge))
         self.get_voicemail_prompt(response)
         response.record(
             maxLength=120,
@@ -664,7 +682,8 @@ class User(models.Model):
             if user.voicemail_enabled:
                 api_url = self.env['connect.settings'].sudo().get_param('api_url')
                 edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
-                record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
+                record_status_url = urljoin(
+                    api_url, 'twilio/webhook/vm_recordingstatus?vm_user_id={}#e={}'.format(user.id, edge))
                 response.pause(length=1)
                 if user.voicemail_prompt:
                     personalized_prompt = user.render_voicemail_prompt()

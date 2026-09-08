@@ -4,7 +4,10 @@ import json
 import logging
 import re
 from urllib.parse import urljoin
+from psycopg2 import IntegrityError
 from odoo import fields, models, api, release
+from odoo.exceptions import ConcurrencyError
+from odoo.tools import sql
 from .settings import debug
 
 CALL_END_STATUSES = ['completed', 'busy', 'failed', 'no-answer', 'canceled']
@@ -61,6 +64,130 @@ class Channel(models.Model):
         'res.users', 'connect_channel_pbx_group_users_rel',
         string='PBX Group Users',
         compute='_compute_pbx_group_user_ids', store=True)
+
+    _sid_unique = models.Constraint(
+        'UNIQUE(sid)', 'A Twilio Call SID can only have one channel.')
+
+    def _auto_init(self):
+        # _sid_unique is applied at the very end of _auto_init, so leftover
+        # duplicates have to be merged before that: Postgres would refuse the
+        # index, odoo.schema would log an error, and the upgrade would still
+        # succeed with the constraint silently missing. Doing this here rather
+        # than in a migration script keeps it independent of the module
+        # version, which is what a database has to cross for a migration
+        # folder to be picked up at all.
+        self._merge_duplicate_sids()
+        return super()._auto_init()
+
+    def _merge_duplicate_sids(self):
+        """Keep one channel per Twilio SID, repointing everything that
+        referenced the discarded rows."""
+        cr = self.env.cr
+        if not sql.table_exists(cr, self._table):
+            return
+        has_parent = sql.column_exists(cr, self._table, 'parent_channel')
+        has_parent_sid = sql.column_exists(cr, self._table, 'parent_sid')
+        has_sequence = sql.column_exists(cr, self._table, 'sequence_number')
+        # Prefer the row carrying the most information; the columns are probed
+        # because this also runs on databases predating some of them.
+        richness = [
+            column for column in (
+                'call', 'partner', 'caller_pbx_user', 'called_pbx_user',
+                'caller', 'called', 'duration',
+            )
+            if sql.column_exists(cr, self._table, column)
+        ]
+        score = ' + '.join('(%s IS NOT NULL)::integer' % c for c in richness) or '0'
+        order = 'sequence_number DESC NULLS LAST, ' if has_sequence else ''
+
+        def clear_self_parents():
+            if not has_parent:
+                return
+            reset = 'parent_channel = NULL'
+            if has_parent_sid:
+                reset += ', parent_sid = NULL'
+            cr.execute(
+                'UPDATE connect_channel SET %s WHERE parent_channel = id' % reset)
+
+        clear_self_parents()
+        cr.execute('DROP TABLE IF EXISTS connect_channel_sid_merge')
+        cr.execute(
+            """
+            CREATE TEMP TABLE connect_channel_sid_merge (
+                duplicate_id integer PRIMARY KEY,
+                keeper_id integer NOT NULL
+            ) ON COMMIT DROP
+            """
+        )
+        cr.execute(
+            """
+            INSERT INTO connect_channel_sid_merge (duplicate_id, keeper_id)
+            SELECT id, keeper_id
+            FROM (
+                SELECT
+                    id,
+                    first_value(id) OVER (
+                        PARTITION BY sid
+                        ORDER BY {order}({score}) DESC, id DESC
+                    ) AS keeper_id,
+                    count(*) OVER (PARTITION BY sid) AS duplicate_count
+                FROM connect_channel
+                WHERE sid IS NOT NULL
+            ) ranked
+            WHERE duplicate_count > 1 AND id != keeper_id
+            """.format(order=order, score=score)
+        )
+        if not cr.rowcount:
+            return
+        merged = cr.rowcount
+
+        if has_parent:
+            cr.execute(
+                """
+                UPDATE connect_channel channel
+                   SET parent_channel = merge.keeper_id
+                  FROM connect_channel_sid_merge merge
+                 WHERE channel.parent_channel = merge.duplicate_id
+                """
+            )
+            clear_self_parents()
+        if sql.column_exists(cr, 'connect_recording', 'channel'):
+            cr.execute(
+                """
+                UPDATE connect_recording recording
+                   SET channel = merge.keeper_id
+                  FROM connect_channel_sid_merge merge
+                 WHERE recording.channel = merge.duplicate_id
+                """
+            )
+        if sql.table_exists(cr, 'connect_channel_pbx_group_users_rel'):
+            cr.execute(
+                """
+                INSERT INTO connect_channel_pbx_group_users_rel (
+                    connect_channel_id, res_users_id
+                )
+                SELECT DISTINCT merge.keeper_id, relation.res_users_id
+                  FROM connect_channel_pbx_group_users_rel relation
+                  JOIN connect_channel_sid_merge merge
+                    ON merge.duplicate_id = relation.connect_channel_id
+                ON CONFLICT DO NOTHING
+                """
+            )
+            cr.execute(
+                """
+                DELETE FROM connect_channel_pbx_group_users_rel relation
+                 USING connect_channel_sid_merge merge
+                 WHERE relation.connect_channel_id = merge.duplicate_id
+                """
+            )
+        cr.execute(
+            """
+            DELETE FROM connect_channel channel
+             USING connect_channel_sid_merge merge
+             WHERE channel.id = merge.duplicate_id
+            """
+        )
+        logger.info('Merged %s duplicate channel SID(s)', merged)
 
     @api.depends('caller_user', 'called_user')
     def _compute_pbx_group_user_ids(self):
@@ -119,7 +246,9 @@ class Channel(models.Model):
 
     @api.model
     def on_call_status(self, params):
-        debug(self, 'On channel status: %s' % json.dumps(params, indent=2))
+        if logger.isEnabledFor(logging.DEBUG):
+            # json.dumps of every webhook is too expensive for the hot path.
+            logger.debug('On channel status: %s', json.dumps(params, indent=2))
         # Pre-process for WhatsApp and E.164 normalization
         def strip_whatsapp(v):
             return v.split(':', 1)[1] if isinstance(v, str) and v.startswith('whatsapp:') else v
@@ -131,19 +260,17 @@ class Channel(models.Model):
         to_clean = strip_whatsapp(to_raw)
         call_type = 'whatsapp' if any(isinstance(x, str) and x.startswith('whatsapp:') for x in [caller_raw, called_raw, to_raw]) else 'phone'
 
-        # ENHANCED BLIND TRANSFER LOGGING
-        logger.info(f"=== WEBHOOK RECEIVED ===")
-        logger.info(f"CallSid: {params.get('CallSid')}")
-        logger.info(f"CallStatus: {params.get('CallStatus')}")
-        logger.info(f"Direction: {params.get('Direction')}")
-        logger.info(f"From: {params.get('From')} | To: {params.get('To')}")
-        logger.info(f"Called: {params.get('Called')} | Caller: {params.get('Caller')}")
-        logger.info(f"ParentCallSid: {params.get('ParentCallSid')}")
-        logger.info(f"Duration: {params.get('CallDuration', 0)}")
-        logger.info(f"SequenceNumber: {params.get('SequenceNumber')}")
-        logger.info(f"=== END WEBHOOK INFO ===")
+        # One line instead of the former ten-logger.info block per webhook.
+        logger.info(
+            'Webhook: CallSid=%s status=%s seq=%s dir=%s parent=%s dur=%s',
+            params.get('CallSid'), params.get('CallStatus'),
+            params.get('SequenceNumber'), params.get('Direction'),
+            params.get('ParentCallSid'), params.get('CallDuration', 0))
 
-        # SEQUENCE-BASED DUPLICATE FILTERING: Check for duplicate webhooks
+        # SEQUENCE-BASED DUPLICATE FILTERING: Check for duplicate webhooks.
+        # The compare-then-write below is race-free because every callstatus
+        # webhook transaction holds the root-SID advisory lock (acquired in
+        # connect.call.on_call_status before any database access).
         call_sid = params.get('CallSid')
         sequence_number = int(params.get('SequenceNumber', 0))
         call_status = params.get('CallStatus')
@@ -155,8 +282,6 @@ class Channel(models.Model):
             if sequence_number < channel.sequence_number or (sequence_number == channel.sequence_number and call_status == channel.status):
                 logger.warning(f"DUPLICATE WEBHOOK FILTERED: CallSid {call_sid} SequenceNumber {sequence_number} (existing: {channel.sequence_number}) CallStatus {call_status} (existing: {channel.status}) - ignoring webhook")
                 return
-            else:
-                logger.info(f"VALID WEBHOOK: CallSid {call_sid} SequenceNumber {sequence_number} CallStatus {call_status} - processing status update")
         if channel:
             # Update channel data.
             data = {
@@ -219,6 +344,11 @@ class Channel(models.Model):
                     data['parent_channel'] = parent_channel.id
                     data['parent_sid'] = parent_channel.parent_channel.sid
                 else:
+                    # The parent's own webhook has not arrived yet. Keep the
+                    # SID anyway: it lets a later webhook link the parent
+                    # channel, and it lets connect.call.on_call_status gather
+                    # the orphan legs of one conversation onto a single call.
+                    data['parent_sid'] = params['ParentCallSid']
                     logger.warning(f"NEW CHANNEL: ParentCallSid {params.get('ParentCallSid')} not found in existing channels!")
             # Find caller user
             caller_pbx_user = None
@@ -282,7 +412,28 @@ class Channel(models.Model):
                 # This is a parent channel (inbound call)
                 data['call_source'] = None  # Will be set when pattern is determined
 
-            channel = self.with_context(tracking_disable=True).create(data)
+            # Idempotent creation: a concurrent webhook (or a redelivery after
+            # a timeout) may have inserted this SID — the UNIQUE(sid)
+            # constraint then turns the race into an IntegrityError. The
+            # savepoint confines the failed INSERT (a poisoned transaction
+            # would lose the webhook for good: there is no catching-up cron).
+            # If the winner's committed row is visible, re-enter through the
+            # update path; under REPEATABLE READ it may be invisible to our
+            # snapshot — then only a fresh transaction can see it, so raise a
+            # concurrency error the framework retries (up to 5 replays).
+            try:
+                with self.env.cr.savepoint():
+                    channel = self.with_context(tracking_disable=True).create(data)
+            except IntegrityError:
+                channel = self.search([('sid', '=', call_sid)])
+                if not channel:
+                    raise ConcurrencyError(
+                        'concurrent connect.channel INSERT for CallSid %s'
+                        % call_sid)
+                logger.warning(
+                    'Channel create lost a duplicate-SID race for %s, '
+                    'retrying as update', call_sid)
+                return self.on_call_status(params)
             debug(self, 'Channel %s created.' % channel.id)
 
             # Store external call leg for outgoing call transfers
@@ -354,37 +505,32 @@ class Channel(models.Model):
         try:
             call = channel.call
             call_sid = params.get('CallSid')
-            call_status = params.get('CallStatus')
 
-            # Only process if call has transfer context with termination info
-            if not call.transfer_context or '_external_termination' not in call.transfer_context:
+            # The transfer completion handler registers a pending
+            # external_termination attempt for the recipient's leg.
+            attempts = call.attempt_ids.filtered(
+                lambda attempt: attempt.kind == 'external_termination'
+                and attempt.state == 'pending'
+                and attempt.dial_call_sid == call_sid
+                and attempt.external_sid
+            )
+            if not attempts:
                 return
+            attempt = attempts[0]
+            external_call_sid = attempt.external_sid
 
-            termination_info = call.transfer_context['_external_termination']
-            transfer_recipient_sid = termination_info.get('transfer_recipient_sid')
-            external_call_sid = termination_info.get('external_call_sid')
+            # Terminate the external call
+            client = self.env['connect.settings'].get_client()
+            try:
+                # Check if external call is still active
+                external_call = client.calls(external_call_sid).fetch()
+                if external_call.status in ['in-progress', 'ringing']:
+                    # Terminate the external call
+                    client.calls(external_call_sid).update(status='completed')
+            except Exception as e:
+                logger.error(f'Failed to terminate external call {external_call_sid}: {e}')
 
-            # Check if this is the transfer recipient hanging up
-            if call_sid == transfer_recipient_sid:
-                # Terminate the external call
-                client = self.env['connect.settings'].get_client()
-                try:
-                    # Check if external call is still active
-                    external_call = client.calls(external_call_sid).fetch()
-                    if external_call.status in ['in-progress', 'ringing']:
-                        # Terminate the external call
-                        hangup_result = client.calls(external_call_sid).update(status='completed')
-                except Exception as e:
-                    logger.error(f'Failed to terminate external call {external_call_sid}: {e}')
-
-                # Clean up termination context
-                try:
-                    current_context = call.transfer_context or {}
-                    if '_external_termination' in current_context:
-                        del current_context['_external_termination']
-                        call.transfer_context = current_context
-                except Exception as e:
-                    logger.error(f'Failed to clean up termination context: {e}')
+            attempt.mark_resolved()
 
         except Exception as e:
             logger.error(f'Error handling external call termination: {e}', exc_info=True)

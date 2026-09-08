@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="voicemail_action" model="ir.actions.act_window">
+        <field name="name">Voicemails</field>
+        <field name="res_model">connect.voicemail</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="connect.voicemails_menu"
+            sequence="75"
+            parent="connect.connect_voice_menu"
+            name="Voicemails"
+            action="connect.voicemail_action"/>
+
+    <record id="connect.voicemail_list" model="ir.ui.view">
+        <field name="name">connect.voicemail_list</field>
+        <field name="model">connect.voicemail</field>
+        <field name="arch" type="xml">
+            <list edit="false" create="false" decoration-bf="is_new">
+                <field name="create_date"/>
+                <field name="caller_number" optional="show"/>
+                <field name="partner" optional="show"/>
+                <field name="called_number" optional="hide"/>
+                <field name="user" optional="show"/>
+                <field name="callflow" optional="show"/>
+                <field name="duration_human" string="Duration" optional="show"/>
+                <field name="duration" sum="1" optional="hide" string="Duration, sec"/>
+                <field name="transcript" optional="hide"/>
+                <field name="is_new" optional="show"/>
+                <field name="status" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="connect_voicemail_form" model="ir.ui.view">
+        <field name="name">connect_voicemail_form</field>
+        <field name="model">connect.voicemail</field>
+        <field name="arch" type="xml">
+            <form edit="false" create="false">
+                <header>
+                    <button name="mark_listened" type="object" string="Mark as Listened"
+                            invisible="not is_new"/>
+                    <button name="get_transcript" type="object" string="Transcribe"/>
+                </header>
+                <sheet>
+                <notebook>
+                    <page name="info" string="Info">
+                    <group>
+                        <group>
+                            <field name="voicemail_widget" widget="html" nolabel="1" colspan="2"
+                                invisible="not voicemail_widget"/>
+                            <field name="create_date"/>
+                            <field name="caller_number"/>
+                            <field name="called_number"/>
+                            <field name="duration_human" string="Duration"/>
+                            <field name="is_new"/>
+                        </group>
+                        <group>
+                            <field name="partner"/>
+                            <field name="user"/>
+                            <field name="callflow"/>
+                            <field name="call"/>
+                            <field name="channel" groups="base.group_no_one"/>
+                            <field name="status"/>
+                        </group>
+                    </group>
+                    </page>
+                    <page name="transcript" string="Transcript">
+                        <group>
+                            <group>
+                                <field name="transcription_error"
+                                       invisible="transcription_error == False"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="transcript"/>
+                        </group>
+                    </page>
+                </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="connect_voicemail_search" model="ir.ui.view">
+        <field name="name">connect_voicemail_search</field>
+        <field name="model">connect.voicemail</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="partner"/>
+                <field name="caller_number"/>
+                <field name="called_number"/>
+                <field name="user"/>
+                <field name="callflow"/>
+                <field name="transcript"/>
+                <filter name="my_voicemails" string="My Voicemails" domain="[('user.user', '=', uid)]"/>
+                <filter name="new_voicemails" string="New" domain="[('is_new', '=', True)]"/>
+                <separator/>
+                <filter name="by_user" string="User Mailbox" context="{'group_by': 'user'}"/>
+                <filter name="by_callflow" string="Callflow Mailbox" context="{'group_by': 'callflow'}"/>
+                <filter name="by_partner" string="Partner" context="{'group_by': 'partner'}"/>
+                <filter name="by_created" string="Date" context="{'group_by': 'create_date'}"/>
+            </search>
+        </field>
+    </record>
+
+</odoo>

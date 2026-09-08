@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="mail.DiscussSearch" t-inherit-mode="extension">
+        <xpath expr="//t[@t-if='store.self.main_user_id']" position="after">
+            <t t-if="store.self.main_user_id">
+                <Dropdown t-if="store.discuss.isSidebarCompact and !ui.isSmall" state="newSmsFloating" position="'right-start'" menuClass="'o-mail-DiscussSidebar-floatingMenu px-2 mx-2 my-0 min-w-0 ' + store.discussDropdownMenuClass(this)" manual="true">
+                    <t t-call="mail.DiscussSearch.newSms"/>
+                    <t t-set-slot="content">
+                        <div t-ref="sms-floating">
+                            <span class="text-muted user-select-none" t-esc="newSmsText"/>
+                        </div>
+                    </t>
+                </Dropdown>
+                <t t-else="" t-call="mail.DiscussSearch.newSms"/>
+            </t>
+        </xpath>
+    </t>
+
+    <t t-name="mail.DiscussSearch.newSms">
+        <button class="btn btn-primary d-flex align-items-center gap-1 ms-1" t-att-title="newSmsText" t-on-click="onClickNewSms" t-ref="sms-btn" t-att-class="{
+            'rounded-2': true,
+            'p-2': ui.isSmall,
+            'o-px-1_5 py-2': !ui.isSmall and store.discuss.isSidebarCompact,
+            'o-p-1_5': !ui.isSmall and !store.discuss.isSidebarCompact,
+        }">
+            <i class="fa fa-commenting-o"/>
+        </button>
+    </t>
+</templates>

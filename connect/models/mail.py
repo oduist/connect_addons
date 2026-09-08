@@ -8,10 +8,12 @@ class MailMessage(models.Model):
     message_type = fields.Selection(
         selection_add=[
             ('WhatsApp', 'WhatsApp'),
+            ('mms', 'MMS'),
             ('connect_message', 'Connect Message'),
         ],
         ondelete={
             'WhatsApp': lambda recs: recs.write({'message_type': 'comment'}),
+            'mms': lambda recs: recs.write({'message_type': 'comment'}),
             'connect_message': lambda recs: recs.write({'message_type': 'comment'}),
         },
     )

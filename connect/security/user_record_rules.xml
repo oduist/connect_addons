@@ -61,6 +61,43 @@
         <field name="perm_unlink" eval="0"/>
     </record>
 
+    <!-- Voicemail -->
+    <record id="connect_voicemail_user_rule" model="ir.rule">
+        <field name="name">connect_voicemail_user</field>
+        <field name="model_id" ref="connect.model_connect_voicemail"/>
+        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
+        <field name="domain_force">['|', '|', '|', ('user.user', '=', user.id), ('caller_user', '=', user.id), ('call.called_users', '=', user.id), ('pbx_group_user_ids', '=', user.id)]</field>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="0"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+
+    <!-- Call: users tagged in the chatter (followers) can read the call -->
+    <record id="connect_call_follower_rule" model="ir.rule">
+        <field name="name">connect_call_follower</field>
+        <field name="model_id" ref="connect.model_connect_call"/>
+        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
+        <field name="domain_force">[('message_partner_ids', '=', user.partner_id.id)]</field>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="0"/>
+        <field name="perm_create" eval="0"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+
+    <!-- Voicemail: users tagged in the chatter of the voicemail or of its call
+         (followers) can read the voicemail -->
+    <record id="connect_voicemail_follower_rule" model="ir.rule">
+        <field name="name">connect_voicemail_follower</field>
+        <field name="model_id" ref="connect.model_connect_voicemail"/>
+        <field name="groups" eval="[(6, 0, [ref('group_connect_user')])]"/>
+        <field name="domain_force">['|', ('message_partner_ids', '=', user.partner_id.id), ('call.message_partner_ids', '=', user.partner_id.id)]</field>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="0"/>
+        <field name="perm_create" eval="0"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+
     <!-- Recording -->
     <record id="connect_recording_user_rule" model="ir.rule">
         <field name="name">connect_recording_user</field>

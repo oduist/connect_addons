@@ -5,11 +5,16 @@ from datetime import datetime
 from urllib.parse import urljoin
 from pytz import utc
 from odoo import fields, models, api, release
+from odoo.exceptions import ValidationError
 from twilio.twiml.voice_response import Gather, VoiceResponse, Say, Client, Sip, Dial
 from .twiml import pretty_xml
 from .settings import debug
 
 logger = logging.getLogger(__name__)
+
+# Twilio dials at most ten parallel targets per <Dial>; ring users past
+# that are never dialed, and their legs never come to exist.
+MAX_RING_USERS = 10
 
 class CallflowChoice(models.Model):
     _name = 'connect.callflow_choice'
@@ -62,6 +67,15 @@ class CallFlow(models.Model):
     voicemail_enabled = fields.Boolean()
     # fallback_extension
 
+    @api.constrains('ring_users')
+    def _check_ring_users_limit(self):
+        for rec in self:
+            if len(rec.ring_users) > MAX_RING_USERS:
+                raise ValidationError(
+                    'A call flow can ring at most %s users: Twilio dials no '
+                    'more than %s targets in parallel, so extra users would '
+                    'never be called.' % (MAX_RING_USERS, MAX_RING_USERS))
+
     def create_extension(self):
         self.ensure_one()
         return self.env['connect.exten'].create_extension(self, 'callflow')
@@ -112,7 +126,7 @@ class CallFlow(models.Model):
         api_url = self.env['connect.settings'].sudo().get_param('api_url')
         edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
         voicemail_record_status_url = urljoin(api_url,
-                                            'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
+                                            'twilio/webhook/vm_recordingstatus?vm_callflow_id={}#e={}'.format(self.id, edge))
         status_url = urljoin(api_url, 'twilio/webhook/callstatus#e={}'.format(edge))
         action_url = urljoin(api_url, 'twilio/webhook/connect.callflow/call_action/{}#e={}'.format(self.id, edge))
         record_status_url = urljoin(api_url, 'twilio/webhook/recordingstatus#e={}'.format(edge))
@@ -136,6 +150,7 @@ class CallFlow(models.Model):
             self.get_prompt_message(response)
         # Add ringall users
         if self.ring_users:
+            expected_leg_count = 0
             callerId = request.get('Caller')
             # Hack to enable testing callflow from SIP or Client.
             if callerId.startswith('sip:') or callerId.startswith('client:'):
@@ -180,6 +195,7 @@ class CallFlow(models.Model):
                         dial.sip('sip:{}'.format(user.uri),
                                 statusCallbackEvent='answered completed',
                                 statusCallback=status_url)
+                        expected_leg_count += 1
                     else:
                         client = Client(
                             statusCallbackEvent='answered completed',
@@ -189,6 +205,22 @@ class CallFlow(models.Model):
                             client.parameter(name='CallerName', value=caller_name)
                         client.parameter(name='Partner', value=caller_partner_id)
                         dial.append(client)
+                        expected_leg_count += 1
+            root_channel = self.env['connect.channel'].sudo().search(
+                [('sid', '=', request.get('CallSid'))], limit=1)
+            if root_channel.call and expected_leg_count:
+                call = root_channel.call
+                if call.call_pattern != 'ring_group':
+                    call.call_pattern = 'ring_group'
+                pending = call.attempt_ids.filtered(
+                    lambda attempt: attempt.kind == 'ring_group'
+                    and attempt.state == 'pending')[:1]
+                if pending:
+                    pending.write({'expected_count': expected_leg_count})
+                else:
+                    call._set_webhook_expectation('ring_group', {
+                        'expected_count': expected_leg_count,
+                    })
             response.append(dial)
         else:
             # No ring users set, just send to voicemail if enabled.
@@ -260,7 +292,8 @@ class CallFlow(models.Model):
             if callflow.voicemail_prompt:
                 api_url = self.env['connect.settings'].sudo().get_param('api_url')
                 edge = self.env['connect.settings'].sudo().get_param('twilio_edge')
-                record_status_url = urljoin(api_url, 'twilio/webhook/vm_recordingstatus#e={}'.format(edge))
+                record_status_url = urljoin(
+                    api_url, 'twilio/webhook/vm_recordingstatus?vm_callflow_id={}#e={}'.format(callflow.id, edge))
                 response.pause(length=1)
                 callflow.get_voicemail_prompt_message(response)
                 response.record(

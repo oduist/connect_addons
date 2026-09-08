@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Remote XML Phonebook — Yealink phone setup</title>
+<style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+           max-width: 46rem; margin: 2rem auto; padding: 0 1rem;
+           color: #222; line-height: 1.55; }
+    h1 { color: #17809f; border-bottom: 2px solid #17809f; padding-bottom: .3rem; }
+    h2 { color: #17809f; margin-top: 2rem; }
+    code, .path { background: #f0f5f7; border-radius: 4px; padding: .1rem .35rem; }
+    ul { padding-left: 1.3rem; }
+    li { margin: .35rem 0; }
+    .note { background: #f0f5f7; border-left: 4px solid #17809f;
+            padding: .6rem .9rem; border-radius: 0 4px 4px 0; margin: 1rem 0; }
+</style>
+</head>
+<body>
+<h1>Yealink T34W phonebook settings</h1>
+<p>How to connect a Yealink phone to the Odoo remote phonebook and what the
+related phone options do. All settings below are in the phone's web
+interface (browse to the phone's IP address and log in as admin).</p>
+
+<h2>Point the phone at Odoo</h2>
+<ul>
+    <li>Open <span class="path">Directory → Remote Phone Book</span>.</li>
+    <li>In row 1, paste the <b>Phonebook URL</b> from Odoo
+        (<span class="path">Settings → Phonebook</span>) into
+        <b>Remote URL</b> and set a <b>Display Name</b> such as
+        <code>Odoo Contacts</code>.</li>
+    <li>Set <b>Incoming/Outgoing Call Lookup</b> to <b>Enabled</b> — this is
+        the caller-ID feature and the main payoff of the integration:
+        <ul>
+            <li><b>Enabled</b>: when a call comes in (or you dial out), the
+                phone searches the remote phone book for the number and, on a
+                match, shows the contact's name on the display and in the
+                call history instead of the bare number.</li>
+            <li><b>Disabled</b>: the remote phone book is still browsable and
+                diallable under <span class="path">Menu → Directory →
+                Remote Phone Book</span>, but calls display only the raw
+                caller ID — the phone won't consult the remote book to name
+                them.</li>
+        </ul>
+    </li>
+    <li>Set <b>Update Time Interval</b> to <code>3600</code> so the phone
+        silently re-downloads the directory every hour. The phone matches
+        calls against its local copy — a contact added in Odoo appears
+        after the next refresh (opening the directory on the handset forces
+        one immediately).</li>
+</ul>
+
+<h2>Directory → Settings</h2>
+<ul>
+    <li><b>Directory (top list)</b> controls which phonebooks appear when you
+        press the Directory key / <span class="path">Menu →
+        Directory</span> on the handset. <b>Remote Phone Book</b> must be in
+        the <i>Enabled</i> column there for staff to browse and search the
+        Odoo directory at all.</li>
+    <li><b>Search Source List In Dialing (bottom list)</b> controls predictive
+        search while dialing: when someone lifts the handset and starts typing
+        digits or letters on the pre-dialing screen, the phone live-matches
+        the input against the enabled sources and shows matching contacts as
+        pick-and-call suggestions. Moving <b>Remote Phone Book</b> to
+        <i>Enabled</i> means typing <code>MASN…</code> or the first
+        digits of a number will surface the matching Odoo customer before you
+        finish dialing. Keep Local Directory and History above it so the most
+        likely matches appear first; if the dialing screen ever feels
+        sluggish, move Remote Phone Book back out of this list (browsing and
+        caller-ID lookup are unaffected).</li>
+</ul>
+
+<div class="note">
+    The phone never contacts Odoo during a call: caller-ID lookup and
+    dial-time search both run against the phone's cached copy of the
+    phonebook, downloaded when the directory is opened and at the Update
+    Time Interval.
+</div>
+</body>
+</html>

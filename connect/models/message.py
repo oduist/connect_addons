@@ -455,6 +455,26 @@ class ConnectMessage(models.Model):
             }])
         return chatter
 
+    @api.model
+    def _get_sender_number(self):
+        """Number outgoing messages are sent from.
+
+        The default Twilio line. The agent's own caller ID is only used when
+        the database has no default configured at all, and only when it is a
+        Twilio number too: a verified caller ID is voice-only, and Twilio
+        accepts it as a numeric sender ID and then never delivers. Without
+        either we cannot send: Twilio always requires a From.
+        """
+        sender = self.env['connect.outgoing_callerid']._get_default_number()
+        if not sender:
+            own = self.env.user.connect_user.outgoing_callerid
+            sender = own.number if own.callerid_type == 'number' else False
+        if not sender:
+            raise ValidationError(
+                'No Twilio number is set to send messages from. Mark one of '
+                'the Twilio numbers in Connect as Default.')
+        return sender
+
     def send(self, recipient, body, res_id=None, res_model=None, outgoing_callerid=None, media_urls=None, skip_chatter=False):
         self.env['oduist.license'].check_license('connect', silent=False)
         sender_user = self.env.user
@@ -467,14 +487,7 @@ class ConnectMessage(models.Model):
             'res_model': res_model,
             'status': 'sent'
         }
-        if outgoing_callerid:
-            sender = outgoing_callerid
-        else:
-            number = sender_user.connect_user.outgoing_callerid
-            # Check if user have a number
-            if not number:
-                raise ValidationError('You dont have an outgoing callerid number!')
-            sender = number.number
+        sender = outgoing_callerid or self._get_sender_number()
         message = self.client_send(recipient, sender, body, media_urls=media_urls)
         if not message:
             raise ValidationError('Unexpected error! Contact admin or maintainer!')
@@ -590,23 +603,28 @@ class ConnectMessage(models.Model):
             vals = {'status': status} if status else {}
             connect_user = self.env.ref("connect.user_connect_webhook")
             connect_partner = connect_user.partner_id
-            if (status or '').lower() == 'failed':
-                # Some callbacks include error details
+            status = (status or '').lower()
+            if status in ('failed', 'undelivered'):
+                # A carrier refusing the sender or the message (30024 and
+                # friends) reports 'undelivered', not 'failed', and often
+                # carries a code with no message. Recording the error only for
+                # 'failed', and only alongside an ErrorMessage, left those
+                # messages looking sent: they never arrived and nothing here
+                # said why.
                 code = data.get('ErrorCode')
                 msg = data.get('ErrorMessage')
                 if code:
                     vals['error_code'] = code
                 if msg:
                     vals['error_message'] = msg
-                    vals['has_error'] = True
+                vals['has_error'] = True
                 if message.res_model and message.res_id:
-                    chatter_message = 'Failed to send this SMS message'
+                    chatter_message = ('Failed to send this SMS message'
+                                       if status == 'failed'
+                                       else 'Message is undelivered.')
                     self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
-            elif (status or '').lower() == 'delivered' and message.res_model and message.res_id:
+            elif status == 'delivered' and message.res_model and message.res_id:
                 chatter_message = 'SMS message is delivered.'
-                self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
-            elif (status or '').lower() ==  'undelivered' and message.res_model and message.res_id:
-                chatter_message = ('Message is undelivered.')
                 self.chatter_post(message.res_model, message.res_id, connect_partner.id, chatter_message)
             if vals:
                 message.write(vals)

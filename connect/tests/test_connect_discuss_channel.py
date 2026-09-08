@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from odoo.exceptions import ValidationError
 from odoo.tests.common import TransactionCase
 from odoo.tests import tagged
 
@@ -31,6 +32,35 @@ class TestConnectDiscussChannel(TransactionCase):
                 (4, cls.env.ref('connect.group_connect_user').id),
             ],
         })
+        # The line every outgoing message is sent from.
+        cls.default_callerid = cls.env['connect.outgoing_callerid'].create({
+            'friendly_name': 'Main line', 'number': '+15559990000',
+            'callerid_type': 'number', 'is_default': True,
+        })
+        # These tests run against the live database, which already carries the
+        # Twilio numbers this deployment sends from. Which line is chosen
+        # depends on how many there are, so take the real ones out of the
+        # messaging lines and let the assertions describe their own fixture.
+        cls.env['connect.outgoing_callerid'].search([
+            ('id', '!=', cls.default_callerid.id),
+            ('callerid_type', '=', 'number'),
+        ]).write({'callerid_type': 'outgoing_callerid', 'status': 'validated'})
+
+    # Destination for the New SMS tests. These assert on find-or-create, so the
+    # number must have no contact or conversation of its own: a real number
+    # would match live data and the tests would resume that instead of their
+    # own fixture. 555-01xx is the reserved fictional range.
+    NEW_SMS_NUMBER = '+12125550111'
+
+    def _assert_new_sms_number_unused(self):
+        """Fail loudly if the destination picked above ever gains real data."""
+        self.assertFalse(self.Channel.sudo().search([
+            ('channel_type', '=', 'connect_messages'),
+            ('connect_number', '=', self.NEW_SMS_NUMBER),
+        ]), '%s must not already have a conversation' % self.NEW_SMS_NUMBER)
+        self.assertFalse(self.env['res.partner'].sudo().search([
+            ('phone_sanitized', '=', self.NEW_SMS_NUMBER),
+        ]), '%s must not already have a contact' % self.NEW_SMS_NUMBER)
 
     def _make_incoming(self, body='hi there', mtype='sms', number='+15551230000'):
         return self.env['connect.message'].sudo().create({
@@ -138,11 +168,13 @@ class TestConnectDiscussChannel(TransactionCase):
         with patch.object(type(self.env['connect.message']), 'client_send', return_value=_Fake()):
             msg = ch.with_user(self.agent).message_post(
                 body='reply text', message_type='connect_message',
-                connect_provider='sms', connect_sender_id='+15550000000')
+                connect_provider='sms')
         cmsg = self.env['connect.message'].search([('channel_message_id', '=', msg.id)])
         self.assertTrue(cmsg, "Outbound must create a linked connect.message")
         self.assertEqual(cmsg.to_number, '+15551230000')
         self.assertEqual(cmsg.channel_id, ch)
+        self.assertEqual(cmsg.from_number, self.default_callerid.number,
+                         'a channel with no line of its own falls back to the default')
 
     def test_inbound_mirror_does_not_send(self):
         from unittest.mock import patch
@@ -438,6 +470,245 @@ class TestConnectDiscussChannel(TransactionCase):
         self.assertFalse(self.Channel.search([
             ('channel_type', '=', 'connect_messages'),
             ('connect_partner_id', '=', cust.id)]))
+
+    def test_start_sms_channel_normalizes_number_and_creates_contact(self):
+        """The typed number is the destination only: it is normalized to E.164
+        and gets a contact of its own when the number is unknown."""
+        self._assert_new_sms_number_unused()
+        res = self.Channel.with_user(self.agent).connect_start_sms_channel(
+            ' +1 (212) 555-0111 ')
+        channel = self.Channel.browse(res['channel_id'])
+        self.assertEqual(channel.channel_type, 'connect_messages')
+        self.assertEqual(channel.connect_number, self.NEW_SMS_NUMBER)
+        self.assertTrue(channel.connect_partner_id, 'contact must be created')
+        self.assertEqual(channel.connect_partner_id.phone_sanitized,
+                         self.NEW_SMS_NUMBER)
+        self.assertIn(channel.connect_partner_id, channel.channel_member_ids.partner_id)
+        self.assertIn(self.agent.partner_id, channel.channel_member_ids.partner_id)
+
+    def test_start_sms_channel_reuses_known_contact(self):
+        """A number that already has a contact must not get a second one."""
+        cust = self.env['res.partner'].create({
+            'name': 'Known Cust', 'phone': '+12125550160'})
+        self.assertTrue(cust.phone_sanitized, 'precondition: number must sanitize')
+        res = self.Channel.with_user(self.agent).connect_start_sms_channel(
+            '+1 212-555-0160')
+        channel = self.Channel.browse(res['channel_id'])
+        self.assertEqual(channel.connect_partner_id, cust)
+
+    def test_start_sms_channel_reuses_number_only_channel(self):
+        """A conversation opened by an earlier inbound is resumed, and the new
+        contact is linked to it instead of a second thread being created."""
+        self._assert_new_sms_number_unused()
+        existing = self.Channel._get_connect_channel(
+            number=self.NEW_SMS_NUMBER, provider='sms', create_if_not_found=True)
+        self.assertFalse(existing.connect_partner_id, 'precondition: no contact')
+        res = self.Channel.with_user(self.agent).connect_start_sms_channel(
+            '+1 212 555 0111')
+        self.assertEqual(res['channel_id'], existing.id,
+                         'must resume the conversation, not start a second one')
+        self.assertTrue(existing.connect_partner_id, 'contact must be linked')
+
+    def test_start_sms_channel_rejects_invalid_number(self):
+        with self.assertRaises(ValidationError):
+            self.Channel.with_user(self.agent).connect_start_sms_channel('not a number')
+
+    def test_start_sms_channel_without_a_twilio_line_raises(self):
+        """With no Twilio number we cannot send at all, so say so up front
+        rather than letting the first message fail silently in Discuss."""
+        self._assert_new_sms_number_unused()
+        self.default_callerid.write({
+            'is_default': False, 'callerid_type': 'outgoing_callerid',
+            'status': 'validated',
+        })
+        with self.assertRaises(ValidationError):
+            self.Channel.with_user(self.agent).connect_start_sms_channel(
+                self.NEW_SMS_NUMBER)
+        self.assertFalse(self.Channel.search([
+            ('channel_type', '=', 'connect_messages'),
+            ('connect_number', '=', self.NEW_SMS_NUMBER)]))
+
+    def test_single_twilio_line_needs_no_default_flag(self):
+        """With one Twilio number there is nothing to choose, so a database
+        that never set the flag still sends rather than refusing to."""
+        self.default_callerid.is_default = False
+        self.assertEqual(self.env['connect.message']._get_sender_number(),
+                         self.default_callerid.number)
+
+    def test_inbound_stamps_the_line_the_customer_wrote_to(self):
+        """A conversation the customer starts runs on the line they messaged,
+        whatever the default is."""
+        ch = self.Channel._get_connect_channel(
+            self.partner, number='+15551230000', create_if_not_found=True)
+        # Inbound arrived on +15550000000 (see _make_incoming).
+        ch._connect_post_inbound(self._make_incoming('inbound'))
+        self.assertEqual(ch.connect_sender_number, '+15550000000')
+
+    def test_outbound_reply_stays_on_the_conversation_line(self):
+        """Replies go out on the conversation's own line, so changing the
+        default never moves a conversation already under way."""
+        from unittest.mock import patch
+
+        class _Fake:
+            sid = 'SMdef'; account_sid = 'ACtest'; messaging_service_sid = False
+            num_media = 0; error_code = None; error_message = None
+
+        ch = self.Channel._get_connect_channel(
+            self.partner, number='+15551230000', create_if_not_found=True)
+        ch._connect_post_inbound(self._make_incoming('inbound'))
+        with patch.object(type(self.env['connect.message']), 'client_send',
+                          return_value=_Fake()):
+            msg = ch.with_user(self.agent).message_post(
+                body='reply text', message_type='connect_message',
+                connect_provider='sms')
+        cmsg = self.env['connect.message'].search([('channel_message_id', '=', msg.id)])
+        self.assertEqual(cmsg.from_number, '+15550000000',
+                         'must reply on the line the customer wrote to')
+
+    def test_outbound_reply_on_legacy_conversation_uses_last_inbound(self):
+        """Conversations that predate the per-channel line keep replying on
+        the number the customer last messaged."""
+        from unittest.mock import patch
+
+        class _Fake:
+            sid = 'SMleg'; account_sid = 'ACtest'; messaging_service_sid = False
+            num_media = 0; error_code = None; error_message = None
+
+        ch = self.Channel._get_connect_channel(
+            self.partner, number='+15551230000', create_if_not_found=True)
+        ch._connect_post_inbound(self._make_incoming('inbound'))
+        # Simulate a channel created before connect_sender_number existed.
+        ch.connect_sender_number = False
+        with patch.object(type(self.env['connect.message']), 'client_send',
+                          return_value=_Fake()):
+            msg = ch.with_user(self.agent).message_post(
+                body='reply text', message_type='connect_message',
+                connect_provider='sms')
+        cmsg = self.env['connect.message'].search([('channel_message_id', '=', msg.id)])
+        self.assertEqual(cmsg.from_number, '+15550000000')
+
+    def test_start_sms_channel_uses_picked_line(self):
+        """The dialog's line is the one the new conversation runs on."""
+        second = self.env['connect.outgoing_callerid'].create({
+            'friendly_name': 'Second line', 'number': '+15558880000',
+            'callerid_type': 'number',
+        })
+        self._assert_new_sms_number_unused()
+        res = self.Channel.with_user(self.agent).connect_start_sms_channel(
+            self.NEW_SMS_NUMBER, second.number)
+        channel = self.Channel.browse(res['channel_id'])
+        self.assertEqual(channel.connect_sender_number, second.number)
+
+    def test_start_sms_channel_defaults_to_default_line(self):
+        self._assert_new_sms_number_unused()
+        res = self.Channel.with_user(self.agent).connect_start_sms_channel(
+            self.NEW_SMS_NUMBER)
+        channel = self.Channel.browse(res['channel_id'])
+        self.assertEqual(channel.connect_sender_number,
+                         self.default_callerid.number)
+
+    def test_start_sms_channel_rejects_unknown_line(self):
+        """The line comes from the browser, so it must be one we offer."""
+        with self.assertRaises(ValidationError):
+            self.Channel.with_user(self.agent).connect_start_sms_channel(
+                self.NEW_SMS_NUMBER, '+19998887777')
+
+    def test_start_sms_channel_keeps_the_line_of_an_existing_conversation(self):
+        """Resuming a conversation must not move it onto another line."""
+        second = self.env['connect.outgoing_callerid'].create({
+            'friendly_name': 'Second line', 'number': '+15558880000',
+            'callerid_type': 'number',
+        })
+        self._assert_new_sms_number_unused()
+        existing = self.Channel._get_connect_channel(
+            number=self.NEW_SMS_NUMBER, provider='sms', create_if_not_found=True)
+        existing.connect_sender_number = '+15557770000'
+        res = self.Channel.with_user(self.agent).connect_start_sms_channel(
+            self.NEW_SMS_NUMBER, second.number)
+        self.assertEqual(res['channel_id'], existing.id)
+        self.assertEqual(existing.connect_sender_number, '+15557770000')
+
+    def test_sms_sender_options_offer_twilio_numbers_only(self):
+        """Verified caller IDs are voice-only: Twilio rejects them as the From
+        of a message, so they must not be offered."""
+        self.env['connect.outgoing_callerid'].create({
+            'friendly_name': 'Personal mobile', 'number': '+15551112222',
+            'callerid_type': 'outgoing_callerid',
+        })
+        options = self.Channel.with_user(self.agent).connect_sms_sender_options()
+        numbers = [o['number'] for o in options['options']]
+        self.assertIn(self.default_callerid.number, numbers)
+        self.assertNotIn('+15551112222', numbers)
+        self.assertEqual(options['default'], self.default_callerid.number)
+
+    def test_default_line_is_never_a_verified_caller_id(self):
+        """``is_default`` is the *voice* caller ID flag: every other use of it
+        fills a Dial callerId, so it is routinely the business's published
+        line rather than a Twilio number a message can leave from. Choosing it
+        as the From fails silently — Twilio takes the request and the carrier
+        then refuses the sender (30024)."""
+        published = self.env['connect.outgoing_callerid'].with_context(
+            skip_validation=True).create({
+                'friendly_name': 'Published line', 'number': '+15554443333',
+                'callerid_type': 'outgoing_callerid', 'status': 'validated',
+            })
+        published.is_default = True
+        self.assertFalse(self.default_callerid.is_default)
+        self.assertEqual(
+            self.env['connect.message']._get_sender_number(),
+            self.default_callerid.number,
+            'must send from a Twilio line, not a verified caller ID')
+
+    def test_outbound_reply_finds_inbound_not_linked_to_the_channel(self):
+        """connect.message only started carrying channel_id recently, so the
+        inbound history of every older conversation is unlinked. Looking the
+        last inbound up by channel alone finds nothing there and the reply
+        silently leaves from the default line instead of the one the customer
+        actually wrote to."""
+        from unittest.mock import patch
+
+        class _Fake:
+            sid = 'SMunl'; account_sid = 'ACtest'; messaging_service_sid = False
+            num_media = 0; error_code = None; error_message = None
+
+        # An inbound from before connect.message carried channel_id.
+        self.env['connect.message'].sudo().create({
+            'message_sid': 'SMhist', 'from_number': '+15551230000',
+            'to_number': '+15550000000', 'body': 'older inbound',
+            'message_type': 'sms', 'status': 'received',
+            'partner': self.partner.id,
+        })
+        ch = self.Channel._get_connect_channel(
+            self.partner, number='+15551230000', create_if_not_found=True)
+        self.assertFalse(ch.connect_sender_number)
+        with patch.object(type(self.env['connect.message']), 'client_send',
+                          return_value=_Fake()):
+            msg = ch.with_user(self.agent).message_post(
+                body='reply text', message_type='connect_message',
+                connect_provider='sms')
+        cmsg = self.env['connect.message'].search([('channel_message_id', '=', msg.id)])
+        self.assertEqual(cmsg.from_number, '+15550000000',
+                         'must reply on the line the customer wrote to')
+
+    def test_undelivered_records_the_carrier_error(self):
+        """A carrier refusing the message (30024 and friends) comes back as
+        'undelivered', not 'failed'. Only 'failed' recorded the error, so the
+        message simply never arrived and nothing in Odoo said why."""
+        cmsg = self.env['connect.message'].sudo().create({
+            'message_sid': 'SMundel', 'from_number': '+15559990000',
+            'to_number': '+15551230000', 'body': 'test',
+            'message_type': 'sms', 'status': 'sent',
+        })
+        self.env['connect.message'].update_message_status({
+            'MessageSid': 'SMundel', 'MessageStatus': 'undelivered',
+            'ErrorCode': '30024',
+            'ErrorMessage': 'Numeric Sender ID Not Provisioned on Carrier',
+        })
+        self.assertEqual(cmsg.status, 'undelivered')
+        self.assertEqual(cmsg.error_code, '30024')
+        self.assertEqual(cmsg.error_message,
+                         'Numeric Sender ID Not Provisioned on Carrier')
+        self.assertTrue(cmsg.has_error, 'an undelivered message must show as failed')
 
     def test_connect_sidebar_category_open_setting_persists(self):
         """The 'Messages' sidebar category needs a real res.users.settings field
