@@ -12,9 +12,11 @@ class TestS3Settings(TransactionCase):
             "aws_region": "eu-central-1",
             "aws_s3_prefix": "recordings",
         })
+        # The bucket name is auto-prefixed with s3_utils.S3_BUCKET_PREFIX so it
+        # matches the IAM policy shipped with the module.
         self.assertEqual(
             s.aws_s3_url,
-            "https://my-bucket.s3.eu-central-1.amazonaws.com/recordings",
+            "https://oduist-connect-my-bucket.s3.eu-central-1.amazonaws.com/recordings",
         )
 
     def test_aws_s3_url_empty_without_bucket(self):

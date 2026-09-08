@@ -17,6 +17,13 @@ class TestYealinkPhonebook(HttpCase):
         self.token = 'test-phonebook-token'
         self.env['ir.config_parameter'].sudo().set_param(
             'phone_phonebook.token', self.token)
+        # The recent-callers filter defaults to a 6 month window and only
+        # engages when connect.call is in the registry. In a database that also
+        # has connect installed it would hide the synthetic partner below from
+        # every directory these tests fetch, so switch it off here; the tests
+        # that exercise the filter set their own window.
+        self.env['ir.config_parameter'].sudo().set_param(
+            'phone_phonebook.recent_call_months', '0')
         self.partner = self.env['res.partner'].create({
             'name': 'Phonebook Test Partner',
             'phone': '+1 (555) 010-4242',
@@ -77,6 +84,8 @@ class TestYealinkPhonebook(HttpCase):
     def test_filter_inactive_without_connect(self):
         # connect.call is not in this registry: months param must be ignored
         # and every contact with a number served.
+        if 'connect.call' in self.env:
+            self.skipTest('connect is installed, the filter is live')
         self.env['ir.config_parameter'].sudo().set_param(
             'phone_phonebook.recent_call_months', '6')
         self.assertIn('Phonebook Test Partner', self._fetch_names())
