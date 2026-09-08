@@ -36,6 +36,5 @@ from . import twiml
 from . import user
 from . import voicemail
 from . import pbx_group
-from . import documentation
 from . import whatsapp_sender
 from . import message_content_template

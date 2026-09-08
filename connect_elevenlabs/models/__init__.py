@@ -13,7 +13,3 @@ from . import user
 from . import voice
 from . import recording
 
-# Inject documentation page.
-from odoo.addons.connect.models.documentation import PAGE_MAP
-PAGE_MAP[2] = ['Connect Elevenlabs', 'connect_elevenlabs']
-

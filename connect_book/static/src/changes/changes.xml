@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="connect_book.ChangesApp">
+        <div class="o_connect_book o_connect_book_changes d-flex h-100">
+            <div class="o_connect_book_sidebar d-flex flex-column">
+                <div class="o_connect_book_changes_title p-2">Change archive</div>
+                <div class="o_connect_book_toc flex-grow-1 overflow-auto">
+                    <t t-if="!state.loaded">
+                        <div class="text-muted p-3">Loading…</div>
+                    </t>
+                    <t t-elif="state.days.length === 0">
+                        <div class="text-muted p-3">No changes recorded yet.</div>
+                    </t>
+                    <t t-foreach="archive" t-as="group" t-key="group.key">
+                        <div class="o_connect_book_changes_month" t-esc="group.label"/>
+                        <t t-foreach="group.days" t-as="day" t-key="day.date">
+                            <div class="o_connect_book_page_link o_connect_book_changes_day"
+                                 t-att-class="{ o_active: day.date === state.activeDate }"
+                                 t-on-click="() => this.selectDay(day.date)">
+                                <span t-esc="day.label"/>
+                                <span class="o_connect_book_changes_count" t-esc="day.entries.length"/>
+                            </div>
+                        </t>
+                    </t>
+                </div>
+            </div>
+            <div class="o_connect_book_content flex-grow-1 overflow-auto">
+                <t t-if="activeDay">
+                    <h1 class="o_connect_book_changes_date" t-esc="activeDay.label"/>
+                    <t t-foreach="activeDay.entries" t-as="entry" t-key="entry.module">
+                        <div class="o_connect_book_changes_entry">
+                            <div class="o_connect_book_changes_entry_module" t-esc="entry.title"/>
+                            <div class="o_connect_book_doc" t-out="entry.body"/>
+                        </div>
+                    </t>
+                </t>
+                <t t-else="">
+                    <div class="o_connect_book_placeholder text-muted">
+                        Select a day on the left to see what changed.
+                    </div>
+                </t>
+            </div>
+        </div>
+    </t>
+</templates>

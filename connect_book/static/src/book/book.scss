@@ -1,0 +1,161 @@
+.o_connect_book {
+    background-color: #fff;
+
+    .o_connect_book_sidebar {
+        width: 280px;
+        min-width: 280px;
+        border-right: 1px solid #dee2e6;
+        background-color: #f8f9fa;
+    }
+
+    .o_connect_book_toc {
+        padding-top: 0.25rem;
+    }
+
+    .o_connect_book_page_link {
+        padding: 0.4rem 0.75rem;
+        cursor: pointer;
+        font-size: 13px;
+        border-left: 3px solid transparent;
+
+        &:hover {
+            background-color: rgba(0, 0, 0, 0.04);
+        }
+
+        &.o_active {
+            background-color: rgba(13, 110, 253, 0.08);
+            border-left-color: #0d6efd;
+            font-weight: 600;
+        }
+    }
+
+    .o_connect_book_content {
+        padding: 2rem 3rem;
+    }
+
+    .o_connect_book_doc {
+        max-width: 820px;
+        line-height: 1.6;
+
+        h1, h2, h3, h4 {
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        h1:first-child,
+        h2:first-child {
+            margin-top: 0;
+        }
+
+        pre {
+            background: #1e1e1e;
+            color: #eaeaea;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow: auto;
+        }
+
+        code {
+            background: rgba(0, 0, 0, 0.06);
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        .o_diff_add {
+            color: #4ec9b0;
+        }
+
+        .o_diff_del {
+            color: #f48771;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 0.4rem 0.6rem;
+        }
+
+        th {
+            background: #f1f3f5;
+        }
+
+        blockquote {
+            border-left: 4px solid #dee2e6;
+            margin: 1rem 0;
+            padding: 0.25rem 1rem;
+            color: #6c757d;
+        }
+
+        img {
+            max-width: 100%;
+        }
+    }
+
+    .o_connect_book_placeholder {
+        padding: 3rem;
+    }
+}
+
+// Changes archive (the "Changes" client action). Reuses the .o_connect_book shell.
+.o_connect_book_changes {
+    .o_connect_book_changes_title {
+        font-weight: 600;
+        font-size: 13px;
+        color: #495057;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .o_connect_book_changes_month {
+        padding: 0.6rem 0.75rem 0.25rem;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #868e96;
+    }
+
+    .o_connect_book_changes_day {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .o_connect_book_changes_count {
+        background: rgba(13, 110, 253, 0.12);
+        color: #0d6efd;
+        border-radius: 10px;
+        font-size: 11px;
+        padding: 0 0.4rem;
+        min-width: 1.25rem;
+        text-align: center;
+    }
+
+    .o_connect_book_changes_date {
+        margin: 0 0 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .o_connect_book_changes_entry {
+        margin-bottom: 2rem;
+    }
+
+    .o_connect_book_changes_entry_module {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #0d6efd;
+        margin-bottom: 0.5rem;
+    }
+}

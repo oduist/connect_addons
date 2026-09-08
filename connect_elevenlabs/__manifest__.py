@@ -2,7 +2,7 @@
 
 {
     'name': 'Connect ElevenLabs',
-    'version': '1.0.6',
+    'version': '1.0.7',
     'author': 'Oduist',
     'price': 0,
     'currency': 'EUR',
@@ -39,7 +39,6 @@
         'views/agent_tool_params.xml',
         'views/number.xml',
         'views/recording.xml',
-        'views/documentation.xml',
     ],
     'demo': [],
     'installable': True,

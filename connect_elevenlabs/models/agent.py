@@ -235,8 +235,6 @@ class ElevenlabsAgent(models.Model):
                 )
         if not self.env.context.get("skip_elevenlabs"):
             self.update_elevenlabs_agent()
-            if not self.knowledge_base_note and self.knowledge_base_id:
-                self.delete_elevenlabs_knowledge_base()
         return res
 
     def unlink(self):
@@ -610,7 +608,8 @@ class ElevenlabsAgent(models.Model):
         agents = client.conversational_ai.agents.list().agents
         for agent in agents:
             agent = client.conversational_ai.agents.get(agent_id=agent.agent_id)
-            print(json.dumps(str(agent.conversation_config.agent), indent=2))
-            # tools = agent.conversation_config.agent.prompt.tools
-            # for tool in tools:
-            #    print(tool)
+            logger.info(
+                'Agent %s config:\n%s',
+                agent.agent_id,
+                json.dumps(str(agent.conversation_config.agent), indent=2),
+            )

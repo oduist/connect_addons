@@ -71,7 +71,7 @@ class Recording(models.Model):
                     tag_audio_events=False,  # Tag audio events like laughter, applause, etc.
                 )
                 logger.info(f'Transcript: {response.text}')
-                print(response)
+                logger.debug('Transcribe response: %s', response)
                 result['transcript'] = response.text if response.text else ""
                 # Make a summary
                 openai_client = self.env['connect.settings'].get_openai_client()

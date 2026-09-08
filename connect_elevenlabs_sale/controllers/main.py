@@ -43,6 +43,22 @@ class ConnectElevenlabsSaleController(ConnectElevenlabsController):
         }
 
 
+    @staticmethod
+    def _items_in_stock(product):
+        """On-hand quantity of a product, or None when it does not apply.
+
+        Returns ``None`` -- never a made-up number -- when stock is not
+        installed or the product is not storable (a service has no stock).
+        The agent must be able to tell "I don't track this" apart from
+        "there are none left".
+        """
+        if 'qty_available' not in product._fields:
+            # The stock module is not installed: nothing tracks quantities.
+            return None
+        if not product.is_storable:
+            return None
+        return product.qty_available
+
     @http.route('/connect_elevenlabs_sale/get_products', methods=['POST'], type=route_type,
                 auth='public', csrf=False)
     def get_products(self):
@@ -57,7 +73,7 @@ class ConnectElevenlabsSaleController(ConnectElevenlabsController):
             'product_categories': [
                 {'cetegory_name': c.name, 'category_id': c.id} for c in k.public_categ_ids],
             'product_price': k.list_price,
-            'items_in_stock': 10,
+            'items_in_stock': self._items_in_stock(k),
             'product_description': k.description_sale,
         } for k in products if k.is_published]
         logger.info('Available products: %s', json.dumps(res, indent=2))
