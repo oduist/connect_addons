@@ -2,6 +2,7 @@
 import logging
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
+from odoo.addons.connect.models.call import CALL_END_STATUSES
 from odoo.addons.connect.models.settings import debug
 
 
@@ -32,15 +33,27 @@ class CrmCall(models.Model):
             debug(self, 'CRM on_call_status error, no call.')
             return call_id
         call = self.browse(call_id)
+        # Source and lead are call-level facts derived from caller/called,
+        # so the parent leg's sequential webhooks are enough to maintain
+        # them. Ring-group child legs run in parallel transactions whose
+        # snapshots predate each other's commits: when a source or lead
+        # actually matches, each child would see the field unset, rewrite
+        # the same value and die on the call-row UPDATE with "could not
+        # serialize access due to concurrent update", replaying the whole
+        # webhook. A child-leg webhook is let through only once the call
+        # carries a final status — Twilio does not order webhooks across
+        # legs, so when the parent's completed webhook lands early, the
+        # closing child webhook is the only one that ever sees the final
+        # status the auto-create rules key on, and by then no sibling legs
+        # run in parallel with it.
+        if params.get('ParentCallSid') and call.status not in CALL_END_STATUSES:
+            return call_id
         if call.lead:
             return call_id
         # Update call source. Assigning an unchanged value — normally an
         # empty utm.source, since most called numbers carry none — still
-        # bumps write_date, i.e. UPDATEs the connect_call row. Every leg of a
-        # ring group runs this in its own parallel transaction, and under
-        # REPEATABLE READ all but the first then die with "could not
-        # serialize access due to concurrent update" and replay the whole
-        # webhook. Only write a real change.
+        # bumps write_date, i.e. UPDATEs the connect_call row and collides
+        # with any concurrent writer of it. Only write a real change.
         if call.direction == 'incoming':
             source = self.env['utm.source'].sudo().search(
                 [('phone', '=', call.called)], limit=1)

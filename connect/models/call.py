@@ -834,11 +834,16 @@ class Call(models.Model):
 
         The rows the legs actually add are disjoint, so write them straight
         into the relation table: concurrent INSERTs of different pairs never
-        conflict, and ON CONFLICT DO NOTHING makes a repeated pair a no-op
-        (DO NOTHING, unlike DO UPDATE, does not raise a serialization error
-        under REPEATABLE READ). The relation is a plain link table with no
-        stored dependents, and nothing keys off the call's write_date, so
-        skipping the row touch loses nothing.
+        conflict. ON CONFLICT DO NOTHING absorbs a duplicate pair only when
+        the existing row is visible in this transaction's snapshot (a
+        replayed webhook, a repeated call in one transaction); a duplicate
+        committed after the snapshot was taken still raises a serialization
+        failure — PostgreSQL checks the conflicting tuple against the
+        snapshot even on the DO NOTHING path. That costs one webhook replay
+        in the rare case two callbacks of the same leg overlap, and none in
+        the ring-group fan-out this exists for. The relation is a plain link
+        table with no stored dependents, and nothing keys off the call's
+        write_date, so skipping the row touch loses nothing.
         """
         self.ensure_one()
         field = self._fields[field_name]
