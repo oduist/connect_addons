@@ -916,6 +916,84 @@ class Call(models.Model):
         call.sudo().unlink()
 
     @api.model
+    @api.model
+    def _cron_finalize_stuck_calls(self, grace_minutes=5, limit=200):
+        """Finalize calls whose legs have all ended but that never finalized.
+
+        The webhook gate in on_call_status is the normal path; this is the
+        backstop for a call that slipped through it — the leg webhooks are
+        the only trigger, so a call that fails the gate on its *last* webhook
+        is never revisited and keeps a live status forever.
+
+        Only calls whose every leg has been terminal for grace_minutes are
+        touched, so a conversation still in flight is never finalized early.
+        """
+        cutoff = fields.Datetime.now() - timedelta(minutes=grace_minutes)
+        self.env.cr.execute(
+            """
+            SELECT c.id FROM connect_call c
+             WHERE (c.status IS NULL OR c.status <> ALL(%(ended)s))
+               AND EXISTS (SELECT 1 FROM connect_channel ch
+                            WHERE ch.call = c.id)
+               AND NOT EXISTS (
+                     SELECT 1 FROM connect_channel ch
+                      WHERE ch.call = c.id
+                        AND (ch.status IS NULL
+                             OR ch.status <> ALL(%(ended)s)
+                             OR ch.write_date > %(cutoff)s))
+             ORDER BY c.id LIMIT %(limit)s
+            """,
+            {'ended': list(CALL_END_STATUSES), 'cutoff': cutoff,
+             'limit': limit})
+        call_ids = [row[0] for row in self.env.cr.fetchall()]
+        if not call_ids:
+            return
+        repaired = 0
+        for call in self.browse(call_ids).exists():
+            # Same lock the webhooks take, so a late webhook for this call
+            # cannot finalize it concurrently.
+            self.env.cr.execute(
+                "SELECT pg_advisory_xact_lock(%s, %s)",
+                (CALL_LOCK_CLASS, call.id))
+            if call._has_pending_webhooks():
+                continue
+            logger.warning(
+                'Call %s: finalizing from cron - all legs ended but the '
+                'webhook gate never finalized it', call.id)
+            call._finalize_call_details()
+            repaired += 1
+        if repaired:
+            logger.info('Stuck-call cron finalized %s call(s)', repaired)
+
+    def _locked_channel_rows(self):
+        """Re-read this call's legs immune to a stale transaction snapshot.
+
+        The finalization gate decides on *sibling* legs' statuses, and every
+        leg of a ring group / dial pair arrives as its own webhook in its own
+        transaction. The per-call advisory lock orders those transactions but
+        does not refresh their snapshots: a leg that waited on the lock still
+        reads the sibling row as it stood before the previous holder
+        committed. Both legs then see "the other one is still active", both
+        defer, and the call is never finalized — and no cron repairs it.
+
+        Locking the rows closes that hole. FOR SHARE follows the update chain
+        to the latest committed version, so either we read the true state, or
+        PostgreSQL raises "could not serialize access due to concurrent
+        update" and odoo.service.model.retrying replays the whole webhook on
+        a fresh snapshot, where the sibling's terminal status is visible.
+        That is the same replay path the UNIQUE constraints already use.
+
+        Row locks are taken here after both advisory locks, so the SID lock →
+        call lock → rows ordering documented in on_call_status still holds.
+        """
+        self.ensure_one()
+        # This leg's own status must reach the database before we re-read it.
+        self.env['connect.channel'].flush_model()
+        self.env.cr.execute(
+            'SELECT id, sid, status, parent_channel FROM connect_channel '
+            'WHERE call = %s FOR SHARE', (self.id,))
+        return self.env.cr.dictfetchall()
+
     def on_call_status(self, params):
         # tracking_disable: the webhook hot path must not spend queries on
         # mail.thread field tracking of connect.call / connect.channel rows.
@@ -1097,12 +1175,19 @@ class Call(models.Model):
         # their creation, so the compatibility helper above cannot resolve e.g.
         # a direct_call expectation; match by SID and target user as well.
         channel.call._refresh_runtime_attempts()
+        # Every decision below turns on the *sibling* legs' statuses, which
+        # this transaction's snapshot may still show as pre-terminal. Read
+        # them once, under a row lock, so a stale snapshot becomes a replay
+        # instead of a silently deferred finalization.
+        channel_rows = channel.call._locked_channel_rows()
         # Determine finalization authority
         is_parent_call_webhook = not params.get('ParentCallSid')
         if channel.call.direction == 'outgoing':
             if params.get('ParentCallSid'):
-                parent_completed = any(ch.sid == params.get('ParentCallSid') and ch.status in CALL_END_STATUSES
-                                     for ch in channel.call.channels)
+                parent_completed = any(
+                    row['sid'] == params.get('ParentCallSid')
+                    and row['status'] in CALL_END_STATUSES
+                    for row in channel_rows)
                 can_trigger_finalization = parent_completed
             else:
                 can_trigger_finalization = True
@@ -1115,12 +1200,14 @@ class Call(models.Model):
             # stuck on its live status forever (no cron exists to repair
             # it), so the closing child webhook may finalize once the root
             # leg itself has already ended.
-            root_channel = channel.call.channels.filtered(
-                lambda ch: not ch.parent_channel)[:1]
-            can_trigger_finalization = bool(root_channel) and \
-                root_channel.status in CALL_END_STATUSES
+            root_row = next(
+                (row for row in channel_rows if not row['parent_channel']),
+                None)
+            can_trigger_finalization = bool(root_row) and \
+                root_row['status'] in CALL_END_STATUSES
         # Register call only when ALL channels have ended AND no pending webhook expectations AND can trigger finalization
-        all_channels_ended = all(ch.status in CALL_END_STATUSES for ch in channel.call.channels)
+        all_channels_ended = all(
+            row['status'] in CALL_END_STATUSES for row in channel_rows)
         has_pending_webhooks = channel.call._has_pending_webhooks()
         if (all_channels_ended and
             params.get('CallStatus') in CALL_END_STATUSES and
