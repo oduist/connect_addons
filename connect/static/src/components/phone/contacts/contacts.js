@@ -1,8 +1,8 @@
 /** @odoo-module **/
 
 import {useService} from "@web/core/utils/hooks"
-import {setFocus, escapeHtml, initialsOf, avatarTone, shortName} from "@connect/js/utils"
-import {Component, useState, useRef, onWillStart, markup} from "@odoo/owl"
+import {setFocus} from "@connect/js/utils"
+import {Component, useState, useRef, useEffect, onWillStart} from "@odoo/owl"
 
 const searching = {
     all: 'all',
@@ -14,7 +14,6 @@ export class Contacts extends Component {
     static template = 'connect.contacts'
     static props = {
         bus: Object,
-        isTransfer: {type: Boolean, optional: true},
         isContact: {type: Boolean, optional: true},
         isForward: {type: Boolean, optional: true},
         contactSearch: {type: String, optional: true},
@@ -22,17 +21,12 @@ export class Contacts extends Component {
 
     constructor() {
         super(...arguments)
-        const {bus, isTransfer = false, isForward = false, isContact = false, contactSearch = 'all'} = this.props
+        const {bus, isForward = false, isContact = false, contactSearch = 'all'} = this.props
         this.bus = bus
-        this.isTransfer = isTransfer
         this.isForward = isForward
         this.isContact = isContact
         this.contactSearch = contactSearch
-        this.searchQuery = ''
         this.users = []
-        this.initialsOf = initialsOf
-        this.avatarTone = avatarTone
-        this.shortName = shortName
     }
 
     setup(props) {
@@ -44,9 +38,23 @@ export class Contacts extends Component {
             isContactMode: false,
             partners: [],
             users: this.users,
-            // What was typed, kept in state so the results can point at it.
-            query: '',
+            // Kept in state, not on the instance: the results header and the
+            // empty text are rendered from it.
+            searchQuery: '',
         })
+
+        // Focus the search box as soon as it exists, not when the mode is
+        // set. The input is behind a t-if, so at the moment _onClickForward
+        // announces the mode over the bus there is nothing in the DOM to
+        // focus yet; this runs after the patch that puts it there.
+        useEffect(
+            (isContactMode) => {
+                if (isContactMode && this.contactInput.el) {
+                    this.contactInput.el.focus()
+                }
+            },
+            () => [this.state.isContactMode],
+        )
 
         onWillStart(async () => {
             this.bus.addEventListener('busContactSetState', ({detail}) => this._busContactSetState(detail))
@@ -54,18 +62,49 @@ export class Contacts extends Component {
         })
     }
 
-    _busContactSetState({isTransfer = false, isForward = false, isContact = false, isContactMode = false}) {
+    get searchQuery() {
+        return this.state.searchQuery
+    }
+
+    /** What clicking a result does, in the words of the mode we are in. */
+    get actionLabel() {
+        return this.isForward ? 'Forward to' : 'Call'
+    }
+
+    /**
+     * The number to dial for a partner. phone_sanitized is empty whenever a
+     * number could not be normalised (no country to resolve it against), and
+     * a contact you can see but cannot call is worse than an unformatted one.
+     */
+    partnerNumber(partner) {
+        return partner.phone_sanitized || partner.phone || partner.mobile || ''
+    }
+
+    /**
+     * Split `text` around the current query so the template can wrap the
+     * matching run in <mark> without ever injecting raw HTML.
+     */
+    highlight(text) {
+        const query = this.state.searchQuery.trim()
+        if (!query || !text) return [{text: text || '', match: false}]
+        const at = text.toLowerCase().indexOf(query.toLowerCase())
+        if (at === -1) return [{text, match: false}]
+        return [
+            {text: text.slice(0, at), match: false},
+            {text: text.slice(at, at + query.length), match: true},
+            {text: text.slice(at + query.length), match: false},
+        ].filter((part) => part.text)
+    }
+
+    _busContactSetState({isForward = false, isContact = false, isContactMode = false}) {
         this.state.isContactMode = isContactMode
-        this.isTransfer = isTransfer
         this.isContact = isContact
         this.isForward = isForward
         this.state.partners = []
         this.state.users = []
-        this.state.query = ''
-        this.searchQuery = ''
+        this.state.searchQuery = ''
         if (this.contactInput.el) {
             this.contactInput.el.value = ''
-            setFocus(this.contactInput.el)
         }
     }
 
@@ -83,88 +122,59 @@ export class Contacts extends Component {
 
     _onClickClearSearchContact(ev) {
         this._contactSearchQuery({searchQuery: ''})
-        this.contactInput.el.value = ''
-        setFocus(this.contactInput.el)
-    }
-
-    _contactSearchQuery({searchQuery = ''}) {
-        this.searchQuery = searchQuery
-        this.state.query = searchQuery
-        this.searchUser()
-        this.searchPartner()
-    }
-
-    // What pressing a row does depends on why the list is open: place the call,
-    // hand the live one over, or forward it.
-    _dial(phoneNumber) {
-        if (!phoneNumber) return
-        if (this.isTransfer) {
-            this._onClickMakeTransfer(phoneNumber)
-        } else if (this.isForward) {
-            this._onClickMakeForward(phoneNumber)
-        } else {
-            this._onClickMakeCall(phoneNumber)
+        if (this.contactInput.el) {
+            this.contactInput.el.value = ''
+            setFocus(this.contactInput.el)
         }
     }
 
-    get actionLabel() {
-        if (this.isTransfer) return 'Transfer to'
-        if (this.isForward) return 'Forward to'
-        return 'Call'
-    }
-
-    get hasResults() {
-        return this.state.users.length > 0 || this.state.partners.length > 0
-    }
-
-    // The part of the name that matched, marked in place.
-    highlight(text) {
-        const value = `${text || ''}`
-        const query = this.state.query.trim()
-        if (!query) return value
-        const at = value.toLowerCase().indexOf(query.toLowerCase())
-        if (at < 0) return value
-        return markup(
-            `${escapeHtml(value.slice(0, at))}` +
-            `<mark>${escapeHtml(value.slice(at, at + query.length))}</mark>` +
-            `${escapeHtml(value.slice(at + query.length))}`
-        )
+    _contactSearchQuery({searchQuery = ''}) {
+        this.state.searchQuery = searchQuery
+        this.searchUser()
+        this.searchPartner()
     }
 
     _contactCall() {
         let phoneNumber
         if (this.state.partners.length + this.state.users.length === 1) {
             if (this.state.partners.length) {
-                const contact = this.state.partners[0]
-                phoneNumber = contact.phone ? contact.phone : contact.mobile
+                phoneNumber = this.partnerNumber(this.state.partners[0])
             } else {
-                phoneNumber = this.state.users[0].exten
+                // search_directory returns exten_number; `exten` never
+                // existed on this payload, so Enter on a single colleague
+                // match used to dial nothing at all.
+                phoneNumber = this.state.users[0].exten_number
             }
         } else {
-            phoneNumber = this.searchQuery
+            phoneNumber = this.state.searchQuery
         }
+        this._onClickContact(phoneNumber)
+    }
 
-        if (this.isTransfer) {
-            this._onClickMakeTransfer(phoneNumber)
-        } else if (this.isContact) {
-            this._onClickMakeCall(phoneNumber)
-        } else if (this.isForward) {
+    /** One entry point for a picked result; the mode decides what it means. */
+    _onClickContact(phoneNumber) {
+        if (!phoneNumber) return
+        if (this.isForward) {
             this._onClickMakeForward(phoneNumber)
+        } else {
+            this._onClickMakeCall(phoneNumber)
         }
     }
 
     searchPartner() {
         if (this.contactSearch !== searching.all && this.contactSearch !== searching.partners) return
         const self = this
-        if (self.searchQuery) {
+        const query = self.state.searchQuery
+        if (query) {
             self.orm.searchRead(
                 "res.partner",
                 [
-                    '|', ['phone_sanitized', '=ilike', `%${self.searchQuery}%`],
-                    ['name', '=ilike', `%${self.searchQuery}%`],
-                    ['phone_sanitized', '!=', false]
+                    // OR: a query is either part of a number or part of a name,
+                    // never both at once.
+                    '|', ['phone_mobile_search', '=ilike', `%${query}%`],
+                    ['name', '=ilike', `%${query}%`],
                 ],
-                ['id', 'name', 'email', 'phone_sanitized'],
+                ['id', 'name', 'email', 'phone_sanitized', 'phone', 'mobile'],
                 {order: 'name asc', limit: 10}
             ).then((records) => {
                 self.state.partners = records
@@ -177,16 +187,13 @@ export class Contacts extends Component {
     searchUser() {
         if (this.contactSearch !== searching.all && this.contactSearch !== searching.extensions) return
         const self = this
-        if (self.searchQuery) {
-            self.orm.searchRead(
-                "connect.user",
-                [
-                    '|', ['exten_number', '=ilike', `%${self.searchQuery}%`],
-                    ['user', '=ilike', `%${self.searchQuery}%`]
-                ],
-                ['id', 'name', 'exten_number', 'user'],
-                {order: 'exten_number asc', limit: 10}
-            ).then((records) => {
+        const query = self.state.searchQuery
+        if (query) {
+            // Not a searchRead: the connect.user record rule limits a Connect
+            // user to their own record, so a direct search only ever finds
+            // themselves. search_directory hands back name + extension for
+            // everyone, and nothing else off the model.
+            self.orm.call("connect.user", "search_directory", [query, 10]).then((records) => {
                 self.state.users = records
             })
         } else {
@@ -198,13 +205,16 @@ export class Contacts extends Component {
         this.bus.trigger('busPhoneMakeCall', {phone: phoneNumber})
     }
 
-    _onClickMakeTransfer(phoneNumber) {
-        this.bus.trigger('busPhoneMakeTransfer', {phoneNumber})
+    _onClickMakeForward(phoneNumber) {
+        // Sent whole: forwarding is a REST redirect now, not a DTMF sequence
+        // that could not carry a '+', and an external destination has to stay
+        // in E.164 to be recognised as one.
+        this.bus.trigger('busPhoneMakeForward', phoneNumber)
     }
 
-    _onClickMakeForward(phoneNumber) {
-        const normalized = phoneNumber ? phoneNumber.replace('+', '') : phoneNumber
-        this.bus.trigger('busPhoneMakeForward', {phoneNumber: normalized})
+    _onClickOpenPartner(ev, id) {
+        ev.stopPropagation()
+        this._openPartner(id)
     }
 
     _openPartner(id) {

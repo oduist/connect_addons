@@ -2,17 +2,43 @@
 "use strict"
 import {loadJS} from "@web/core/assets"
 import {useService} from "@web/core/utils/hooks"
-import {Calls} from "@connect/components/phone/calls/calls"
+import {Recents} from "@connect/components/phone/recents/recents"
 import {Favorites} from "@connect/components/phone/favorites/favorites"
 import {Contacts} from "@connect/components/phone/contacts/contacts"
-import {dialTone, setFocus, initialsOf, avatarTone, shortName, shortDuration} from "@connect/js/utils"
+import {contactInitial, contactTone, dialTone, setFocus} from "@connect/js/utils"
 import {Component, useState, useRef, onWillStart, onMounted} from "@odoo/owl"
 import {useDebounced} from "@web/core/utils/timing"
 import {user} from "@web/core/user"
 
 const uid = user.userId
-const VALID_DTMF = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '#']
-const clamp = (value, low, high) => Math.min(Math.max(value, low), high)
+
+// Connection diagnostics: single prefix so admins can filter the browser
+// console by "[Connect Phone]" when a web phone fails to connect / call.
+const LOG_PREFIX = '[Connect Phone]'
+const clog = (...args) => console.log(LOG_PREFIX, ...args)
+const cwarn = (...args) => console.warn(LOG_PREFIX, ...args)
+const cerror = (...args) => console.error(LOG_PREFIX, ...args)
+
+// Human-readable hints for the most common Twilio Voice error codes so the
+// reason a phone won't connect is obvious straight from the console.
+function explainTwilioError(error) {
+    const code = error && error.code
+    const hints = {
+        20101: 'Invalid Access Token — check Twilio API Key/Secret and Account SID in Connect settings.',
+        20104: 'Access Token expired — the token TTL elapsed; it should auto-refresh.',
+        31005: 'Connection error (transport/WebSocket to Twilio failed) — check network/firewall/proxy and that wss to Twilio is allowed.',
+        31009: 'Transport error — no transport available to send the message.',
+        31201: 'Error acquiring microphone — no audio input device available.',
+        31202: 'Microphone permission denied by the user/browser.',
+        31208: 'Microphone permission prompt was dismissed — grant mic access for this site.',
+        31402: 'Media acquisition failed — the browser could not get the microphone (permissions, no device, or it is used by another app). This is the #1 reason an outgoing call ends instantly.',
+        31003: 'ICE connection failed — media path could not be established (NAT/firewall blocking UDP/media).',
+        31000: 'General/unknown Twilio Voice error.',
+        31204: 'Access Token: invalid signature.',
+        31205: 'Access Token expired.',
+    }
+    return hints[code] || (error && error.explanation) || ''
+}
 
 export class Phone extends Component {
     static template = 'connect.phone'
@@ -21,18 +47,17 @@ export class Phone extends Component {
         token_data: Object
     }
 
-    static components = {Calls, Contacts, Favorites}
+    static components = {Recents, Contacts, Favorites}
 
     constructor() {
         super(...arguments)
         this.bus = this.props.bus
         this.token = this.props.token_data.token
         this.edge = this.props.token_data.edge
+        // Shown in the header and under the favourites grid: who this phone
+        // is, and what the far end sees when it calls out.
         this.exten = this.props.token_data.exten || ''
-        // Helpers the template leans on for avatars and names.
-        this.initialsOf = initialsOf
-        this.avatarTone = avatarTone
-        this.shortName = shortName
+        this.outgoingCallerId = this.props.token_data.outgoing_callerid || ''
         this.callStatus = {
             NoAnswer: 'noanswer',
             Busy: 'busy',
@@ -55,7 +80,7 @@ export class Phone extends Component {
             accepted: 'accepted',
             ended: 'ended'
         }
-        this.title = 'Connect Phone'
+        this.title = 'Connect'
         this.state = useState({
             isActive: true,
             isDisplay: false,
@@ -67,7 +92,6 @@ export class Phone extends Component {
             isFavorites: false,
             isCalls: false,
             isPartner: false,
-            isTransfer: false,
             isForward: false,
             isCallForwarded: false,
             isDialingPanel: false,
@@ -92,12 +116,10 @@ export class Phone extends Component {
             xTransferPartner: false,
             phone_status: this.status.ended,
             calls: [],
-            // Digits sent as DTMF, echoed back while a call is up.
-            dtmfSent: '',
-            // Who the typed number belongs to, resolved as the keys are pressed.
-            match: null,
-            // The call you have just hung up, until you act on it or dismiss it.
-            endedCall: null,
+            // {name, exten, sub} for the contact the typed number resolves to.
+            dialMatch: null,
+            // Drives the header dot: green only when Twilio has us registered.
+            registered: false,
         })
         this.callDuration = 0
         this.callDurationTimerInstance = null
@@ -112,7 +134,6 @@ export class Phone extends Component {
         this.call_popup_is_enabled = false
         this.call_popup_is_sticky = false
         this.phone_ring_volume = 70
-        this.attended_transfer_sequence = '*7'
         this.disconnect_call_sequence = '**'
         // Move Phone
         this.mousePosition = {}
@@ -148,10 +169,6 @@ export class Phone extends Component {
             this._onEnterPhoneNumber(ev)
         }, 400)
 
-        this.debounceResolveMatch = useDebounced(() => {
-            this.resolveMatch()
-        }, 400)
-
         onWillStart(async () => {
             await loadJS('/connect/static/src/lib/twilio.min.js')
 
@@ -159,8 +176,6 @@ export class Phone extends Component {
             this.bus.addEventListener('busPhoneMakeCall', ({detail}) => this.prepareCall(detail))
 
             this.bus.addEventListener('busPhoneMakeForward', ({detail}) => this._busPhoneMakeForward(detail))
-
-            this.bus.addEventListener('busPhoneMakeTransfer', ({detail}) => this._busPhoneMakeTransfer(detail))
 
             this.bus.addEventListener('busPhoneToggleDisplay', ({detail}) => this._busPhoneToggleDisplay(detail))
 
@@ -215,10 +230,10 @@ export class Phone extends Component {
                     const cx = document.documentElement.clientWidth
                     const cy = document.documentElement.clientHeight
 
-                    // Measured, not assumed: the panel shrinks to fit short
-                    // windows, and the header must stay reachable either way.
-                    const left = clamp(px, 0, Math.max(0, cx - phoneRoot.offsetWidth))
-                    const top = clamp(py, 0, Math.max(0, cy - phoneRoot.offsetHeight))
+                    let left = px < 10 ? 0 : px
+                    left = left + 310 > cx ? cx - 300 : left
+                    let top = py < 10 ? 0 : py
+                    top = top + 530 > cy ? cy - 520 : top
 
                     phoneRoot.style.left = left + "px"
                     phoneRoot.style.top = top + "px"
@@ -351,43 +366,188 @@ export class Phone extends Component {
         })
     }
 
-    // ---------------------------------------------------------------- view
 
-    // Paper when the phone is idle, ink once a call is on the line.
-    get isInk() {
-        return this.state.inCall || this.state.inIncoming
+    // ====================================================================
+    // What the panel is showing
+    //
+    // Exactly one body screen is live at a time, and the ground follows from
+    // it. Incoming wins over everything -- a ringing phone is the only thing
+    // worth looking at -- and the after-call summary is checked before the
+    // in-call screens so the 100ms during which endCall() still reports
+    // inCall does not flash the call screen back up.
+    // ====================================================================
+
+    get screen() {
+        const s = this.state
+        if (s.inIncoming) return 'incoming'
+        if (s.isForward) return 'forward'
+        if (s.inCall && s.isKeypad) return 'dtmf'
+        if (s.inCall) return 'incall'
+        if (s.isCalls) return 'recents'
+        if (s.isFavorites) return 'favorites'
+        if (s.isContactList) return 'contacts'
+        return 'keypad'
     }
 
-    get headTitle() {
-        if (this.state.inIncoming) return 'Incoming'
-        if (this.state.isForward) return 'Forward to'
-        if (this.state.inCall) {
-            return this.state.phone_status === this.status.accepted ? 'On a call' : 'Calling'
+    /** The three screens the dial input belongs to. */
+    get showDialField() {
+        const screen = this.screen
+        return screen === 'keypad' || screen === 'contacts' || screen === 'dtmf'
+    }
+
+    /** The two screens the search results belong to. */
+    get showContacts() {
+        const screen = this.screen
+        return screen === 'contacts' || screen === 'forward'
+    }
+
+    /**
+     * True on the screens that belong to a live call.
+     *
+     * The panel is one light ground throughout; this no longer picks a
+     * colour, it only says "a call is on" -- which is what suppresses the tab
+     * bar, because during a call there is nowhere else to go.
+     */
+    get isCallScreen() {
+        return ['incoming', 'forward', 'dtmf', 'incall'].includes(this.screen)
+    }
+
+    get headerTitle() {
+        switch (this.screen) {
+            case 'incoming': return 'Incoming'
+            case 'forward': return 'Forward to'
+            case 'dtmf':
+            case 'incall': return 'On a call'
+            default: return this.title
         }
-        return 'Connect'
     }
 
-    get headSub() {
-        if (this.state.inCall) {
-            return this.durationShort ? `\u00b7 ${this.durationShort}` : ''
+    get headerSub() {
+        if (this.screen === 'incall' || this.screen === 'dtmf') {
+            return this.state.callDurationTime ? `· ${this.state.callDurationTime}` : ''
         }
-        return this.exten ? `\u00b7 ext ${this.exten}` : ''
+        if (this.screen === 'incoming' || this.screen === 'forward') return ''
+        return this.exten ? `· ext ${this.exten}` : ''
     }
 
-    get durationShort() {
-        return shortDuration(this.state.callDurationTime)
+    get headerDotClass() {
+        if (this.screen === 'incoming') return 'o_csp_dot_ring'
+        if (this.isCallScreen) return 'o_csp_dot_on'
+        return this.state.registered ? 'o_csp_dot_on' : ''
     }
 
-    // The name to put on the call, falling back to the number itself.
-    get callerTitle() {
-        const {partnerName, phoneNumber} = this.state.callerId
-        return shortName(partnerName) || phoneNumber || ''
+    /** Who is on the line, for the screens that keep the call in a strip. */
+    get liveCallName() {
+        const callerId = this.state.callerId || {}
+        return callerId.partnerName || callerId.phoneNumber || ''
     }
 
-    // The keys give way to the search results, and to the summary of the call
-    // that has just ended.
-    get showKeys() {
-        return !this.state.isContactList && !(this.state.endedCall && !this.state.inCall)
+    get stageAvatar() {
+        // false when there is nobody to take a picture from; the template
+        // falls back to a coloured initial rather than a missing image.
+        return this.state.callerId.partnerIconUrl || false
+    }
+
+    /** Label the stage tile falls back to when there is no avatar. */
+    get stageLabel() {
+        const callerId = this.state.callerId || {}
+        return callerId.partnerName || callerId.phoneNumber || ''
+    }
+
+    initial(text) {
+        return contactInitial(text)
+    }
+
+    tone(text) {
+        return contactTone(text)
+    }
+
+    /** The number the far end sees; shown under the favourites grid. */
+    get callerId() {
+        return this.outgoingCallerId || this.exten || ''
+    }
+
+    // ====================================================================
+    // The live match under the dial field
+    // ====================================================================
+
+    /**
+     * Name what the user is typing, as they type it. One row is enough: the
+     * full result list is a click away on the same screen, and a second line
+     * of detail under a half-typed number is noise.
+     */
+    async _updateDialMatch(query) {
+        const trimmed = (query || '').trim()
+        if (!trimmed) {
+            this.state.dialMatch = null
+            return
+        }
+        const [pbxUsers, partners] = await Promise.all([
+            // Same reason as the colleague list: the connect.user record rule
+            // would otherwise resolve only the caller's own extension.
+            this.orm.call("connect.user", "search_directory", [trimmed, 1]),
+            this.orm.searchRead(
+                "res.partner",
+                ['|', ['phone_mobile_search', '=ilike', `%${trimmed}%`],
+                 ['name', '=ilike', `%${trimmed}%`]],
+                ['name', 'function'],
+                {order: 'name asc', limit: 1},
+            ),
+        ])
+        // The query may have moved on while these were in flight.
+        if (this.state.phoneNumber.trim() !== trimmed) return
+        if (pbxUsers.length) {
+            this.state.dialMatch = {name: pbxUsers[0].name, exten: pbxUsers[0].exten_number}
+        } else if (partners.length) {
+            this.state.dialMatch = {name: partners[0].name, sub: partners[0].function || ''}
+        } else {
+            this.state.dialMatch = null
+        }
+    }
+
+    // ====================================================================
+    // Messaging from the keypad
+    // ====================================================================
+
+    _onClickSendSms() {
+        const number = this.state.phoneNumber
+        if (!number) return
+        this.action.doAction({
+            type: 'ir.actions.act_window',
+            target: 'new',
+            name: 'Send SMS',
+            res_model: 'sms.composer',
+            views: [[false, 'form']],
+            context: {
+                default_composition_mode: 'numbers',
+                default_numbers: number,
+            },
+        })
+    }
+
+    _onClickSendWhatsapp() {
+        const number = this.state.phoneNumber
+        if (!number) return
+        this.action.doAction({
+            type: 'ir.actions.act_window',
+            target: 'new',
+            name: 'Send WhatsApp Message',
+            res_model: 'connect.whatsapp_composer',
+            views: [[false, 'form']],
+            context: {default_phone: number},
+        })
+    }
+
+    /** Leave the forward picker without dropping the call. */
+    _onClickForwardBack() {
+        this.state.isForward = false
+        this.state.isContacts = false
+        this.state.isContactList = false
+        // Tell the picker it is over. Without this its contact mode stays on,
+        // so reopening it neither clears the last search nor takes focus
+        // again -- the mode never changed, so nothing reacts to it.
+        this.bus.trigger('busContactSetState', {})
+        this._onClickDialingPanel()
     }
 
     _busPhoneToggleDisplay() {
@@ -399,60 +559,75 @@ export class Phone extends Component {
         await this._onClickEndCall()
     }
 
-    async _busPhoneMakeForward({phoneNumber} = {}) {
-        if (this.session) {
-            try {
-                const result = await this.orm.call('connect.transfer_wizard', 'execute_transfer', [
-                    phoneNumber,
-                    'blind',
-                    this.call_id,
-                    this.session.parameters.CallSid
-                ])
-                if (result.success) {
-                    this.notify(result.message, {sticky: false, type: 'success'})
-                } else {
-                    this.notify(result.error || 'Forward failed', {sticky: false, type: 'warning'})
-                }
-            } catch (error) {
-                console.error('Forward error:', error)
-                this.notify('Forward failed', {sticky: false, type: 'warning'})
-            }
+    /**
+     * Blind-transfer the live call.
+     *
+     * The server moves the other party's leg; this leg then drops on its own
+     * when Twilio tears the bridge down, which is what ends the call here.
+     * Nothing is changed on screen until the server has accepted the
+     * transfer, so a failure leaves the user on the call rather than on a
+     * panel that claims the transfer happened.
+     */
+    async _busPhoneMakeForward(phoneNumber) {
+        const number = (phoneNumber || '').trim()
+        if (!number) {
+            this.notification.add('That contact has no number to forward to.',
+                {title: 'Connect', type: 'warning'})
+            return
         }
-        this.bc.postMessage({event: "tbcForward", params: {phoneNumber}})
-        this.endCall()
-    }
-
-    async _busPhoneMakeTransfer({phoneNumber} = {}) {
-        if (this.session) {
-            try {
-                const result = await this.orm.call('connect.transfer_wizard', 'execute_transfer', [
-                    phoneNumber,
-                    'blind',
-                    this.call_id,
-                    this.session.parameters.CallSid
-                ])
-                if (result.success) {
-                    this.notify(result.message, {sticky: false, type: 'success'})
-                } else {
-                    this.notify(result.error || 'Transfer failed', {sticky: false, type: 'warning'})
-                }
-            } catch (error) {
-                console.error('Transfer error:', error)
-                this.notify('Transfer failed', {sticky: false, type: 'warning'})
-            }
+        if (!this.session) {
+            this.notification.add('There is no call to forward.',
+                {title: 'Connect', type: 'warning'})
+            return
         }
-        this.bc.postMessage({event: "tbcTransfer", params: {phoneNumber}})
-        this.endCall()
+        try {
+            const result = await this.orm.call('connect.transfer_wizard', 'execute_transfer', [
+                number,
+                'blind',
+                this.call_id,
+                this.getLiveChannelSid(),
+            ])
+            if (!result.success) {
+                throw new Error(result.error || 'Forward failed')
+            }
+        } catch (error) {
+            cerror('Forwarding the call failed:', error)
+            this.notification.add(error.message || String(error),
+                {title: 'Forward', type: 'danger'})
+            return
+        }
+        this.bc.postMessage({event: "tbcForward", params: {phoneNumber: number}})
+        this.state.isForward = false
+        this.state.isContacts = false
+        this.state.isDialingPanel = true
+        this.notify('Forwarded to {}'.replace('{}', number),
+            {sticky: false, type: 'success'})
+        // Leave the call ourselves rather than waiting to be dropped. On an
+        // inbound call Twilio kills our leg as soon as the customer is
+        // redirected away, but on an outbound one our leg is the one running
+        // the <Dial>: that Dial simply completes and the leg lives on, which
+        // would strand the agent on a call with nobody.
+        await this._onClickEndCall()
     }
 
     async prepareCall(props) {
+        // Every dial converges here -- the keypad, the contact and favourite
+        // lists, the recent list, click-to-call from a form -- so this is the
+        // one place worth refusing an empty number. Twilio accepts a call with
+        // an empty To, rings nobody, and leaves a blank row in the ledger; the
+        // user is owed an explanation instead.
+        const phone = (props && props.phone ? String(props.phone) : '').trim()
+        if (!phone) {
+            cwarn('Refusing to place a call with no number.', props)
+            this.notification.add('That contact has no number to call.',
+                {title: 'Connect', type: 'warning'})
+            return
+        }
         if (!this.state.inCall) {
-            this.dismissEndedCall()
             this.state.isContactList = false
-            this.state.match = null
-            this.state.callPhoneNumber = props.phone
-            await this.searchPartner(props.phone)
-            this.makeCall(props)
+            this.state.callPhoneNumber = phone
+            await this.searchPartner(phone)
+            this.makeCall({...props, phone})
         }
     }
 
@@ -461,38 +636,100 @@ export class Phone extends Component {
         this.notify(currentCallStatus.toUpperCase(), {sticky: false})
     }
 
+    getLiveChannelSid() {
+        if (!this.session) {
+            return ''
+        }
+        if (this.session.parameters && this.session.parameters.CallSid) {
+            return this.session.parameters.CallSid
+        }
+        if (
+            this.session.customParameters
+            && typeof this.session.customParameters.get === 'function'
+            && this.session.customParameters.get('CallSid')
+        ) {
+            return this.session.customParameters.get('CallSid')
+        }
+        return ''
+    }
+
     async updateToken() {
-        const {token} = await this.orm.call('connect.user', 'get_client_token')
-        if (token) this.userAgent.updateToken(token)
+        const result = await this.orm.call('connect.user', 'get_client_token')
+        const {token, error} = result || {}
+        if (error) {
+            cerror('get_client_token returned an error:', error)
+            return
+        }
+        if (token) {
+            clog('Fetched a fresh access token — updating device.')
+            this.userAgent.updateToken(token)
+        } else {
+            cerror('get_client_token returned no token — the phone cannot connect. Likely the user is not Client Enabled or Twilio username/domain/TwiML app are missing.')
+        }
     }
 
     initUserAgent() {
         const self = this
         if (!self.state.isActive) {
+            cwarn('Web phone is not active (state.isActive is false) — device will not be initialized.')
             return
         }
 
+        // Log what we start with: a missing/empty token means the server
+        // (connect.user.get_client_token) refused — usually client not
+        // enabled, or username/domain/TwiML app missing in Connect settings.
+        clog('Initializing Twilio Device', {
+            tokenPresent: !!self.token,
+            tokenLength: self.token ? String(self.token).length : 0,
+            edge: self.edge,
+        })
+        if (!self.token) {
+            cerror('No Twilio access token — cannot connect. Check the user is Client Enabled and that Twilio username/domain/TwiML app are configured.')
+        }
+
+        // logLevel: 2 = "info" (loglevel scale: 0 trace, 1 debug, 2 info,
+        // 3 warn, 4 error, 5 silent). At info the Twilio SDK itself logs
+        // registration and connection lifecycle so "registered"/"connecting"
+        // messages are visible when diagnosing a phone that won't connect.
         self.userAgent = new Twilio.Device(self.token, {
             edge: self.edge,
-            logLevel: 4,
+            logLevel: 2,
             codecPreferences: ["opus", "pcmu"]
+        })
+
+        // Device lifecycle: these tell you exactly how far the connection got.
+        self.userAgent.on('registering', () => {
+            clog('Device registering… (edge:', self.userAgent.edge, ')')
+        })
+        self.userAgent.on('registered', () => {
+            self.state.registered = true
+            clog('Device REGISTERED — web phone is connected to Twilio (identity:', self.userAgent.identity, ', edge:', self.userAgent.edge, ')')
+        })
+        self.userAgent.on('unregistered', () => {
+            self.state.registered = false
+            cwarn('Device UNREGISTERED — web phone is no longer connected to Twilio. If it flaps, the same user identity is likely registered in another tab/device.')
         })
 
         this.setIncomingVolume()
         self.userAgent.on('tokenWillExpire', () => {
-            console.log('tokenWillExpire REFRESH')
+            clog('Access token is about to expire — refreshing token…')
             self.updateToken().then()
         })
 
         self.userAgent.on('error', (error) => {
+            // Always surface the full error with a decoded reason.
+            cerror('Device error:', {
+                name: error && error.name,
+                code: error && error.code,
+                message: error && error.message,
+                reason: explainTwilioError(error),
+            }, error)
             if (error.name === 'AccessTokenExpired') {
-                console.log('AccessTokenExpired')
+                clog('AccessTokenExpired — refreshing token…')
                 self.updateToken().then()
             } else if (error.name === 'AccessTokenInvalid') {
-                console.log('AccessTokenInvalid')
+                cerror('AccessTokenInvalid — the phone cannot connect. Verify Twilio API Key/Secret/Account SID in Connect settings.')
                 self.bus.trigger('busTraySetException', {exception: error.name})
-            } else {
-                console.log(error)
             }
         })
         let lastTime = (new Date()).getTime()
@@ -604,8 +841,16 @@ export class Phone extends Component {
             }
         })
 
-        self.userAgent.register().catch(() => {
-            console.warn('Failed to registered device!')
+        clog('Calling device.register()…')
+        self.userAgent.register().then(() => {
+            clog('device.register() resolved (registration accepted).')
+        }).catch((error) => {
+            cerror('device.register() FAILED — web phone did not connect:', {
+                name: error && error.name,
+                code: error && error.code,
+                message: error && error.message,
+                reason: explainTwilioError(error),
+            }, error)
         })
     }
 
@@ -638,7 +883,41 @@ export class Phone extends Component {
             Called: phoneNumber,
         }
 
-        self.session = await self.userAgent.connect({params})
+        // A call needs microphone access (getUserMedia). If the device is not
+        // registered, or the mic can't be acquired, connect() throws here —
+        // this is the most common "call ends instantly" failure.
+        clog('Placing outgoing call', {
+            to: phoneNumber,
+            deviceState: self.userAgent && self.userAgent.state,
+        })
+        if (self.userAgent && self.userAgent.state !== 'registered') {
+            cwarn('Placing a call while device is not "registered" (state:', self.userAgent && self.userAgent.state, ') — the call may fail.')
+        }
+        try {
+            self.session = await self.userAgent.connect({params})
+        } catch (error) {
+            cerror('Failed to start outgoing call — connect() threw:', {
+                name: error && error.name,
+                code: error && error.code,
+                message: error && error.message,
+                reason: explainTwilioError(error),
+            }, error)
+            self.state.phone_status = self.status.ended
+            await self.setCallStatus('Failed')
+            await self.endCall()
+            self.session = null
+            return
+        }
+
+        // Surface call-level errors (e.g. media/ICE failures) during the call.
+        self.session.on("error", function (error) {
+            cerror('Call error:', {
+                name: error && error.name,
+                code: error && error.code,
+                message: error && error.message,
+                reason: explainTwilioError(error),
+            }, error)
+        })
 
         self.session.on("accept", async function () {
             // console.log('outgoing -> accepted: ', data)
@@ -687,17 +966,13 @@ export class Phone extends Component {
 
     async endCall() {
         this.state.isDisplay = this.state.isDisplayLastState
-        this.rememberEndedCall()
         this.state.isContactList = false
         this.state.isDialingPanel = false
         this.state.inIncoming = false
-        // The call leaves a summary behind on the keypad, so that is where we land.
-        const landOnKeypad = this.state.endedCall ? this.tabs.phone : this.lastActiveTab
-        this.state.isKeypad = landOnKeypad === this.tabs.phone
-        this.state.isContacts = landOnKeypad === this.tabs.contacts
-        this.state.isFavorites = landOnKeypad === this.tabs.favorites
-        this.state.isCalls = landOnKeypad === this.tabs.calls
-        this.state.isTransfer = false
+        this.state.isKeypad = this.lastActiveTab === this.tabs.phone
+        this.state.isContacts = this.lastActiveTab === this.tabs.contacts
+        this.state.isFavorites = this.lastActiveTab === this.tabs.favorites
+        this.state.isCalls = this.lastActiveTab === this.tabs.calls
         this.state.isForward = false
         this.state.isCallForwarded = false
         this.state.isMicrophoneMute = false
@@ -705,15 +980,14 @@ export class Phone extends Component {
         this.state.isWhatsapp = false
         this.state.callerId = {}
         this.state.phoneNumber = ''
-        this.state.dtmfSent = ''
-        this.state.match = null
+        this.state.dialMatch = null
         this.state.xPhoneInfoDisplay = ''
         if (this.phoneInput.el) {
             this.phoneInput.el.value = this.state.phoneNumber
         }
         this.bus.trigger('busTrayState', {isDisplay: this.state.isDisplay, inCall: this.state.inCall})
-        this.state.activeTab = landOnKeypad
-        if (landOnKeypad === this.tabs.calls) {
+        this.state.activeTab = this.lastActiveTab
+        if (this.lastActiveTab === this.tabs.calls) {
             this.getCalls()
         }
         const self = this
@@ -724,49 +998,6 @@ export class Phone extends Component {
         this.state.xTransferTo = ''
         this.state.xTransferInfo = ''
         this.state.xTransferPartner = false
-    }
-
-    // Who does the number on the keypad belong to? Only asked for numbers
-    // punched in on the keys: typing on the keyboard opens the contact list
-    // instead, which answers the same question with more room.
-    async resolveMatch() {
-        const number = this.state.phoneNumber
-        if (this.state.inCall || this.state.isContactList || !number || number.length < 3) {
-            this.state.match = null
-            return
-        }
-        this.matchQuery = number
-        const partner = await this.getPartner(number)
-        if (this.matchQuery !== number) return
-        if (partner) {
-            this.state.match = {name: shortName(partner.name), exten: false}
-            return
-        }
-        const pbxUser = await this.getUser(number)
-        if (this.matchQuery !== number) return
-        this.state.match = pbxUser ? {name: pbxUser.name, exten: pbxUser.exten_number} : null
-    }
-
-    // The summary of the last call steps aside as soon as you do anything else.
-    dismissEndedCall() {
-        this.state.endedCall = null
-    }
-
-    // Snapshot the call before endCall() clears the caller and the counter.
-    rememberEndedCall() {
-        const {phoneNumber, partnerName, partnerIconUrl, partnerId} = this.state.callerId || {}
-        // Nobody is looking at the phone: no summary to leave behind.
-        if (!phoneNumber || !this.state.isDisplay) {
-            this.state.endedCall = null
-            return
-        }
-        this.state.endedCall = {
-            title: shortName(partnerName) || phoneNumber,
-            number: phoneNumber,
-            avatar: partnerIconUrl || false,
-            partnerId: this.state.isPartner ? partnerId : false,
-            duration: shortDuration(this.state.callDurationTime),
-        }
     }
 
     _openPartner(id) {
@@ -785,11 +1016,15 @@ export class Phone extends Component {
             this.state.isPartner = true
             this.state.callerId = this.computePartnerData(partner, phoneNumber)
         } else {
-            this.state.isPartner = false
             const pbxUser = await this.getUser(phoneNumber)
             if (pbxUser) {
+                // An internal call: no partner matches the extension, but the
+                // colleague behind it has one, so there is still a contact to
+                // open and nothing to create.
                 this.state.callerId = this.computeUserData(pbxUser, phoneNumber)
+                this.state.isPartner = !!this.state.callerId.partnerId
             } else {
+                this.state.isPartner = false
                 this.state.callerId = {phoneNumber}
             }
         }
@@ -825,7 +1060,10 @@ export class Phone extends Component {
 
     computeUserData(user, phoneNumber) {
         return {
-            partnerId: user.id,
+            // The colleague's own contact, from get_user_by_exten_number.
+            // This field used to hold the connect.user id, which would have
+            // opened an unrelated contact had anything followed it.
+            partnerId: user.partner_id || false,
             partnerName: user.name,
             partnerIconUrl: this.computeUserIconUrl(user.user[0]),
             phoneNumber: phoneNumber,
@@ -884,7 +1122,10 @@ export class Phone extends Component {
         if (this.state.phoneNumber) {
             this.state.callPhoneNumber = this.state.phoneNumber.replace(/\(|\)|-| /gm, '')
             this.state.phoneNumber = ''
-            this.phoneInput.el.value = this.state.phoneNumber
+            this.state.dialMatch = null
+            if (this.phoneInput.el) {
+                this.phoneInput.el.value = this.state.phoneNumber
+            }
             this.prepareCall({phone: this.state.callPhoneNumber})
         } else {
             this.notify("The phone call has no number!", {sticky: false})
@@ -896,7 +1137,6 @@ export class Phone extends Component {
     }
 
     _onClickPhone(ev) {
-        this.dismissEndedCall()
         this.state.activeTab = this.tabs.phone
         this.setLastActiveTab()
         if (this.state.inCall) {
@@ -913,7 +1153,6 @@ export class Phone extends Component {
     }
 
     _onClickContacts(ev) {
-        this.dismissEndedCall()
         this.state.activeTab = this.tabs.contacts
         this.setLastActiveTab()
         this.bus.trigger('busContactSetState', {isContact: true, isContactMode: true})
@@ -926,7 +1165,6 @@ export class Phone extends Component {
     }
 
     _onClickFavorites(ev) {
-        this.dismissEndedCall()
         this.state.activeTab = this.tabs.favorites
         this.setLastActiveTab()
         this.state.isKeypad = false
@@ -938,7 +1176,6 @@ export class Phone extends Component {
     }
 
     _onClickHistory(ev) {
-        this.dismissEndedCall()
         this.state.activeTab = this.tabs.calls
         this.setLastActiveTab()
         this.state.isKeypad = false
@@ -953,7 +1190,6 @@ export class Phone extends Component {
     _onClickDialingPanel(ev) {
         this.state.activeTab = this.tabs.phone
         this.state.isContacts = false
-        this.state.isTransfer = false
         this.state.isForward = false
         this.state.isCalls = false
         this.state.isKeypad = false
@@ -961,20 +1197,24 @@ export class Phone extends Component {
     }
 
     _onClickKeypad(ev) {
-        this.state.dtmfSent = ''
         this.state.activeTab = this.tabs.phone
         this.state.isContacts = false
-        this.state.isTransfer = false
         this.state.isForward = false
         this.state.isCalls = false
         this.state.isKeypad = true
         this.state.isDialingPanel = false
+        // Start from an empty field: what belongs here now is the tones sent
+        // on this call, not the number that started it.
+        this.state.phoneNumber = ''
+        this.state.dialMatch = null
+        if (this.phoneInput.el) {
+            this.phoneInput.el.value = ''
+        }
         setFocus(this.phoneInput.el)
     }
 
     _onClickForward(ev) {
         if (this.state.isForward) return
-        this.state.isTransfer = false
         this.state.isKeypad = false
         this.state.isDialingPanel = false
         this.state.isForward = true
@@ -1045,45 +1285,47 @@ export class Phone extends Component {
     }
 
     _onClickKeypadButton(ev) {
-        const key = ev.currentTarget.querySelector('.o_cp_key_d').textContent
+        const key = ev.currentTarget.textContent.trim().charAt(0)
         if (this.state.inCall) {
             if (this.session) {
                 this.sendDTMF(key)
             } else {
-                this.echoDTMF(key)
                 this.bc.postMessage({event: "tbcDtmf", params: {key}})
             }
-            return
+            this.state.phoneNumber += key
+            if (this.phoneInput.el) {
+                this.phoneInput.el.value = this.state.phoneNumber
+            }
+        } else {
+            this.state.phoneNumber += key
+            if (this.phoneInput.el) {
+                this.phoneInput.el.value = this.state.phoneNumber
+            }
+            this._updateDialMatch(this.state.phoneNumber)
         }
-        this.dismissEndedCall()
-        this.state.phoneNumber += key
-        this.phoneInput.el.value = this.state.phoneNumber
-        this.debounceResolveMatch()
-        this.phoneInput.el.focus()
+        if (this.phoneInput.el) {
+            this.phoneInput.el.focus()
+        }
     }
 
     _onClickBackSpace(ev) {
         setFocus(this.phoneInput.el)
         this.state.phoneNumber = this.state.phoneNumber.slice(0, -1)
-        this.phoneInput.el.value = this.state.phoneNumber
+        if (this.phoneInput.el) {
+            this.phoneInput.el.value = this.state.phoneNumber
+        }
         if (this.state.isContactList) {
-            this.bus.trigger('busContactSearchQuery', {searchQuery: this.phoneInput.el.value})
+            this.bus.trigger('busContactSearchQuery', {searchQuery: this.state.phoneNumber})
         }
         if (this.state.phoneNumber === '') this.state.isContactList = false
-        this.debounceResolveMatch()
+        this._updateDialMatch(this.state.phoneNumber)
     }
 
     sendDTMF(key) {
-        if (!VALID_DTMF.includes(key)) return
-        // dialTone(key)
-        this.echoDTMF(key)
-        this.session.sendDigits(key)
-    }
-
-    // Tones are invisible by nature, so the keypad keeps a record of them.
-    echoDTMF(key) {
-        if (VALID_DTMF.includes(key)) {
-            this.state.dtmfSent += key
+        const validDTMF = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '#']
+        if (validDTMF.includes(key)) {
+            // dialTone(key)
+            this.session.sendDigits(key)
         }
     }
 
@@ -1095,49 +1337,13 @@ export class Phone extends Component {
             if (ev.key === "Enter") {
                 this._onClickMakeCall()
             } else {
-                this.dismissEndedCall()
                 this.state.phoneNumber = this.phoneInput.el.value
                 this.state.isContactList = this.state.phoneNumber !== ''
-                this.state.match = null
                 this.bus.trigger('busContactSetState', {isContact: true})
                 this.bus.trigger('busContactSearchQuery', {searchQuery: this.phoneInput.el.value})
+                this._updateDialMatch(this.state.phoneNumber)
             }
         }
-    }
-
-    // One button on the caller: open the contact when we know it, create it when
-    // we do not.
-    _onClickCallerCard() {
-        if (this.state.isPartner && this.state.callerId.partnerId) {
-            this._openPartner(this.state.callerId.partnerId)
-        } else if (this.state.callerId.phoneNumber) {
-            this._createPartner()
-        }
-    }
-
-    _onClickCallAgain() {
-        const number = this.state.endedCall && this.state.endedCall.number
-        this.dismissEndedCall()
-        if (number) this.prepareCall({phone: number})
-    }
-
-    _onClickEndedContact() {
-        const ended = this.state.endedCall
-        if (!ended) return
-        if (ended.partnerId) {
-            this._openPartner(ended.partnerId)
-            return
-        }
-        this.action.doAction({
-            context: {
-                default_phone: ended.number,
-                default_name: `Partner ${ended.number}`,
-            },
-            res_model: 'res.partner',
-            target: 'new',
-            type: 'ir.actions.act_window',
-            views: [[false, 'form']],
-        })
     }
 
     _createPartner() {

@@ -1,24 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
-    <!-- Favourites: speed dial -->
+    <!--
+        Favourites are speed dial: a grid, not a list, because the whole point
+        is to hit the right one without reading. The caller ID footer answers
+        the question the grid raises: what the other end will see.
+    -->
     <t t-name="connect.favorites" owl="1">
-        <div class="o_cp_scroll">
-            <div class="o_cp_favgrid" t-if="state.favorites.length">
+        <div class="o_csp_scroll">
+            <div t-if="state.favorites.length" class="o_csp_favgrid">
                 <t t-foreach="state.favorites" t-as="favorite" t-key="favorite.id">
-                    <div class="o_cp_favcell" t-attf-title="Call {{ favorite.phone_number }}" t-on-click="() => this._onClickContactCall(favorite.phone_number)">
-                        <img t-if="favorite.avatar" class="o_cp_av o_cp_av_md" alt="Avatar" t-att-src="favorite.avatar"/>
-                        <div t-else="" class="o_cp_av o_cp_av_md" t-attf-style="background:{{ favorite.tone }}" t-out="favorite.initials"/>
-                        <div class="o_cp_favname" t-out="favorite.title"/>
-                        <div class="o_cp_favsub" t-out="favorite.phone_number"/>
-                        <button class="o_cp_favdrop" aria-label="Remove from favourites" title="Remove from favourites"
-                                t-on-click="(ev) => this._onClickRemoveFavorite(ev, favorite.id)">
-                            <t t-call="connect.icon.close"/>
-                        </button>
-                    </div>
+                    <t t-if="favorite.partner">
+                        <t t-set="avatar" t-value="'/web/image?model=res.partner&amp;field=avatar_128&amp;id=' + favorite.partner[0]"/>
+                        <t t-set="caller_list" t-value="favorite.partner[1].split(',')"/>
+                        <t t-set="caller_id" t-value="caller_list[caller_list.length - 1].trim()"/>
+                    </t>
+                    <t t-elif="favorite.user">
+                        <t t-set="avatar" t-value="'/web/image?model=res.users&amp;field=avatar_128&amp;id=' + favorite.user[0]"/>
+                        <t t-set="caller_id" t-value="favorite.user[1]"/>
+                    </t>
+                    <t t-else="">
+                        <!-- No record to take an avatar from, so the tile is a
+                             coloured initial; there is no default image file. -->
+                        <t t-set="avatar" t-value="false"/>
+                        <t t-set="caller_id" t-value="favorite.name or favorite.phone_number"/>
+                    </t>
+                    <button class="o_csp_favcell" t-attf-title="Call {{ favorite.phone_number }}"
+                            t-on-click="() => this._onClickContactCall(favorite.phone_number)">
+                        <img t-if="avatar" class="o_csp_av o_csp_av_md" alt="Avatar" t-att-src="avatar"/>
+                        <span t-else="" class="o_csp_av o_csp_av_md o_csp_av_ph"
+                              t-attf-style="background:{{ tone(caller_id) }}" t-out="initial(caller_id)"/>
+                        <div>
+                            <div class="o_csp_n" t-out="caller_id"/>
+                            <div class="o_csp_favsub" t-out="favorite.phone_number"/>
+                        </div>
+                        <span class="o_csp_rowbtn o_csp_favdel" role="button"
+                              aria-label="Remove from Favourites" title="Remove from Favourites"
+                              t-on-click="(ev) => this._onClickRemoveFavorite(ev, favorite.id)">
+                            <t t-call="connect.icon_trash"/>
+                        </span>
+                    </button>
                 </t>
             </div>
-            <div t-else="" class="o_cp_empty">Star a call in Recent and it lands here.</div>
+            <div t-else="" class="o_csp_empty">
+                No favourites yet. Star a call in Recent to keep the number here.
+            </div>
+            <div t-if="props.callerId" class="o_csp_callerid">
+                Calls you place show <b t-out="props.callerId"/>.
+            </div>
         </div>
     </t>
 

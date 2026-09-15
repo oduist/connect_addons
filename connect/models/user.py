@@ -288,18 +288,19 @@ class User(models.Model):
 
     def manage_group(self, action='add'):
         attribute_name = 'user_ids' if release.version_info[0] >= 19 else 'users'
-        if self.user and self.user.has_group('base.group_system') and self.user.has_group('base.group_erp_manager'):
-            group_connect_admin = self.env.ref('connect.group_connect_admin')
-            if action == 'add':
-                group_connect_admin.write({attribute_name: [(4, self.user.id)]})
+        for rec in self:
+            if not rec.user:
+                continue
+            if (rec.user.has_group('base.group_system')
+                    and rec.user.has_group('base.group_erp_manager')):
+                group = self.env.ref('connect.group_connect_admin')
             else:
-                group_connect_admin.with_context(install_mode=True).write({attribute_name: [(3, self.user.id)]})
-        elif self.user:
-            group_connect_user = self.env.ref('connect.group_connect_user')
+                group = self.env.ref('connect.group_connect_user')
             if action == 'add':
-                group_connect_user.write({attribute_name: [(4, self.user.id)]})
+                group.write({attribute_name: [(4, rec.user.id)]})
             else:
-                group_connect_user.with_context(install_mode=True).write({attribute_name: [(3, self.user.id)]})
+                group.with_context(install_mode=True).write(
+                    {attribute_name: [(3, rec.user.id)]})
 
     def write(self, vals):
         if 'user' in vals.keys():
@@ -578,9 +579,19 @@ class User(models.Model):
             return {
                 'token': token.to_jwt(),
                 'edge': user.twilio_edge or self.env['connect.settings'].sudo().get_param('twilio_edge'),
-                # Shown in the softphone header so the user knows which
-                # extension their calls go out on.
+                # Shown in the softphone header ("· ext 101") and under the
+                # favourites grid ("Calls you place show +1 555 0100"), so the
+                # user can see which identity the phone is and what the far
+                # end will see, without leaving the panel.
                 'exten': user.exten_number or '',
+                'outgoing_callerid': (
+                    user.outgoing_callerid.number
+                    or self.env['connect.outgoing_callerid']
+                    .sudo()
+                    .search([('is_default', '=', True)], limit=1)
+                    .number
+                    or ''
+                ),
             }
         except Exception as e:
             logger.exception('Error getting Twilio JWT:')
@@ -595,7 +606,51 @@ class User(models.Model):
         domain = [['exten_number', '=', search_query]]
         search_fields = ['id', 'name', 'exten_number', 'user']
         user = self.sudo().search_read(domain, search_fields, limit=1, order='exten_number asc')
-        return user[0] if user else False
+        if not user:
+            return False
+        # The colleague's contact. Every res.users has one, and it is the
+        # record a caller actually wants when they ask to open the person on
+        # the other end -- the user record is an account, the partner is the
+        # person.
+        record = self.sudo().browse(user[0]['id'])
+        user[0]['partner_id'] = record.user.partner_id.id or False
+        return user[0]
+
+    @api.model
+    def search_directory(self, search_query, limit=10):
+        """Colleagues a Connect user may dial, by name or extension.
+
+        The softphone's colleague list and its live dial match both run
+        through here rather than reading connect.user directly: this model is
+        where SIP credentials live (`password`, `username`, `sid`), so the
+        client is handed a payload built by name instead of a recordset it
+        could ask for more fields from. Adding a field to connect.user cannot
+        widen this by accident -- it stays invisible until someone puts it in
+        the dict on purpose.
+        """
+        has_group = self.env.user.has_group
+        if not any([has_group('connect.group_connect_user'), has_group('connect.group_connect_admin')]):
+            raise ValidationError('Only Connect users can search other Connect users!')
+        query = (search_query or '').strip()
+        if not query:
+            return []
+        domain = [
+            '|',
+            ('name', 'ilike', query),
+            ('exten_number', '=ilike', '%{}%'.format(query)),
+        ]
+        records = self.sudo().search_read(
+            domain, ['id', 'name', 'exten_number', 'user'],
+            order='name asc', limit=limit)
+        return [
+            {
+                'id': record['id'],
+                'name': record['name'],
+                'user_id': record['user'][0] if record['user'] else False,
+                'exten_number': record['exten_number'] or '',
+            }
+            for record in records
+        ]
 
     @api.model
     def handle_sip_refer(self, request):
