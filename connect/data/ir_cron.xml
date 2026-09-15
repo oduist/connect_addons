@@ -20,5 +20,15 @@
             <field name="active">True</field>
         </record>
 
+        <record id="finalize_stuck_calls" model="ir.cron">
+            <field name="name">Finalize stuck Connect calls</field>
+            <field name="interval_number">10</field>
+            <field name="interval_type">minutes</field>
+            <field name="model_id" ref="model_connect_call"/>
+            <field name="code">model._cron_finalize_stuck_calls()</field>
+            <field name="state">code</field>
+            <field name="active">True</field>
+        </record>
+
     </data>
 </odoo>

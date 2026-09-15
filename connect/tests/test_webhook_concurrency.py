@@ -7,6 +7,7 @@ from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 
 from odoo.addons.connect.models.call import (
+    CALL_END_STATUSES,
     CALL_LOCK_CLASS,
     CALL_SID_LOCK_CLASS,
 )
@@ -388,6 +389,88 @@ class TestWebhookConcurrency(TransactionCase):
                            CallDuration='12'))
         self.assertEqual(call.status, 'completed')
         self.assertEqual(call.answered_user, self.users[0])
+
+    def test_finalization_gate_reads_committed_leg_state(self):
+        """The gate must not decide on the transaction's cached leg state.
+
+        Sibling legs are webhooked in parallel; each transaction's snapshot
+        predates the others' commits, so a gate that trusts the ORM cache
+        sees "the other leg is still active" on BOTH legs, defers on both,
+        and never finalizes. _locked_channel_rows re-reads under a row lock.
+        """
+        parent_sid, child_sid = 'CAgateparent', 'CAgatechild'
+        call_id = self._webhook(dict(
+            self.base, CallSid=parent_sid, Direction='inbound',
+            CallStatus='ringing', SequenceNumber='0'))
+        call = self.env['connect.call'].browse(call_id)
+        child = self._child(child_sid, parent_sid, 0)
+        self._webhook(dict(child, CallStatus='in-progress',
+                           SequenceNumber='1'))
+        child_rec = call.channels.filtered(lambda ch: ch.sid == child_sid)
+        # Land the child's terminal status behind the ORM's back, the way a
+        # sibling transaction's commit is invisible to a stale snapshot.
+        self.env.cr.execute(
+            "UPDATE connect_channel SET status = 'completed' WHERE id = %s",
+            (child_rec.id,))
+        self.assertEqual(child_rec.status, 'in-progress',
+                         'cache is stale, which is the point of the test')
+        rows = call._locked_channel_rows()
+        self.assertTrue(
+            all(row['status'] in CALL_END_STATUSES or row['sid'] == parent_sid
+                for row in rows),
+            'locked re-read must see the committed child status')
+        self.assertEqual(
+            {row['sid']: row['status'] for row in rows}[child_sid],
+            'completed')
+
+    def test_cron_finalizes_a_call_the_gate_left_stuck(self):
+        """Backstop for a call that failed the gate on its last webhook.
+
+        Leg webhooks are the only trigger, so such a call is never revisited
+        and keeps a live status forever. The cron finalizes it once every leg
+        has been terminal for the grace period.
+        """
+        parent_sid, child_sid = 'CAstuckparent', 'CAstuckchild'
+        call_id = self._webhook(dict(
+            self.base, CallSid=parent_sid, Direction='inbound',
+            CallStatus='ringing', SequenceNumber='0'))
+        call = self.env['connect.call'].browse(call_id)
+        self.agents[0]._ensure_direct_call_attempt(call, {})
+        child = self._child(child_sid, parent_sid, 0)
+        self._webhook(dict(child, CallStatus='in-progress',
+                           SequenceNumber='1'))
+        # A live webhook expectation means more webhooks are still coming,
+        # so the call is not stuck yet and the cron must keep its hands off.
+        self.env.cr.execute(
+            "UPDATE connect_channel SET write_date = now() - interval "
+            "'1 hour' WHERE call = %s", (call.id,))
+        self.env['connect.call']._cron_finalize_stuck_calls()
+        call.invalidate_recordset()
+        self.assertNotEqual(call.status, 'completed',
+                            'a pending expectation must defer the cron')
+        call._clear_webhook_expectations()
+        # Drive both legs terminal without the finalizing webhook ever
+        # running, i.e. exactly the state the gate leaves behind when it
+        # defers on the last webhook of the conversation.
+        call.channels.write({'status': 'completed'})
+        call.flush_recordset()
+        self.env['connect.channel'].flush_model()
+        self.assertNotIn(call.status, CALL_END_STATUSES,
+                         'precondition: stuck on a live status')
+        # Writing the legs refreshed their write_date: too recent, so the
+        # cron must leave a possibly-still-live call alone.
+        self.env['connect.call']._cron_finalize_stuck_calls()
+        call.invalidate_recordset()
+        self.assertNotIn(call.status, CALL_END_STATUSES,
+                         'grace period must protect in-flight calls')
+        # Age every leg past the grace period.
+        self.env.cr.execute(
+            "UPDATE connect_channel SET write_date = now() - interval "
+            "'1 hour' WHERE call = %s", (call.id,))
+        self.env['connect.call']._cron_finalize_stuck_calls()
+        call.invalidate_recordset()
+        self.assertIn(call.status, CALL_END_STATUSES,
+                      'cron must finalize the stuck call')
 
     def test_park_retrieval_claim_is_atomic(self):
         """Only one retrieval claims a parked call; a failed Twilio redirect
