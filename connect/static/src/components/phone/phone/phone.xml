@@ -161,6 +161,10 @@
                                 <t t-out="state.callerId.phoneNumber"/>
                             </div>
                         </div>
+                        <div t-if="state.transferredBy" class="o_csp_handover">
+                            <t t-call="connect.icon_forward"/>
+                            Transferred by <b t-out="state.transferredBy"/>
+                        </div>
                         <div class="o_csp_gap"/>
                         <div class="o_csp_ringing"><span class="o_csp_dot o_csp_dot_ring"/>Ringing</div>
                         <div class="o_csp_quick">
@@ -211,6 +215,10 @@
                                 <t t-if="state.isWhatsapp"><t t-call="connect.icon_whatsapp"/></t>
                                 <t t-out="state.callerId.phoneNumber"/>
                             </div>
+                        </div>
+                        <div t-if="state.transferredBy" class="o_csp_handover">
+                            <t t-call="connect.icon_forward"/>
+                            Transferred by <b t-out="state.transferredBy"/>
                         </div>
                         <div class="o_csp_gap"/>
                         <div t-if="state.callDurationTime" class="o_csp_timer" t-out="state.callDurationTime"/>

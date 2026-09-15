@@ -515,7 +515,10 @@
   }
 
   // the leg a call was forwarded to
-  .o_csp_leg {
+  // Where the call went, and where it came from: the same muted pill, one
+  // of them clickable and one a statement of fact.
+  .o_csp_leg,
+  .o_csp_handover {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -524,12 +527,20 @@
     background: var(--csp-hover);
     font-size: 12.5px;
     color: var(--csp-muted);
-    cursor: pointer;
 
     svg {
       width: 15px;
       height: 15px;
     }
+  }
+
+  .o_csp_leg {
+    cursor: pointer;
+  }
+
+  .o_csp_handover b {
+    font-weight: 500;
+    color: var(--csp-fg);
   }
 
   .o_csp_leg_num {

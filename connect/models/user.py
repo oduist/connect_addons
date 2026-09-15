@@ -404,12 +404,19 @@ class User(models.Model):
         # For transfers, show the original caller to the transfer recipient
         channel = self.env['connect.channel'].search([('sid', '=', request.get('CallSid'))])
         call = channel.call if channel else None
+        transferred_by = ''
         if call and call.transferred_users:
             if call.caller_pbx_user and call.caller_pbx_user.exten:
                 callerId = call.caller_pbx_user.exten.number or callerId
                 caller_name = call.caller_pbx_user.name or caller_name
             elif call.caller:
                 callerId = call.caller or callerId
+            # Who handed the call over. The caller ID above is spoken for --
+            # it names the customer, which is who the agent is about to talk
+            # to -- so the colleague travels as a parameter of its own and the
+            # softphone can show both instead of choosing between them.
+            transferring_user = self._get_transferring_pbx_user(call)
+            transferred_by = transferring_user.name if transferring_user else ''
         dial_client_kwargs = {'timeout': self.client_ring_timeout, 'callerId': callerId}
         # Check for action callback URL.
         if params.get('dial_action_url'):
@@ -442,6 +449,8 @@ class User(models.Model):
         else:
             partner_id = False
         client.parameter(name='Partner', value=partner_id)
+        if transferred_by:
+            client.parameter(name='TransferredBy', value=transferred_by)
         dial_client.append(client)
         self._ensure_direct_call_attempt(call, params)
         response.append(dial_client)

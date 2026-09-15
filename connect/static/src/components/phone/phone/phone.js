@@ -120,6 +120,8 @@ export class Phone extends Component {
             dialMatch: null,
             // Drives the header dot: green only when Twilio has us registered.
             registered: false,
+            // The colleague who transferred this call on to us, if any.
+            transferredBy: '',
         })
         this.callDuration = 0
         this.callDurationTimerInstance = null
@@ -744,6 +746,10 @@ export class Phone extends Component {
             }
             const callCallerName = session.customParameters.get('CallerName')
             const callPartnerId = session.customParameters.get('Partner')
+            // Set by render_client when the call reaches us through a
+            // transfer: the caller ID still names the customer, so this is
+            // the only thing that says who handed them over.
+            const callTransferredBy = session.customParameters.get('TransferredBy')
             const autoAnswer = session.customParameters.get('autoAnswer')
 
             if (self.session === null) {
@@ -759,6 +765,7 @@ export class Phone extends Component {
             }
 
             self.state.callPhoneNumber = phoneNumber
+            self.state.transferredBy = callTransferredBy || ''
 
             // Treat the caller as a known partner only when a real numeric Partner
             // id was supplied. A missing/empty/'false'/non-numeric value (e.g. a
@@ -979,6 +986,7 @@ export class Phone extends Component {
         this.state.isPartner = false
         this.state.isWhatsapp = false
         this.state.callerId = {}
+        this.state.transferredBy = ''
         this.state.phoneNumber = ''
         this.state.dialMatch = null
         this.state.xPhoneInfoDisplay = ''
