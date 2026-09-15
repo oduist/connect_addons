@@ -634,9 +634,13 @@ class User(models.Model):
         query = (search_query or '').strip()
         if not query:
             return []
+        # `name` is computed and unstored -- it is the Odoo user's name, or
+        # the SIP username when the PBX user has no Odoo account -- so the
+        # search has to go to the two stored fields it is computed from.
         domain = [
-            '|',
-            ('name', 'ilike', query),
+            '|', '|',
+            ('user.name', 'ilike', query),
+            ('username', 'ilike', query),
             ('exten_number', '=ilike', '%{}%'.format(query)),
         ]
         records = self.sudo().search_read(
