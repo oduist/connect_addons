@@ -2,7 +2,7 @@
 
 export function setFocus(el) {
     setTimeout(() => {
-        el.focus()
+        if (el) el.focus()
     }, 100)
 }
 
@@ -83,3 +83,48 @@ export function dialTone(key) {
 }
 
 export const browser = {chrome: 'chrome', safari: 'safari', firefox: 'firefox'}
+// Letter avatars. When a partner or a user record is known the softphone shows
+// the real Odoo avatar; everything else (a raw number, a contact without a
+// picture) falls back to a tinted tile so the lists keep their rhythm.
+const AVATAR_TONES = [
+    '#3E7F5C', '#8B5AA8', '#C0603C', '#3E6EA8',
+    '#4E4A8C', '#6C4C84', '#2F7D74', '#A0562F',
+]
+
+export function initialsOf(value) {
+    const text = `${value || ''}`.trim()
+    if (!text) return '#'
+    const letter = text.replace(/[^\p{L}\p{N}]/gu, '').charAt(0)
+    return (letter || '#').toUpperCase()
+}
+
+export function avatarTone(value) {
+    const text = `${value || ''}`
+    let hash = 0
+    for (let i = 0; i < text.length; i++) {
+        hash = (hash * 31 + text.charCodeAt(i)) % 100000
+    }
+    return AVATAR_TONES[hash % AVATAR_TONES.length]
+}
+
+export function escapeHtml(value) {
+    return `${value === undefined || value === null ? '' : value}`
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+}
+
+// The last name only: partner display names arrive as "Company, Contact".
+export function shortName(value) {
+    if (!value) return ''
+    const parts = `${value}`.split(',')
+    return parts[parts.length - 1].trim()
+}
+
+// "HH:MM:SS" -> "MM:SS" while the call is under an hour, so the timer does not
+// carry a column of zeroes around.
+export function shortDuration(value) {
+    if (!value) return ''
+    return value.startsWith('00:') ? value.slice(3) : value
+}

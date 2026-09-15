@@ -1,306 +1,879 @@
-.o_root_connect_phone {
-  $color-white: #ffffff;
-  $color-red: #d92929;
-  $color-gray: #90a0af;
-  $color-gray-medium: #c7c8c8ef;
-  $color-gray-light: #e9ecef;
-  $color-green-light: #41ff00;
-  $color-orange: #ffa500;
+// Connect softphone.
+//
+// One geometry, two grounds: paper while the phone is idle, ink once a call is
+// on the line. Green appears once per screen and only ever means "a call can
+// start or is running"; red only ever ends something. Figures are tabular so
+// the timer does not shuffle as it counts.
 
-  width: 300px;
-  height: 520px;
+.o_connect_phone {
+  --cp-paper: #FBFAFC;
+  --cp-ink: #191325;
+  --cp-ink-raised: #251E33;
+  --cp-plum: #6C4C84;
+  --cp-plum-wash: #F1ECF5;
+  --cp-signal: #16A96B;
+  --cp-stop: #E24C4C;
+
+  // Remapped by the ink ground below.
+  --cp-bg: var(--cp-paper);
+  --cp-fg: var(--cp-ink);
+  --cp-muted: #6B6478;
+  --cp-faint: #A49DB1;
+  --cp-line: rgba(25, 19, 37, .09);
+  --cp-hover: rgba(108, 76, 132, .055);
+  --cp-raised: #F0EDF3;
+
   position: fixed;
-  background-color: $color-white;
-  border-radius: 6px;
-  border: $o-brand-odoo 1px solid;
-  display: flex;
   bottom: 0;
-  font-size: 12px;
-  flex-flow: column nowrap;
   z-index: 1100;
+  width: 380px;
+  height: 700px;
+  max-height: 100vh;
+  display: flex;
+  flex-flow: column nowrap;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--cp-bg);
+  color: var(--cp-fg);
+  font-size: 13.5px;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 1px 2px rgba(25, 19, 37, .06), 0 12px 34px -10px rgba(25, 19, 37, .22);
 
-  .flex-container {
-    display: flex;
-    justify-content: space-around;
+  &.o_cp_ink {
+    --cp-bg: var(--cp-ink);
+    --cp-fg: #ffffff;
+    --cp-muted: rgba(255, 255, 255, .55);
+    --cp-faint: rgba(255, 255, 255, .38);
+    --cp-line: rgba(255, 255, 255, .10);
+    --cp-hover: rgba(255, 255, 255, .05);
+    --cp-raised: var(--cp-ink-raised);
   }
 
-  .flex-item {
-    flex: 1;
-  }
+  button {
+    font: inherit;
+    border: 0;
+    background: none;
+    color: inherit;
+    padding: 0;
 
-  .o_header_phone {
-    border-radius: 4px 4px 0 0;
-    position: relative;
-    background-color: $o-brand-odoo;
-    color: $color-white;
-    width: 100%;
-    height: 25px;
-
-    .o_header_content {
-      font-size: 12px;
-      display: inline-flex;
-      color: $color-white;
-      margin-left: 5px;
-      margin-top: 5px;
-      width: 97%;
-      cursor: default;
-    }
-
-    .fa {
-      margin-top: 2px;
-    }
-
-    .o_header_title {
-      margin-left: 5px;
-    }
-
-    .o_header_close {
-      margin-left: auto;
-      margin-right: 2px;
+    &:not(:disabled) {
       cursor: pointer;
-    }
-  }
-
-  .o_body_phone {
-    display: flex;
-    flex-flow: column nowrap;
-    overflow: auto;
-
-    .o_phone_number_content {
-      padding: 5px 10px;
-      position: relative;
-      border-bottom: 1px solid $o-brand-odoo;
-
-      .o_phone_number_input {
-        color: $o-brand-odoo;
-        font-size: 20px;
-        font-weight: 800;
-        border: none;
-        width: 90%;
-
-        :focus {
-          outline: none;
-          box-shadow: none;
-          border-color: transparent;
-        }
-      }
-
-      .o_phone_number_back {
-        cursor: pointer;
-        font-size: 20px;
-        position: absolute;
-        padding-right: 7px;
-        right: 0;
-        color: $o-brand-odoo;
-        top: 10px;
-      }
-    }
-
-    .o_suggestion {
-      height: 369px;
-      overflow: auto;
-
-      .o_contact_table {
-        tr {
-          border-bottom: 1px solid $o-brand-odoo;
-
-          &:hover {
-            background-color: $color-gray-light;
-            cursor: pointer;
-          }
-        }
-
-        .o_contact_avatar {
-          margin: 5px;
-          width: 50px;
-          height: 50px;
-
-          img {
-            border-radius: 50%;
-          }
-        }
-
-        .o_contact_info {
-          cursor: default;
-          font-size: 15px;
-          color: $o-brand-odoo;
-          width: 176px;
-
-          .o_contact_phone {
-            margin-left: 5px;
-          }
-        }
-
-        .o_contact_call_button {
-          width: 60px;
-
-          .phone_call_contact {
-            width: 35px;
-            height: 30px;
-          }
-
-          button {
-            color: $o-brand-odoo;
-            border: none;
-            background: transparent;
-
-            .fa {
-              font-size: 25px;
-            }
-          }
-        }
-      }
-    }
-
-    .o_keypad {
-      .o_keypad_button {
-        color: $o-brand-odoo;
-        display: inline-flex;
-        justify-content: center;
-        width: 99px;
-        line-height: 1;
-        padding: 15px;
-        font-size: 45px;
-        border: none;
-        background: transparent;
-        border-radius: 5px;
-
-        &:hover {
-          background: $color-gray-light
-        }
-      }
-    }
-
-    //In call style
-    .o_phone_call_details {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 375px;
-
-      .o_partner_link {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        cursor: pointer;
-      }
-
-      .o_partner_avatar {
-        width: 100px;
-        height: 100px;
-        border-radius: 50%;
-      }
-
-      .o_partner_name {
-        font-size: 18px;
-        color: $o-brand-odoo;
-        text-align: center;
-      }
-
-      .custom-whatsapp {
-          margin-right: 5px;
-          color: #70bd53;
-      }
-    }
-  }
-
-  .o_dial_panel_position {
-    border-top: 1px solid $color-gray;
-    border-radius: 0 0 6px 6px;
-  }
-
-
-  .o_phone_lines_position {
-    bottom: 0;
-    position: fixed;
-    border-top: 1px solid $color-gray;
-    color: $o-brand-odoo;
-    justify-content: center;
-    font-size: 20px;
-    text-align: center;
-
-    div.active {
-      background: radial-gradient(transparent, $color-gray-medium);
-    }
-
-    .line-1 {
-      border-right: 1px solid #90a0af;
-    }
-
-    .col-6 {
-      padding-top: 5px;
-      cursor: pointer;
-    }
-
-    .inactive {
-      cursor: auto;
-    }
-
-    button.active {
-      color: $color-green-light;
-    }
-
-    button.hold {
-      color: $color-orange;
-    }
-  }
-
-  .o_phone_tabs {
-    border-bottom: 1px solid $o-brand-odoo;
-
-    .active {
-      background: radial-gradient(transparent, $color-gray-medium);
-    }
-  }
-
-  .o_dial_panel {
-    justify-content: center;
-    background-color: $color-gray-light;
-    display: flex;
-    height: 40px;
-    width: 100%;
-    flex-flow: row wrap;
-
-    button {
-      color: $o-brand-odoo;
-      border: none;
-      background: transparent;
-
-      .fa {
-        font-size: 30px;
-      }
-    }
-
-    .active {
-      background: radial-gradient(transparent, $color-gray-medium);
-    }
-  }
-
-  .mt-auto {
-    .o_dial_panel {
-      button {
-        margin-top: 2px;
-
-        .call, .reject-call {
-          font-size: x-large;
-          border-radius: 50%;
-          padding: 5px;
-          color: #fefefe;
-        }
-
-        .call {
-          background: #70bd53;
-        }
-
-        .reject-call {
-          background: $color-red;
-        }
-      }
     }
   }
 
   button:focus, input:focus {
     outline: none;
+  }
+
+  svg {
+    flex: 0 0 auto;
+  }
+
+  // ---------------------------------------------------------------- header
+
+  .o_cp_head {
+    flex: 0 0 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 16px 0 18px;
+    border-bottom: 1px solid var(--cp-line);
+    cursor: move;
+    user-select: none;
+  }
+
+  .o_cp_who {
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+
+  .o_cp_sub {
+    font-size: 13.5px;
+    color: var(--cp-muted);
+  }
+
+  .o_cp_spacer {
+    flex: 1;
+  }
+
+  .o_cp_headbtn {
+    width: 26px;
+    height: 26px;
+    flex: 0 0 26px;
+    display: grid;
+    place-items: center;
+    border-radius: 6px;
+    color: var(--cp-muted);
+
+    svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    &:hover {
+      background: var(--cp-hover);
+    }
+  }
+
+  .o_cp_dot {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 7px;
+    border-radius: 50%;
+    background: var(--cp-signal);
+
+    &.o_cp_dot_on {
+      box-shadow: 0 0 0 3px rgba(22, 169, 107, .16);
+    }
+
+    &.o_cp_dot_ring {
+      animation: o_cp_pulse 1.3s ease-in-out infinite;
+    }
+  }
+
+  // ------------------------------------------------------------------ body
+
+  .o_cp_body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .o_cp_screen {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    // The dialler steps back to its own height when the search results take over.
+    &.o_cp_screen_shrink {
+      flex: 0 0 auto;
+    }
+  }
+
+  .o_cp_scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  // The call keeps a line on screen wherever you go in the phone.
+  .o_cp_onair {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 11px 18px;
+    font-size: 12.5px;
+    color: var(--cp-muted);
+    background: var(--cp-hover);
+    border-bottom: 1px solid var(--cp-line);
+    cursor: pointer;
+
+    .o_cp_onair_who {
+      font-weight: 500;
+      color: var(--cp-fg);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .o_cp_onair_t {
+      margin-left: auto;
+      color: var(--cp-faint);
+    }
+  }
+
+  // ---------------------------------------------------------------- dialler
+
+  .o_cp_dialfield {
+    flex: 0 0 auto;
+    padding: 22px 24px 12px;
+    min-height: 88px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .o_cp_num {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 30px;
+    font-weight: 400;
+    letter-spacing: .01em;
+    min-height: 36px;
+  }
+
+  .o_cp_input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    padding: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+
+    &::placeholder {
+      font-size: 15px;
+      color: var(--cp-faint);
+      letter-spacing: 0;
+    }
+  }
+
+  .o_cp_val {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .o_cp_caret {
+    width: 2px;
+    height: 27px;
+    flex: 0 0 2px;
+    background: var(--cp-plum);
+    animation: o_cp_blink 1.1s steps(1) infinite;
+  }
+
+  &.o_cp_ink .o_cp_caret {
+    background: rgba(255, 255, 255, .7);
+  }
+
+  .o_cp_bsp {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    color: var(--cp-muted);
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    &:hover {
+      background: var(--cp-hover);
+    }
+  }
+
+  .o_cp_match {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--cp-muted);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+
+    b {
+      color: var(--cp-fg);
+      font-weight: 500;
+    }
+  }
+
+  .o_cp_extchip {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--cp-plum);
+    background: var(--cp-plum-wash);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+
+  &.o_cp_ink .o_cp_extchip {
+    color: #fff;
+    background: rgba(255, 255, 255, .12);
+  }
+
+  // The lattice: hairlines drawn behind the keys, not around them.
+  .o_cp_keys {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 1fr;
+    padding: 0 22px 6px;
+    background-image:
+      linear-gradient(var(--cp-line), var(--cp-line)), linear-gradient(var(--cp-line), var(--cp-line)),
+      linear-gradient(var(--cp-line), var(--cp-line)), linear-gradient(var(--cp-line), var(--cp-line)),
+      linear-gradient(var(--cp-line), var(--cp-line));
+    background-size: 1px 94%, 1px 94%, 93% 1px, 93% 1px, 93% 1px;
+    background-position: 33.33% 50%, 66.66% 50%, 50% 25%, 50% 50%, 50% 75%;
+    background-repeat: no-repeat;
+  }
+
+  .o_cp_key {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    color: var(--cp-fg);
+
+    &:hover {
+      background: var(--cp-hover);
+    }
+
+    .o_cp_key_d {
+      font-size: 27px;
+      line-height: 1;
+    }
+
+    .o_cp_key_l {
+      font-size: 9.5px;
+      height: 11px;
+      letter-spacing: .14em;
+      color: var(--cp-faint);
+    }
+  }
+
+  .o_cp_dialbar {
+    flex: 0 0 auto;
+    padding: 6px 24px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+  }
+
+  .o_cp_fab {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background: var(--cp-signal);
+    box-shadow: 0 6px 16px -4px rgba(22, 169, 107, .55);
+
+    svg {
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  // ------------------------------------------------------------------ call
+
+  .o_cp_stage {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 34px 24px 0;
+    text-align: center;
+    overflow: auto;
+  }
+
+  .o_cp_gap {
+    flex: 1;
+    min-height: 12px;
+
+    &.o_cp_gap_s {
+      flex: 0 0 auto;
+      height: 20px;
+    }
+  }
+
+  .o_cp_who_block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+  }
+
+  .o_cp_name {
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: -.01em;
+  }
+
+  .o_cp_number {
+    font-size: 14px;
+    color: var(--cp-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .o_cp_wa {
+    color: #70bd53;
+    display: inline-flex;
+
+    svg {
+      width: 15px;
+      height: 15px;
+    }
+  }
+
+  .o_cp_timer {
+    font-size: 44px;
+    font-weight: 300;
+    line-height: 1;
+  }
+
+  .o_cp_ringing {
+    font-size: 13px;
+    color: var(--cp-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .o_cp_lasted {
+    font-size: 13.5px;
+    color: var(--cp-muted);
+
+    b {
+      color: var(--cp-fg);
+      font-weight: 500;
+    }
+  }
+
+  // Where the call went once it was handed on.
+  .o_cp_relay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--cp-muted);
+    cursor: pointer;
+
+    .o_cp_relay_arrow svg {
+      width: 16px;
+      height: 16px;
+      color: var(--cp-faint);
+    }
+
+    .o_cp_relay_who {
+      color: var(--cp-fg);
+      font-weight: 500;
+    }
+  }
+
+  .o_cp_quick {
+    display: flex;
+    gap: 12px;
+    margin-top: 4px;
+
+    button {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--cp-raised);
+      color: var(--cp-muted);
+
+      svg {
+        width: 19px;
+        height: 19px;
+      }
+
+      &.o_cp_go {
+        background: var(--cp-signal);
+        color: #fff;
+      }
+    }
+
+    .o_cp_lbl {
+      display: block;
+      margin-top: 6px;
+      font-size: 10.5px;
+      color: var(--cp-muted);
+    }
+  }
+
+  &.o_cp_ink .o_cp_quick button {
+    background: rgba(255, 255, 255, .08);
+    color: #fff;
+  }
+
+  .o_cp_quickitem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  // In-call controls: a wrapping grid so an odd count stays centred.
+  .o_cp_ctrls {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 18px 14px;
+  }
+
+  .o_cp_ctrl {
+    flex: 0 0 calc(33.333% - 6px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    padding: 13px 6px 11px;
+    border-radius: 13px;
+    font-size: 11px;
+    background: var(--cp-raised);
+    color: var(--cp-fg);
+
+    svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    &.o_cp_ctrl_active {
+      background: var(--cp-fg);
+      color: var(--cp-bg);
+    }
+  }
+
+  .o_cp_hangbar {
+    flex: 0 0 auto;
+    padding: 0 18px 20px;
+  }
+
+  .o_cp_hang {
+    width: 100%;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+    background: var(--cp-stop);
+
+    svg {
+      width: 21px;
+      height: 21px;
+    }
+
+    &.o_cp_hang_quiet {
+      background: var(--cp-hover);
+      color: var(--cp-fg);
+    }
+  }
+
+  .o_cp_answerbar {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    padding: 0 18px 26px;
+  }
+
+  .o_cp_ans {
+    height: 60px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+
+    svg {
+      width: 19px;
+      height: 19px;
+    }
+
+    &.o_cp_ans_no {
+      background: rgba(226, 76, 76, .16);
+      color: #FF8B8B;
+    }
+
+    &.o_cp_ans_yes {
+      background: var(--cp-signal);
+    }
+  }
+
+  // ------------------------------------------------------------------ tabs
+
+  .o_cp_tabs {
+    flex: 0 0 62px;
+    height: 62px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid var(--cp-line);
+  }
+
+  .o_cp_tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-size: 10.5px;
+    color: var(--cp-muted);
+
+    svg {
+      width: 19px;
+      height: 19px;
+    }
+
+    &:hover {
+      color: var(--cp-fg);
+    }
+
+    &.o_cp_tab_sel {
+      color: var(--cp-plum);
+      font-weight: 500;
+    }
+  }
+
+  // ------------------------------------------- list primitives (shared)
+  // Recent, favourites, contacts and the forward picker all lay out rows the
+  // same way, so the shapes live here once.
+
+  .o_cp_search {
+    flex: 0 0 46px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 0 18px;
+    border-bottom: 1px solid var(--cp-line);
+    color: var(--cp-muted);
+    font-size: 13.5px;
+
+    svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    input {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      background: none;
+      font: inherit;
+      color: var(--cp-fg);
+
+      &::placeholder {
+        color: var(--cp-faint);
+      }
+    }
+  }
+
+  img.o_cp_av {
+    background: var(--cp-raised);
+  }
+
+  .o_cp_av {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    object-fit: cover;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 500;
+
+    &.o_cp_av_lg {
+      width: 88px;
+      height: 88px;
+      flex: none;
+      border-radius: 24px;
+      font-size: 34px;
+      font-weight: 400;
+    }
+
+    &.o_cp_av_md {
+      width: 54px;
+      height: 54px;
+      flex: none;
+      border-radius: 16px;
+      font-size: 21px;
+    }
+  }
+
+  .o_cp_daylabel {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 18px 8px;
+    font-size: 11.5px;
+    color: var(--cp-muted);
+
+    &:after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--cp-line);
+    }
+  }
+
+  .o_cp_sectionhead {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 18px 18px 7px;
+    font-size: 11.5px;
+    color: var(--cp-muted);
+
+    .o_cp_count {
+      color: var(--cp-faint);
+    }
+  }
+
+  .o_cp_row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 18px;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--cp-hover);
+    }
+  }
+
+  .o_cp_rowmain {
+    flex: 1;
+    min-width: 0;
+
+    .o_cp_n {
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: -.005em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .o_cp_m {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 2px;
+      font-size: 12.5px;
+      color: var(--cp-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+
+      svg {
+        width: 13px;
+        height: 13px;
+      }
+
+      .o_cp_in {
+        color: var(--cp-signal);
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+      }
+
+      .o_cp_out {
+        color: var(--cp-muted);
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+      }
+
+      .o_cp_miss {
+        color: var(--cp-stop);
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+      }
+    }
+
+    mark {
+      padding: 0 1px;
+      border-radius: 3px;
+      background: rgba(108, 76, 132, .16);
+      color: inherit;
+    }
+  }
+
+  &.o_cp_ink .o_cp_rowmain mark {
+    background: rgba(255, 255, 255, .18);
+    color: #fff;
+  }
+
+  .o_cp_rowend {
+    flex: 0 0 auto;
+    font-size: 12px;
+    color: var(--cp-faint);
+  }
+
+  .o_cp_iconbtn {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--cp-muted);
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    &:hover {
+      background: var(--cp-hover);
+      color: var(--cp-fg);
+    }
+
+    &.o_cp_iconbtn_call {
+      border: 1.5px solid rgba(22, 169, 107, .35);
+      color: var(--cp-signal);
+
+      &:hover {
+        background: rgba(22, 169, 107, .09);
+        color: var(--cp-signal);
+      }
+    }
+
+    &.o_cp_iconbtn_on {
+      color: var(--cp-plum);
+    }
+  }
+
+  &.o_cp_ink .o_cp_iconbtn_on {
+    color: #fff;
+  }
+
+  .o_cp_empty {
+    padding: 40px 26px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--cp-muted);
+  }
+}
+
+@keyframes o_cp_blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes o_cp_pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .35;
   }
 }
 

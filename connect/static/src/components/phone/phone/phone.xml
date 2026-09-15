@@ -1,148 +1,274 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
+    <!-- ============================ icons ============================ -->
+    <t t-name="connect.icon.minimise"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 10h10"/></svg></t>
+    <t t-name="connect.icon.close"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 5l10 10M15 5L5 15"/></svg></t>
+    <t t-name="connect.icon.backspace"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 4.5h9a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H7L2.5 10z"/><path d="M9.8 8l4 4M13.8 8l-4 4"/></svg></t>
+    <t t-name="connect.icon.call"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.4.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1l-2.3 2.2z"/></svg></t>
+    <t t-name="connect.icon.hangup"><svg viewBox="0 0 24 24" fill="currentColor" style="transform:rotate(133deg)"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.4.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1l-2.3 2.2z"/></svg></t>
+    <t t-name="connect.icon.dialpad"><svg viewBox="0 0 20 20" fill="currentColor"><circle cx="4.5" cy="4.5" r="1.6"/><circle cx="10" cy="4.5" r="1.6"/><circle cx="15.5" cy="4.5" r="1.6"/><circle cx="4.5" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="15.5" cy="10" r="1.6"/><circle cx="4.5" cy="15.5" r="1.6"/><circle cx="10" cy="15.5" r="1.6"/><circle cx="15.5" cy="15.5" r="1.6"/></svg></t>
+    <t t-name="connect.icon.history"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3.5 10a6.5 6.5 0 1 0 1.9-4.6"/><path d="M3.2 3.4v3.2h3.2"/><path d="M10 6.6V10l2.4 1.5"/></svg></t>
+    <t t-name="connect.icon.star"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M10 3.2l2.1 4.3 4.7.7-3.4 3.3.8 4.7-4.2-2.2-4.2 2.2.8-4.7-3.4-3.3 4.7-.7z"/></svg></t>
+    <t t-name="connect.icon.star_solid"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 3.2l2.1 4.3 4.7.7-3.4 3.3.8 4.7-4.2-2.2-4.2 2.2.8-4.7-3.4-3.3 4.7-.7z"/></svg></t>
+    <t t-name="connect.icon.search"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="9" cy="9" r="5.2"/><path d="M12.9 12.9L17 17"/></svg></t>
+    <t t-name="connect.icon.user"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="7.3" r="2.9"/><path d="M4.4 16.3c.8-2.6 2.9-4 5.6-4s4.8 1.4 5.6 4"/></svg></t>
+    <t t-name="connect.icon.user_add"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="7.3" r="2.9"/><path d="M2.6 16.3c.8-2.6 2.7-4 5.4-4 .6 0 1.2.1 1.7.2"/><path d="M14.6 11.6v5M12.1 14.1h5"/></svg></t>
+    <t t-name="connect.icon.forward"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 7h10l-2.5-2.6M17 13H7l2.5 2.6"/></svg></t>
+    <t t-name="connect.icon.mic_off"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4l12 12"/><path d="M7.4 4.6A2.6 2.6 0 0 1 12.6 5v3.4M7.4 8v1.4a2.6 2.6 0 0 0 4 2.2"/><path d="M4.7 9.4a5.3 5.3 0 0 0 8 4.6M15.3 9.4v.6"/><path d="M10 15.4V17"/></svg></t>
+    <t t-name="connect.icon.mic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="7.4" y="2.8" width="5.2" height="8.4" rx="2.6"/><path d="M4.7 9.4a5.3 5.3 0 0 0 10.6 0"/><path d="M10 14.7V17"/></svg></t>
+    <t t-name="connect.icon.volume_off"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 7.6h2.8L9.4 4.4v11.2L5.8 12.4H3z"/><path d="M12.6 8l4 4M16.6 8l-4 4"/></svg></t>
+    <t t-name="connect.icon.volume_on"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 7.6h2.8L9.4 4.4v11.2L5.8 12.4H3z"/><path d="M12.4 7.4a3.4 3.4 0 0 1 0 5.2M14.8 5.2a6.6 6.6 0 0 1 0 9.6"/></svg></t>
+    <t t-name="connect.icon.undo"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M7.4 4.6L3.8 8.2l3.6 3.6"/><path d="M3.8 8.2h7.4a4.4 4.4 0 0 1 0 8.8H8"/></svg></t>
+    <t t-name="connect.icon.arrow_right"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.8 10h11"/><path d="M11 6.2L14.8 10 11 13.8"/></svg></t>
+    <t t-name="connect.icon.arrow_down"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4v11"/><path d="M6.2 11.2L10 15l3.8-3.8"/></svg></t>
+    <t t-name="connect.icon.arrow_left"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16.2 10h-11"/><path d="M9 6.2L5.2 10 9 13.8"/></svg></t>
+    <t t-name="connect.icon.call_in"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 4.5L9 11"/><path d="M9 6.6V11h4.4"/></svg></t>
+    <t t-name="connect.icon.call_out"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15L11.5 8.5"/><path d="M11.5 13V8.5H7"/></svg></t>
+    <t t-name="connect.icon.card"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="2.8" y="4.4" width="14.4" height="11.2" rx="1.8"/><circle cx="7.4" cy="9" r="1.7"/><path d="M4.9 13.4c.4-1.3 1.3-2 2.5-2s2.1.7 2.5 2"/><path d="M12.4 8.6h3.1M12.4 11.4h3.1"/></svg></t>
+    <t t-name="connect.icon.whatsapp"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2.5a7.4 7.4 0 0 0-6.4 11.1L2.5 17.5l4-1.1A7.4 7.4 0 1 0 10 2.5zm0 1.5a5.9 5.9 0 1 1-3.1 10.9l-.3-.2-2.2.6.6-2.2-.2-.3A5.9 5.9 0 0 1 10 4zm-2.6 3c-.2 0-.4.1-.5.3-.2.2-.6.6-.6 1.4s.6 1.6.7 1.7c.1.1 1.2 2 3 2.7 1.5.6 1.8.5 2.1.4.3 0 1-.4 1.2-.8.1-.4.1-.8.1-.8l-.4-.2-1.1-.5c-.2-.1-.3 0-.4.1l-.5.7c-.1.1-.2.1-.4 0a4.8 4.8 0 0 1-2.2-1.9c-.1-.2 0-.3.1-.4l.3-.4.2-.4v-.3l-.5-1.2c-.1-.3-.3-.3-.4-.3z"/></svg></t>
+
+    <!-- The twelve keys: one lattice, used by the dialler and by DTMF. -->
+    <t t-name="connect.phone.keys">
+        <div class="o_cp_keys">
+            <button class="o_cp_key" t-on-click="_onClickKeypadButton"><span class="o_cp_key_d">1</span><span class="o_cp_key_l"/></button>
+            <button class="o_cp_key" t-on-click="_onClickKeypadButton"><span class="o_cp_key_d">2</span><span class="o_cp_key_l">ABC</span></button>
+            <button class="o_cp_key" t-on-click="_onClickKeypadButton"><span class="o_cp_key_d">3</span><span class="o_cp_key_l">DEF</span></button>
+            <button class="o_cp_key" t-on-click="_onClickKeypadButton"><span class="o_cp_key_d">4</span><span class="o_cp_key_l">GHI</span></button>
+            <button class="o_cp_key" t-on-click="_onClickKeypadButton"><span class="o_cp_key_d">5</span><span class="o_cp_key_l">JKL</span></button>
+            <button class="o_cp_key" t-on-click="_onClickKeypadButton"><span class="o_cp_key_d">6</span><span class="o_cp_key_l">MNO</span></button>
+            <button class="o_cp_key" t-on-click="_onClickKeypadButton"><span class="o_cp_key_d">7</span><span class="o_cp_key_l">PQRS</span></button>
+            <button class="o_cp_key" t-on-click="_onClickKeypadButton"><span class="o_cp_key_d">8</span><span class="o_cp_key_l">TUV</span></button>
+            <button class="o_cp_key" t-on-click="_onClickKeypadButton"><span class="o_cp_key_d">9</span><span class="o_cp_key_l">WXYZ</span></button>
+            <button class="o_cp_key" t-on-click="_onClickKeypadButton"><span class="o_cp_key_d">*</span><span class="o_cp_key_l"/></button>
+            <button class="o_cp_key" t-on-click="_onClickKeypadButton"><span class="o_cp_key_d">0</span><span class="o_cp_key_l">+</span></button>
+            <button class="o_cp_key" t-on-click="_onClickKeypadButton"><span class="o_cp_key_d">#</span><span class="o_cp_key_l"/></button>
+        </div>
+    </t>
+
+    <!-- ============================ phone ============================ -->
     <t t-name="connect.phone" owl="1">
-        <div t-attf-class="{{state.isDisplay ? '' : 'o_hide'}} o_root_connect_phone" t-ref="phone-root">
-            <!--Header-->
-            <div class="o_header_phone" t-ref="phone-header">
-                <div class="o_header_content">
-                    <i class="fa fa-phone" role="img"/>
-                    <div class="o_header_title">
-                        <b t-out="title"/>
-                    </div>
-                    <div aria-label="Hide" class="fa fa-window-minimize o_header_close" title="Hide" t-on-click="_onClickClose"/>
-                </div>
-            </div>
-            <div t-attf-class="o_dial_panel o_phone_tabs flex-container">
-                <button aria-label="Keypad" t-attf-class="flex-item{{state.activeTab === tabs.phone ? ' active' : ''}}" title="Keypad" t-on-click="_onClickPhone">
-                    <i class="fa fa-mobile"/>
+        <div t-attf-class="o_connect_phone o_root_connect_phone {{ isInk ? 'o_cp_ink' : 'o_cp_paper' }} {{ state.isDisplay ? '' : 'o_hide' }}" t-ref="phone-root">
+
+            <!-- Header: who you are when idle, what the call is doing when live -->
+            <div class="o_cp_head" t-ref="phone-header">
+                <span t-attf-class="o_cp_dot {{ state.inIncoming ? 'o_cp_dot_ring' : 'o_cp_dot_on' }}"/>
+                <span class="o_cp_who" t-out="headTitle"/>
+                <span class="o_cp_sub" t-if="headSub" t-out="headSub"/>
+                <span class="o_cp_spacer"/>
+                <button t-if="state.inCall and !state.isDialingPanel" class="o_cp_headbtn" aria-label="Back to the call" title="Back to the call" t-on-click="_onClickDialingPanel">
+                    <t t-call="connect.icon.close"/>
                 </button>
-                <!--<button aria-label="Contacts" t-attf-class="flex-item{{state.activeTab === tabs.contacts ? ' active' : ''}}" title="Contacts" t-on-click="_onClickContacts">-->
-                <!--    <i class="fa fa-address-book"/>-->
-                <!--</button>-->
-                <button aria-label="Favorites" t-attf-class="flex-item{{state.activeTab === tabs.favorites ? ' active' : ''}}" title="Favorites" t-on-click="_onClickFavorites">
-                    <i class="fa fa-star"/>
-                </button>
-                <button aria-label="History" t-attf-class="flex-item{{state.activeTab === tabs.calls ? ' active' : ''}}" title="History" t-on-click="_onClickHistory">
-                    <i class="fa fa-history"/>
+                <button t-else="" class="o_cp_headbtn" aria-label="Hide" title="Hide" t-on-click="_onClickClose">
+                    <t t-call="connect.icon.minimise"/>
                 </button>
             </div>
-            <!--Keypad-->
-            <div t-attf-class="{{state.isKeypad ? '' : 'o_hide'}} o_body_phone">
-                <div class="o_phone_number_content">
-                    <input class="o_phone_number_input" type="tel" t-ref="connect-phone-input" t-on-keyup="debounceEnterPhoneNumber" placeholder="Enter name or number" autocomplete="off"/>
-                    <div aria-label="Backspace" class="fa fa-long-arrow-left o_phone_number_back" role="img" title="Backspace" t-on-click="_onClickBackSpace"/>
+
+            <div class="o_cp_body">
+
+                <!-- The call never leaves the screen: it keeps a line here while
+                     you use the keypad or pick someone to forward to. -->
+                <div class="o_cp_onair" t-if="state.inCall and !state.isDialingPanel" t-on-click="_onClickDialingPanel">
+                    <span class="o_cp_dot o_cp_dot_ring"/>
+                    <span>on the line</span>
+                    <span class="o_cp_onair_who" t-out="callerTitle"/>
+                    <span class="o_cp_onair_t" t-out="durationShort"/>
                 </div>
-                <div class="o_keypad" t-if="!state.isContactList">
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">1</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">2</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">3</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">4</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">5</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">6</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">7</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">8</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">9</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">*</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">0</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">#</button>
-                </div>
-            </div>
-            <!--Dial panel-->
-            <div t-attf-class="{{ state.isDialingPanel ? '' : 'o_hide' }} o_body_phone">
-                <div class="o_phone_call_details flex-column">
-                    <t t-if="state.isPartner">
-                        <div class="o_partner_link" t-on-click="() => this._openPartner(state.callerId.partnerId)">
-                            <img alt="Avatar" class="o_partner_avatar" t-if="state.callerId.partnerId" t-att-src="state.callerId.partnerIconUrl"/>
-                            <span class="o_partner_name"><t t-out="state.callerId.partnerName"/></span>
-                            <span class="o_partner_name"><i t-if="state.isWhatsapp" class="fa fa-whatsapp custom-whatsapp"/><t t-out="state.callerId.phoneNumber"/></span>
-                            <span class="o_partner_name"><t t-out="state.callDurationTime"/></span>
-                        </div>
-                        <div t-if="state.isCallForwarded" class="text-center mt-1" title="Cancel Forward">
-                            <button class="btn p-3 border rounded-circle" t-on-click="_cancelForward">
-                                <i aria-label="Customer" class="fa fa-fw fa-lg icon-enlarge2"/>
+
+                <!-- Keypad / dialler -->
+                <div t-attf-class="o_cp_screen {{ state.isContactList ? 'o_cp_screen_shrink' : '' }} {{ state.isKeypad ? '' : 'o_hide' }}">
+                    <div class="o_cp_dialfield">
+                        <div class="o_cp_num">
+                            <input t-attf-class="o_cp_input {{ state.inCall ? 'o_hide' : '' }}" type="tel" t-ref="connect-phone-input"
+                                   t-on-keyup="debounceEnterPhoneNumber" placeholder="Name, number or extension" autocomplete="off"/>
+                            <span t-if="state.inCall" class="o_cp_val" t-out="state.dtmfSent"/>
+                            <span t-if="state.inCall" class="o_cp_caret"/>
+                            <button t-if="!state.inCall" class="o_cp_bsp" aria-label="Backspace" title="Backspace" t-on-click="_onClickBackSpace">
+                                <t t-call="connect.icon.backspace"/>
                             </button>
                         </div>
+                        <div t-if="state.inCall" class="o_cp_match">Tones sent to <b t-out="callerTitle"/></div>
+                        <div t-elif="state.match" class="o_cp_match">
+                            <b t-out="state.match.name"/>
+                            <span t-if="state.match.exten" class="o_cp_extchip" t-out="state.match.exten"/>
+                        </div>
+                    </div>
+                    <t t-if="showKeys" t-call="connect.phone.keys"/>
+
+                    <!-- What happened after the last call -->
+                    <div t-if="state.endedCall and !state.isContactList" class="o_cp_stage o_cp_stage_after">
+                        <div class="o_cp_gap o_cp_gap_s"/>
+                        <img t-if="state.endedCall.avatar" class="o_cp_av o_cp_av_lg" alt="Avatar" t-att-src="state.endedCall.avatar"/>
+                        <div t-else="" class="o_cp_av o_cp_av_lg" t-attf-style="background:{{ avatarTone(state.endedCall.title) }}" t-out="initialsOf(state.endedCall.title)"/>
+                        <div>
+                            <div class="o_cp_name" t-out="state.endedCall.title"/>
+                            <div class="o_cp_number" t-out="state.endedCall.number"/>
+                        </div>
+                        <div class="o_cp_lasted" t-if="state.endedCall.duration">Lasted <b t-out="state.endedCall.duration"/></div>
+                        <div class="o_cp_lasted" t-else="">Call ended</div>
+                        <div class="o_cp_quick">
+                            <div class="o_cp_quickitem">
+                                <button aria-label="Contact" title="Contact" t-on-click="_onClickEndedContact">
+                                    <t t-if="state.endedCall.partnerId" t-call="connect.icon.user"/>
+                                    <t t-else="" t-call="connect.icon.user_add"/>
+                                </button>
+                                <span class="o_cp_lbl" t-out="state.endedCall.partnerId ? 'Contact' : 'Add'"/>
+                            </div>
+                            <div class="o_cp_quickitem">
+                                <button class="o_cp_go" aria-label="Call again" title="Call again" t-on-click="_onClickCallAgain">
+                                    <t t-call="connect.icon.call"/>
+                                </button>
+                                <span class="o_cp_lbl">Call again</span>
+                            </div>
+                            <div class="o_cp_quickitem">
+                                <button aria-label="Dismiss" title="Dismiss" t-on-click="dismissEndedCall">
+                                    <t t-call="connect.icon.close"/>
+                                </button>
+                                <span class="o_cp_lbl">Dismiss</span>
+                            </div>
+                        </div>
+                        <div class="o_cp_gap"/>
+                    </div>
+                </div>
+
+                <!-- Contacts: the search results under the dialler, and the forward picker -->
+                <div t-attf-class="o_cp_screen {{ state.isContacts or state.isContactList ? '' : 'o_hide' }}">
+                    <Contacts bus="bus" isTransfer="state.isTransfer" isForward="state.isForward"/>
+                </div>
+
+                <!-- Favourites -->
+                <div t-attf-class="o_cp_screen {{ state.isFavorites ? '' : 'o_hide' }}">
+                    <Favorites t-if="state.isFavorites" bus="bus"/>
+                </div>
+
+                <!-- Recent -->
+                <div t-attf-class="o_cp_screen {{ state.isCalls ? '' : 'o_hide' }}">
+                    <Calls bus="bus"/>
+                </div>
+
+                <!-- The live call -->
+                <div t-attf-class="o_cp_stage {{ state.isDialingPanel ? '' : 'o_hide' }}">
+                    <div class="o_cp_who_block" t-on-click="_onClickCallerCard">
+                        <img t-if="state.callerId.partnerIconUrl" class="o_cp_av o_cp_av_lg" alt="Avatar" t-att-src="state.callerId.partnerIconUrl"/>
+                        <div t-else="" class="o_cp_av o_cp_av_lg" t-attf-style="background:{{ avatarTone(callerTitle) }}" t-out="initialsOf(callerTitle)"/>
+                        <div class="o_cp_name" t-if="state.callerId.partnerName" t-out="shortName(state.callerId.partnerName)"/>
+                        <div class="o_cp_number">
+                            <t t-if="state.isWhatsapp"><span class="o_cp_wa"><t t-call="connect.icon.whatsapp"/></span></t>
+                            <t t-out="state.callerId.phoneNumber"/>
+                        </div>
+                    </div>
+
+                    <div class="o_cp_gap"/>
+
+                    <t t-if="state.phone_status === status.accepted">
+                        <div class="o_cp_timer" t-out="durationShort"/>
                     </t>
                     <t t-else="">
-                        <img t-if="state.callerId.partnerId" alt="Avatar" class="o_partner_avatar" t-att-src="state.callerId.partnerIconUrl"/>
-                        <span t-if="state.callerId.partnerId" class="o_partner_name"><t t-out="state.callerId.partnerName"/></span>
-                        <span class="o_partner_name"><t t-out="state.callerId.phoneNumber"/></span>
-                        <span class="o_partner_name"><t t-out="state.callDurationTime"/></span>
-                        <div class="text-center" title="Customer">
-                            <button class="btn p-3 border rounded-circle" t-on-click="_createPartner">
-                                <i aria-label="Customer" class="fa fa-fw fa-lg fa-user-plus"/>
-                            </button>
-                        </div>
-                        <div t-if="state.isCallForwarded" class="text-center mt-1" title="Cancel Forward">
-                            <button class="btn p-3 border rounded-circle" t-on-click="_cancelForward">
-                                <i aria-label="Customer" class="fa fa-fw fa-lg icon-enlarge2"/>
-                            </button>
-                        </div>
+                        <div class="o_cp_ringing"><span class="o_cp_dot o_cp_dot_ring"/><t t-out="state.inIncoming ? 'Ringing' : 'Calling'"/></div>
                     </t>
-                    <div t-if="state.xTransferPartner" class="o_partner_link" t-on-click="() => this._openPartner(state.xTransferPartner.partnerId)">
-                        <span class="o_partner_name"><i class="fa fa-arrow-down"/></span>
-                        <img alt="Avatar" class="o_partner_avatar" t-if="state.xTransferPartner.partnerId" t-att-src="state.xTransferPartner.partnerIconUrl"/>
-                        <span class="o_partner_name"><t t-out="state.xTransferPartner.partnerName"/></span>
-                        <span class="o_partner_name"><t t-out="state.xTransferPartner.phoneNumber"/></span>
+
+                    <!-- Where the call went, once it has been forwarded on -->
+                    <div t-if="state.xTransferPartner" class="o_cp_relay" t-on-click="() => this._openPartner(state.xTransferPartner.partnerId)">
+                        <span class="o_cp_relay_arrow"><t t-call="connect.icon.arrow_down"/></span>
+                        <img t-if="state.xTransferPartner.partnerIconUrl" class="o_cp_av" alt="Avatar" t-att-src="state.xTransferPartner.partnerIconUrl"/>
+                        <span class="o_cp_relay_who"><t t-out="shortName(state.xTransferPartner.partnerName)"/></span>
+                        <span class="o_cp_relay_n"><t t-out="state.xTransferPartner.phoneNumber"/></span>
                     </div>
-                    <div t-if="state.xTransferInfo" class="o_partner_link">
-                        <span class="o_partner_name"><i class="fa fa-arrow-down"/></span>
-                        <span class="o_partner_name"><t t-out="state.xTransferInfo"/></span>
+                    <div t-if="state.xTransferInfo" class="o_cp_relay">
+                        <span class="o_cp_relay_arrow"><t t-call="connect.icon.arrow_down"/></span>
+                        <span class="o_cp_relay_who"><t t-out="state.xTransferInfo"/></span>
                     </div>
+
+                    <!-- While it is still ringing there is little to do but look it up or hush it -->
+                    <div class="o_cp_quick" t-if="state.phone_status !== status.accepted">
+                        <div class="o_cp_quickitem">
+                            <button aria-label="Contact" title="Contact" t-on-click="_onClickCallerCard">
+                                <t t-if="state.isPartner" t-call="connect.icon.user"/>
+                                <t t-else="" t-call="connect.icon.user_add"/>
+                            </button>
+                            <span class="o_cp_lbl" t-out="state.isPartner ? 'Contact' : 'Add'"/>
+                        </div>
+                        <div class="o_cp_quickitem">
+                            <button aria-label="Ringer" t-attf-title="{{ state.isSoundMute ? 'Unmute ringer' : 'Silence ringer' }}" t-on-click="_onClickSoundMute">
+                                <t t-if="state.isSoundMute" t-call="connect.icon.volume_off"/>
+                                <t t-else="" t-call="connect.icon.volume_on"/>
+                            </button>
+                            <span class="o_cp_lbl" t-out="state.isSoundMute ? 'Silent' : 'Ringer'"/>
+                        </div>
+                    </div>
+
+                    <div class="o_cp_gap"/>
                 </div>
             </div>
-            <!--Contacts-->
-            <div t-attf-class="{{ state.isContacts || state.isContactList ? '' : 'o_hide' }} o_body_phone">
-                <Contacts bus="bus" isTransfer="state.isTransfer" isForward="state.isForward"/>
-            </div>
-            <!--Favorites-->
-            <div t-attf-class="{{ state.isFavorites ? '' : 'o_hide' }} o_body_phone">
-                <Favorites t-if="state.isFavorites" bus="bus"/>
-            </div>
-            <!--Calls-->
-            <div t-attf-class="{{ state.isCalls ? '' : 'o_hide' }} o_body_phone">
-                <Calls bus="bus"/>
+
+            <!-- ============================ footer ============================ -->
+
+            <!-- Answer or decline -->
+            <div class="o_cp_answerbar" t-if="state.inIncoming">
+                <button class="o_cp_ans o_cp_ans_no" t-on-click="_onClickRejectIncoming">
+                    <t t-call="connect.icon.close"/>Decline
+                </button>
+                <button class="o_cp_ans o_cp_ans_yes" t-on-click="_onClickAcceptIncoming">
+                    <t t-call="connect.icon.call"/>Answer
+                </button>
             </div>
 
-
-            <div class="mt-auto">
-                <!--Optional call buttons-->
-                <div t-attf-class="{{ state.isKeypad or state.inCall or state.inIncoming ? '' : 'o_hide' }} o_dial_panel o_optional_dial_panel_position flex-container">
-                    <button t-if="state.phone_status === status.accepted" aria-label="Call" t-attf-class="flex-item {{ state.isDialingPanel ? 'active' : '' }}" title="Call" t-on-click="_onClickDialingPanel">
-                        <i class="icon-phone_in_talk fa"/>
+            <!-- On a call, looking at the call -->
+            <t t-elif="state.inCall and state.isDialingPanel">
+                <div class="o_cp_ctrls" t-if="state.phone_status === status.accepted">
+                    <button t-attf-class="o_cp_ctrl {{ state.isForward ? 'o_cp_ctrl_active' : '' }}" title="Forward" t-on-click="_onClickForward">
+                        <t t-call="connect.icon.forward"/>Forward
                     </button>
-                    <button t-if="state.phone_status === status.accepted" aria-label="DTMF" t-attf-class="flex-item {{ state.isKeypad ? 'active' : '' }}" title="DTMF" t-on-click="_onClickKeypad">
-                        <i class="icon-dialpad fa"/>
+                    <button class="o_cp_ctrl" title="Keypad" t-on-click="_onClickKeypad">
+                        <t t-call="connect.icon.dialpad"/>Keypad
                     </button>
-                    <button t-if="state.phone_status === status.accepted" aria-label="Forward" t-attf-class="flex-item {{ state.isForward ? 'active' : '' }}" title="Forward" t-on-click="_onClickForward">
-                        <i class="fa fa-exchange"/>
+                    <button t-attf-class="o_cp_ctrl {{ state.isMicrophoneMute ? 'o_cp_ctrl_active' : '' }}" t-attf-title="{{ state.isMicrophoneMute ? 'Unmute microphone' : 'Mute microphone' }}" t-on-click="_onClickMicrophoneMute">
+                        <t t-if="state.isMicrophoneMute" t-call="connect.icon.mic_off"/>
+                        <t t-else="" t-call="connect.icon.mic"/>
+                        <t t-out="state.isMicrophoneMute ? 'Muted' : 'Mute'"/>
                     </button>
-                    <button t-if="state.phone_status !== status.accepted" aria-label="Mute Sound" class="flex-item" t-attf-title="{{ state.isSoundMute ? 'Unmute Sound' : 'Mute Sound' }}" t-on-click="_onClickSoundMute">
-                        <i t-attf-class="fa {{ state.isSoundMute ? 'icon-volume_off' : 'icon-volume_up'}}"/>
+                    <button class="o_cp_ctrl" t-attf-title="{{ state.isPartner ? 'Open contact' : 'Create contact' }}" t-on-click="_onClickCallerCard">
+                        <t t-if="state.isPartner" t-call="connect.icon.user"/>
+                        <t t-else="" t-call="connect.icon.user_add"/>
+                        <t t-out="state.isPartner ? 'Contact' : 'Add'"/>
                     </button>
-                    <button t-if="state.phone_status === status.accepted" aria-label="Mute Microphone" t-attf-class="flex-item" t-attf-title="{{ state.isMicrophoneMute ? 'Unmute Microphone' : 'Mute Microphone' }}" t-on-click="_onClickMicrophoneMute">
-                        <i t-attf-class="fa {{ state.isMicrophoneMute ? 'icon-mic_off' : 'icon-mic' }}"/>
+                    <button t-if="state.isCallForwarded" class="o_cp_ctrl" title="Cancel forward" t-on-click="_cancelForward">
+                        <t t-call="connect.icon.undo"/>Take back
                     </button>
                 </div>
-
-                <!--Call buttons-->
-                <div t-attf-class="{{ state.isKeypad or state.inCall or state.inIncoming ? '' : 'o_hide' }} o_dial_panel o_dial_panel_position flex-container">
-                    <button aria-label="Call" t-attf-class="{{ state.inCall ? 'o_hide' : '' }} flex-item" title="Call" t-on-click="_onClickMakeCall">
-                        <i class="icon-call call"/>
-                    </button>
-                    <button aria-label="End Call" t-attf-class="{{ state.inCall and !state.inIncoming ? '' : 'o_hide' }} flex-item" title="End Call" t-on-click="_onClickEndCall">
-                        <i class="icon-call_end reject-call"/>
-                    </button>
-                    <button aria-label="Take call" t-attf-class="{{ state.inIncoming ? '' : 'o_hide' }} flex-item" title="Accept" t-on-click="_onClickAcceptIncoming">
-                        <i class="icon-call call"/>
-                    </button>
-                    <button aria-label="Reject call" t-attf-class="{{ state.inIncoming ? '' : 'o_hide' }} flex-item" title="Reject">
-                        <i class="icon-call_end reject-call" t-on-click="_onClickRejectIncoming"/>
+                <div class="o_cp_hangbar">
+                    <button class="o_cp_hang" t-on-click="_onClickEndCall">
+                        <t t-call="connect.icon.hangup"/>End call
                     </button>
                 </div>
+            </t>
+
+            <!-- On a call, somewhere else in the phone -->
+            <div class="o_cp_hangbar" t-elif="state.inCall">
+                <button class="o_cp_hang o_cp_hang_quiet" t-on-click="_onClickDialingPanel">Back to the call</button>
             </div>
-      </div>
+
+            <!-- Idle -->
+            <t t-else="">
+                <div class="o_cp_dialbar" t-if="state.isKeypad and !state.endedCall">
+                    <button class="o_cp_fab" aria-label="Call" title="Call" t-on-click="_onClickMakeCall">
+                        <t t-call="connect.icon.call"/>
+                    </button>
+                </div>
+                <nav class="o_cp_tabs">
+                    <button t-attf-class="o_cp_tab {{ state.activeTab === tabs.phone ? 'o_cp_tab_sel' : '' }}" aria-label="Keypad" title="Keypad" t-on-click="_onClickPhone">
+                        <t t-call="connect.icon.dialpad"/>Keypad
+                    </button>
+                    <button t-attf-class="o_cp_tab {{ state.activeTab === tabs.calls ? 'o_cp_tab_sel' : '' }}" aria-label="Recent" title="Recent" t-on-click="_onClickHistory">
+                        <t t-call="connect.icon.history"/>Recent
+                    </button>
+                    <button t-attf-class="o_cp_tab {{ state.activeTab === tabs.favorites ? 'o_cp_tab_sel' : '' }}" aria-label="Favourites" title="Favourites" t-on-click="_onClickFavorites">
+                        <t t-if="state.activeTab === tabs.favorites" t-call="connect.icon.star_solid"/>
+                        <t t-else="" t-call="connect.icon.star"/>Favourites
+                    </button>
+                </nav>
+            </t>
+        </div>
     </t>
 
 </templates>

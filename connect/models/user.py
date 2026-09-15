@@ -578,6 +578,9 @@ class User(models.Model):
             return {
                 'token': token.to_jwt(),
                 'edge': user.twilio_edge or self.env['connect.settings'].sudo().get_param('twilio_edge'),
+                # Shown in the softphone header so the user knows which
+                # extension their calls go out on.
+                'exten': user.exten_number or '',
             }
         except Exception as e:
             logger.exception('Error getting Twilio JWT:')

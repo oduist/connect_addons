@@ -1,10 +1,78 @@
 /** @odoo-module **/
 
 import {useService} from "@web/core/utils/hooks"
+import {initialsOf, avatarTone, shortName} from "@connect/js/utils"
 import {Component, useState, onWillStart} from "@odoo/owl"
 import {user} from "@web/core/user"
 
 const uid = user.userId
+
+// A call that did not connect. Outgoing ones read as "failed", incoming ones as
+// "missed": same statuses, different story.
+const UNANSWERED = ['no-answer', 'busy', 'failed', 'canceled']
+
+const CALL_FIELDS = [
+    "id",
+    "duration_human",
+    "called",
+    "caller",
+    "caller_user",
+    "called_users",
+    "partner",
+    "direction",
+    "status",
+    "create_date",
+]
+
+// Everything the row needs to draw itself, worked out once here rather than in
+// the template.
+function prepareCall(call, me) {
+    const isIncoming = call.called_users[0] === me
+    const number = isIncoming ? call.caller : call.called
+    const peerUser = isIncoming
+        ? call.caller_user
+        : (call.called_users.length ? call.called_users : false)
+
+    let title = number
+    let avatar = false
+    if (call.partner) {
+        title = shortName(call.partner[1])
+        avatar = `/web/image?model=res.partner&field=avatar_128&id=${call.partner[0]}`
+    } else if (peerUser) {
+        title = peerUser[1]
+        avatar = `/web/image?model=res.users&field=avatar_128&id=${peerUser[0]}`
+    }
+
+    const answered = !UNANSWERED.includes(call.status)
+    // Naive datetimes come back in UTC.
+    const when = new Date(`${call.create_date}Z`)
+
+    return {
+        id: call.id,
+        number,
+        title: title || number,
+        avatar,
+        tone: avatarTone(title || number),
+        initials: initialsOf(title || number),
+        kind: answered ? (isIncoming ? 'in' : 'out') : (isIncoming ? 'miss' : 'fail'),
+        label: answered ? (isIncoming ? 'Incoming' : 'Outgoing') : (isIncoming ? 'Missed' : 'Failed'),
+        duration: answered ? call.duration_human : '',
+        time: when.toLocaleTimeString(undefined, {hour: '2-digit', minute: '2-digit'}),
+        when,
+        favorite: false,
+        raw: call,
+    }
+}
+
+// Today, Yesterday, then the date itself.
+function dayLabel(date) {
+    const midnight = new Date()
+    midnight.setHours(0, 0, 0, 0)
+    const day = 24 * 60 * 60 * 1000
+    if (date >= midnight) return 'Today'
+    if (date >= new Date(midnight.getTime() - day)) return 'Yesterday'
+    return date.toLocaleDateString(undefined, {day: 'numeric', month: 'short'})
+}
 
 class CallDetail extends Component {
     static template = 'connect.call_detail'
@@ -31,23 +99,20 @@ class CallDetail extends Component {
     }
 
     async getCall(id) {
-        const fields = [
-            "id",
-            "duration_human",
-            "called",
-            "caller",
-            "caller_user",
-            "called_users",
-            "partner",
-            "direction",
-            "create_date"
-        ]
-        const [call] = await this.orm.searchRead("connect.call", [["id", "=", id]], fields)
-        this.state.call = call
+        const [call] = await this.orm.searchRead("connect.call", [["id", "=", id]], CALL_FIELDS)
+        if (call) {
+            this.record = call
+            this.state.call = prepareCall(call, this.user)
+        }
+    }
+
+    get isColleague() {
+        const call = this.record
+        return call && call.called_users.length > 0 && call.caller_user
     }
 
     async _createPartner() {
-        const phone = this.state.call.called_users[0] === this.user ? this.state.call.caller : this.state.call.called
+        const phone = this.state.call.number
         let context = {
             connect_call_id: this.state.call.id,
             default_phone: phone,
@@ -64,9 +129,9 @@ class CallDetail extends Component {
 
     async _openPartner() {
         await this.getCall(this.state.call.id)
-        if (this.state.call.partner) {
+        if (this.record && this.record.partner) {
             this.action.doAction({
-                res_id: this.state.call.partner[0],
+                res_id: this.record.partner[0],
                 res_model: "res.partner",
                 target: 'new',
                 type: 'ir.actions.act_window',
@@ -105,8 +170,9 @@ export class Calls extends Component {
         this.notification = useService('notification')
         this.user = uid
         this.favorites = []
+        this.calls = []
         this.state = useState({
-            calls: [],
+            groups: [],
             call: null,
         })
 
@@ -118,47 +184,61 @@ export class Calls extends Component {
     }
 
     async _getCalls() {
-        this.state.calls = []
         const domain = ["|", ["caller_user", "=", this.user], ["called_users", "=", this.user]]
-        const records = await this.orm.call("connect.call", "get_widget_calls", [domain, 20])
-        for (const item of records) {
-            const call_number = item.called_users[0] === this.user ? item.caller : item.called
-            item.favorite = this.favorites.includes(call_number)
-            const local_time = new Date(`${item.create_date}Z`).toLocaleTimeString("en-GB")
-            item.create_date = `${item.create_date.split(' ')[0]} ${local_time}`
-        }
-        this.state.calls = records
+        const records = await this.orm.call(
+            "connect.call", "get_widget_calls", [domain, 20], {fields: ["duration_human"]})
+        this.calls = records
+            .map((record) => prepareCall(record, this.user))
+            .sort((a, b) => b.when - a.when)
+        this._markFavorites()
+    }
 
+    // The history reads as a diary: one heading per day, calls under it.
+    _group() {
+        const groups = []
+        for (const call of this.calls) {
+            const label = dayLabel(call.when)
+            const last = groups[groups.length - 1]
+            if (last && last.label === label) {
+                last.calls.push(call)
+            } else {
+                groups.push({label, calls: [call]})
+            }
+        }
+        this.state.groups = groups
+    }
+
+    // Regroups as well: the rows live behind the reactive state, so they are
+    // rebuilt rather than poked at in place.
+    _markFavorites() {
+        this.calls.forEach((call) => call.favorite = this.favorites.includes(call.number))
+        this._group()
     }
 
     async _getFavorites() {
         this.favorites = []
         const favorites = await this.orm.searchRead('connect.favorite', [], ['phone_number'])
         favorites.forEach((el) => this.favorites.push(el.phone_number))
-        this.state.calls.forEach(item => {
-            const call_number = item.called_users[0] === this.user ? item.caller : item.called
-            item.favorite = this.favorites.includes(call_number)
-        })
+        this._markFavorites()
     }
 
     _onClickContactCall(phoneNumber) {
         this.bus.trigger('busPhoneMakeCall', {phone: phoneNumber})
     }
 
-    async _onClickFavorite(call) {
-        const kwargs = {}
-        const isCalled = call.called_users[0] === this.user
-        kwargs.phone_number = isCalled ? call.caller : call.called
-        if (call.partner) {
-            kwargs.partner = call.partner[0]
+    async _onClickFavorite(ev, call) {
+        ev.stopPropagation()
+        const record = call.raw
+        const kwargs = {phone_number: call.number}
+        const isCalled = record.called_users[0] === this.user
+        if (record.partner) {
+            kwargs.partner = record.partner[0]
+        } else if (record.caller_user && isCalled) {
+            kwargs.user = record.caller_user[0]
+        } else if (record.called_users.length > 0 && !isCalled) {
+            kwargs.user = record.called_users[0]
         } else {
-            if (call.caller_user && isCalled) {
-                kwargs.user = call.caller_user[0]
-            } else if (call.called_users.length > 0 && !isCalled) {
-                kwargs.user = call.called_users[0]
-            } else {
-                kwargs.name = kwargs.phone_number
-            }
+            kwargs.name = kwargs.phone_number
         }
 
         const domain = [["phone_number", "=", kwargs.phone_number]]
@@ -175,7 +255,8 @@ export class Calls extends Component {
         }
     }
 
-    _open_detail(call) {
+    _open_detail(ev, call) {
+        ev.stopPropagation()
         this.state.call = call
     }
 

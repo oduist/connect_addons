@@ -1,8 +1,8 @@
 /** @odoo-module **/
 
 import {useService} from "@web/core/utils/hooks"
-import {setFocus} from "@connect/js/utils"
-import {Component, useState, useRef, onWillStart} from "@odoo/owl"
+import {setFocus, escapeHtml, initialsOf, avatarTone, shortName} from "@connect/js/utils"
+import {Component, useState, useRef, onWillStart, markup} from "@odoo/owl"
 
 const searching = {
     all: 'all',
@@ -30,6 +30,9 @@ export class Contacts extends Component {
         this.contactSearch = contactSearch
         this.searchQuery = ''
         this.users = []
+        this.initialsOf = initialsOf
+        this.avatarTone = avatarTone
+        this.shortName = shortName
     }
 
     setup(props) {
@@ -41,6 +44,8 @@ export class Contacts extends Component {
             isContactMode: false,
             partners: [],
             users: this.users,
+            // What was typed, kept in state so the results can point at it.
+            query: '',
         })
 
         onWillStart(async () => {
@@ -56,6 +61,7 @@ export class Contacts extends Component {
         this.isForward = isForward
         this.state.partners = []
         this.state.users = []
+        this.state.query = ''
         this.searchQuery = ''
         if (this.contactInput.el) {
             this.contactInput.el.value = ''
@@ -64,9 +70,7 @@ export class Contacts extends Component {
     }
 
     _busContactSearchQuery({searchQuery = ''}) {
-        this.searchQuery = searchQuery
-        this.searchUser()
-        this.searchPartner()
+        this._contactSearchQuery({searchQuery})
     }
 
     _onSearchContact(ev) {
@@ -85,8 +89,46 @@ export class Contacts extends Component {
 
     _contactSearchQuery({searchQuery = ''}) {
         this.searchQuery = searchQuery
+        this.state.query = searchQuery
         this.searchUser()
         this.searchPartner()
+    }
+
+    // What pressing a row does depends on why the list is open: place the call,
+    // hand the live one over, or forward it.
+    _dial(phoneNumber) {
+        if (!phoneNumber) return
+        if (this.isTransfer) {
+            this._onClickMakeTransfer(phoneNumber)
+        } else if (this.isForward) {
+            this._onClickMakeForward(phoneNumber)
+        } else {
+            this._onClickMakeCall(phoneNumber)
+        }
+    }
+
+    get actionLabel() {
+        if (this.isTransfer) return 'Transfer to'
+        if (this.isForward) return 'Forward to'
+        return 'Call'
+    }
+
+    get hasResults() {
+        return this.state.users.length > 0 || this.state.partners.length > 0
+    }
+
+    // The part of the name that matched, marked in place.
+    highlight(text) {
+        const value = `${text || ''}`
+        const query = this.state.query.trim()
+        if (!query) return value
+        const at = value.toLowerCase().indexOf(query.toLowerCase())
+        if (at < 0) return value
+        return markup(
+            `${escapeHtml(value.slice(0, at))}` +
+            `<mark>${escapeHtml(value.slice(at, at + query.length))}</mark>` +
+            `${escapeHtml(value.slice(at + query.length))}`
+        )
     }
 
     _contactCall() {
