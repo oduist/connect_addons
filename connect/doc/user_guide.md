@@ -31,13 +31,28 @@ again to hide it. The button changes appearance while you are on a call, and
 when the panel is hidden a hang-up button appears next to it so you can end a
 call without reopening the panel.
 
-The panel has three tabs:
+Drag the panel by its header to move it out of the way. It follows Odoo's
+colour scheme, so if you work in dark mode the phone is dark too.
 
-- **Keypad** — type a name or a number in the input field and press the call
-  button. Searching by name looks the contact up in Odoo, so you rarely need to
-  know the number.
-- **Favorites** — the numbers you call often.
-- **History** — your recent calls, so you can call someone back with one click.
+The header tells you what the phone is doing: your own extension when it is
+idle, the running timer while you are on a call, and *Incoming* or *Forward to*
+when one of those is happening.
+
+Three tabs sit along the bottom:
+
+- **Keypad** — type or press a name, a number or an extension, then press the
+  green call button. As you type, the name of whoever the number belongs to
+  appears under the field, so you can tell before dialling whether you have the
+  right person. Typing also replaces the keys with the matching people:
+  colleagues first with their extension, then customers with their number.
+  When you have typed something, an SMS and a WhatsApp button appear either
+  side of the call button.
+- **Recent** — your call history, grouped by day.
+- **Favourites** — the numbers you call often, as a grid you can hit without
+  reading. Underneath it, the number people see when you call them.
+
+During a call the tabs are hidden: there is nowhere else to go until the call
+is over.
 
 ## Making a call
 
@@ -49,21 +64,39 @@ There are three ways to start a call, and they all end up in the same place:
    contacts, leads and other records are clickable. One click dials.
 3. **From the contact form** — open a contact and use the phone action there.
 
-While a call is up, the panel gives you:
+While a call is up, the panel shows who you are talking to and how long you
+have been talking, and gives you:
 
-- **Mute microphone** — the other side stops hearing you.
-- **DTMF keypad** — send tones, for navigating voice menus ("press 1 for…").
-- **Forward** — hand the call over to a colleague or another number. Start the
-  forward, and if you change your mind, cancel it before it completes.
+- **Forward** — hand the call over. The picker lists colleagues by extension
+  and customers by number, and you can forward to anything you type. Nothing
+  changes on screen until the server has accepted the transfer, so if it fails
+  you are still on the call.
+- **Keypad** — send tones, for navigating voice menus ("press 1 for…"). The
+  tones you have sent stay on screen, because tones are otherwise invisible.
+- **Contact** — open the contact you are talking to, or create one if this
+  number is new.
+- **Mute** — the other side stops hearing you. Before a call is answered this
+  place is taken by **Sound**, which mutes the ringing instead.
 - **End call** — hang up.
 
-Before a call is answered you can also mute the ringing sound.
+Opening the keypad or the forward picker does not leave the call: a strip
+across the top keeps the call and its timer in view, and **Back to the call**
+returns you to it.
 
 ## Receiving calls
 
-When a call comes in for you, Connect shows a notification with the caller. If
-the caller matches a contact in Odoo, you see who it is before you answer, and
-can open their record while you talk.
+When a call comes in for you, the phone panel shows the caller — their name,
+their photo and their number if they match a contact in Odoo, and a plain
+number if they do not. You can open their record, or create one for them,
+before you answer, and mute the ringing from the same screen. **Answer** and
+**Decline** are the two buttons at the bottom.
+
+If the call reaches you because a colleague transferred it, a line under the
+number says **Transferred by** and names them. The caller shown is still the
+customer — the person you are about to talk to — so you get both: who is
+calling, and who handed them over.
+
+Connect also shows a notification outside the panel with the same caller.
 
 You can change how these notifications behave in your own settings (see below):
 turn them off entirely, or make them sticky so they stay on screen until you
@@ -95,6 +128,13 @@ Things you may want to change:
 If the setting you need is missing or greyed out, it is administrator territory.
 
 ## Call history and recordings
+
+The **Recent** tab in the phone panel is the short version: your last calls,
+grouped under *Today*, *Yesterday* and then the date. Each line says who the
+call was with, which way it went, whether it connected and how long it lasted.
+Click a line to call back, the picture to open the call record, and the star to
+keep the number in **Favourites**. The search box at the top filters the list
+by name or number.
 
 **Voice ▸ Calls** is the full log: who called whom, when, how long, and how the
 call ended. Open a call to see its details.

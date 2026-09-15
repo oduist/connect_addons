@@ -9,7 +9,14 @@ const uid = user.userId
 
 // Call statuses that mean the two ends never spoke. Everything else is
 // treated as a connected call and shows its duration.
-const UNCONNECTED = ['noanswer', 'busy', 'rejected', 'canceled', 'failed']
+//
+// Both spellings of the unanswered status are listed: this module writes the
+// hyphenated `no-answer` that the provider reports, while `noanswer` is the
+// spelling used elsewhere in the Connect family. Matching only one of them
+// turns every missed call into a connected one with a 00:00 duration.
+const UNCONNECTED = [
+    'no-answer', 'noanswer', 'busy', 'rejected', 'canceled', 'failed',
+]
 
 
 /**
