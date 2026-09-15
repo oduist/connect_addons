@@ -643,10 +643,12 @@ class User(models.Model):
             ('username', 'ilike', query),
             ('exten_number', '=ilike', '%{}%'.format(query)),
         ]
+        # Ordered on a stored field so the cut at `limit` is deterministic,
+        # then alphabetically for display -- `name` cannot reach SQL.
         records = self.sudo().search_read(
             domain, ['id', 'name', 'exten_number', 'user'],
-            order='name asc', limit=limit)
-        return [
+            order='username asc', limit=limit)
+        directory = [
             {
                 'id': record['id'],
                 'name': record['name'],
@@ -655,6 +657,8 @@ class User(models.Model):
             }
             for record in records
         ]
+        directory.sort(key=lambda entry: (entry['name'] or '').lower())
+        return directory
 
     @api.model
     def handle_sip_refer(self, request):
