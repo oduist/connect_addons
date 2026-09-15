@@ -364,20 +364,44 @@ class Call(models.Model):
                 self.status = 'no-answer'
                 logger.info(f"Call {self.id}: Status set to 'no-answer' (default)")
 
-    def _update_live_status(self):
+    def _root_channels(self):
+        """The legs the call's own duration and live status derive from.
+
+        The root leg spans the whole conversation; the agent legs run inside
+        it. Falls back to the parentless legs while the root SID is not yet
+        matched by a channel (a child webhook can land before its parent).
+        """
+        self.ensure_one()
+        return self.channels.filtered(
+            lambda c: c.sid and c.sid == self.root_call_sid
+        ) or self.channels.filtered(lambda c: not c.parent_channel)
+
+    def _update_live_status(self, channel=None):
         """Reflect the live call status while the call is still active.
 
-        The call status is set on creation (ringing) and only finalized once all
-        channels end (_set_final_call_status). Without this, the status never moves
-        to 'in-progress' on answer. Derive it from the current channel statuses so
-        the UI shows ringing -> in-progress. Terminal statuses are left to
-        _set_final_call_status().
+        The call status is set on creation (from the creating leg) and only
+        finalized once all channels end (_set_final_call_status). Without
+        this, the status never moves to 'in-progress' on answer. Derive it
+        from the current channel statuses so the UI shows ringing ->
+        in-progress. Terminal statuses are left to _set_final_call_status().
+
+        `channel` is the leg whose webhook is being handled. Every leg of a
+        ring group reports 'ringing', but only the root leg ringing says
+        anything new about the *call*: the children write an identical value,
+        and because their snapshots all predate each other's commits the !=
+        guard below passes on every one of them, so each sibling costs a
+        serialization failure and a full webhook replay. Restricting the
+        'ringing' assertion to the root leg keeps the promotion from
+        'initiated' while dropping that fan-out. 'in-progress' stays open to
+        any leg — root legs never report it, only the answering child does.
         """
         self.ensure_one()
         chan_statuses = self.channels.mapped('status')
         if 'in-progress' in chan_statuses:
             live_status = 'in-progress'
         elif 'ringing' in chan_statuses:
+            if channel is not None and channel not in self._root_channels():
+                return
             live_status = 'ringing'
         else:
             return
@@ -1138,12 +1162,16 @@ class Call(models.Model):
         # run inside the parent leg, so a parked/transferred call reported
         # far more seconds than it lasted.
         if call.channels:
-            root_channels = call.channels.filtered(
-                lambda c: c.sid and c.sid == call.root_call_sid
-            ) or call.channels.filtered(lambda c: not c.parent_channel)
-            total_duration = sum(root_channels.mapped('duration') or [0])
-            if call.duration != total_duration:
-                call_vals['duration'] = total_duration
+            root_channels = call._root_channels()
+            # Only a webhook that just updated a root leg can change the
+            # total. A child leg recomputes the identical number and writes
+            # it solely because its snapshot predates the root leg's commit
+            # — one serialization failure per sibling, each replaying the
+            # whole webhook.
+            if channel in root_channels:
+                total_duration = sum(root_channels.mapped('duration') or [0])
+                if call.duration != total_duration:
+                    call_vals['duration'] = total_duration
         # Pattern detection from explicit tagging
         if call and not call.call_pattern:
             detected_pattern = call._detect_call_pattern()
@@ -1236,7 +1264,7 @@ class Call(models.Model):
                 reason = "channel not ending"
             debug(self, f"Call {channel.call.id}: Finalization deferred - {reason}")
             # Call is still active: keep its status live (ringing -> in-progress).
-            channel.call._update_live_status()
+            channel.call._update_live_status(channel)
         if params.get('ErrorCode') and params.get('ErrorCode') not in IGNORE_ERROR_CODES:
             channel.call.update({
                 'has_error': True,
