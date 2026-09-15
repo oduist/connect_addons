@@ -2,15 +2,17 @@
 
 ## Plan First, Then Act
 
-Before making any code changes, always:
-1. Explain your understanding of the task
-2. Present a detailed plan of changes (which files will be created/modified, what exactly will change)
-3. Ask for explicit confirmation before proceeding with implementation
+A change that is large, structural, or spans more than one module starts with a
+plan: your understanding of the task, the files to be created or modified, and
+what changes in each. Wait for explicit approval before writing code.
 
-Do NOT write or modify any code until the user explicitly approves the plan.
+A small, well-specified change -- a fix the user has already described, a test,
+a documentation edit -- does not need that round trip. Say what you are about
+to do, then do it.
 
 ## Odoo development workflow
-When Oduflow MCP is connected, call 'get_agents_guide' to get development workflow instructions.
+When Oduflow MCP is connected, call `get_agent_instructions` to get development
+workflow instructions.
 
 ## Documentation is part of the change
 
