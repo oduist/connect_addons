@@ -233,6 +233,11 @@ tab is opened.
   number; a partner's display name is cut to its last comma-separated part.
 - Clicking the row calls back, the avatar opens the `connect.call` record, the
   star adds or removes a `connect.favorite` for that number.
+- A favourite records **who** the row was about, in the same order the list
+  resolves it: `partner` when the call has a contact, else `user` when the
+  other leg was a colleague, else `name` set to the bare number. Favourites
+  read the name and the avatar from those two links, so a favourite made from
+  an internal call without the `user` link degrades to an anonymous extension.
 
 ## Avatars
 

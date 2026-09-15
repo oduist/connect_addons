@@ -127,15 +127,20 @@ export class Recents extends Component {
             name = parts[parts.length - 1].trim()
         }
 
+        // The colleague on the other leg of an internal call, if there is one.
+        // Both the avatar and a favourite made from this row need them, so it
+        // is worked out once.
+        const peerUserId = isIncoming
+            ? (call.caller_user ? call.caller_user[0] : false)
+            : (call.called_users.length ? call.called_users[0] : false)
+
         // false, not a placeholder image: the template falls back to a
         // coloured initial, because there is no default avatar file to point at.
         let avatar = false
         if (call.partner) {
             avatar = `/web/image?model=res.partner&field=avatar_128&id=${call.partner[0]}`
-        } else if (isIncoming && call.caller_user) {
-            avatar = `/web/image?model=res.users&field=avatar_128&id=${call.caller_user[0]}`
-        } else if (!isIncoming && call.called_users.length) {
-            avatar = `/web/image?model=res.users&field=avatar_128&id=${call.called_users[0]}`
+        } else if (peerUserId) {
+            avatar = `/web/image?model=res.users&field=avatar_128&id=${peerUserId}`
         }
 
         // get_widget_calls returns naive UTC; the list is read in local time.
@@ -163,6 +168,7 @@ export class Recents extends Component {
             outcome: outcomeLabel,
             duration: connected ? call.duration_human : '',
             partnerId: call.partner ? call.partner[0] : false,
+            userId: peerUserId,
             favorite: this.favorites.includes(number),
             dayKey: this._dayKey(when),
             dayLabel: this._dayLabel(when),
@@ -236,9 +242,16 @@ export class Recents extends Component {
             await this.orm.unlink('connect.favorite', existing, {})
             this.notification.add('Removed from Favourites', {title: 'Phone', type: 'info'})
         } else {
+            // Same precedence the list itself uses: the contact if there is
+            // one, otherwise the colleague, and only then the bare number.
+            // Dropping the colleague here would turn every starred internal
+            // call into an anonymous extension in Favourites, which reads
+            // from `user` for the name and the face.
             const values = {phone_number: call.number}
             if (call.partnerId) {
                 values.partner = call.partnerId
+            } else if (call.userId) {
+                values.user = call.userId
             } else {
                 values.name = call.number
             }
