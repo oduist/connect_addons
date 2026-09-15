@@ -43,14 +43,25 @@
   --csp-line: var(--csp-hairline);
   --csp-hover: rgba(108, 76, 132, .055);
 
+  // The panel is laid out at its natural size and shown 1.5x smaller. Scaling
+  // the whole thing keeps every proportion of the design -- type, icons,
+  // spacing, the keypad lattice -- in step with one another, and leaves one
+  // number to tune instead of two hundred lengths to keep aligned by hand.
+  --csp-zoom: 0.6667;
+
   position: fixed;
   bottom: 0;
   z-index: 1100;
   display: flex;
   flex-flow: column nowrap;
+  zoom: var(--csp-zoom);
   width: 380px;
   height: 700px;
-  max-height: calc(100vh - 48px);
+  // `vh` is not rescaled inside a zoomed element: it stays the real viewport
+  // height measured in the panel's own coordinates. Dividing by the zoom turns
+  // this back into the visual clamp it reads as -- the viewport, less a margin
+  // -- instead of one that is a third too eager.
+  max-height: calc((100vh - 48px) / var(--csp-zoom));
   overflow: hidden;
   // box-sizing is border-box globally (Bootstrap reboot), so the border is
   // drawn inside the 380x700 and does not shift the panel.

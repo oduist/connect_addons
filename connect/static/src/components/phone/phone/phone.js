@@ -14,6 +14,8 @@ const uid = user.userId
 
 // Connection diagnostics: single prefix so admins can filter the browser
 // console by "[Connect Phone]" when a web phone fails to connect / call.
+const clamp = (value, low, high) => Math.min(Math.max(value, low), high)
+
 const LOG_PREFIX = '[Connect Phone]'
 const clog = (...args) => console.log(LOG_PREFIX, ...args)
 const cwarn = (...args) => console.warn(LOG_PREFIX, ...args)
@@ -210,10 +212,10 @@ export class Phone extends Component {
             const phoneRoot = this.phoneRoot.el
             this.phoneHeader.el.addEventListener("mousedown", function (e) {
                 self.isDown = true
-                self.offset = [
-                    phoneRoot.offsetLeft - e.clientX,
-                    phoneRoot.offsetTop - e.clientY
-                ]
+                // Measured, not taken from offsetLeft: the panel is zoomed, so
+                // its own coordinates and the pointer's are not the same scale.
+                const rect = phoneRoot.getBoundingClientRect()
+                self.offset = [rect.left - e.clientX, rect.top - e.clientY]
             }, true)
 
             document.addEventListener("mouseup", function () {
@@ -232,13 +234,20 @@ export class Phone extends Component {
                     const cx = document.documentElement.clientWidth
                     const cy = document.documentElement.clientHeight
 
-                    let left = px < 10 ? 0 : px
-                    left = left + 310 > cx ? cx - 300 : left
-                    let top = py < 10 ? 0 : py
-                    top = top + 530 > cy ? cy - 520 : top
+                    // Measured on screen, not assumed: the panel is zoomed and
+                    // shrinks to fit short windows, and its header has to stay
+                    // reachable whatever size it ends up.
+                    const rect = phoneRoot.getBoundingClientRect()
+                    const left = clamp(px, 0, Math.max(0, cx - rect.width))
+                    const top = clamp(py, 0, Math.max(0, cy - rect.height))
 
-                    phoneRoot.style.left = left + "px"
-                    phoneRoot.style.top = top + "px"
+                    // left/top are resolved in the panel's own coordinates and
+                    // scaled by the zoom afterwards, so a position measured on
+                    // screen has to be divided back out or the panel lands
+                    // short of the pointer.
+                    const zoom = parseFloat(getComputedStyle(phoneRoot).zoom) || 1
+                    phoneRoot.style.left = (left / zoom) + "px"
+                    phoneRoot.style.top = (top / zoom) + "px"
                 }
             }, true)
             // BroadcastChannel Events
