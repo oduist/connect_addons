@@ -73,9 +73,16 @@ Derived from it:
 ## Softphone — size
 
 The panel is laid out at 380x700 and **displayed scaled**, through `zoom` on
-the root set from `--csp-zoom` (currently `0.6667`, i.e. 1.5x smaller). Scaling
+the root set from `--csp-zoom` (currently `0.8`, so 304x560 on screen). Scaling
 the whole panel keeps type, icons, spacing and the keypad lattice in step with
 one another; there is one number to change, not two hundred lengths.
+
+The type ramp is drawn for that scale rather than inherited from a full-size
+design: the smallest labels sit at 11-13px so they survive the reduction, and
+row and heading padding is tight enough that the larger type does not spread
+the list out. A row name reads at about 12.5px on screen and its second line
+at 11px. Display type -- the timer, the dial field, the stage name -- is
+already large and is not part of the ramp.
 
 Two consequences, both of which the code has to honour:
 
