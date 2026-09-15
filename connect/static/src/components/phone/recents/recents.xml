@@ -28,22 +28,16 @@
                         <div class="o_csp_rowmain">
                             <div class="o_csp_n" t-out="call.name"/>
                             <div class="o_csp_m">
-                                <t t-if="call.isIncoming">
-                                    <span t-if="call.connected" class="o_csp_in">
-                                        <t t-call="connect.icon_in"/>Incoming
-                                    </span>
-                                    <span t-else="" class="o_csp_miss">
-                                        <t t-call="connect.icon_in"/>Missed
-                                    </span>
-                                </t>
-                                <t t-else="">
-                                    <span t-if="call.connected">
-                                        <t t-call="connect.icon_out"/>Outgoing
-                                    </span>
-                                    <span t-else="" class="o_csp_miss">
-                                        <t t-call="connect.icon_out"/>Failed
-                                    </span>
-                                </t>
+                                <!-- Green for a call taken, red for one that
+                                     never connected, plain for one placed. The
+                                     word itself comes from the ledger status:
+                                     declined, busy and no answer are not the
+                                     same thing and are not all "failed". -->
+                                <span t-attf-class="{{ call.connected ? (call.isIncoming ? 'o_csp_in' : '') : 'o_csp_miss' }}">
+                                    <t t-if="call.isIncoming" t-call="connect.icon_in"/>
+                                    <t t-else="" t-call="connect.icon_out"/>
+                                    <t t-out="call.outcome"/>
+                                </span>
                                 <t t-if="call.duration">· <t t-out="call.duration"/></t>
                             </div>
                         </div>

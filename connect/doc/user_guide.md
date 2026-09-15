@@ -132,6 +132,12 @@ If the setting you need is missing or greyed out, it is administrator territory.
 The **Recent** tab in the phone panel is the short version: your last calls,
 grouped under *Today*, *Yesterday* and then the date. Each line says who the
 call was with, which way it went, whether it connected and how long it lasted.
+
+A call that did not connect says why, and says it from your side: a call you
+turned down reads *Declined*, one you did not reach in time *Missed*. A call
+you placed reads *Busy* when the other person declined it or their line was
+engaged, *No answer* when it rang out, and *Failed* only when the call really
+could not be placed.
 Click a line to call back, the picture to open the call record, and the star to
 keep the number in **Favourites**. The search box at the top filters the list
 by name or number.

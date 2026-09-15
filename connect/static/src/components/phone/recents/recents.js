@@ -7,16 +7,28 @@ import {contactInitial, contactTone} from "@connect/js/utils"
 
 const uid = user.userId
 
-// Call statuses that mean the two ends never spoke. Everything else is
-// treated as a connected call and shows its duration.
+// How a call that never connected is named, from the ledger status and the
+// side of it you were on. A status listed here means the two ends did not
+// speak; anything else is a connected call and shows its duration.
+//
+// Reading the same status from both sides matters: `busy` is what the
+// provider reports when someone presses Decline on their softphone, so the
+// person who pressed it sees "Declined" and the person who called them sees
+// "Busy". Calling either of them "Failed" -- as one label for every
+// unconnected call did -- says the system broke when nothing did.
 //
 // Both spellings of the unanswered status are listed: this module writes the
 // hyphenated `no-answer` that the provider reports, while `noanswer` is the
 // spelling used elsewhere in the Connect family. Matching only one of them
 // turns every missed call into a connected one with a 00:00 duration.
-const UNCONNECTED = [
-    'no-answer', 'noanswer', 'busy', 'rejected', 'canceled', 'failed',
-]
+const OUTCOMES = {
+    'no-answer': {incoming: 'Missed', outgoing: 'No answer'},
+    'noanswer': {incoming: 'Missed', outgoing: 'No answer'},
+    'busy': {incoming: 'Declined', outgoing: 'Busy'},
+    'rejected': {incoming: 'Declined', outgoing: 'Declined'},
+    'canceled': {incoming: 'Missed', outgoing: 'Cancelled'},
+    'failed': {incoming: 'Failed', outgoing: 'Failed'},
+}
 
 
 /**
@@ -128,7 +140,12 @@ export class Recents extends Component {
 
         // get_widget_calls returns naive UTC; the list is read in local time.
         const when = new Date(`${call.create_date} UTC`)
-        const connected = !UNCONNECTED.includes(call.status)
+        const outcome = OUTCOMES[call.status]
+        const connected = !outcome
+        const side = isIncoming ? 'incoming' : 'outgoing'
+        const outcomeLabel = connected
+            ? (isIncoming ? 'Incoming' : 'Outgoing')
+            : outcome[side]
 
         // A call can reach the ledger with neither a peer nor a number (a
         // misdialled empty call used to be able to do exactly that). Leave the
@@ -143,6 +160,7 @@ export class Recents extends Component {
             tone: contactTone(label),
             isIncoming,
             connected,
+            outcome: outcomeLabel,
             duration: connected ? call.duration_human : '',
             partnerId: call.partner ? call.partner[0] : false,
             favorite: this.favorites.includes(number),

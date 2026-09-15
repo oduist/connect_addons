@@ -205,13 +205,29 @@ tab is opened.
   into day groups from `create_date`, so that has to be the sort key too;
   ordering by id is only a proxy and drifts whenever rows are backfilled.
 - Limit 50, extra fields `status` and `duration_human`.
-- A call counts as **not connected** when its status is one of `no-answer`,
-  `noanswer`, `busy`, `rejected`, `canceled`, `failed`. This module writes the
-  hyphenated `no-answer`; the other spelling is accepted because it is what the
-  rest of the Connect family writes, and matching only one turns every missed
-  call into a connected one. Incoming and unconnected reads as
-  *Missed*, outgoing and unconnected as *Failed*; connected calls show their
-  duration.
+- A call counts as **not connected** when its status appears in the outcome
+  table below; anything else connected and shows its duration. This module
+  writes the hyphenated `no-answer`; the other spelling is accepted because it
+  is what the rest of the Connect family writes, and matching only one turns
+  every missed call into a connected one.
+
+| Status | Shown to the party who was called | Shown to the party who called |
+|---|---|---|
+| `no-answer` / `noanswer` | Missed | No answer |
+| `busy` | Declined | Busy |
+| `rejected` | Declined | Declined |
+| `canceled` | Missed | Cancelled |
+| `failed` | Failed | Failed |
+
+  The same status has to read differently from each side. `busy` is what the
+  provider reports when someone presses **Decline** on their softphone, so the
+  person who pressed it declined the call and the person who called them
+  reached a busy line. One label for every unconnected call — "Missed" one way
+  and "Failed" the other — claims the system broke when nobody did anything
+  wrong. A connected call reads *Incoming* or *Outgoing*.
+
+- Colour follows the outcome, not the wording: green for a call taken, red for
+  one that never connected, plain for one placed.
 - Day labels are `Today`, `Yesterday`, then the localised date.
 - The peer is the partner, else the colleague on the other leg, else the raw
   number; a partner's display name is cut to its last comma-separated part.
