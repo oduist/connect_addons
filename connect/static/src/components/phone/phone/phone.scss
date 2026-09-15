@@ -1,307 +1,977 @@
-.o_root_connect_phone {
-  $color-white: #ffffff;
-  $color-red: #d92929;
-  $color-gray: #90a0af;
-  $color-gray-medium: #c7c8c8ef;
-  $color-gray-light: #e9ecef;
-  $color-green-light: #41ff00;
-  $color-orange: #ffa500;
+//
+// Connect softphone.
+//
+// One light panel throughout, idle or on a call. Everything below hangs off
+// `.o_connect_softphone` so the other providers' phones, which still use the
+// older chrome, are untouched.
+//
+// A live call is told apart by what the header says, by the timer and by the
+// green dot, not by inverting the panel.
+//
+// Colour discipline: --csp-signal (green) appears at most once per screen and
+// only ever means "a call can start or is running"; --csp-stop (red) only ever
+// ends something. Numerals are set with tabular figures so the call timer does
+// not shuffle as it counts.
+//
+.o_connect_softphone {
+  --csp-paper: #FBFAFC;
+  --csp-ink: #191325;
+  // Raised surface for the call controls, sitting just off the paper.
+  --csp-raised: #F0EDF3;
+  // A surface that sits above the panel rather than just off it.
+  --csp-elevated: #fff;
+  --csp-mark: rgba(108, 76, 132, .16);
+  --csp-plum: #6C4C84;
+  --csp-plum-wash: #F1ECF5;
+  --csp-signal: #16A96B;
+  --csp-stop: #E24C4C;
+  // The same red as text rather than as a button fill. They part company on a
+  // dark ground, where text has to lift for contrast but a fill must not.
+  --csp-stop-ink: var(--csp-stop);
+  --csp-slate: #6B6478;
+  --csp-hairline: rgba(25, 19, 37, .09);
+  // The panel's outer edge. Stronger than the internal hairline, which is
+  // tuned to separate rows and would disappear against a busy view behind.
+  --csp-edge: rgba(25, 19, 37, .16);
+  --csp-faint: #A49DB1;
 
-  width: 300px;
-  height: 520px;
+  // Screens read these rather than the raw values, so a screen can be moved
+  // between contexts without hunting down hard-coded colours.
+  --csp-bg: var(--csp-paper);
+  --csp-fg: var(--csp-ink);
+  --csp-muted: var(--csp-slate);
+  --csp-line: var(--csp-hairline);
+  --csp-hover: rgba(108, 76, 132, .055);
+
   position: fixed;
-  background-color: $color-white;
-  border-radius: 6px;
-  border: $o-brand-odoo 1px solid;
-  display: flex;
   bottom: 0;
-  font-size: 12px;
-  flex-flow: column nowrap;
   z-index: 1100;
+  display: flex;
+  flex-flow: column nowrap;
+  width: 380px;
+  height: 700px;
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  // box-sizing is border-box globally (Bootstrap reboot), so the border is
+  // drawn inside the 380x700 and does not shift the panel.
+  border: 1px solid var(--csp-edge);
+  border-radius: 16px;
+  background: var(--csp-bg);
+  color: var(--csp-fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  font-feature-settings: "tnum" 1;
+  box-shadow: 0 1px 2px rgba(25, 19, 37, .06), 0 12px 34px -10px rgba(25, 19, 37, .22);
 
-  .flex-container {
-    display: flex;
-    justify-content: space-around;
-  }
+  button {
+    font: inherit;
+    cursor: pointer;
 
-  .flex-item {
-    flex: 1;
-  }
-
-  .o_header_phone {
-    border-radius: 4px 4px 0 0;
-    position: relative;
-    background-color: $o-brand-odoo;
-    color: $color-white;
-    width: 100%;
-    height: 25px;
-
-    .o_header_content {
-      font-size: 12px;
-      display: inline-flex;
-      color: $color-white;
-      margin-left: 5px;
-      margin-top: 5px;
-      width: 97%;
+    &:disabled {
       cursor: default;
-    }
-
-    .fa {
-      margin-top: 2px;
-    }
-
-    .o_header_title {
-      margin-left: 5px;
-    }
-
-    .o_header_close {
-      margin-left: auto;
-      margin-right: 2px;
-      cursor: pointer;
-    }
-  }
-
-  .o_body_phone {
-    display: flex;
-    flex-flow: column nowrap;
-    overflow: auto;
-
-    .o_phone_number_content {
-      padding: 5px 10px;
-      position: relative;
-      border-bottom: 1px solid $o-brand-odoo;
-
-      .o_phone_number_input {
-        color: $o-brand-odoo;
-        font-size: 20px;
-        font-weight: 800;
-        border: none;
-        width: 90%;
-
-        :focus {
-          outline: none;
-          box-shadow: none;
-          border-color: transparent;
-        }
-      }
-
-      .o_phone_number_back {
-        cursor: pointer;
-        font-size: 20px;
-        position: absolute;
-        padding-right: 7px;
-        right: 0;
-        color: $o-brand-odoo;
-        top: 10px;
-      }
-    }
-
-    .o_suggestion {
-      height: 369px;
-      overflow: auto;
-
-      .o_contact_table {
-        tr {
-          border-bottom: 1px solid $o-brand-odoo;
-
-          &:hover {
-            background-color: $color-gray-light;
-            cursor: pointer;
-          }
-        }
-
-        .o_contact_avatar {
-          margin: 5px;
-          width: 50px;
-          height: 50px;
-
-          img {
-            border-radius: 50%;
-          }
-        }
-
-        .o_contact_info {
-          cursor: default;
-          font-size: 15px;
-          color: $o-brand-odoo;
-          width: 176px;
-
-          .o_contact_phone {
-            margin-left: 5px;
-          }
-        }
-
-        .o_contact_call_button {
-          width: 60px;
-
-          .phone_call_contact {
-            width: 35px;
-            height: 30px;
-          }
-
-          button {
-            color: $o-brand-odoo;
-            border: none;
-            background: transparent;
-
-            .fa {
-              font-size: 25px;
-            }
-          }
-        }
-      }
-    }
-
-    .o_keypad {
-      .o_keypad_button {
-        color: $o-brand-odoo;
-        display: inline-flex;
-        justify-content: center;
-        width: 99px;
-        line-height: 1;
-        padding: 15px;
-        font-size: 45px;
-        border: none;
-        background: transparent;
-        border-radius: 5px;
-
-        &:hover {
-          background: $color-gray-light
-        }
-      }
-    }
-
-    //In call style
-    .o_phone_call_details {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 375px;
-
-      .o_partner_link {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        cursor: pointer;
-      }
-
-      .o_partner_avatar {
-        width: 100px;
-        height: 100px;
-        border-radius: 50%;
-      }
-
-      .o_partner_name {
-        font-size: 18px;
-        color: $o-brand-odoo;
-        text-align: center;
-      }
-
-      .custom-whatsapp {
-          margin-right: 5px;
-          color: #70bd53;
-      }
-    }
-  }
-
-  .o_dial_panel_position {
-    border-top: 1px solid $color-gray;
-    border-radius: 0 0 6px 6px;
-  }
-
-
-  .o_phone_lines_position {
-    bottom: 0;
-    position: fixed;
-    border-top: 1px solid $color-gray;
-    color: $o-brand-odoo;
-    justify-content: center;
-    font-size: 20px;
-    text-align: center;
-
-    div.active {
-      background: radial-gradient(transparent, $color-gray-medium);
-    }
-
-    .line-1 {
-      border-right: 1px solid #90a0af;
-    }
-
-    .col-6 {
-      padding-top: 5px;
-      cursor: pointer;
-    }
-
-    .inactive {
-      cursor: auto;
-    }
-
-    button.active {
-      color: $color-green-light;
-    }
-
-    button.hold {
-      color: $color-orange;
-    }
-  }
-
-  .o_phone_tabs {
-    border-bottom: 1px solid $o-brand-odoo;
-
-    .active {
-      background: radial-gradient(transparent, $color-gray-medium);
-    }
-  }
-
-  .o_dial_panel {
-    justify-content: center;
-    background-color: $color-gray-light;
-    display: flex;
-    height: 40px;
-    width: 100%;
-    flex-flow: row wrap;
-
-    button {
-      color: $o-brand-odoo;
-      border: none;
-      background: transparent;
-
-      .fa {
-        font-size: 30px;
-      }
-    }
-
-    .active {
-      background: radial-gradient(transparent, $color-gray-medium);
-    }
-  }
-
-  .mt-auto {
-    .o_dial_panel {
-      button {
-        margin-top: 2px;
-
-        .call, .reject-call {
-          font-size: x-large;
-          border-radius: 50%;
-          padding: 5px;
-          color: #fefefe;
-        }
-
-        .call {
-          background: #70bd53;
-        }
-
-        .reject-call {
-          background: $color-red;
-        }
-      }
+      opacity: .4;
     }
   }
 
   button:focus, input:focus {
     outline: none;
   }
+
+  // ------------------------------------------------------------------ header
+  .o_csp_hd {
+    flex: 0 0 52px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 52px;
+    padding: 0 16px 0 18px;
+    border-bottom: 1px solid var(--csp-line);
+    cursor: move;
+    user-select: none;
+  }
+
+  .o_csp_who {
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: .005em;
+  }
+
+  .o_csp_sub {
+    font-size: 13.5px;
+    font-weight: 400;
+    color: var(--csp-muted);
+  }
+
+  .o_csp_spacer {
+    flex: 1;
+  }
+
+  .o_csp_iconbtn {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--csp-muted);
+
+    &:hover {
+      background: var(--csp-hover);
+    }
+
+    svg {
+      width: 15px;
+      height: 15px;
+    }
+  }
+
+  .o_csp_dot {
+    flex: 0 0 7px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--csp-muted);
+  }
+
+  .o_csp_dot_on {
+    background: var(--csp-signal);
+    box-shadow: 0 0 0 3px rgba(22, 169, 107, .16);
+  }
+
+  .o_csp_dot_ring {
+    background: var(--csp-signal);
+    animation: o_csp_pulse 1.3s ease-in-out infinite;
+  }
+
+  .o_csp_dot_rec {
+    background: var(--csp-stop);
+    animation: o_csp_pulse 1.8s ease-in-out infinite;
+  }
+
+  // -------------------------------------------------------------------- body
+  .o_csp_bd {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-flow: column nowrap;
+    overflow: hidden;
+  }
+
+  .o_csp_screen {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-flow: column nowrap;
+    overflow: hidden;
+  }
+
+  .o_csp_scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .o_csp_gap {
+    flex: 1;
+    min-height: 12px;
+  }
+
+  // the live call, kept on screen while forwarding or sending tones
+  .o_csp_onair {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--csp-line);
+    background: var(--csp-raised);
+    font-size: 12.5px;
+    color: var(--csp-muted);
+  }
+
+  .o_csp_onair_who {
+    font-weight: 500;
+    color: var(--csp-fg);
+  }
+
+  .o_csp_onair_t {
+    margin-left: auto;
+  }
+
+  // ----------------------------------------------------------- dial field
+  .o_csp_dialfield {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 104px;
+    padding: 26px 24px 8px;
+  }
+
+  .o_csp_dialfield_sm {
+    min-height: 78px;
+    padding: 20px 24px 10px;
+  }
+
+  .o_csp_num {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .o_csp_val {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font-family: inherit;
+    font-size: 30px;
+    font-weight: 400;
+    letter-spacing: -.015em;
+    line-height: 1.2;
+
+    &::placeholder {
+      color: var(--csp-faint);
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+  }
+
+  .o_csp_bsp {
+    flex: 0 0 32px;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--csp-muted);
+
+    &:hover {
+      background: var(--csp-hover);
+    }
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  // the live match under the number
+  .o_csp_match {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--csp-muted);
+
+    b {
+      font-weight: 500;
+      color: var(--csp-fg);
+    }
+  }
+
+  .o_csp_match_muted b {
+    font-weight: 400;
+  }
+
+  .o_csp_ext {
+    padding: 2px 7px;
+    border-radius: 5px;
+    background: var(--csp-plum-wash);
+    color: var(--csp-plum);
+    font-size: 11.5px;
+    font-weight: 500;
+  }
+
+  // --------------------------------------------------------------- keypad
+  // The lattice is drawn as five background gradients rather than borders on
+  // the keys, so the grid lines stop short of the panel edge on all sides.
+  //
+  // background-origin: content-box is what keeps them honest. The grid divides
+  // the *content* box into three columns and four rows, so the 33.33%/66.66%
+  // and 25%/50%/75% positions only land on real cell boundaries if they are
+  // measured against the same box; against the default padding box they sit a
+  // few pixels off and the lines drift away from the keys.
+  .o_csp_keys {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 1fr;
+    padding: 0 22px 6px;
+    background-image:
+      linear-gradient(var(--csp-line), var(--csp-line)),
+      linear-gradient(var(--csp-line), var(--csp-line)),
+      linear-gradient(var(--csp-line), var(--csp-line)),
+      linear-gradient(var(--csp-line), var(--csp-line)),
+      linear-gradient(var(--csp-line), var(--csp-line));
+    background-size: 1px 94%, 1px 94%, 93% 1px, 93% 1px, 93% 1px;
+    background-position: 33.33% 50%, 66.66% 50%, 50% 25%, 50% 50%, 50% 75%;
+    background-repeat: no-repeat;
+    background-origin: content-box;
+  }
+
+  .o_csp_key {
+    position: relative;
+    // Own stacking context, so the hover plate below can sit behind the digit
+    // without also falling behind the lattice its parent paints.
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    border: 0;
+    background: none;
+    color: var(--csp-fg);
+
+    // The highlight is a rounded plate inset inside the cell rather than the
+    // cell itself: the lattice stops short of the panel edge, so a hover that
+    // filled the whole cell would spill past the lines that are supposed to
+    // bound it.
+    &:hover::before {
+      content: "";
+      position: absolute;
+      inset: 5px;
+      z-index: -1;
+      border-radius: 12px;
+      background: var(--csp-hover);
+    }
+  }
+
+  .o_csp_key_d {
+    font-size: 26px;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: .01em;
+  }
+
+  .o_csp_key_l {
+    height: 11px;
+    color: var(--csp-faint);
+    font-size: 9.5px;
+    letter-spacing: .14em;
+  }
+
+  // ------------------------------------------------------------- dial bar
+  .o_csp_dialbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    padding: 6px 24px 20px;
+  }
+
+  .o_csp_fab {
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--csp-signal);
+    color: #fff;
+    box-shadow: 0 6px 16px -4px rgba(22, 169, 107, .55);
+
+    svg {
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  .o_csp_mini {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--csp-line);
+    border-radius: 50%;
+    background: var(--csp-elevated);
+    color: var(--csp-slate);
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  // --------------------------------------------------------- call screens
+  .o_csp_stage {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 34px 24px 0;
+    text-align: center;
+  }
+
+  .o_csp_av {
+    display: grid;
+    place-items: center;
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: var(--csp-hover);
+  }
+
+  // Stands in for an avatar when there is no record to take one from.
+  .o_csp_av_ph {
+    color: #fff;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .o_csp_av_md.o_csp_av_ph {
+    font-size: 21px;
+  }
+
+  .o_csp_av_lg.o_csp_av_ph {
+    font-size: 34px;
+    font-weight: 400;
+  }
+
+  .o_csp_av_lg {
+    flex: none;
+    width: 88px;
+    height: 88px;
+    border-radius: 24px;
+  }
+
+  .o_csp_av_md {
+    flex: none;
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+  }
+
+  .o_csp_stage_name {
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: -.01em;
+  }
+
+  .o_csp_stage_number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--csp-muted);
+
+    svg {
+      width: 14px;
+      height: 14px;
+    }
+  }
+
+  .o_csp_timer {
+    font-size: 44px;
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: .01em;
+  }
+
+  .o_csp_status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 20px;
+    font-size: 13px;
+    color: var(--csp-muted);
+  }
+
+  .o_csp_ringing {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--csp-muted);
+  }
+
+  .o_csp_reclive {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--csp-muted);
+  }
+
+  .o_csp_recerr {
+    font-size: 12px;
+    color: var(--csp-stop-ink);
+  }
+
+  // the leg a call was forwarded to
+  // Where the call went, and where it came from: the same muted pill, one
+  // of them clickable and one a statement of fact.
+  .o_csp_leg,
+  .o_csp_handover {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-radius: 10px;
+    background: var(--csp-hover);
+    font-size: 12.5px;
+    color: var(--csp-muted);
+
+    svg {
+      width: 15px;
+      height: 15px;
+    }
+  }
+
+  .o_csp_leg {
+    cursor: pointer;
+  }
+
+  .o_csp_handover b {
+    font-weight: 500;
+    color: var(--csp-fg);
+  }
+
+  .o_csp_leg_num {
+    color: var(--csp-faint);
+  }
+
+  // quick actions under the stage
+  .o_csp_quick {
+    display: flex;
+    gap: 12px;
+    margin-top: 4px;
+  }
+
+  .o_csp_quickitem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    button {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border: 0;
+      border-radius: 50%;
+      background: var(--csp-raised);
+      color: var(--csp-slate);
+
+      svg {
+        width: 19px;
+        height: 19px;
+      }
+    }
+  }
+
+  .o_csp_lbl {
+    margin-top: 6px;
+    font-size: 10.5px;
+    color: var(--csp-muted);
+  }
+
+  // --------------------------------------------------------- call controls
+  .o_csp_ctrls {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 0 18px 14px;
+  }
+
+  .o_csp_ctrl {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    padding: 13px 6px 11px;
+    border: 0;
+    border-radius: 13px;
+    background: var(--csp-raised);
+    color: var(--csp-ink);
+    font-size: 11px;
+    line-height: 1.2;
+
+    svg {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  .o_csp_ctrl_active {
+    // Inverted against the current ground, whichever way round that is.
+    background: var(--csp-fg);
+    color: var(--csp-bg);
+  }
+
+  .o_csp_ctrl_off {
+    color: var(--csp-faint);
+  }
+
+  // ------------------------------------------------------------- hang bar
+  .o_csp_hangbar {
+    flex: 0 0 auto;
+    padding: 0 18px 20px;
+  }
+
+  .o_csp_hang {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    height: 52px;
+    border: 0;
+    border-radius: 14px;
+    background: var(--csp-stop);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: .005em;
+
+    svg {
+      width: 21px;
+      height: 21px;
+    }
+  }
+
+  .o_csp_hang_quiet {
+    background: var(--csp-raised);
+    color: var(--csp-ink);
+  }
+
+  // ------------------------------------------------------------ answer bar
+  .o_csp_answerbar {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    padding: 0 18px 26px;
+  }
+
+  .o_csp_ans {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    height: 60px;
+    border: 0;
+    border-radius: 16px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+
+    svg {
+      width: 19px;
+      height: 19px;
+    }
+  }
+
+  .o_csp_ans_no {
+    background: rgba(226, 76, 76, .12);
+    color: var(--csp-stop-ink);
+  }
+
+  .o_csp_ans_yes {
+    background: var(--csp-signal);
+  }
+
+  // --------------------------------------------------------------- tab bar
+  .o_csp_tabs {
+    flex: 0 0 62px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid var(--csp-line);
+    background: var(--csp-bg);
+  }
+
+  .o_csp_tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    margin-top: -1px;
+    border: 0;
+    border-top: 2px solid transparent;
+    background: none;
+    color: var(--csp-muted);
+    font-size: 11px;
+
+    svg {
+      width: 19px;
+      height: 19px;
+    }
+  }
+
+  .o_csp_tab_sel {
+    border-top-color: var(--csp-plum);
+    color: var(--csp-plum);
+    font-weight: 500;
+  }
+
+  // ------------------------------------------------- shared list furniture
+  // Used by the Recents, Contacts and Favourites children, which render
+  // inside this panel and inherit its tokens.
+  .o_csp_search {
+    flex: 0 0 46px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 0 18px;
+    border-bottom: 1px solid var(--csp-line);
+    color: var(--csp-muted);
+    font-size: 13.5px;
+
+    svg {
+      flex: 0 0 15px;
+      width: 15px;
+      height: 15px;
+    }
+
+    input {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      background: none;
+      color: var(--csp-fg);
+      font: inherit;
+
+      &::placeholder {
+        color: var(--csp-muted);
+      }
+    }
+  }
+
+  .o_csp_daylabel {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 18px 8px;
+    font-size: 11.5px;
+    color: var(--csp-muted);
+
+    &:after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--csp-line);
+    }
+  }
+
+  .o_csp_sectionhead {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 18px 18px 7px;
+    font-size: 11.5px;
+    color: var(--csp-muted);
+  }
+
+  .o_csp_count {
+    color: var(--csp-faint);
+  }
+
+  .o_csp_row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 18px;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--csp-hover);
+    }
+  }
+
+  .o_csp_rowmain {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .o_csp_n {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -.005em;
+
+    mark {
+      padding: 0 1px;
+      border-radius: 3px;
+      background: var(--csp-mark);
+      color: inherit;
+    }
+  }
+
+  .o_csp_m {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 2px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 12.5px;
+    color: var(--csp-muted);
+
+    svg {
+      flex: 0 0 13px;
+      width: 13px;
+      height: 13px;
+    }
+  }
+
+  .o_csp_in {
+    color: var(--csp-signal);
+  }
+
+  .o_csp_miss {
+    color: var(--csp-stop-ink);
+  }
+
+  .o_csp_rowend {
+    flex: 0 0 auto;
+    color: var(--csp-faint);
+    font-size: 12px;
+  }
+
+  .o_csp_callbtn {
+    flex: 0 0 32px;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 1.5px solid rgba(22, 169, 107, .35);
+    border-radius: 50%;
+    background: none;
+    color: var(--csp-signal);
+
+    &:hover {
+      background: rgba(22, 169, 107, .09);
+    }
+
+    svg {
+      width: 15px;
+      height: 15px;
+    }
+  }
+
+  .o_csp_rowbtn {
+    flex: 0 0 30px;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--csp-faint);
+
+    &:hover {
+      background: var(--csp-hover);
+      color: var(--csp-muted);
+    }
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  .o_csp_rowbtn_on {
+    color: var(--csp-plum);
+  }
+
+  .o_csp_empty {
+    padding: 48px 32px;
+    color: var(--csp-muted);
+    font-size: 13px;
+    line-height: 1.55;
+    text-align: center;
+  }
+
+  // ---------------------------------------------------------- favourites
+  .o_csp_favgrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    padding: 14px;
+  }
+
+  .o_csp_favcell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 6px 11px;
+    border: 0;
+    border-radius: 14px;
+    background: none;
+    color: inherit;
+
+    &:hover {
+      background: var(--csp-hover);
+    }
+
+    &:hover .o_csp_favdel {
+      opacity: 1;
+    }
+
+    .o_csp_n {
+      max-width: 96px;
+      font-size: 12px;
+      line-height: 1.25;
+      text-align: center;
+    }
+  }
+
+  .o_csp_favsub {
+    font-size: 10.5px;
+    color: var(--csp-muted);
+  }
+
+  .o_csp_favdel {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    opacity: 0;
+    transition: opacity .12s ease-out;
+  }
+
+  .o_csp_callerid {
+    margin: 6px 18px 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--csp-line);
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--csp-muted);
+
+    b {
+      font-weight: 500;
+      color: var(--csp-fg);
+    }
+  }
+}
+
+@keyframes o_csp_pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .35; }
 }
 
 .o_hide {

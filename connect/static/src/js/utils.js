@@ -1,8 +1,11 @@
 /** @odoo-module **/
 
 export function setFocus(el) {
+    // The softphone only mounts its dial input on the screens that use it,
+    // so callers cannot promise the element is there.
+    if (!el) return
     setTimeout(() => {
-        el.focus()
+        if (el.isConnected) el.focus()
     }, 100)
 }
 
@@ -83,3 +86,33 @@ export function dialTone(key) {
 }
 
 export const browser = {chrome: 'chrome', safari: 'safari', firefox: 'firefox'}
+
+// Avatar placeholders.
+//
+// There is no default contact image to fall back on: the path every module
+// points at, /connect/static/src/images/default_contact.jpg, does not exist
+// (core ships no static/src/images at all), so it renders as a broken image.
+// A coloured initial is what the design calls for anyway, and it cannot 404.
+
+const AVATAR_TONES = [
+    '#3E7F5C', '#8B5AA8', '#C0603C', '#3E6EA8', '#4E4A8C', '#6C4C84', '#2F7D74',
+]
+
+/** First letter of a name, or of a number, for a placeholder tile. */
+export function contactInitial(text) {
+    const trimmed = (text || '').trim()
+    if (!trimmed) return ''
+    const letter = trimmed.replace(/[^\p{L}\p{N}]/gu, '').charAt(0)
+    return letter ? letter.toUpperCase() : ''
+}
+
+/** A stable tile colour for `text`, so the same peer is always the same hue. */
+export function contactTone(text) {
+    const trimmed = (text || '').trim()
+    if (!trimmed) return AVATAR_TONES[0]
+    let hash = 0
+    for (let i = 0; i < trimmed.length; i++) {
+        hash = (hash * 31 + trimmed.charCodeAt(i)) >>> 0
+    }
+    return AVATAR_TONES[hash % AVATAR_TONES.length]
+}

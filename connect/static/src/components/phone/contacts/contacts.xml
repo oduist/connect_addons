@@ -1,80 +1,107 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
-    <t t-name="connect.contacts" owl="1">
-        <div>
-            <div t-attf-class="{{ state.isContactMode ? '' : 'o_hide' }} o_phone_number_content">
-                <input class="o_phone_number_input" placeholder="Enter name or number" t-ref="contact-input" t-on-keyup="_onSearchContact" autocomplete="off"/>
-                <div aria-label="Clear" class="fa fa-times-circle o_phone_number_back" role="img" title="Clear" t-on-click="_onClickClearSearchContact"/>
-            </div>
-            <div class="o_dial_contact_list">
-                <table class="o_contact_table">
-                    <!-- Users -->
-                    <t t-foreach="state.users" t-as="user" t-key="user.id">
-                        <tr>
-                            <td class="o_contact_avatar">
-                                <img alt="Avatar" class="o_contact_avatar" t-attf-src="/web/image?model=res.users&amp;field=avatar_128&amp;id={{ user.user[0] }}"/>
-                            </td>
-                            <td class="o_contact_info">
-                                <div>
-                                    <span><t t-out="user.name"/></span>
-                                </div>
-                                <div>
-                                    <span class="icon-dialer_sip o_contact_phone"><t t-out="user.exten_number"/></span>
-                                </div>
-                            </td>
-                            <td class="o_contact_call_button">
-                                <div class="d-flex">
-                                    <div style="width: 40px; height: 30px;">
-                                        <button t-if="isTransfer" t-attf-title="Transfer to {{user.exten_number}}" t-on-click="() => this._onClickMakeTransfer(user.exten_number)">
-                                            <i class="fa icon-dialer_sip"/>
-                                        </button>
-                                        <button t-if="isContact" t-attf-title="Call to {{user.exten_number}}" t-on-click="() => this._onClickMakeCall(user.exten_number)">
-                                            <i class="fa icon-dialer_sip"/>
-                                        </button>
-                                        <button t-if="isForward" t-attf-title="Forward to {{user.exten_number}}" t-on-click="() => this._onClickMakeForward(user.exten_number)">
-                                            <i class="fa icon-dialer_sip"/>
-                                        </button>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                    </t>
-                    <!-- Partners -->
-                    <t t-foreach="state.partners" t-as="partner" t-key="partner.id">
-                        <tr>
-                            <td class="o_contact_avatar" t-on-click="() => this._openPartner(partner.id)">
-                                <img alt="Avatar" class="o_contact_avatar" t-attf-src="/web/image?model=res.partner&amp;field=avatar_128&amp;id={{ partner.id }}"/>
-                            </td>
-                            <td class="o_contact_info" t-on-click="() => this._openPartner(partner.id)">
-                                <div>
-                                    <span><t t-out="partner.name"/></span>
-                                    <div t-if="partner.phone_sanitized">
-                                        <span class="icon-phone o_contact_phone"><t t-out="partner.phone_sanitized"/></span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="o_contact_call_button">
-                                <div class="d-flex">
-                                    <div style="width: 40px; height: 30px;">
-                                        <t t-if="partner.phone_sanitized">
-                                            <button t-if="isTransfer" t-attf-title="Transfer to {{partner.phone_sanitized}}" t-on-click="() => this._onClickMakeTransfer(partner.phone_sanitized)">
-                                                <i class="fa icon-phone"/>
-                                            </button>
-                                            <button t-if="isContact" t-attf-title="Call to {{partner.phone_sanitized}}" t-on-click="() => this._onClickMakeCall(partner.phone_sanitized)">
-                                                <i class="fa icon-phone"/>
-                                            </button>
-                                            <button t-if="isForward" t-attf-title="Forward to {{partner.phone_sanitized}}" t-on-click="() => this._onClickMakeForward(partner.phone_sanitized)">
-                                                <i class="fa icon-phone"/>
-                                            </button>
-                                        </t>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                    </t>
+    <!--
+        Search results. Two roles, one list:
 
-                </table>
+        - typed into the keypad's dial field, the results take the keypad's
+          place and the component shows no input of its own (isContactMode
+          is false, the phone drives the query);
+        - opened as the forward picker during a call, it carries its own
+          search box.
+
+        Colleagues and customers are kept apart because they are reached
+        differently: an extension on one side, a number on the other.
+    -->
+    <t t-name="connect.contacts" owl="1">
+        <div t-if="state.isContactMode" class="o_csp_search">
+            <t t-call="connect.icon_search"/>
+            <input t-ref="contact-input" placeholder="Name, number or extension"
+                   autocomplete="off" t-on-keyup="_onSearchContact"/>
+            <button t-if="searchQuery" class="o_csp_rowbtn" aria-label="Clear" title="Clear"
+                    t-on-click="_onClickClearSearchContact">
+                <t t-call="connect.icon_close"/>
+            </button>
+        </div>
+
+        <div class="o_csp_scroll">
+            <!-- Colleagues -->
+            <t t-if="state.users.length">
+                <div class="o_csp_sectionhead">
+                    Colleagues <span class="o_csp_count" t-out="state.users.length"/>
+                </div>
+                <t t-foreach="state.users" t-as="pbxUser" t-key="pbxUser.id">
+                    <div class="o_csp_row" t-attf-title="{{ actionLabel }} {{ pbxUser.exten_number }}"
+                         t-on-click="() => this._onClickContact(pbxUser.exten_number)">
+                        <img class="o_csp_av" alt="Avatar"
+                             t-attf-src="/web/image?model=res.users&amp;field=avatar_128&amp;id={{ pbxUser.user_id }}"/>
+                        <div class="o_csp_rowmain">
+                            <div class="o_csp_n">
+                                <t t-foreach="highlight(pbxUser.name)" t-as="part" t-key="part_index">
+                                    <mark t-if="part.match" t-out="part.text"/>
+                                    <t t-else="" t-out="part.text"/>
+                                </t>
+                            </div>
+                            <div class="o_csp_m">
+                                <span class="o_csp_ext" t-out="pbxUser.exten_number"/>
+                            </div>
+                        </div>
+                        <button class="o_csp_callbtn" t-attf-aria-label="{{ actionLabel }} {{ pbxUser.name }}">
+                            <t t-if="isForward" t-call="connect.icon_arrow_right"/>
+                            <t t-else="" t-call="connect.icon_phone"/>
+                        </button>
+                    </div>
+                </t>
+            </t>
+
+            <!-- Customers -->
+            <t t-if="state.partners.length">
+                <div class="o_csp_sectionhead">
+                    Customers <span class="o_csp_count" t-out="state.partners.length"/>
+                </div>
+                <t t-foreach="state.partners" t-as="partner" t-key="partner.id">
+                    <t t-set="number" t-value="partnerNumber(partner)"/>
+                    <div class="o_csp_row" t-attf-title="{{ actionLabel }} {{ number }}"
+                         t-on-click="() => this._onClickContact(number)">
+                        <img class="o_csp_av" alt="Avatar" title="Open the contact"
+                             t-attf-src="/web/image?model=res.partner&amp;field=avatar_128&amp;id={{ partner.id }}"
+                             t-on-click="(ev) => this._onClickOpenPartner(ev, partner.id)"/>
+                        <div class="o_csp_rowmain">
+                            <div class="o_csp_n">
+                                <t t-foreach="highlight(partner.name)" t-as="part" t-key="part_index">
+                                    <mark t-if="part.match" t-out="part.text"/>
+                                    <t t-else="" t-out="part.text"/>
+                                </t>
+                            </div>
+                            <div t-if="number" class="o_csp_m" t-out="number"/>
+                            <div t-else="" class="o_csp_m">No phone number</div>
+                        </div>
+                        <button t-if="number" class="o_csp_callbtn"
+                                t-attf-aria-label="{{ actionLabel }} {{ partner.name }}">
+                            <t t-if="isForward" t-call="connect.icon_arrow_right"/>
+                            <t t-else="" t-call="connect.icon_phone"/>
+                        </button>
+                    </div>
+                </t>
+            </t>
+
+            <!-- Dialling something that matches nobody is still a valid thing to do -->
+            <t t-if="isForward">
+                <div class="o_csp_sectionhead">Or dial a number</div>
+                <div class="o_csp_row" t-on-click="_contactCall">
+                    <span class="o_csp_av"><t t-call="connect.icon_keypad"/></span>
+                    <div class="o_csp_rowmain">
+                        <div class="o_csp_n">Forward to what you typed</div>
+                        <div class="o_csp_m">any external number</div>
+                    </div>
+                </div>
+            </t>
+
+            <div t-if="!state.users.length and !state.partners.length and !isForward" class="o_csp_empty">
+                <t t-if="searchQuery">
+                    Nobody matches “<t t-out="searchQuery"/>”. Press the green button to dial it anyway.
+                </t>
+                <t t-else="">Type a name, a number or an extension.</t>
             </div>
         </div>
     </t>

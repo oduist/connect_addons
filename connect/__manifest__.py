@@ -2,7 +2,7 @@
 
 {
     "name": "Connect",
-    "version": "2.0.12",
+    "version": "2.0.13",
     "author": "Oduist",
     "maintainer": "Oduist",
     "live_test_url": "https://connect-demo.oduist.com/",
@@ -79,10 +79,21 @@
             "/connect/static/src/widgets/phone_field/*",
             "/connect/static/src/services/actions/*",
             "/connect/static/src/services/active_calls/*",
+            "/connect/static/src/services/errors/*",
             "/connect/static/src/services/mail/*",
             "/connect/static/src/core/common/*",
             "/connect/static/src/core/public_web/*",
             "/connect/static/src/core/web/*",
+            # The globs above would otherwise sweep the dark overrides into
+            # the light bundle and darken the panel for everyone.
+            ("remove", "/connect/static/src/**/*.dark.scss"),
+        ],
+        # Odoo serves this bundle instead of web.assets_web when the user's
+        # colour scheme is dark; it includes the light one first, so these
+        # files are pure overrides. The softphone follows the backend theme
+        # with no toggle of its own.
+        "web.assets_web_dark": [
+            "/connect/static/src/**/*.dark.scss",
         ],
     },
     "post_init_hook": "post_init_hook",

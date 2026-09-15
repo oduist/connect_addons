@@ -1,53 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
-    <!-- Favorites -->
+    <!--
+        Favourites are speed dial: a grid, not a list, because the whole point
+        is to hit the right one without reading. The caller ID footer answers
+        the question the grid raises: what the other end will see.
+    -->
     <t t-name="connect.favorites" owl="1">
-        <div class="o_favorites_list">
-            <t t-if="state.favorites">
-                <table class="o_favorites_table">
-                    <t t-foreach="state.favorites" t-as="favorite" t-key="favorite.id">
-                        <t t-if="favorite.partner">
-                            <t t-set="avatar" t-value="'/web/image?model=res.partner&amp;field=avatar_128&amp;id=' + favorite.partner[0]"/>
-                            <!--                            <t t-set="caller_id" t-value="favorite.partner[1]"/>-->
-                            <t t-set="caller_list" t-value="favorite.partner[1].split(',')"/>
-                            <t t-set="caller_id" t-value="caller_list[caller_list.length -1]"/>
-                        </t>
-                        <t t-elif="favorite.user">
-                            <t t-set="avatar" t-value="'/web/image?model=res.users&amp;field=avatar_128&amp;id=' + favorite.user[0]"/>
-                            <t t-set="caller_id" t-value="favorite.user[1]"/>
-                        </t>
-                        <t t-else="">
-                            <t t-set="avatar" t-value="'/connect/static/src/images/default_contact.jpg'"/>
-                            <t t-set="caller_id" t-value="favorite.name"/>
-                        </t>
-                        <tr class="d-flex" t-on-click="() => this._onClickContactCall(favorite.phone_number)" t-attf-title="Call to {{favorite.phone_number}}">
-                            <td class="o_partner_icon">
-                                <div class="partner-icon">
-                                    <img class="rounded-circle o_user_avatar" alt="User" t-att-src="avatar"/>
-                                </div>
-                            </td>
-                            <td class="o_history_info w-100 d-flex flex-row">
-                                <div class="d-flex flex-column justify-content-center info-card">
-                                    <div>
-                                        <div class="card-identifier">
-                                            <t t-out="caller_id"/>
-                                        </div>
-                                        <div t-if="!favorite.name">
-                                            <span class="icon-phone o_contact_phone"><t t-out="favorite.phone_number"/></span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="o_favorite">
-                                    <button aria-label="Remove from Favorite" title="Remove from Favorite" t-on-click="(ev) => this._onClickRemoveFavorite(ev, favorite.id)">
-                                        <i class="fa fa-trash-o"/>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
+        <div class="o_csp_scroll">
+            <div t-if="state.favorites.length" class="o_csp_favgrid">
+                <t t-foreach="state.favorites" t-as="favorite" t-key="favorite.id">
+                    <t t-if="favorite.partner">
+                        <t t-set="avatar" t-value="'/web/image?model=res.partner&amp;field=avatar_128&amp;id=' + favorite.partner[0]"/>
+                        <t t-set="caller_list" t-value="favorite.partner[1].split(',')"/>
+                        <t t-set="caller_id" t-value="caller_list[caller_list.length - 1].trim()"/>
                     </t>
-                </table>
-            </t>
+                    <t t-elif="favorite.user">
+                        <t t-set="avatar" t-value="'/web/image?model=res.users&amp;field=avatar_128&amp;id=' + favorite.user[0]"/>
+                        <t t-set="caller_id" t-value="favorite.user[1]"/>
+                    </t>
+                    <t t-else="">
+                        <!-- No record to take an avatar from, so the tile is a
+                             coloured initial; there is no default image file. -->
+                        <t t-set="avatar" t-value="false"/>
+                        <t t-set="caller_id" t-value="favorite.name or favorite.phone_number"/>
+                    </t>
+                    <button class="o_csp_favcell" t-attf-title="Call {{ favorite.phone_number }}"
+                            t-on-click="() => this._onClickContactCall(favorite.phone_number)">
+                        <img t-if="avatar" class="o_csp_av o_csp_av_md" alt="Avatar" t-att-src="avatar"/>
+                        <span t-else="" class="o_csp_av o_csp_av_md o_csp_av_ph"
+                              t-attf-style="background:{{ tone(caller_id) }}" t-out="initial(caller_id)"/>
+                        <div>
+                            <div class="o_csp_n" t-out="caller_id"/>
+                            <div class="o_csp_favsub" t-out="favorite.phone_number"/>
+                        </div>
+                        <span class="o_csp_rowbtn o_csp_favdel" role="button"
+                              aria-label="Remove from Favourites" title="Remove from Favourites"
+                              t-on-click="(ev) => this._onClickRemoveFavorite(ev, favorite.id)">
+                            <t t-call="connect.icon_trash"/>
+                        </span>
+                    </button>
+                </t>
+            </div>
+            <div t-else="" class="o_csp_empty">
+                No favourites yet. Star a call in Recent to keep the number here.
+            </div>
+            <div t-if="props.callerId" class="o_csp_callerid">
+                Calls you place show <b t-out="props.callerId"/>.
+            </div>
         </div>
     </t>
 

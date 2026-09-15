@@ -1,0 +1,55 @@
+//
+// Connect softphone — dark theme.
+//
+// Loaded only into `web.assets_web_dark`, the bundle Odoo serves instead of
+// `web.assets_web` when the user's colour scheme is dark. That bundle
+// `include`s the light one first, so everything here is an override of
+// phone.scss and the panel follows the rest of the backend automatically:
+// there is no toggle of our own, and no setting to keep in sync.
+//
+// Almost all of it is a token remap. The screens themselves read
+// --csp-bg / --csp-fg / --csp-muted / --csp-line and never a raw colour, so
+// they need no dark counterpart; what follows is the handful of places that
+// name a colour directly because it belongs to a control rather than a ground.
+//
+.o_connect_softphone {
+  // Grounds and text.
+  --csp-paper: #191325;
+  --csp-ink: #F4F2F7;
+  --csp-raised: #251E33;
+  --csp-elevated: #2E2740;
+
+  // Accent. The light plum is too dark to read on ink, so it lifts; the wash
+  // behind extension chips becomes a translucent tint rather than a solid.
+  --csp-plum: #C3A8D8;
+  --csp-plum-wash: rgba(195, 168, 216, .18);
+  --csp-mark: rgba(195, 168, 216, .26);
+
+  // Signals keep their meaning. Green lifts a little to hold contrast on ink;
+  // red does not, because --csp-stop fills the End call and Decline buttons
+  // and a lifted red there reads as washed out rather than urgent. Only the
+  // text form lifts.
+  --csp-signal: #24C083;
+  --csp-stop-ink: #FF8B8B;
+
+  // Muted text, hairlines and hover, all of which invert wholesale.
+  --csp-slate: rgba(255, 255, 255, .55);
+  --csp-hairline: rgba(255, 255, 255, .10);
+  --csp-edge: rgba(255, 255, 255, .16);
+  --csp-faint: rgba(255, 255, 255, .38);
+  --csp-hover: rgba(255, 255, 255, .05);
+
+  // A light panel casts a soft shadow; a dark one has to sit on depth instead.
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 16px 40px -12px rgba(0, 0, 0, .65);
+
+  // The green call button glows against ink, which is too much; damp it.
+  .o_csp_fab {
+    box-shadow: 0 6px 16px -6px rgba(36, 192, 131, .45);
+  }
+
+  // Decline is a wash of the stop colour. On ink the same alpha disappears,
+  // so it needs more of it to stay legible as a button.
+  .o_csp_ans_no {
+    background: rgba(226, 76, 76, .20);
+  }
+}

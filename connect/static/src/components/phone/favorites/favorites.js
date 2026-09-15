@@ -3,6 +3,7 @@
 import {useService} from "@web/core/utils/hooks"
 import {Component, useState, onWillStart} from "@odoo/owl"
 import {user} from "@web/core/user"
+import {contactInitial, contactTone} from "@connect/js/utils"
 
 const uid = user.userId
 
@@ -10,6 +11,9 @@ export class Favorites extends Component {
     static template = 'connect.favorites'
     static props = {
         bus: Object,
+        // The number the far end sees for calls this user places. Shown under
+        // the grid, where "who am I calling as?" is the natural next question.
+        callerId: {type: String, optional: true},
     }
 
     constructor() {
@@ -43,6 +47,14 @@ export class Favorites extends Component {
         this.orm.searchRead("connect.favorite", [], fields, {limit: 30}).then((records) => {
             this.state.favorites = records
         })
+    }
+
+    initial(text) {
+        return contactInitial(text)
+    }
+
+    tone(text) {
+        return contactTone(text)
     }
 
     _onClickContactCall(phone_number) {

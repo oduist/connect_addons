@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!--
+        Recent calls, grouped by day. A row is one call: who it was with, which
+        way it went and whether it connected. Clicking the row calls back;
+        the avatar opens the call record; the star keeps the number.
+    -->
+    <t t-name="connect.recents" owl="1">
+        <div class="o_csp_search">
+            <t t-call="connect.icon_search"/>
+            <input placeholder="Search calls" autocomplete="off"
+                   t-att-value="state.query" t-on-input="_onSearch"/>
+        </div>
+        <div class="o_csp_scroll">
+            <t t-foreach="days" t-as="day" t-key="day.key">
+                <div class="o_csp_daylabel" t-out="day.label"/>
+                <t t-foreach="day.calls" t-as="call" t-key="call.id">
+                    <div class="o_csp_row" t-attf-title="Call {{ call.number }}"
+                         t-on-click="() => this._onClickCall(call)">
+                        <img t-if="call.avatar" class="o_csp_av" alt="Avatar" t-att-src="call.avatar"
+                             title="Open the call record"
+                             t-on-click="(ev) => this._onClickDetail(ev, call)"/>
+                        <span t-else="" class="o_csp_av o_csp_av_ph" t-attf-style="background:{{ call.tone }}"
+                              title="Open the call record"
+                              t-on-click="(ev) => this._onClickDetail(ev, call)"
+                              t-out="call.initial"/>
+                        <div class="o_csp_rowmain">
+                            <div class="o_csp_n" t-out="call.name"/>
+                            <div class="o_csp_m">
+                                <!-- Green for a call taken, red for one that
+                                     never connected, plain for one placed. The
+                                     word itself comes from the ledger status:
+                                     declined, busy and no answer are not the
+                                     same thing and are not all "failed". -->
+                                <span t-attf-class="{{ call.connected ? (call.isIncoming ? 'o_csp_in' : '') : 'o_csp_miss' }}">
+                                    <t t-if="call.isIncoming" t-call="connect.icon_in"/>
+                                    <t t-else="" t-call="connect.icon_out"/>
+                                    <t t-out="call.outcome"/>
+                                </span>
+                                <t t-if="call.duration">· <t t-out="call.duration"/></t>
+                            </div>
+                        </div>
+                        <span class="o_csp_rowend" t-out="call.time"/>
+                        <button t-attf-class="o_csp_rowbtn {{ call.favorite ? 'o_csp_rowbtn_on' : '' }}"
+                                t-att-title="call.favorite ? 'Remove from Favourites' : 'Add to Favourites'"
+                                t-att-aria-pressed="call.favorite ? 'true' : 'false'"
+                                t-on-click="(ev) => this._onClickFavorite(ev, call)">
+                            <t t-if="call.favorite" t-call="connect.icon_star_filled"/>
+                            <t t-else="" t-call="connect.icon_star"/>
+                        </button>
+                    </div>
+                </t>
+            </t>
+            <div t-if="!days.length" class="o_csp_empty">
+                <t t-if="state.query">No call matches “<t t-out="state.query"/>”.</t>
+                <t t-else="">No calls yet. The ones you place and take show up here.</t>
+            </div>
+        </div>
+    </t>
+
+</templates>

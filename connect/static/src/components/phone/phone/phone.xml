@@ -1,148 +1,319 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
+    <!--
+        The softphone is one light panel throughout. `screen` (phone.js) picks
+        exactly one body screen; `isCallScreen` says whether a call is on,
+        which is what hides the tab bar: during a call there is nowhere
+        else to go.
+
+        Green appears at most once per screen and only ever means "a call can
+        start or is running". Red only ever ends something.
+    -->
     <t t-name="connect.phone" owl="1">
-        <div t-attf-class="{{state.isDisplay ? '' : 'o_hide'}} o_root_connect_phone" t-ref="phone-root">
-            <!--Header-->
-            <div class="o_header_phone" t-ref="phone-header">
-                <div class="o_header_content">
-                    <i class="fa fa-phone" role="img"/>
-                    <div class="o_header_title">
-                        <b t-out="title"/>
-                    </div>
-                    <div aria-label="Hide" class="fa fa-window-minimize o_header_close" title="Hide" t-on-click="_onClickClose"/>
-                </div>
-            </div>
-            <div t-attf-class="o_dial_panel o_phone_tabs flex-container">
-                <button aria-label="Keypad" t-attf-class="flex-item{{state.activeTab === tabs.phone ? ' active' : ''}}" title="Keypad" t-on-click="_onClickPhone">
-                    <i class="fa fa-mobile"/>
+        <div t-attf-class="o_connect_softphone {{ state.isDisplay ? '' : 'o_hide' }}"
+             t-ref="phone-root">
+
+            <!-- ============================ header ============================ -->
+            <div class="o_csp_hd" t-ref="phone-header">
+                <span t-attf-class="o_csp_dot {{ headerDotClass }}"/>
+                <span class="o_csp_who" t-out="headerTitle"/>
+                <span t-if="headerSub" class="o_csp_sub" t-out="headerSub"/>
+                <span class="o_csp_spacer"/>
+                <button t-if="state.isForward" class="o_csp_iconbtn" aria-label="Cancel forward"
+                        title="Cancel forward" t-on-click="_onClickForwardBack">
+                    <t t-call="connect.icon_close"/>
                 </button>
-                <!--<button aria-label="Contacts" t-attf-class="flex-item{{state.activeTab === tabs.contacts ? ' active' : ''}}" title="Contacts" t-on-click="_onClickContacts">-->
-                <!--    <i class="fa fa-address-book"/>-->
-                <!--</button>-->
-                <button aria-label="Favorites" t-attf-class="flex-item{{state.activeTab === tabs.favorites ? ' active' : ''}}" title="Favorites" t-on-click="_onClickFavorites">
-                    <i class="fa fa-star"/>
+                <button t-else="" class="o_csp_iconbtn" aria-label="Hide" title="Hide" t-on-click="_onClickClose">
+                    <t t-call="connect.icon_minimise"/>
                 </button>
-                <button aria-label="History" t-attf-class="flex-item{{state.activeTab === tabs.calls ? ' active' : ''}}" title="History" t-on-click="_onClickHistory">
-                    <i class="fa fa-history"/>
-                </button>
-            </div>
-            <!--Keypad-->
-            <div t-attf-class="{{state.isKeypad ? '' : 'o_hide'}} o_body_phone">
-                <div class="o_phone_number_content">
-                    <input class="o_phone_number_input" type="tel" t-ref="connect-phone-input" t-on-keyup="debounceEnterPhoneNumber" placeholder="Enter name or number" autocomplete="off"/>
-                    <div aria-label="Backspace" class="fa fa-long-arrow-left o_phone_number_back" role="img" title="Backspace" t-on-click="_onClickBackSpace"/>
-                </div>
-                <div class="o_keypad" t-if="!state.isContactList">
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">1</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">2</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">3</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">4</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">5</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">6</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">7</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">8</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">9</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">*</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">0</button>
-                    <button class="o_keypad_button" t-on-click="_onClickKeypadButton">#</button>
-                </div>
-            </div>
-            <!--Dial panel-->
-            <div t-attf-class="{{ state.isDialingPanel ? '' : 'o_hide' }} o_body_phone">
-                <div class="o_phone_call_details flex-column">
-                    <t t-if="state.isPartner">
-                        <div class="o_partner_link" t-on-click="() => this._openPartner(state.callerId.partnerId)">
-                            <img alt="Avatar" class="o_partner_avatar" t-if="state.callerId.partnerId" t-att-src="state.callerId.partnerIconUrl"/>
-                            <span class="o_partner_name"><t t-out="state.callerId.partnerName"/></span>
-                            <span class="o_partner_name"><i t-if="state.isWhatsapp" class="fa fa-whatsapp custom-whatsapp"/><t t-out="state.callerId.phoneNumber"/></span>
-                            <span class="o_partner_name"><t t-out="state.callDurationTime"/></span>
-                        </div>
-                        <div t-if="state.isCallForwarded" class="text-center mt-1" title="Cancel Forward">
-                            <button class="btn p-3 border rounded-circle" t-on-click="_cancelForward">
-                                <i aria-label="Customer" class="fa fa-fw fa-lg icon-enlarge2"/>
-                            </button>
-                        </div>
-                    </t>
-                    <t t-else="">
-                        <img t-if="state.callerId.partnerId" alt="Avatar" class="o_partner_avatar" t-att-src="state.callerId.partnerIconUrl"/>
-                        <span t-if="state.callerId.partnerId" class="o_partner_name"><t t-out="state.callerId.partnerName"/></span>
-                        <span class="o_partner_name"><t t-out="state.callerId.phoneNumber"/></span>
-                        <span class="o_partner_name"><t t-out="state.callDurationTime"/></span>
-                        <div class="text-center" title="Customer">
-                            <button class="btn p-3 border rounded-circle" t-on-click="_createPartner">
-                                <i aria-label="Customer" class="fa fa-fw fa-lg fa-user-plus"/>
-                            </button>
-                        </div>
-                        <div t-if="state.isCallForwarded" class="text-center mt-1" title="Cancel Forward">
-                            <button class="btn p-3 border rounded-circle" t-on-click="_cancelForward">
-                                <i aria-label="Customer" class="fa fa-fw fa-lg icon-enlarge2"/>
-                            </button>
-                        </div>
-                    </t>
-                    <div t-if="state.xTransferPartner" class="o_partner_link" t-on-click="() => this._openPartner(state.xTransferPartner.partnerId)">
-                        <span class="o_partner_name"><i class="fa fa-arrow-down"/></span>
-                        <img alt="Avatar" class="o_partner_avatar" t-if="state.xTransferPartner.partnerId" t-att-src="state.xTransferPartner.partnerIconUrl"/>
-                        <span class="o_partner_name"><t t-out="state.xTransferPartner.partnerName"/></span>
-                        <span class="o_partner_name"><t t-out="state.xTransferPartner.phoneNumber"/></span>
-                    </div>
-                    <div t-if="state.xTransferInfo" class="o_partner_link">
-                        <span class="o_partner_name"><i class="fa fa-arrow-down"/></span>
-                        <span class="o_partner_name"><t t-out="state.xTransferInfo"/></span>
-                    </div>
-                </div>
-            </div>
-            <!--Contacts-->
-            <div t-attf-class="{{ state.isContacts || state.isContactList ? '' : 'o_hide' }} o_body_phone">
-                <Contacts bus="bus" isTransfer="state.isTransfer" isForward="state.isForward"/>
-            </div>
-            <!--Favorites-->
-            <div t-attf-class="{{ state.isFavorites ? '' : 'o_hide' }} o_body_phone">
-                <Favorites t-if="state.isFavorites" bus="bus"/>
-            </div>
-            <!--Calls-->
-            <div t-attf-class="{{ state.isCalls ? '' : 'o_hide' }} o_body_phone">
-                <Calls bus="bus"/>
             </div>
 
+            <!-- ============================= body ============================= -->
+            <div class="o_csp_bd">
 
-            <div class="mt-auto">
-                <!--Optional call buttons-->
-                <div t-attf-class="{{ state.isKeypad or state.inCall or state.inIncoming ? '' : 'o_hide' }} o_dial_panel o_optional_dial_panel_position flex-container">
-                    <button t-if="state.phone_status === status.accepted" aria-label="Call" t-attf-class="flex-item {{ state.isDialingPanel ? 'active' : '' }}" title="Call" t-on-click="_onClickDialingPanel">
-                        <i class="icon-phone_in_talk fa"/>
+                <!-- the call that stays on screen while forwarding or sending tones -->
+                <div t-if="screen === 'forward' or screen === 'dtmf'" class="o_csp_onair">
+                    <span class="o_csp_dot o_csp_dot_ring"/>
+                    <span>on the line</span>
+                    <span class="o_csp_onair_who" t-out="liveCallName"/>
+                    <span class="o_csp_onair_t" t-out="state.callDurationTime"/>
+                </div>
+
+                <!--
+                    Dial field + keypad. Kept mounted across the keypad,
+                    contact-results and DTMF screens: phone.js holds a ref to
+                    the input and writes into it from endCall() and the
+                    backspace handler.
+                -->
+                <div t-attf-class="o_csp_dialfield {{ screen === 'contacts' ? 'o_csp_dialfield_sm' : '' }} {{ showDialField ? '' : 'o_hide' }}">
+                    <div class="o_csp_num">
+                        <input class="o_csp_val" type="tel" t-ref="connect-phone-input"
+                               t-on-keyup="debounceEnterPhoneNumber"
+                               placeholder="Name, number or extension" autocomplete="off"/>
+                        <button t-if="state.phoneNumber" class="o_csp_bsp" aria-label="Backspace"
+                                title="Backspace" t-on-click="_onClickBackSpace">
+                            <t t-call="connect.icon_backspace"/>
+                        </button>
+                    </div>
+                    <div t-if="screen === 'dtmf'" class="o_csp_match o_csp_match_muted">
+                        Tones sent to <t t-out="liveCallName"/>
+                    </div>
+                    <div t-elif="state.dialMatch" class="o_csp_match">
+                        <b t-out="state.dialMatch.name"/>
+                        <span t-if="state.dialMatch.exten" class="o_csp_ext" t-out="state.dialMatch.exten"/>
+                        <t t-elif="state.dialMatch.sub">· <t t-out="state.dialMatch.sub"/></t>
+                    </div>
+                </div>
+
+                <div t-if="screen === 'keypad' or screen === 'dtmf'" class="o_csp_keys">
+                    <button class="o_csp_key" t-on-click="_onClickKeypadButton">
+                        <span class="o_csp_key_d">1</span><span class="o_csp_key_l"/>
                     </button>
-                    <button t-if="state.phone_status === status.accepted" aria-label="DTMF" t-attf-class="flex-item {{ state.isKeypad ? 'active' : '' }}" title="DTMF" t-on-click="_onClickKeypad">
-                        <i class="icon-dialpad fa"/>
+                    <button class="o_csp_key" t-on-click="_onClickKeypadButton">
+                        <span class="o_csp_key_d">2</span><span class="o_csp_key_l">ABC</span>
                     </button>
-                    <button t-if="state.phone_status === status.accepted" aria-label="Forward" t-attf-class="flex-item {{ state.isForward ? 'active' : '' }}" title="Forward" t-on-click="_onClickForward">
-                        <i class="fa fa-exchange"/>
+                    <button class="o_csp_key" t-on-click="_onClickKeypadButton">
+                        <span class="o_csp_key_d">3</span><span class="o_csp_key_l">DEF</span>
                     </button>
-                    <button t-if="state.phone_status !== status.accepted" aria-label="Mute Sound" class="flex-item" t-attf-title="{{ state.isSoundMute ? 'Unmute Sound' : 'Mute Sound' }}" t-on-click="_onClickSoundMute">
-                        <i t-attf-class="fa {{ state.isSoundMute ? 'icon-volume_off' : 'icon-volume_up'}}"/>
+                    <button class="o_csp_key" t-on-click="_onClickKeypadButton">
+                        <span class="o_csp_key_d">4</span><span class="o_csp_key_l">GHI</span>
                     </button>
-                    <button t-if="state.phone_status === status.accepted" aria-label="Mute Microphone" t-attf-class="flex-item" t-attf-title="{{ state.isMicrophoneMute ? 'Unmute Microphone' : 'Mute Microphone' }}" t-on-click="_onClickMicrophoneMute">
-                        <i t-attf-class="fa {{ state.isMicrophoneMute ? 'icon-mic_off' : 'icon-mic' }}"/>
+                    <button class="o_csp_key" t-on-click="_onClickKeypadButton">
+                        <span class="o_csp_key_d">5</span><span class="o_csp_key_l">JKL</span>
+                    </button>
+                    <button class="o_csp_key" t-on-click="_onClickKeypadButton">
+                        <span class="o_csp_key_d">6</span><span class="o_csp_key_l">MNO</span>
+                    </button>
+                    <button class="o_csp_key" t-on-click="_onClickKeypadButton">
+                        <span class="o_csp_key_d">7</span><span class="o_csp_key_l">PQRS</span>
+                    </button>
+                    <button class="o_csp_key" t-on-click="_onClickKeypadButton">
+                        <span class="o_csp_key_d">8</span><span class="o_csp_key_l">TUV</span>
+                    </button>
+                    <button class="o_csp_key" t-on-click="_onClickKeypadButton">
+                        <span class="o_csp_key_d">9</span><span class="o_csp_key_l">WXYZ</span>
+                    </button>
+                    <button class="o_csp_key" t-on-click="_onClickKeypadButton">
+                        <span class="o_csp_key_d">*</span><span class="o_csp_key_l"/>
+                    </button>
+                    <button class="o_csp_key" t-on-click="_onClickKeypadButton">
+                        <span class="o_csp_key_d">0</span><span class="o_csp_key_l">+</span>
+                    </button>
+                    <button class="o_csp_key" t-on-click="_onClickKeypadButton">
+                        <span class="o_csp_key_d">#</span><span class="o_csp_key_l"/>
                     </button>
                 </div>
 
-                <!--Call buttons-->
-                <div t-attf-class="{{ state.isKeypad or state.inCall or state.inIncoming ? '' : 'o_hide' }} o_dial_panel o_dial_panel_position flex-container">
-                    <button aria-label="Call" t-attf-class="{{ state.inCall ? 'o_hide' : '' }} flex-item" title="Call" t-on-click="_onClickMakeCall">
-                        <i class="icon-call call"/>
+                <!-- idle keypad: SMS / call / WhatsApp -->
+                <div t-if="screen === 'keypad'" class="o_csp_dialbar">
+                    <button t-if="state.phoneNumber" class="o_csp_mini" aria-label="Send SMS" title="Send SMS"
+                            t-on-click="_onClickSendSms">
+                        <t t-call="connect.icon_sms"/>
                     </button>
-                    <button aria-label="End Call" t-attf-class="{{ state.inCall and !state.inIncoming ? '' : 'o_hide' }} flex-item" title="End Call" t-on-click="_onClickEndCall">
-                        <i class="icon-call_end reject-call"/>
+                    <button class="o_csp_fab" aria-label="Call" title="Call" t-on-click="_onClickMakeCall">
+                        <t t-call="connect.icon_phone"/>
                     </button>
-                    <button aria-label="Take call" t-attf-class="{{ state.inIncoming ? '' : 'o_hide' }} flex-item" title="Accept" t-on-click="_onClickAcceptIncoming">
-                        <i class="icon-call call"/>
-                    </button>
-                    <button aria-label="Reject call" t-attf-class="{{ state.inIncoming ? '' : 'o_hide' }} flex-item" title="Reject">
-                        <i class="icon-call_end reject-call" t-on-click="_onClickRejectIncoming"/>
+                    <button t-if="state.phoneNumber" class="o_csp_mini" aria-label="Send WhatsApp" title="Send WhatsApp"
+                            t-on-click="_onClickSendWhatsapp">
+                        <t t-call="connect.icon_whatsapp"/>
                     </button>
                 </div>
+
+                <!--
+                    Search results, on the keypad screen and in the forward
+                    picker. Always mounted: the phone announces the mode over
+                    the bus before the screen changes, so a component that
+                    t-if'd into existence afterwards would never hear it.
+                -->
+                <div t-attf-class="o_csp_screen {{ showContacts ? '' : 'o_hide' }}">
+                    <Contacts bus="bus" isForward="state.isForward"/>
+                </div>
+
+                <!-- DTMF: the only way back is the call itself -->
+                <div t-if="screen === 'dtmf'" class="o_csp_hangbar">
+                    <button class="o_csp_hang o_csp_hang_quiet" t-on-click="_onClickDialingPanel">
+                        Back to the call
+                    </button>
+                </div>
+
+                <!-- recent -->
+                <div t-if="screen === 'recents'" class="o_csp_screen">
+                    <Recents bus="bus"/>
+                </div>
+
+                <!-- favourites -->
+                <div t-if="screen === 'favorites'" class="o_csp_screen">
+                    <Favorites bus="bus" callerId="callerId"/>
+                </div>
+
+                <!-- ========================= incoming ========================= -->
+                <t t-if="screen === 'incoming'">
+                    <div class="o_csp_stage">
+                        <img t-if="stageAvatar" class="o_csp_av o_csp_av_lg" alt="Avatar" t-att-src="stageAvatar"/>
+                        <span t-else="" class="o_csp_av o_csp_av_lg o_csp_av_ph"
+                              t-attf-style="background:{{ tone(stageLabel) }}" t-out="initial(stageLabel)"/>
+                        <div>
+                            <div t-if="state.callerId.partnerName" class="o_csp_stage_name"
+                                 t-out="state.callerId.partnerName"/>
+                            <div class="o_csp_stage_number">
+                                <t t-if="state.isWhatsapp"><t t-call="connect.icon_whatsapp"/></t>
+                                <t t-out="state.callerId.phoneNumber"/>
+                            </div>
+                        </div>
+                        <div t-if="state.transferredBy" class="o_csp_handover">
+                            <t t-call="connect.icon_forward"/>
+                            Transferred by <b t-out="state.transferredBy"/>
+                        </div>
+                        <div class="o_csp_gap"/>
+                        <div class="o_csp_ringing"><span class="o_csp_dot o_csp_dot_ring"/>Ringing</div>
+                        <div class="o_csp_quick">
+                            <div class="o_csp_quickitem">
+                                <button t-if="state.isPartner" aria-label="Open contact" title="Open contact"
+                                        t-on-click="() => this._openPartner(state.callerId.partnerId)">
+                                    <t t-call="connect.icon_contact"/>
+                                </button>
+                                <button t-else="" aria-label="Create contact" title="Create contact"
+                                        t-on-click="_createPartner">
+                                    <t t-call="connect.icon_contact_add"/>
+                                </button>
+                                <span class="o_csp_lbl"><t t-if="state.isPartner">Contact</t><t t-else="">Create</t></span>
+                            </div>
+                            <div class="o_csp_quickitem">
+                                <button aria-label="Mute ringer" t-att-title="state.isSoundMute ? 'Unmute ringer' : 'Mute ringer'"
+                                        t-on-click="_onClickSoundMute">
+                                    <t t-if="state.isSoundMute" t-call="connect.icon_volume_off"/>
+                                    <t t-else="" t-call="connect.icon_volume"/>
+                                </button>
+                                <span class="o_csp_lbl">Ringer</span>
+                            </div>
+                        </div>
+                        <div class="o_csp_gap"/>
+                    </div>
+                    <div class="o_csp_answerbar">
+                        <button class="o_csp_ans o_csp_ans_no" aria-label="Reject call" title="Reject"
+                                t-on-click="_onClickRejectIncoming">
+                            <t t-call="connect.icon_close"/>Decline
+                        </button>
+                        <button class="o_csp_ans o_csp_ans_yes" aria-label="Take call" title="Accept"
+                                t-on-click="_onClickAcceptIncoming">
+                            <t t-call="connect.icon_phone"/>Answer
+                        </button>
+                    </div>
+                </t>
+
+                <!-- ========================== in call ========================== -->
+                <t t-if="screen === 'incall'">
+                    <div class="o_csp_stage">
+                        <img t-if="stageAvatar" class="o_csp_av o_csp_av_lg" alt="Avatar" t-att-src="stageAvatar"/>
+                        <span t-else="" class="o_csp_av o_csp_av_lg o_csp_av_ph"
+                              t-attf-style="background:{{ tone(stageLabel) }}" t-out="initial(stageLabel)"/>
+                        <div>
+                            <div t-if="state.callerId.partnerName" class="o_csp_stage_name"
+                                 t-out="state.callerId.partnerName"/>
+                            <div class="o_csp_stage_number">
+                                <t t-if="state.isWhatsapp"><t t-call="connect.icon_whatsapp"/></t>
+                                <t t-out="state.callerId.phoneNumber"/>
+                            </div>
+                        </div>
+                        <div t-if="state.transferredBy" class="o_csp_handover">
+                            <t t-call="connect.icon_forward"/>
+                            Transferred by <b t-out="state.transferredBy"/>
+                        </div>
+                        <div class="o_csp_gap"/>
+                        <div t-if="state.callDurationTime" class="o_csp_timer" t-out="state.callDurationTime"/>
+                        <div t-else="" class="o_csp_status">Connecting…</div>
+                        <!-- the leg this call was forwarded to -->
+                        <div t-if="state.xTransferPartner" class="o_csp_leg"
+                             t-on-click="() => this._openPartner(state.xTransferPartner.partnerId)">
+                            <t t-call="connect.icon_forward"/>
+                            <span t-out="state.xTransferPartner.partnerName"/>
+                            <span class="o_csp_leg_num" t-out="state.xTransferPartner.phoneNumber"/>
+                        </div>
+                        <div t-elif="state.xTransferInfo" class="o_csp_leg">
+                            <t t-call="connect.icon_forward"/>
+                            <span t-out="state.xTransferInfo"/>
+                        </div>
+                        <div class="o_csp_gap"/>
+                    </div>
+
+                    <div class="o_csp_ctrls">
+                        <button t-if="state.isCallForwarded" class="o_csp_ctrl" title="Cancel forward"
+                                t-on-click="_cancelForward">
+                            <t t-call="connect.icon_close"/>Cancel fwd
+                        </button>
+                        <button t-else="" class="o_csp_ctrl" title="Forward the call"
+                                t-att-disabled="state.phone_status !== status.accepted"
+                                t-on-click="_onClickForward">
+                            <t t-call="connect.icon_forward"/>Forward
+                        </button>
+
+                        <button class="o_csp_ctrl" title="Send tones"
+                                t-att-disabled="state.phone_status !== status.accepted"
+                                t-on-click="_onClickKeypad">
+                            <t t-call="connect.icon_keypad"/>Keypad
+                        </button>
+
+                        <button t-if="state.isPartner" class="o_csp_ctrl" title="Open contact"
+                                t-on-click="() => this._openPartner(state.callerId.partnerId)">
+                            <t t-call="connect.icon_contact"/>Contact
+                        </button>
+                        <button t-else="" class="o_csp_ctrl" title="Create contact" t-on-click="_createPartner">
+                            <t t-call="connect.icon_contact_add"/>Create
+                        </button>
+
+                        <button t-if="state.phone_status === status.accepted"
+                                t-attf-class="o_csp_ctrl {{ state.isMicrophoneMute ? 'o_csp_ctrl_active' : '' }}"
+                                t-att-title="state.isMicrophoneMute ? 'Unmute microphone' : 'Mute microphone'"
+                                t-on-click="_onClickMicrophoneMute">
+                            <t t-if="state.isMicrophoneMute" t-call="connect.icon_mic_off"/>
+                            <t t-else="" t-call="connect.icon_mic"/>
+                            <t t-if="state.isMicrophoneMute">Muted</t><t t-else="">Mute</t>
+                        </button>
+                        <button t-else=""
+                                t-attf-class="o_csp_ctrl {{ state.isSoundMute ? 'o_csp_ctrl_active' : '' }}"
+                                t-att-title="state.isSoundMute ? 'Unmute sound' : 'Mute sound'"
+                                t-on-click="_onClickSoundMute">
+                            <t t-if="state.isSoundMute" t-call="connect.icon_volume_off"/>
+                            <t t-else="" t-call="connect.icon_volume"/>
+                            Sound
+                        </button>
+                    </div>
+
+                    <div class="o_csp_hangbar">
+                        <button class="o_csp_hang" aria-label="End Call" title="End Call" t-on-click="_onClickEndCall">
+                            <t t-call="connect.icon_hangup"/>End call
+                        </button>
+                    </div>
+                </t>
+
+                <!-- leaving the forward picker must not drop the call -->
+                <div t-if="screen === 'forward'" class="o_csp_hangbar">
+                    <button class="o_csp_hang o_csp_hang_quiet" t-on-click="_onClickForwardBack">
+                        Back to the call
+                    </button>
+                </div>
+
             </div>
-      </div>
+
+            <!-- =========================== tab bar =========================== -->
+            <nav t-if="!isCallScreen" class="o_csp_tabs">
+                <button t-attf-class="o_csp_tab {{ state.activeTab === tabs.phone ? 'o_csp_tab_sel' : '' }}"
+                        aria-label="Keypad" title="Keypad" t-on-click="_onClickPhone">
+                    <t t-call="connect.icon_keypad"/>Keypad
+                </button>
+                <button t-attf-class="o_csp_tab {{ state.activeTab === tabs.calls ? 'o_csp_tab_sel' : '' }}"
+                        aria-label="Recent" title="Recent" t-on-click="_onClickHistory">
+                    <t t-call="connect.icon_recent"/>Recent
+                </button>
+                <button t-attf-class="o_csp_tab {{ state.activeTab === tabs.favorites ? 'o_csp_tab_sel' : '' }}"
+                        aria-label="Favourites" title="Favourites" t-on-click="_onClickFavorites">
+                    <t t-if="state.activeTab === tabs.favorites" t-call="connect.icon_star_filled"/>
+                    <t t-else="" t-call="connect.icon_star"/>
+                    Favourites
+                </button>
+            </nav>
+        </div>
     </t>
 
 </templates>

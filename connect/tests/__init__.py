@@ -12,3 +12,4 @@ from . import test_webhook_concurrency
 from . import test_connect_voicemail
 from . import test_exten
 from . import test_sms_composer
+from . import test_transfer_handover
