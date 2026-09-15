@@ -70,6 +70,34 @@ Derived from it:
 - `headerDotClass` — ringing on `incoming`, solid on any call screen, solid
   when the device is registered, otherwise unset.
 
+## Softphone — size
+
+The panel is laid out at 380x700 and **displayed scaled**, through `zoom` on
+the root set from `--csp-zoom` (currently `0.9`, so 342x630 on screen). Scaling
+the whole panel keeps type, icons, spacing and the keypad lattice in step with
+one another; there is one number to change, not two hundred lengths.
+
+The type ramp is drawn for that scale rather than inherited from a full-size
+design: the smallest labels sit at 11-13px so they survive the reduction, and
+row and heading padding is tight enough that the larger type does not spread
+the list out. A row name reads at about 14px on screen and its second line at
+12.5px. Display type -- the timer, the dial field, the stage name -- is
+already large and is not part of the ramp.
+
+Two consequences, both of which the code has to honour:
+
+- `vh` is **not** rescaled inside a zoomed element: it stays the real viewport
+  height expressed in the panel's own coordinates. The height clamp is
+  therefore `calc((100vh - 48px) / var(--csp-zoom))`, which lands on a visual
+  clamp of the viewport less 48px. Written as a plain `calc(100vh - 48px)` it
+  would be a third too eager and leave the panel short of the room it has.
+- Positions written to `style.left` / `style.top` are resolved in the panel's
+  own coordinates and scaled by the zoom afterwards. The drag therefore
+  measures with `getBoundingClientRect()` — visual pixels, matching the
+  pointer — and divides by the computed zoom before writing. It also clamps
+  against the measured size rather than a hardcoded one, so the header stays
+  reachable at any size the panel ends up.
+
 Rules that hold across screens:
 
 - Green appears at most once per screen and only ever means "a call can start
