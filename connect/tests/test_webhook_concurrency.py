@@ -472,6 +472,65 @@ class TestWebhookConcurrency(TransactionCase):
         self.assertIn(call.status, CALL_END_STATUSES,
                       'cron must finalize the stuck call')
 
+    def test_child_leg_webhook_does_not_write_the_call_duration(self):
+        """The call's duration comes from the root leg only.
+
+        A child leg recomputes the identical total and would write it purely
+        because its snapshot predates the root leg's commit — one
+        serialization failure per sibling of a ring group, each replaying
+        the whole webhook.
+        """
+        parent_sid, child_sid = 'CAdurparent', 'CAdurchild'
+        call_id = self._webhook(dict(
+            self.base, CallSid=parent_sid, Direction='inbound',
+            CallStatus='ringing', SequenceNumber='0'))
+        call = self.env['connect.call'].browse(call_id)
+        child = self._child(child_sid, parent_sid, 0)
+        self._webhook(dict(child, CallStatus='in-progress',
+                           SequenceNumber='1'))
+        # Sentinel: only a root-leg webhook may correct this.
+        call.duration = 999
+        call.flush_recordset()
+        self._webhook(dict(child, CallStatus='in-progress',
+                           SequenceNumber='2', CallDuration='7'))
+        call.invalidate_recordset()
+        self.assertEqual(call.duration, 999,
+                         'a child leg must not write the call duration')
+        self._webhook(dict(self.base, CallSid=parent_sid, Direction='inbound',
+                           CallStatus='in-progress', SequenceNumber='3',
+                           CallDuration='30'))
+        call.invalidate_recordset()
+        self.assertEqual(call.duration, 30,
+                         'the root leg must still write the call duration')
+
+    def test_child_leg_ringing_does_not_reassert_the_call_status(self):
+        """Every leg of a ring group reports ringing; only the root leg
+        ringing says anything new about the call. The children write an
+        identical value off snapshots that predate each other, so each one
+        costs a serialization failure. 'in-progress' must stay open to child
+        legs — root legs never report it."""
+        parent_sid, child_sid = 'CAringparent', 'CAringchild'
+        call_id = self._webhook(dict(
+            self.base, CallSid=parent_sid, Direction='inbound',
+            CallStatus='initiated', SequenceNumber='0'))
+        call = self.env['connect.call'].browse(call_id)
+        self.assertEqual(call.status, 'initiated', 'precondition')
+        child = self._child(child_sid, parent_sid, 0)
+        self._webhook(dict(child, CallStatus='ringing', SequenceNumber='1'))
+        call.invalidate_recordset()
+        self.assertEqual(call.status, 'initiated',
+                         'a ringing child leg must not promote the call')
+        self._webhook(dict(self.base, CallSid=parent_sid, Direction='inbound',
+                           CallStatus='ringing', SequenceNumber='2'))
+        call.invalidate_recordset()
+        self.assertEqual(call.status, 'ringing',
+                         'the root leg ringing must still promote the call')
+        self._webhook(dict(child, CallStatus='in-progress',
+                           SequenceNumber='3'))
+        call.invalidate_recordset()
+        self.assertEqual(call.status, 'in-progress',
+                         'in-progress must stay open to child legs')
+
     def test_park_retrieval_claim_is_atomic(self):
         """Only one retrieval claims a parked call; a failed Twilio redirect
         compensates by restoring the slot."""
