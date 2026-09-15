@@ -356,16 +356,36 @@ class User(models.Model):
         return callerId
 
     def _get_transferring_pbx_user(self, call):
-        """Find the PBX user who is transferring the call (the last user who answered before transfer)."""
+        """Find the PBX user who is transferring the call.
+
+        Whichever side of the call they are on: an agent who answered is the
+        *called* party on their own leg, but an agent who placed the call is
+        the *caller* on it, and a transfer is just as possible either way.
+        `answered_pbx_user` cannot stand in for this -- it is only ever set
+        from `called_pbx_user`, and only once the call is being finalized, so
+        during a live outbound call it is empty.
+
+        The called side keeps its precedence: on an inbound or internal call
+        the agent who picked up is the one handing the call over, and the
+        caller is the customer or the colleague who rang them.
+        """
         if call.answered_pbx_user:
             return call.answered_pbx_user
         # answered_pbx_user not yet set (finalization hasn't run), find from channels
-        completed_channels = call.channels.filtered(
-            lambda c: c.called_pbx_user and c.status in ('completed', 'in-progress')
+        live_channels = call.channels.filtered(
+            lambda c: c.status in ('completed', 'in-progress'))
+        called_side = live_channels.filtered(
+            lambda c: c.called_pbx_user
                       and c.called_pbx_user.user not in call.transferred_users
         )
-        if completed_channels:
-            return completed_channels.sorted('id')[0].called_pbx_user
+        if called_side:
+            return called_side.sorted('id')[0].called_pbx_user
+        caller_side = live_channels.filtered(
+            lambda c: c.caller_pbx_user
+                      and c.caller_pbx_user.user not in call.transferred_users
+        )
+        if caller_side:
+            return caller_side.sorted('id')[0].caller_pbx_user
         return None
 
     def _get_caller_name(self, request, params):

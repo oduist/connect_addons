@@ -169,6 +169,15 @@ Rules:
   carried by `TransferredBy` instead, so the phone shows both rather than
   choosing. `TransferredBy` is emitted only when the call has
   `transferred_users` and a transferring PBX user can be resolved.
+- **Resolving the transferrer.** `answered_pbx_user` when finalization has
+  already set it; then the earliest live or completed leg whose
+  `called_pbx_user` is not the transfer target; then the earliest one whose
+  `caller_pbx_user` is not. The caller side is not an afterthought: an agent
+  who answered a call is the *called* party on their own leg, but an agent who
+  placed one is the *caller* on it, and either can transfer. Checking only the
+  called side leaves an outbound transfer with nobody to name, because
+  `answered_pbx_user` is set from `called_pbx_user` and only at finalization,
+  so it is empty for the whole of a live call.
 - `Partner` is treated as a known contact only when it parses as an integer.
   Missing, empty, `'false'` and non-numeric values all fall through to a lookup
   by number.

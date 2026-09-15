@@ -86,6 +86,30 @@ class TestTransferHandover(TransactionCase):
         })
         return call
 
+    def _outgoing_call(self, sid='CAagentdialled'):
+        """A call the agent placed from their web phone.
+
+        The agent is the *caller* on their own leg -- the leg that reaches the
+        platform and asks it to dial out -- so nothing on this call carries
+        them as `called_pbx_user`.
+        """
+        call = self.env['connect.call'].create({
+            'caller': '7901', 'called': '+12898283865',
+            'direction': 'outgoing', 'status': 'in-progress',
+            'partner': self.partner.id,
+        })
+        self.env['connect.channel'].create({
+            'sid': sid, 'call': call.id, 'caller': '7901',
+            'called': '+12898283865', 'status': 'in-progress',
+            'technical_direction': 'inbound', 'caller_pbx_user': self.agent.id,
+        })
+        self.env['connect.channel'].create({
+            'sid': '%s-out' % sid, 'call': call.id, 'caller': '+13658257665',
+            'called': '+12898283865', 'status': 'in-progress',
+            'technical_direction': 'outbound-dial',
+        })
+        return call
+
     def _render(self, call, sid='CAcustomer'):
         response = VoiceResponse()
         self.target.render_client(response, {'CallSid': sid}, {})
@@ -102,6 +126,39 @@ class TestTransferHandover(TransactionCase):
         # The customer keeps the caller ID and the contact: the parameter adds
         # to what the phone shows, it does not replace it.
         self.assertIn('value="%s"' % self.partner.id, twiml)
+
+    def test_the_agent_who_placed_the_call_is_named_too(self):
+        """A transfer out of a call the agent dialled.
+
+        `answered_pbx_user` is only ever set from `called_pbx_user`, and only
+        at finalization, so a live outbound call has nothing on the called
+        side to name -- the transferrer has to be found on the caller side or
+        the recipient is told nothing.
+        """
+        call = self._outgoing_call()
+        call.add_transferred_user(self.target_odoo_user)
+
+        twiml = self._render(call, sid='CAagentdialled')
+
+        self.assertIn('name="TransferredBy"', twiml)
+        self.assertIn('value="Sara Agent"', twiml)
+
+    def test_the_transfer_target_is_never_named_as_the_transferrer(self):
+        """The colleague being handed the call is not the one handing it over."""
+        call = self._incoming_call()
+        call.add_transferred_user(self.target_odoo_user)
+        # A leg towards the target, as the platform raises when it dials them.
+        self.env['connect.channel'].create({
+            'sid': 'CAtargetleg', 'call': call.id, 'caller': '+12898283865',
+            'called': '7902', 'status': 'in-progress',
+            'technical_direction': 'outbound-dial',
+            'called_pbx_user': self.target.id,
+        })
+
+        twiml = self._render(call)
+
+        self.assertIn('value="Sara Agent"', twiml)
+        self.assertNotIn('value="Marc Target"', twiml)
 
     def test_an_ordinary_call_carries_no_handover(self):
         """Nothing is added to a call that was never transferred."""
