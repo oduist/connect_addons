@@ -38,6 +38,10 @@ TWILIO_LOG_LEVEL = logging.WARNING
 # so an unbounded request must never pin a lock until the worker times
 # out. Overridable per deployment without a schema change.
 TWILIO_HTTP_TIMEOUT = float(os.environ.get('TWILIO_HTTP_TIMEOUT', '15'))
+# Upper bound for one self-hosted Whisper transcription. A warm server does an
+# hour-long call in about a minute, but the first request after a restart
+# waits for the model to load, which can take minutes.
+WHISPER_HTTP_TIMEOUT = float(os.environ.get('WHISPER_HTTP_TIMEOUT', '300'))
 
 MAX_EXTEN_LEN = 4
 
@@ -47,6 +51,7 @@ PROTECTED_FIELDS = [
     "display_twilio_api_secret",
     "display_openai_api_key",
     "display_aws_secret_access_key",
+    "display_whisper_api_key",
 ]
 
 TWILIO_EDGES = [
@@ -293,6 +298,19 @@ class Settings(models.Model):
     twilio_balance = fields.Char(readonly=True)
     openai_api_key = fields.Char(groups="base.group_erp_manager")
     display_openai_api_key = fields.Char()
+    whisper_api_url = fields.Char(
+        string="Whisper API URL",
+        help="Base URL of the OpenAI-compatible speech-to-text server, "
+             "e.g. http://192.168.1.10:9000/v1",
+    )
+    whisper_api_key = fields.Char(groups="base.group_erp_manager")
+    display_whisper_api_key = fields.Char()
+    whisper_model = fields.Char(default="whisper-1", string="Whisper Model")
+    whisper_language = fields.Char(
+        string="Whisper Language",
+        help="Language code of the speech (en, fr, ru...). Leave empty to let "
+             "the server detect it.",
+    )
     number_search_operation = fields.Selection(
         [("=", "Equal"), ("like", "Like")], default="=", required=True
     )
@@ -357,7 +375,11 @@ class Settings(models.Model):
     )
     transcript_calls = fields.Boolean()
     transcript_provider = fields.Selection(
-        selection=[("openai", "Open AI")], default="openai", required=True
+        selection=[("openai", "Open AI"), ("whisper", "Self-hosted Whisper")],
+        default="openai", required=True,
+        help="Engine that turns speech into text. Self-hosted Whisper also "
+             "transcribes voicemail and voice messages; with any other provider "
+             "those go to OpenAI.",
     )
     summary_prompt = fields.Text(required=True, default="Summarise this phone call")
     register_summary = fields.Boolean(
@@ -801,6 +823,73 @@ class Settings(models.Model):
         else:
             client = openai.OpenAI(api_key=api_key)
         return client
+
+    @api.model
+    def get_whisper_client(self):
+        url = self.sudo().get_param("whisper_api_url")
+        if not url:
+            return False
+        return openai.OpenAI(
+            base_url=url.strip(),
+            # The SDK refuses an empty key; a server without auth ignores it.
+            api_key=self.sudo().get_param("whisper_api_key") or "none",
+            timeout=WHISPER_HTTP_TIMEOUT,
+            # A retry would resend the whole recording to a server that is
+            # most likely still busy with the first attempt.
+            max_retries=0,
+        )
+
+    @api.model
+    def get_stt_error(self):
+        """Why speech-to-text cannot run with the current settings, or False."""
+        if self.sudo().get_param("transcript_provider") == "whisper":
+            if not self.sudo().get_param("whisper_api_url"):
+                return "Whisper API URL is not set!"
+        elif not self.sudo().get_param("openai_api_key"):
+            return "OpenAI key is not set!"
+        return False
+
+    @api.model
+    def transcribe_audio(self, audio_file):
+        """Speech-to-text with the selected provider.
+
+        'whisper' sends the audio to the self-hosted server, every other
+        provider to OpenAI (ElevenLabs transcribes call recordings in its own
+        module and leaves voicemail and voice messages to OpenAI).
+        `audio_file` is anything the OpenAI SDK accepts as `file`. Returns the
+        verbose_json transcription, with segments.
+        """
+        error = self.get_stt_error()
+        if error:
+            raise ValidationError(error)
+        settings = self.sudo()
+        kwargs = {}
+        if settings.get_param("transcript_provider") == "whisper":
+            client = self.get_whisper_client()
+            model = (settings.get_param("whisper_model") or "whisper-1").strip()
+            language = (settings.get_param("whisper_language") or "").strip()
+            if language:
+                kwargs["language"] = language
+        else:
+            client = self.get_openai_client()
+            model = "whisper-1"
+        return client.audio.transcriptions.create(
+            model=model, file=audio_file, response_format="verbose_json",
+            timestamp_granularities=["segment"], **kwargs)
+
+    def action_test_whisper(self):
+        client = self.get_whisper_client()
+        if not client:
+            raise ValidationError("Whisper API URL is not set!")
+        try:
+            models = client.with_options(timeout=15).models.list()
+        except Exception as e:
+            raise ValidationError("Whisper server error: %s" % e)
+        self.connect_notify(
+            "Whisper server is reachable. Models: %s"
+            % ", ".join(m.id for m in models),
+            title="Whisper", notify_uid=self.env.uid)
+        return True
 
     def check_api_url(self):
         message = None

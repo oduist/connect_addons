@@ -11,6 +11,7 @@ class TestConnectVoicemail(TransactionCase):
         super().setUpClass()
         # Make sure voicemail creation does not attempt a real transcription.
         cls.env['connect.settings'].sudo().set_param('openai_api_key', False)
+        cls.env['connect.settings'].sudo().set_param('transcript_provider', 'openai')
         cls.partner = cls.env['res.partner'].create({
             'name': 'Acme Customer', 'phone': '+15551230000',
         })

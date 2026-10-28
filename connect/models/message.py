@@ -11,10 +11,8 @@ See LICENSE and COPYRIGHT files for full terms.
 import ast
 import logging
 import os
-from tempfile import NamedTemporaryFile
 from urllib.parse import urljoin
 
-import openai
 import phonenumbers
 import requests
 from markupsafe import Markup
@@ -216,21 +214,24 @@ class ConnectMessage(models.Model):
         self.ensure_one()
         return 'WhatsApp' if self.message_type == 'whatsapp' else self.message_type
 
-    def transcribe_voice_message(self, openai_api_key, media_url):
+    @api.model
+    def _voice_file_name(self, content_type):
+        """File name for an uploaded voice message: speech-to-text servers tell
+        the format by its extension (WhatsApp voice notes are audio/ogg)."""
+        subtype = (content_type or '').split(';')[0].strip().lower().split('/')[-1]
+        extension = {'mpeg': 'mp3', 'mp4': 'm4a', 'x-m4a': 'm4a',
+                     'x-wav': 'wav', 'opus': 'ogg'}.get(subtype, subtype)
+        return 'voice.{}'.format(extension or 'mp3')
+
+    def transcribe_voice_message(self, media_url, content_type=None):
         result = {}
         try:
-            client = openai.OpenAI(api_key=openai_api_key)
-            response = requests.get(media_url, stream=True)
+            response = requests.get(media_url, timeout=60)
             response.raise_for_status()
-            with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        temp_file.write(chunk)
-                temp_file_path = temp_file.name
-            with open(temp_file_path, 'rb') as audio_file:
-                transcript = client.audio.transcriptions.create(
-                    model="whisper-1", file=audio_file,
-                    response_format='verbose_json', timestamp_granularities=["segment"])
+            content_type = content_type or response.headers.get('Content-Type')
+            transcript = self.env['connect.settings'].transcribe_audio((
+                self._voice_file_name(content_type), response.content,
+                content_type or 'application/octet-stream'))
             segments = ''
             for s in transcript.segments:
                 segments += '{}\n'.format(s.text)
@@ -270,12 +271,13 @@ class ConnectMessage(models.Model):
         }
         if params.get('MessageType') == 'audio':
             transcript_voice_message = self.env['connect.settings'].sudo().get_param('transcript_voice_message')
-            openai_key = self.env['connect.settings'].sudo().get_param('openai_api_key')
-            if transcript_voice_message and openai_key:
-                transcription = self.transcribe_voice_message(openai_key, params.get('MediaUrl0'))
+            stt_error = self.env['connect.settings'].get_stt_error()
+            if transcript_voice_message and not stt_error:
+                transcription = self.transcribe_voice_message(
+                    params.get('MediaUrl0'), params.get('MediaContentType0'))
                 values.update(transcription)
-            elif transcript_voice_message and not openai_key:
-                logger.warning('OpenAI key is not set! Transcription will not be available.')
+            elif transcript_voice_message:
+                logger.warning('%s Transcription will not be available.', stt_error)
         return values
 
     @api.model

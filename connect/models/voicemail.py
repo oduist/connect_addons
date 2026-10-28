@@ -3,14 +3,12 @@
 import json
 import logging
 import os
-import threading
 import requests
 from tempfile import NamedTemporaryFile
 
-import openai
-
 from odoo import fields, models, api, release
 from odoo.exceptions import ValidationError
+from .recording import twilio_mp3_url
 from .settings import debug
 
 logger = logging.getLogger(__name__)
@@ -119,16 +117,17 @@ class Voicemail(models.Model):
             return super().create(vals_list)
         recs = super(Voicemail, self.with_context(
             mail_create_nosubscribe=True, mail_create_nolog=True)).create(vals_list)
-        openai_key = self.env['connect.settings'].sudo().get_param('openai_api_key')
-        if not openai_key:
-            logger.warning('OpenAI key is not set! Transcription will not be available.')
+        stt_error = self.env['connect.settings'].get_stt_error()
+        if stt_error:
+            logger.warning('%s Transcription will not be available.', stt_error)
             return recs
-        # Commit to the database so that a transcription error will not break the voicemail.
-        if not getattr(threading.current_thread(), 'testing', False):
-            self.env.cr.commit()
+        # A transcription failure must not lose the voicemail. A savepoint does
+        # that; a commit would also release the advisory locks serializing the
+        # call's webhooks (see connect.recording.create).
         for rec in recs:
             try:
-                rec.transcribe_voicemail(openai_key)
+                with self.env.cr.savepoint():
+                    rec.transcribe_voicemail()
             except Exception as e:
                 logger.exception('Voicemail transcript error: %s', e)
         return recs
@@ -205,20 +204,19 @@ class Voicemail(models.Model):
 
     def get_transcript(self):
         self.ensure_one()
-        openai_key = self.env['connect.settings'].sudo().get_param('openai_api_key')
-        if not openai_key:
-            raise ValidationError('OpenAI key is not set!')
+        stt_error = self.env['connect.settings'].get_stt_error()
+        if stt_error:
+            raise ValidationError(stt_error)
         if not self.media_url:
             raise ValidationError('Voicemail is not available yet!')
-        self.transcribe_voicemail(openai_key)
+        self.transcribe_voicemail()
 
-    def transcribe_voicemail(self, openai_api_key):
+    def transcribe_voicemail(self):
         self.ensure_one()
         result = {}
         temp_file_path = None
         try:
-            client = openai.OpenAI(api_key=openai_api_key)
-            response = requests.get(self.media_url, stream=True)
+            response = requests.get(twilio_mp3_url(self.media_url), stream=True)
             response.raise_for_status()
             with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
                 for chunk in response.iter_content(chunk_size=8192):
@@ -226,9 +224,7 @@ class Voicemail(models.Model):
                         temp_file.write(chunk)
                 temp_file_path = temp_file.name
             with open(temp_file_path, 'rb') as audio_file:
-                transcript = client.audio.transcriptions.create(
-                    model="whisper-1", file=audio_file,
-                    response_format='verbose_json', timestamp_granularities=["segment"])
+                transcript = self.env['connect.settings'].transcribe_audio(audio_file)
             segments = ''
             for s in transcript.segments:
                 segments += '{}\n'.format(s.text)

@@ -6,11 +6,14 @@ Reverse-buildable contract for the module. Rules and shapes, not source.
 
 This spec covers the **softphone** — the web phone in the systray, the
 components it is built from, the ORM methods it calls and the TwiML parameters
-it reads — plus the directory lookup that serves it.
+it reads — plus the directory lookup that serves it, and **speech-to-text**:
+how recordings, voicemail and voice messages are turned into text and by which
+provider.
 
 The rest of `connect` (call and channel ledger, call flows, TwiML, recordings
-and S3, voicemail, transcription, SMS/WhatsApp, webhooks, settings) is **not
-yet specced**. Anything outside the sections below still has to be read from
+and S3, the rest of voicemail and transcription — summaries beyond who makes
+them, transcription rules, the external upload endpoint — SMS/WhatsApp,
+webhooks, the other settings) is **not yet specced**. Anything outside the sections below still has to be read from
 the code. Extend this file as those surfaces are touched; do not assume
 silence here means "no behaviour".
 
@@ -309,3 +312,162 @@ globs would otherwise sweep them in and darken the panel for everyone.
 - It must **not** swallow a denied microphone, which is also a
   `NotAllowedError`: that is the difference between the ringtone coming out of
   the wrong speaker and nobody being able to hear you.
+
+## Speech-to-text
+
+Three kinds of audio become text: call recordings (`connect.recording`),
+voicemail (`connect.voicemail`) and incoming WhatsApp/MMS voice messages
+(`connect.message`). All three go through one dispatcher on `connect.settings`,
+so the selected provider applies to all of them. Call summaries are a separate
+step and always use OpenAI.
+
+### Settings fields (`connect.settings`)
+
+| Field | Type | Attributes |
+|---|---|---|
+| `transcript_provider` | Selection | `openai` "Open AI", `whisper` "Self-hosted Whisper"; `connect_elevenlabs` adds `elevenlabs`. Default `openai`, required. |
+| `whisper_api_url` | Char | Label "Whisper API URL". OpenAI-compatible base URL including `/v1`. |
+| `whisper_api_key` | Char | `groups="base.group_erp_manager"`. Written only through `display_whisper_api_key`. |
+| `display_whisper_api_key` | Char | In `PROTECTED_FIELDS`: on `write`, the value is moved to `whisper_api_key` (sudo) and the display field is overwritten with `*` × its length — the same rule as every other secret in settings. |
+| `whisper_model` | Char | Label "Whisper Model", default `whisper-1`. |
+| `whisper_language` | Char | Label "Whisper Language". Empty = let the server detect it. |
+
+`openai_api_key`, `transcript_calls`, `transcript_voice_message`,
+`summary_prompt` and `register_summary` predate this section and are unchanged.
+
+### Provider resolution
+
+| `transcript_provider` | Recordings | Voicemail, voice messages | Summary |
+|---|---|---|---|
+| `openai` | OpenAI | OpenAI | OpenAI |
+| `whisper` | Whisper server | Whisper server | OpenAI |
+| `elevenlabs` | ElevenLabs (`connect_elevenlabs` overrides `transcribe_recording`) | OpenAI | OpenAI |
+
+### Methods on `connect.settings`
+
+- **`get_whisper_client()`** (`@api.model`) — `False` when `whisper_api_url`
+  is empty. Otherwise an `openai.OpenAI` client with `base_url` = the URL
+  (stripped), `api_key` = `whisper_api_key` or the literal `"none"` (the SDK
+  rejects an empty key; a server without auth ignores it), `timeout` =
+  `WHISPER_HTTP_TIMEOUT` and `max_retries=0` — a retry would resend the whole
+  recording to a server most likely still busy with the first attempt.
+  `WHISPER_HTTP_TIMEOUT` is the environment variable of that name, in seconds,
+  default 300: a cold server loads its model before the first transcription.
+- **`get_stt_error()`** (`@api.model`) — the reason speech-to-text cannot run,
+  or `False`. Provider `whisper` without `whisper_api_url` →
+  `"Whisper API URL is not set!"`; any other provider without
+  `openai_api_key` → `"OpenAI key is not set!"`. Whisper does not need the
+  OpenAI key.
+- **`transcribe_audio(audio_file)`** (`@api.model`) — raises `ValidationError`
+  with `get_stt_error()` when that is set. Otherwise calls
+  `audio.transcriptions.create` with `response_format="verbose_json"`,
+  `timestamp_granularities=["segment"]` and `file=audio_file` (anything the
+  SDK accepts: an open file or a `(name, bytes, content_type)` tuple), and
+  returns the response. Provider `whisper`: the Whisper client, `model` =
+  `whisper_model` (stripped) or `whisper-1`, and `language` = the stripped
+  `whisper_language`, sent only when non-empty. Any other provider:
+  `get_openai_client()` and `model="whisper-1"`, never a `language`.
+- **`action_test_whisper()`** — button **TEST CONNECTION** on the API Keys tab.
+  No URL → `ValidationError("Whisper API URL is not set!")`. Lists the server's
+  models with a 15-second timeout; any exception becomes
+  `ValidationError("Whisper server error: <message>")`. Success sends a
+  `connect_notify` to the current user, title "Whisper", text
+  "Whisper server is reachable. Models: <ids, comma-separated>", and returns
+  `True`.
+
+`get_openai_client()` is unchanged and serves summaries, OpenAI transcription
+and chatter message generation.
+
+### Audio download
+
+`twilio_mp3_url(media_url)` (module function in `models/recording.py`): a URL
+matching `https://api.<optional region labels>.twilio.com/…/Recordings/RE<hex>`
+with no extension gets `.mp3` appended; anything else — S3 URLs, Twilio
+message media, an URL that already has an extension, empty — is returned
+unchanged. Twilio serves a bare recording URL as WAV (~32 KB/s), which passes
+the 25 MiB upload limit at about 13 minutes; the MP3 rendition is a quarter of
+the size.
+
+| Audio | Fetched from |
+|---|---|
+| Recording, S3 storage on and the URL in the configured bucket | S3 object, as stored |
+| Recording, otherwise | `twilio_mp3_url(media_url)`, plain GET |
+| Voicemail | `twilio_mp3_url(media_url)`, plain GET |
+| Voice message | `MediaUrl0` as given, GET with a 60 s timeout |
+
+### Call recordings
+
+- **`get_transcript(fail_silently=False)`** — the **Transcribe** button
+  (`fail_silently=False`) and `create()` (`fail_silently=True`). In order:
+  with `fail_silently`, return `False` when the transcription rules do not
+  match the call; no `openai_api_key` → warning + `False`, or
+  `ValidationError("OpenAI key is not set!")` (the summary needs it, whatever
+  the provider); `get_stt_error()` set → warning + `False`, or
+  `ValidationError(<that message>)`; no `media_url` →
+  `ValidationError("Recording is not available yet!")`; then
+  `transcribe_recording()`.
+- **`transcribe_recording(openai_api_key, summary_prompt)`** — the summary
+  prompt is the caller user's Connect `summary_prompt`, else the called
+  user's, else the one passed in. Downloads per the table above to a temporary
+  file (always removed). Over 26 214 400 bytes → `transcription_error` =
+  "File exceeds the 25 MB transcription size limit." and nothing is sent.
+  Otherwise `transcribe_audio()`; the transcript is one line per segment,
+  `HH:MM:SS` of the segment start (truncated to whole seconds), a space, then
+  the segment text as returned (which starts with its own space). Then
+  `make_summary(get_openai_client(), …)`, and `transcription_error` = `False`.
+  Any exception → `transcription_error` = its message. The values are written
+  in all cases.
+- `create()` (unless context `skip_transcription`): when `transcript_calls` is
+  on, `get_transcript(fail_silently=True)` per new recording, each inside a
+  savepoint — a failure must not lose the recording, and a commit would
+  release the advisory locks that serialize the call's webhooks.
+
+### Voicemail
+
+- `create()` (unless context `skip_transcription`): when `get_stt_error()` is
+  set, log a warning and stop. Otherwise `transcribe_voicemail()` per new
+  voicemail, each inside a savepoint, exceptions logged. There is no
+  `transcript_calls`-style switch: voicemail is transcribed whenever its
+  provider is configured.
+- **`get_transcript()`** — the **Transcribe** button. `get_stt_error()` set →
+  `ValidationError(<that message>)`; no `media_url` →
+  `ValidationError("Voicemail is not available yet!")`; then
+  `transcribe_voicemail()`.
+- **`transcribe_voicemail()`** (`ensure_one`) — downloads to a temporary file
+  (always removed), `transcribe_audio()`, `transcript` = the segment texts
+  joined by newlines and stripped; `transcription_error` = `False`, or the
+  exception message on failure. No summary.
+
+### Voice messages
+
+- In `get_receive_message_values(params)`, for `MessageType == 'audio'`: when
+  `transcript_voice_message` is on and `get_stt_error()` is not set,
+  `transcribe_voice_message(MediaUrl0, MediaContentType0)` and merge its
+  result into the message values; when it is on but `get_stt_error()` is set,
+  log a warning.
+- **`transcribe_voice_message(media_url, content_type=None)`** — downloads into
+  memory; `content_type` falls back to the response `Content-Type`. Sends
+  `(_voice_file_name(content_type), bytes, content_type or
+  "application/octet-stream")`. Returns `{'body': <segment texts joined by
+  newlines, stripped>}`, or `{'transcription_error': <message>}` on any
+  exception; never raises.
+- **`_voice_file_name(content_type)`** (`@api.model`) — `voice.<ext>`, where
+  `<ext>` is the MIME subtype with parameters dropped, lower-cased, and mapped
+  `mpeg`→`mp3`, `mp4`→`m4a`, `x-m4a`→`m4a`, `x-wav`→`wav`, `opus`→`ogg`;
+  `voice.mp3` when there is no content type. Speech-to-text servers pick the
+  decoder by extension, and WhatsApp voice notes are `audio/ogg`.
+
+### Settings form
+
+- **API Keys** tab: group "Self-hosted Whisper" (always visible) with
+  `whisper_api_url` ("API URL", placeholder `http://192.168.1.10:9000/v1`),
+  `display_whisper_api_key` ("API Key", password) and the TEST CONNECTION
+  button.
+- **Transcription** tab, group "Speech-to-text": `transcript_provider` (always
+  visible — it drives voicemail and voice messages too), `whisper_model`
+  ("Model") and `whisper_language` ("Language", placeholder "Detected
+  automatically") visible only when the provider is `whisper`,
+  `transcript_calls`, `transcript_voice_message`. Group "Call Summary",
+  visible when `transcript_calls` is on: a note that summaries are generated
+  by OpenAI with the key on the API Keys tab, `summary_prompt`,
+  `register_summary`. Group "Transcribe Rules" as before.

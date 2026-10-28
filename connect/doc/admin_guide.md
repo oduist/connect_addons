@@ -57,8 +57,23 @@ configuration into Odoo. Do this once at setup, and again whenever you change
 numbers directly in the Twilio Console.
 
 **OpenAI** — one field, the API key, readable only by ERP managers. It is needed
-for transcription and summaries when OpenAI is the selected provider, and for
-generated chatter messages. Leave it empty if you use neither.
+for call summaries whatever the transcription provider, for transcription when
+OpenAI is the selected provider, and for generated chatter messages. Leave it
+empty if you use none of these.
+
+**Self-hosted Whisper** — a speech-to-text server you run yourself that speaks
+the OpenAI transcription API (for example vLLM serving Whisper). Fill these in
+only if you select it as the provider on the **Transcription** tab.
+
+| Field | Notes |
+| --- | --- |
+| **API URL** | The server's base URL including `/v1`, e.g. `http://192.168.1.10:9000/v1`. Odoo must be able to reach it. |
+| **API Key** | The server's bearer key. Stored write-only, like the OpenAI key; leave it empty if the server needs none. |
+| **TEST CONNECTION** | Asks the server for its model list and shows the result, or the error. Use it after any change. |
+
+The connection is plain HTTP unless your server provides HTTPS, so it carries
+the key and the call audio unencrypted: keep the server on a private network or
+a VPN such as Tailscale, never on the open internet.
 
 ## Calls
 
@@ -117,19 +132,59 @@ ones keep playing from Twilio.
 
 ## Transcription
 
-Tab **Transcription**.
+Tab **Transcription**, in three groups.
+
+**Speech-to-text**
 
 | Setting | What it controls |
 | --- | --- |
-| **Transcript calls** | Master switch. Everything below appears only when it is on. |
-| **Transcript provider** | Which engine produces the text. |
-| **Summary prompt** | The instruction sent to the model when summarising a call. The default is "Summarise this phone call"; make it specific to your business and the summaries get markedly more useful. |
-| **Register summary** | Posts the summary to the chatter of the related partner, so it shows up in the contact's history. |
-| **Transcribe voice messages** | Applies the same treatment to voicemail. |
-| **Transcribe Rules** | Limits transcription to matching calling/called numbers. Leave empty to transcribe everything; use it to avoid transcribing internal or high-volume automated traffic. |
+| **Transcript provider** | Which engine turns speech into text: **Open AI** (the default), **Self-hosted Whisper**, or **Elevenlabs** when that module is installed. |
+| **Model** | Self-hosted Whisper only. The model name the server expects; default `whisper-1`. |
+| **Language** | Self-hosted Whisper only. A language code (`en`, `fr`, `ru`...) when you know what language your calls are in. Leave it empty and the server detects it from the start of each recording. |
+| **Transcript calls** | Transcribe and summarise call recordings automatically, as soon as each recording arrives. Needs the OpenAI key, because the summary always comes from OpenAI. |
+| **Transcribe voice messages** | Transcribe incoming WhatsApp and MMS voice messages; the text becomes the message body. |
 
-Transcription costs money per call at the provider, and the rules are the lever
-that keeps that bill predictable.
+What each provider covers:
+
+| Provider | Call recordings | Voicemail and voice messages | Call summary |
+| --- | --- | --- | --- |
+| Open AI | Open AI | Open AI | Open AI |
+| Self-hosted Whisper | Whisper | Whisper | Open AI |
+| Elevenlabs | Elevenlabs | Open AI | Open AI |
+
+Voicemail is transcribed as soon as it arrives whenever its provider is
+configured — the OpenAI key, or the Whisper URL when Whisper is selected; there
+is no separate switch for it. A recording, a voicemail or a message whose
+transcription failed shows the reason in its *Transcription error* field.
+
+**Call Summary** — shown when *Transcript calls* is on.
+
+| Setting | What it controls |
+| --- | --- |
+| **Summary prompt** | The instruction sent to OpenAI when summarising a call. The default is "Summarise this phone call"; make it specific to your business and the summaries get markedly more useful. A user's own *Record Summary Prompt* replaces it for that user's calls. |
+| **Register summary** | Posts the summary to the chatter of the related partner, so it shows up in the contact's history. |
+
+**Transcribe Rules** — shown when *Transcript calls* is on. Limits automatic
+call transcription to matching calling/called numbers. Leave it empty to
+transcribe every call; use it to avoid transcribing internal or high-volume
+automated traffic.
+
+Transcription costs money per call at OpenAI and Elevenlabs, and the rules are
+the lever that keeps that bill predictable. A self-hosted Whisper server costs
+nothing per call, but each summary is still an OpenAI request.
+
+Limits worth knowing:
+
+- **Size.** One recording may be at most 25 MB. Recordings kept at Twilio are
+  fetched as MP3, which fits calls of 50 minutes and more; recordings stored in
+  S3 are sent as stored.
+- **Self-hosted Whisper** gives no speaker labels: the transcript is timestamped
+  lines, not a dialogue. How well it detects the language depends on the
+  server — some are set up to choose among a few languages only — so set
+  **Language** when your calls are all in one. After the server restarts, its
+  first transcription waits while the model loads, which can take minutes. Odoo
+  waits up to five minutes per transcription; the `WHISPER_HTTP_TIMEOUT`
+  environment variable of the Odoo server (in seconds) changes that.
 
 ## Chatter
 
