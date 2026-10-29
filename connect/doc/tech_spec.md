@@ -7,12 +7,12 @@ Reverse-buildable contract for the module. Rules and shapes, not source.
 This spec covers the **softphone** — the web phone in the systray, the
 components it is built from, the ORM methods it calls and the TwiML parameters
 it reads — plus the directory lookup that serves it, and **speech-to-text**:
-how recordings, voicemail and voice messages are turned into text and by which
-provider.
+how recordings, voicemail and voice messages are turned into text, by which
+provider, and which recorded calls the transcription rules let through.
 
 The rest of `connect` (call and channel ledger, call flows, TwiML, recordings
 and S3, the rest of voicemail and transcription — summaries beyond who makes
-them, transcription rules, the external upload endpoint — SMS/WhatsApp,
+them, the external upload endpoint — SMS/WhatsApp,
 webhooks, the other settings) is **not yet specced**. Anything outside the sections below still has to be read from
 the code. Extend this file as those surfaces are touched; do not assume
 silence here means "no behaviour".
@@ -388,19 +388,31 @@ unchanged. Twilio serves a bare recording URL as WAV (~32 KB/s), which passes
 the 25 MiB upload limit at about 13 minutes; the MP3 rendition is a quarter of
 the size.
 
+**`get_twilio_media_auth(media_url)`** (`@api.model` on `connect.settings`) —
+the HTTP Basic credentials for a media download, or `None`. A Twilio account
+can enforce HTTP auth on its recording and message media URLs, and then an
+anonymous GET gets 401. Only a URL matching `https://api.<optional labels>.twilio.com/`
+gets credentials: `(account_sid, auth_token)`. On a regional host (at least
+one label between `api.` and `twilio.com`) `region_auth_token` replaces
+`auth_token` when it is set. Any other URL (S3, `http://`, other hosts, a
+host that only starts with `api.twilio.com`), a missing URL, or a missing
+SID or token → `None`. When Twilio redirects the download to its storage,
+`requests` drops the credentials on the host change.
+
 | Audio | Fetched from |
 |---|---|
 | Recording, S3 storage on and the URL in the configured bucket | S3 object, as stored |
-| Recording, otherwise | `twilio_mp3_url(media_url)`, plain GET |
-| Voicemail | `twilio_mp3_url(media_url)`, plain GET |
-| Voice message | `MediaUrl0` as given, GET with a 60 s timeout |
+| Recording, otherwise | `twilio_mp3_url(media_url)`, GET with `auth=get_twilio_media_auth(media_url)` |
+| Voicemail | `twilio_mp3_url(media_url)`, GET with `auth=get_twilio_media_auth(media_url)` |
+| Voice message | `MediaUrl0` as given, GET with a 60 s timeout and `auth=get_twilio_media_auth(MediaUrl0)` |
 
 ### Call recordings
 
 - **`get_transcript(fail_silently=False)`** — the **Transcribe** button
   (`fail_silently=False`) and `create()` (`fail_silently=True`). In order:
   with `fail_silently`, return `False` when the transcription rules do not
-  match the call; no `openai_api_key` → warning + `False`, or
+  match the call (see `check_rules` below); no `openai_api_key` → warning +
+  `False`, or
   `ValidationError("OpenAI key is not set!")` (the summary needs it, whatever
   the provider); `get_stt_error()` set → warning + `False`, or
   `ValidationError(<that message>)`; no `media_url` →
@@ -421,6 +433,17 @@ the size.
   on, `get_transcript(fail_silently=True)` per new recording, each inside a
   savepoint — a failure must not lose the recording, and a commit would
   release the advisory locks that serialize the call's webhooks.
+- **`connect.transcription_rule`** (`_order = 'id'`): `settings`
+  (Many2one `connect.settings`, required, default `1`), `calling_number` and
+  `called_number` (Char, required) — Python regular expressions.
+  **`check_rules(calling_number, called_number)`** (`@api.model`, passed the
+  call's `caller` and `called`) is truthy when at least one rule, in id
+  order, matches both. A pattern matches when `re.search(pattern, number)`
+  finds it anywhere in the number. An empty or missing number skips that
+  side's test. A rule whose pattern raises an error is logged and skipped.
+  **No rules → no match**, so with `transcript_calls` on and an empty rule
+  list no recording is transcribed automatically. The **Transcribe** button
+  (`fail_silently=False`) does not consult the rules.
 
 ### Voicemail
 

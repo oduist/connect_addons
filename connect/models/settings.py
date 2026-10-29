@@ -42,6 +42,9 @@ TWILIO_HTTP_TIMEOUT = float(os.environ.get('TWILIO_HTTP_TIMEOUT', '15'))
 # hour-long call in about a minute, but the first request after a restart
 # waits for the model to load, which can take minutes.
 WHISPER_HTTP_TIMEOUT = float(os.environ.get('WHISPER_HTTP_TIMEOUT', '300'))
+# Twilio's own REST hosts: api.twilio.com and the regional/edge variants such
+# as api.dublin.ie1.twilio.com. Media URLs on them may require Basic auth.
+TWILIO_API_URL = re.compile(r'^https://api\.([\w-]+\.)*twilio\.com/')
 
 MAX_EXTEN_LEN = 4
 
@@ -809,6 +812,27 @@ class Settings(models.Model):
                 raise ValidationError("Set Twilio API keys first!")
             else:
                 raise
+
+    @api.model
+    def get_twilio_media_auth(self, media_url):
+        """Basic-auth credentials for downloading a Twilio-hosted media URL.
+
+        A Twilio account can require HTTP auth on its recording and message
+        media URLs, and then an anonymous GET gets 401. The credentials go
+        only to Twilio's API hosts, never to S3 or any other URL; requests
+        drops them itself when Twilio redirects to its storage.
+        """
+        match = TWILIO_API_URL.match(media_url or "")
+        if not match:
+            return None
+        account_sid = self.sudo().get_param("account_sid")
+        auth_token = self.sudo().get_param("auth_token")
+        if match.group(1):
+            # Regional host: the region's own auth token when one is set.
+            auth_token = self.sudo().get_param("region_auth_token") or auth_token
+        if not account_sid or not auth_token:
+            return None
+        return (account_sid, auth_token)
 
     @api.model
     def get_openai_client(self):

@@ -164,10 +164,18 @@ transcription failed shows the reason in its *Transcription error* field.
 | **Summary prompt** | The instruction sent to OpenAI when summarising a call. The default is "Summarise this phone call"; make it specific to your business and the summaries get markedly more useful. A user's own *Record Summary Prompt* replaces it for that user's calls. |
 | **Register summary** | Posts the summary to the chatter of the related partner, so it shows up in the contact's history. |
 
-**Transcribe Rules** — shown when *Transcript calls* is on. Limits automatic
-call transcription to matching calling/called numbers. Leave it empty to
-transcribe every call; use it to avoid transcribing internal or high-volume
-automated traffic.
+**Transcribe Rules** — shown when *Transcript calls* is on. Decides which
+recorded calls are transcribed automatically. Each rule has a **Calling
+Number** and a **Called Number** pattern. A call is transcribed when at least
+one rule matches both its caller and the number it called. Patterns are
+regular expressions matched anywhere in the number, so `.+` matches any
+number and `3658257665` matches that number with or without the `+1`.
+
+**An empty list transcribes nothing.** *Transcript calls* on its own is not
+enough: add at least one rule. To transcribe every call, add one rule with
+`.+` in both columns. Use narrower patterns to skip internal or high-volume
+automated traffic. Rules apply only to automatic transcription; the
+**Transcribe** button on a recording ignores them.
 
 Transcription costs money per call at OpenAI and Elevenlabs, and the rules are
 the lever that keeps that bill predictable. A self-hosted Whisper server costs
@@ -178,6 +186,11 @@ Limits worth knowing:
 - **Size.** One recording may be at most 25 MB. Recordings kept at Twilio are
   fetched as MP3, which fits calls of 50 minutes and more; recordings stored in
   S3 are sent as stored.
+- **Protected media.** If your Twilio account enforces HTTP authentication on
+  media URLs (the Voice and Messaging settings in the Twilio Console), Connect
+  still downloads recordings, voicemail and voice messages: it signs in with
+  the Account SID and Auth Token from the API Keys tab. A wrong or revoked
+  token shows on the recording as `401 Client Error: Unauthorized`.
 - **Self-hosted Whisper** gives no speaker labels: the transcript is timestamped
   lines, not a dialogue. How well it detects the language depends on the
   server — some are set up to choose among a few languages only — so set

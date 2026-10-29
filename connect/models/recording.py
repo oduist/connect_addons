@@ -108,7 +108,9 @@ class Recording(models.Model):
                     settings._get_s3_client().download_fileobj(bucket, key, temp_file)
                     temp_file_path = temp_file.name
             else:
-                response = requests.get(twilio_mp3_url(self.media_url), stream=True)
+                response = requests.get(
+                    twilio_mp3_url(self.media_url), stream=True,
+                    auth=settings.get_twilio_media_auth(self.media_url))
                 response.raise_for_status()
                 with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
                     for chunk in response.iter_content(chunk_size=8192):

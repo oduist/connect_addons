@@ -226,7 +226,9 @@ class ConnectMessage(models.Model):
     def transcribe_voice_message(self, media_url, content_type=None):
         result = {}
         try:
-            response = requests.get(media_url, timeout=60)
+            response = requests.get(
+                media_url, timeout=60,
+                auth=self.env['connect.settings'].get_twilio_media_auth(media_url))
             response.raise_for_status()
             content_type = content_type or response.headers.get('Content-Type')
             transcript = self.env['connect.settings'].transcribe_audio((

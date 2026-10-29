@@ -11,6 +11,7 @@ from odoo.addons.connect.models.recording import twilio_mp3_url
 TWILIO_RECORDING = ('https://api.twilio.com/2010-04-01/Accounts/AC0000/'
                     'Recordings/RE0123456789abcdef0123456789abcdef')
 WHISPER_URL = 'http://whisper.test:9000/v1'
+TWILIO_AUTH = ('AC0000', 'twilio-token')
 
 
 def fake_transcription():
@@ -41,6 +42,9 @@ class TestWhisperTranscription(TransactionCase):
             ('whisper_api_key', 'whisper-key'),
             ('whisper_model', 'large-v3-turbo'),
             ('whisper_language', False),
+            ('account_sid', TWILIO_AUTH[0]),
+            ('auth_token', TWILIO_AUTH[1]),
+            ('region_auth_token', False),
         ]:
             cls.settings.set_param(param, value)
 
@@ -90,6 +94,28 @@ class TestWhisperTranscription(TransactionCase):
                     False):
             self.assertEqual(twilio_mp3_url(url), url)
 
+    def test_twilio_media_auth(self):
+        auth = self.settings.get_twilio_media_auth
+        self.assertEqual(auth(TWILIO_RECORDING), TWILIO_AUTH)
+        message_media = 'https://api.twilio.com/2010-04-01/Accounts/AC0000/Messages/MM1/Media/ME1'
+        self.assertEqual(auth(message_media), TWILIO_AUTH)
+        regional = TWILIO_RECORDING.replace('api.twilio.com', 'api.dublin.ie1.twilio.com')
+        self.assertEqual(auth(regional), TWILIO_AUTH)
+        self.settings.set_param('region_auth_token', 'region-token')
+        self.assertEqual(auth(regional), (TWILIO_AUTH[0], 'region-token'))
+        self.assertEqual(auth(TWILIO_RECORDING), TWILIO_AUTH)
+        # Credentials never leave Twilio's own API hosts.
+        for url in ('https://oduist-connect-x.s3.eu-central-1.amazonaws.com/recordings/RE1.wav',
+                    'http://api.twilio.com/2010-04-01/Accounts/AC0000/Recordings/RE1',
+                    'https://api.twilio.com.evil.example/Recordings/RE1',
+                    'https://api.x.twilio.com@evil.example/Recordings/RE1',
+                    'https://media.example.com/voice.ogg',
+                    False):
+            self.assertIsNone(auth(url), url)
+        self.settings.set_param('auth_token', False)
+        self.settings.set_param('region_auth_token', False)
+        self.assertIsNone(auth(TWILIO_RECORDING))
+
     def test_recording_transcribed_by_whisper_summarised_by_openai(self):
         clients = self._patch_clients()
         recording = self._recording()
@@ -97,6 +123,7 @@ class TestWhisperTranscription(TransactionCase):
                    side_effect=fake_download) as download:
             recording.get_transcript()
         self.assertEqual(download.call_args.args[0], TWILIO_RECORDING + '.mp3')
+        self.assertEqual(download.call_args.kwargs['auth'], TWILIO_AUTH)
         whisper_kwargs = clients['whisper'][0][0]
         self.assertEqual(whisper_kwargs['base_url'], WHISPER_URL)
         self.assertEqual(whisper_kwargs['api_key'], 'whisper-key')
@@ -157,6 +184,7 @@ class TestWhisperTranscription(TransactionCase):
                 'media_url': TWILIO_RECORDING, 'duration': 24,
             })
         self.assertEqual(download.call_args.args[0], TWILIO_RECORDING + '.mp3')
+        self.assertEqual(download.call_args.kwargs['auth'], TWILIO_AUTH)
         self.assertNotIn('openai', clients)
         self.assertEqual(voicemail.transcript, 'Hello\n Bye')
         self.assertFalse(voicemail.transcription_error)
@@ -169,6 +197,7 @@ class TestWhisperTranscription(TransactionCase):
             result = self.env['connect.message'].transcribe_voice_message(
                 media_url, 'audio/ogg')
         self.assertEqual(download.call_args.args[0], media_url)
+        self.assertEqual(download.call_args.kwargs['auth'], TWILIO_AUTH)
         [transcribe] = self._calls(clients, 'whisper', 'transcribe')
         self.assertEqual(transcribe.kwargs['file'], ('voice.ogg', b'audio-bytes', 'audio/ogg'))
         self.assertEqual(result, {'body': 'Hello\n Bye'})

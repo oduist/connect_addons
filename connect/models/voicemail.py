@@ -216,7 +216,9 @@ class Voicemail(models.Model):
         result = {}
         temp_file_path = None
         try:
-            response = requests.get(twilio_mp3_url(self.media_url), stream=True)
+            response = requests.get(
+                twilio_mp3_url(self.media_url), stream=True,
+                auth=self.env['connect.settings'].get_twilio_media_auth(self.media_url))
             response.raise_for_status()
             with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
                 for chunk in response.iter_content(chunk_size=8192):
