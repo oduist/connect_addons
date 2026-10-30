@@ -325,12 +325,17 @@ step and always use OpenAI.
 
 | Field | Type | Attributes |
 |---|---|---|
-| `transcript_provider` | Selection | `openai` "Open AI", `whisper` "Self-hosted Whisper"; `connect_elevenlabs` adds `elevenlabs`. Default `openai`, required. |
+| `transcript_provider` | Selection | `openai` "Open AI", `whisper` "Self-hosted Whisper", `nemotron` "Self-hosted Nemotron"; `connect_elevenlabs` adds `elevenlabs`. Default `openai`, required. |
 | `whisper_api_url` | Char | Label "Whisper API URL". OpenAI-compatible base URL including `/v1`. |
 | `whisper_api_key` | Char | `groups="base.group_erp_manager"`. Written only through `display_whisper_api_key`. |
 | `display_whisper_api_key` | Char | In `PROTECTED_FIELDS`: on `write`, the value is moved to `whisper_api_key` (sudo) and the display field is overwritten with `*` × its length — the same rule as every other secret in settings. |
 | `whisper_model` | Char | Label "Whisper Model", default `whisper-1`. |
 | `whisper_language` | Char | Label "Whisper Language". Empty = let the server detect it. |
+| `nemotron_api_url` | Char | Label "Nemotron API URL". OpenAI-compatible base URL including `/v1`. |
+| `nemotron_api_key` | Char | `groups="base.group_erp_manager"`. Written only through `display_nemotron_api_key`. |
+| `display_nemotron_api_key` | Char | In `PROTECTED_FIELDS`, same rule as `display_whisper_api_key`. |
+| `nemotron_model` | Char | Label "Nemotron Model", default `nemotron-3.5-transcribe`. |
+| `nemotron_prompt` | Text | Label "Nemotron Prompt", default `NEMOTRON_DEFAULT_PROMPT` = "Transcribe the following audio. Output only the transcript in the original language." |
 
 `openai_api_key`, `transcript_calls`, `transcript_voice_message`,
 `summary_prompt` and `register_summary` predate this section and are unchanged.
@@ -341,6 +346,7 @@ step and always use OpenAI.
 |---|---|---|---|
 | `openai` | OpenAI | OpenAI | OpenAI |
 | `whisper` | Whisper server | Whisper server | OpenAI |
+| `nemotron` | Nemotron server | Nemotron server | OpenAI |
 | `elevenlabs` | ElevenLabs (`connect_elevenlabs` overrides `transcribe_recording`) | OpenAI | OpenAI |
 
 ### Methods on `connect.settings`
@@ -353,27 +359,115 @@ step and always use OpenAI.
   recording to a server most likely still busy with the first attempt.
   `WHISPER_HTTP_TIMEOUT` is the environment variable of that name, in seconds,
   default 300: a cold server loads its model before the first transcription.
+- **`get_nemotron_client()`** (`@api.model`) — `False` when
+  `nemotron_api_url` is empty. Otherwise an `openai.OpenAI` client with
+  `base_url` = the URL (stripped), `api_key` = `nemotron_api_key` or `"none"`,
+  `timeout` = `NEMOTRON_HTTP_TIMEOUT` (environment variable, seconds, default
+  600 — per chunk) and `max_retries=0`.
 - **`get_stt_error()`** (`@api.model`) — the reason speech-to-text cannot run,
   or `False`. Provider `whisper` without `whisper_api_url` →
-  `"Whisper API URL is not set!"`; any other provider without
-  `openai_api_key` → `"OpenAI key is not set!"`. Whisper does not need the
-  OpenAI key.
+  `"Whisper API URL is not set!"`; provider `nemotron` without
+  `nemotron_api_url` → `"Nemotron API URL is not set!"`; any other provider
+  without `openai_api_key` → `"OpenAI key is not set!"`. Neither self-hosted
+  provider needs the OpenAI key.
 - **`transcribe_audio(audio_file)`** (`@api.model`) — raises `ValidationError`
   with `get_stt_error()` when that is set. Otherwise calls
   `audio.transcriptions.create` with `response_format="verbose_json"`,
   `timestamp_granularities=["segment"]` and `file=audio_file` (anything the
   SDK accepts: an open file or a `(name, bytes, content_type)` tuple), and
-  returns the response. Provider `whisper`: the Whisper client, `model` =
+  returns the response. Provider `nemotron`: returns
+  `_transcribe_nemotron(audio_file)` instead. Provider `whisper`: the Whisper client, `model` =
   `whisper_model` (stripped) or `whisper-1`, and `language` = the stripped
   `whisper_language`, sent only when non-empty. Any other provider:
   `get_openai_client()` and `model="whisper-1"`, never a `language`.
-- **`action_test_whisper()`** — button **TEST CONNECTION** on the API Keys tab.
-  No URL → `ValidationError("Whisper API URL is not set!")`. Lists the server's
-  models with a 15-second timeout; any exception becomes
-  `ValidationError("Whisper server error: <message>")`. Success sends a
-  `connect_notify` to the current user, title "Whisper", text
-  "Whisper server is reachable. Models: <ids, comma-separated>", and returns
+- **`_transcribe_nemotron(audio_file)`** (`@api.model`) — the audio bytes
+  and content type come from the tuple, or `read()` of the file (no type). A
+  missing or `application/octet-stream` type counts as `audio/mpeg`; the
+  MIME type sent is `stt_utils.sniff_audio_mime(bytes, <that type without
+  parameters>)` — the content decides, because recordings are always saved
+  to a `.mp3` temporary file while S3 keeps WAV. Chunks =
+  `stt_utils.split_audio(bytes, mime, NEMOTRON_CHUNK_SECONDS,
+  NEMOTRON_OVERLAP_SECONDS)`, or the whole audio as one chunk starting at 0
+  when that is `None`. Each chunk in order goes to `_nemotron_chunk()` with
+  `model` = `nemotron_model` (stripped) or `nemotron-3.5-transcribe`, and
+  `prompt` = `nemotron_prompt` (stripped) or `NEMOTRON_DEFAULT_PROMPT` when
+  empty. The texts go through `stt_utils.stitch()`. Returns an object with
+  `segments` — one per chunk whose stitched text is non-empty, with `start`
+  and `end` = the chunk's window in seconds (`end` is `None` for unsplit
+  audio) and `text` = a space + the stitched text — and `text` = the
+  segment texts, stripped, joined by spaces. That is the verbose_json shape
+  the recording, voicemail and voice-message code reads.
+- **`_nemotron_chunk(client, model, prompt, data, mime, start, end)`** —
+  `chat.completions.create` with `model`, one user message whose content is
+  `[{"type": "text", "text": prompt}, {"type": "audio_url", "audio_url":
+  {"url": "data:<mime>;base64,<data>"}}]`, `temperature=0`,
+  `max_tokens=NEMOTRON_MAX_TOKENS` (2048), and
+  `extra_body={"chat_template_kwargs": {"enable_thinking": False}}`. An
+  `openai.BadRequestError` whose text contains "encoder cache" (the audio is
+  over the server's per-request limit) becomes `ValidationError("The audio is
+  too long for one Nemotron request, and only MP3 and PCM WAV audio can be
+  split: <error>")`; any other error propagates. `finish_reason == "length"`
+  → `ValidationError("Nemotron cut the transcript short at 2048 tokens (audio
+  from <start>s).")`, so a partial transcript is never stored. Returns the
+  message content, stripped (`""` when empty).
+- **`action_test_whisper()`** / **`action_test_nemotron()`** — the TEST
+  CONNECTION buttons on the API Keys tab; both call
+  `_test_stt_server(client, name)` with the Whisper or Nemotron client and the
+  name "Whisper" or "Nemotron". No client → `ValidationError("<name> API URL
+  is not set!")`. Lists the server's models with a 15-second timeout; any
+  exception becomes `ValidationError("<name> server error: <message>")`.
+  Success sends a `connect_notify` to the current user, title `<name>`, text
+  "<name> server is reachable. Models: <ids, comma-separated>", and returns
   `True`.
+
+Constants in `models/settings.py`: `NEMOTRON_CHUNK_SECONDS` = environment
+variable of that name, default 240 — the server embeds ~12.6 tokens per
+second of audio into a 4096-token encoder cache (~5.4 minutes);
+`NEMOTRON_OVERLAP_SECONDS` = 5; `NEMOTRON_MAX_TOKENS` = 2048 (240 s of fast
+speech is ~1,200 tokens, and audio plus output must fit the server's
+8,192-token context).
+
+### Audio chunking (`models/stt_utils.py`)
+
+Pure functions, no Odoo imports. Audio is cut without decoding it (the Odoo
+image has no ffmpeg).
+
+- **`sniff_audio_mime(data, fallback='application/octet-stream')`** — by magic
+  bytes: `RIFF`…`WAVE` → `audio/wav`; `ID3`, or a first byte `0xFF` with the
+  next byte's top three bits set → `audio/mpeg`; `OggS` → `audio/ogg`; `fLaC`
+  → `audio/flac`; `#!AMR` → `audio/amr`; `ftyp` at offset 4 → `audio/mp4`;
+  `1A 45 DF A3` → `audio/webm`; otherwise `fallback`.
+- **`mp3_frames(data)`** — `[(offset, length, seconds)]` of the MPEG Layer III
+  frames. Skips an ID3v2 tag (synchsafe size + 10, + 10 more with the footer
+  flag). Walks byte by byte to the next valid header (sync `0xFFE`, version
+  not reserved, layer III, bitrate index not 0/15, sample-rate index not 3) —
+  so an ID3v1 tag or garbage is skipped. Frame length = (144 for MPEG-1, 72
+  for MPEG-2/2.5) × bitrate / sample rate + padding bit; duration = (1152 or
+  576) / sample rate.
+- **Windows** (`_windows(total, chunk, overlap)`) — from 0, each `chunk +
+  overlap` seconds long, starting `chunk` seconds after the previous one. When
+  a window would end at or after `total − overlap`, it ends at `total` and is
+  the last: a tail no longer than the overlap joins the previous chunk instead
+  of becoming its own request.
+- **`split_mp3(data, chunk, overlap)`** — `None` without frames. Otherwise
+  `[(start, end, bytes)]`, one per window that contains a frame start; the
+  bytes run from the first frame starting at or after `start` to the end of
+  the last frame starting before `end`.
+- **`split_wav(data, chunk, overlap)`** — `None` when the stdlib `wave` module
+  cannot read the data (`wave.Error`/`EOFError`, e.g. compressed WAV) or it
+  has no frames. Otherwise one new PCM WAV per window, same channels, sample
+  width and rate, with sample frames `int(start × rate)` up to
+  `int(end × rate)`.
+- **`split_audio(data, mime, chunk, overlap)`** — `split_mp3` for
+  `audio/mpeg`, `split_wav` for `audio/wav`, else `None`.
+- **`stitch(texts)`** — for each pair of consecutive texts, compares the last
+  40 words of the earlier with the first 40 of the later, each word
+  lower-cased with non-word characters removed, and takes the longest common
+  run (`difflib.SequenceMatcher`, `autojunk=False`). When that run has at
+  least 3 words, the earlier text is cut where the run starts and the later
+  one is kept from where the run starts; otherwise both stay whole. Pairs are
+  processed in order on the already-cut texts. Returns the texts (words
+  re-joined by single spaces), possibly empty.
 
 `get_openai_client()` is unchanged and serves summaries, OpenAI transcription
 and chatter message generation.
@@ -486,7 +580,8 @@ SID or token → `None`. When Twilio redirects the download to its storage,
 - **`transcribe_recording(openai_api_key, summary_prompt)`** — the summary
   prompt is the caller user's Connect `summary_prompt`, else the called
   user's, else the one passed in. Downloads per the table above to a temporary
-  file (always removed). Over 26 214 400 bytes → `transcription_error` =
+  file (always removed). Over 26 214 400 bytes, unless the provider is
+  `nemotron` (it gets the audio in chunks) → `transcription_error` =
   "File exceeds the 25 MB transcription size limit." and nothing is sent.
   Otherwise `transcribe_audio()`; the transcript is one line per segment,
   `HH:MM:SS` of the segment start (truncated to whole seconds), a space, then
@@ -554,11 +649,16 @@ SID or token → `None`. When Twilio redirects the download to its storage,
 - **API Keys** tab: group "Self-hosted Whisper" (always visible) with
   `whisper_api_url` ("API URL", placeholder `http://192.168.1.10:9000/v1`),
   `display_whisper_api_key` ("API Key", password) and the TEST CONNECTION
-  button.
+  button (`action_test_whisper`); beside it group "Self-hosted Nemotron"
+  (always visible) with `nemotron_api_url` ("API URL", placeholder
+  `http://192.168.1.10:9001/v1`), `display_nemotron_api_key` ("API Key",
+  password) and TEST CONNECTION (`action_test_nemotron`).
 - **Transcription** tab, group "Speech-to-text": `transcript_provider` (always
   visible — it drives voicemail and voice messages too), `whisper_model`
   ("Model") and `whisper_language` ("Language", placeholder "Detected
   automatically") visible only when the provider is `whisper`,
+  `nemotron_model` ("Model") and `nemotron_prompt` ("Prompt") visible only
+  when the provider is `nemotron`,
   `transcript_calls`, `transcript_voice_message`. Group "Call Summary",
   visible when `transcript_calls` is on: a note that summaries are generated
   by OpenAI with the key on the API Keys tab, `summary_prompt`,

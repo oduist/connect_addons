@@ -75,6 +75,20 @@ The connection is plain HTTP unless your server provides HTTPS, so it carries
 the key and the call audio unencrypted: keep the server on a private network or
 a VPN such as Tailscale, never on the open internet.
 
+**Self-hosted Nemotron** — a server you run yourself with NVIDIA's Nemotron
+Transcribe model behind an OpenAI-compatible *chat* API (for example vLLM on
+port 9001). It is a different API from Whisper's, so it has its own fields.
+Fill them in only if you select it as the provider on the **Transcription**
+tab.
+
+| Field | Notes |
+| --- | --- |
+| **API URL** | The server's base URL including `/v1`, e.g. `http://192.168.1.10:9001/v1`. Odoo must be able to reach it. |
+| **API Key** | The server's bearer key. Stored write-only; leave it empty if the server needs none. |
+| **TEST CONNECTION** | Asks the server for its model list and shows the result, or the error. |
+
+The same advice about plain HTTP applies.
+
 ## Calls
 
 Tab **Calls**.
@@ -138,9 +152,10 @@ Tab **Transcription**, in three groups.
 
 | Setting | What it controls |
 | --- | --- |
-| **Transcript provider** | Which engine turns speech into text: **Open AI** (the default), **Self-hosted Whisper**, or **Elevenlabs** when that module is installed. |
-| **Model** | Self-hosted Whisper only. The model name the server expects; default `whisper-1`. |
+| **Transcript provider** | Which engine turns speech into text: **Open AI** (the default), **Self-hosted Whisper**, **Self-hosted Nemotron**, or **Elevenlabs** when that module is installed. |
+| **Model** | Self-hosted Whisper: the model name the server expects, default `whisper-1`. Self-hosted Nemotron: default `nemotron-3.5-transcribe`. |
 | **Language** | Self-hosted Whisper only. A language code (`en`, `fr`, `ru`...) when you know what language your calls are in. Leave it empty and the server detects it from the start of each recording. |
+| **Prompt** | Self-hosted Nemotron only. The instruction sent with the audio; the default asks for a plain transcript in the original language. Add your business name, product names and the names callers ask for — for example "It is a phone call to Mirage Pools, a pool and spa company" — and the model spells them right instead of guessing. Keep "Output only the transcript" in it. |
 | **Transcript calls** | Transcribe and summarise call recordings automatically, shortly after each recording arrives. Needs the OpenAI key, because the summary always comes from OpenAI. |
 | **Transcribe voice messages** | Transcribe incoming WhatsApp and MMS voice messages; the text becomes the message body. |
 
@@ -150,11 +165,12 @@ What each provider covers:
 | --- | --- | --- | --- |
 | Open AI | Open AI | Open AI | Open AI |
 | Self-hosted Whisper | Whisper | Whisper | Open AI |
+| Self-hosted Nemotron | Nemotron | Nemotron | Open AI |
 | Elevenlabs | Elevenlabs | Open AI | Open AI |
 
 Voicemail is transcribed shortly after it arrives whenever its provider is
-configured — the OpenAI key, or the Whisper URL when Whisper is selected; there
-is no separate switch for it. A recording, a voicemail or a message whose
+configured — the OpenAI key, or the server URL when Whisper or Nemotron is
+selected; there is no separate switch for it. A recording, a voicemail or a message whose
 transcription failed shows the reason in its *Transcription error* field.
 
 **Transcription runs in the background.** A new recording or voicemail, or a
@@ -191,14 +207,15 @@ automated traffic. Rules apply only to automatic transcription; the
 **Transcribe** button on a recording ignores them.
 
 Transcription costs money per call at OpenAI and Elevenlabs, and the rules are
-the lever that keeps that bill predictable. A self-hosted Whisper server costs
-nothing per call, but each summary is still an OpenAI request.
+the lever that keeps that bill predictable. A self-hosted Whisper or Nemotron
+server costs nothing per call, but each summary is still an OpenAI request.
 
 Limits worth knowing:
 
 - **Size.** One recording may be at most 25 MB. Recordings kept at Twilio are
   fetched as MP3, which fits calls of 50 minutes and more; recordings stored in
-  S3 are sent as stored.
+  S3 are sent as stored. Self-hosted Nemotron has no such limit: it gets the
+  audio in pieces.
 - **Protected media.** If your Twilio account enforces HTTP authentication on
   media URLs (the Voice and Messaging settings in the Twilio Console), Connect
   still downloads recordings, voicemail and voice messages: it signs in with
@@ -211,6 +228,21 @@ Limits worth knowing:
   first transcription waits while the model loads, which can take minutes. Odoo
   waits up to five minutes per transcription; the `WHISPER_HTTP_TIMEOUT`
   environment variable of the Odoo server (in seconds) changes that.
+- **Self-hosted Nemotron** takes about five minutes of audio per request, so
+  Connect sends recordings and voicemail in 4-minute pieces that overlap by
+  5 seconds, and joins the texts where they repeat each other. The transcript
+  therefore has a timestamp every 4 minutes, not one per sentence, and no
+  speaker labels. MP3 and WAV are split this way; any other format — for
+  example a WhatsApp voice note — goes in one request, and fails with a
+  "too long" error past about five minutes. Nemotron is much slower than
+  Whisper — about 6 to 10 times faster than real time, so a 20-minute call
+  takes 2 to 4 minutes — which the background queue absorbs; voice messages
+  are short enough to transcribe on receipt. Its first request after the
+  server restarts compiles for several minutes. Two environment variables of
+  the Odoo server change the defaults: `NEMOTRON_HTTP_TIMEOUT` (seconds Odoo
+  waits per piece, default 600) and `NEMOTRON_CHUNK_SECONDS` (length of a
+  piece, default 240). Raise the piece length only after raising the server's
+  audio limit (its encoder cache), or long calls fail.
 
 ## Chatter
 

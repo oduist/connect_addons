@@ -67,6 +67,14 @@
                       <field name="display_whisper_api_key" string="API Key" password="1"/>
                       <button colspan="2" name="action_test_whisper" type="object" string="TEST CONNECTION" class="btn btn-secondary"/>
                     </group>
+                    <group name="nemotron_api" string="Self-hosted Nemotron">
+                      <div colspan="2">
+                        <small><strong>A Nemotron speech-to-text server on your own network, behind an OpenAI-compatible chat API. Select it as the provider on the Transcription tab.</strong></small>
+                      </div>
+                      <field name="nemotron_api_url" string="API URL" placeholder="http://192.168.1.10:9001/v1"/>
+                      <field name="display_nemotron_api_key" string="API Key" password="1"/>
+                      <button colspan="2" name="action_test_nemotron" type="object" string="TEST CONNECTION" class="btn btn-secondary"/>
+                    </group>
                   </group>
                 </page>
                 <page name="calls" string="Calls">
@@ -141,6 +149,10 @@
                              invisible="transcript_provider != 'whisper'"/>
                       <field name="whisper_language" string="Language" placeholder="Detected automatically"
                              invisible="transcript_provider != 'whisper'"/>
+                      <field name="nemotron_model" string="Model"
+                             invisible="transcript_provider != 'nemotron'"/>
+                      <field name="nemotron_prompt" string="Prompt"
+                             invisible="transcript_provider != 'nemotron'"/>
                       <field name="transcript_calls"/>
                       <field name="transcript_voice_message" string="Transcribe Voice Messages"/>
                     </group>
