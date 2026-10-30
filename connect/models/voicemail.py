@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class Voicemail(models.Model):
     _name = 'connect.voicemail'
     _description = 'Voicemail'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'connect.transcription.queue']
     _order = 'id desc'
 
     call = fields.Many2one('connect.call', ondelete='set null')
@@ -121,15 +121,8 @@ class Voicemail(models.Model):
         if stt_error:
             logger.warning('%s Transcription will not be available.', stt_error)
             return recs
-        # A transcription failure must not lose the voicemail. A savepoint does
-        # that; a commit would also release the advisory locks serializing the
-        # call's webhooks (see connect.recording.create).
-        for rec in recs:
-            try:
-                with self.env.cr.savepoint():
-                    rec.transcribe_voicemail()
-            except Exception as e:
-                logger.exception('Voicemail transcript error: %s', e)
+        # The cron transcribes (see connect.recording.create).
+        recs.filtered('media_url')._queue_transcription()
         return recs
 
     @api.model
@@ -203,12 +196,22 @@ class Voicemail(models.Model):
             subtype_xmlid='mail.mt_comment')
 
     def get_transcript(self):
+        """Queue the voicemail for the transcription cron (Transcribe button)."""
         self.ensure_one()
+        self._check_transcription()
+        self._queue_transcription(requested_by=self.env.user)
+        return self._transcription_queued_action()
+
+    def _check_transcription(self):
         stt_error = self.env['connect.settings'].get_stt_error()
         if stt_error:
             raise ValidationError(stt_error)
         if not self.media_url:
             raise ValidationError('Voicemail is not available yet!')
+
+    def _transcribe_queued(self):
+        # The settings may have changed since the voicemail was queued.
+        self._check_transcription()
         self.transcribe_voicemail()
 
     def transcribe_voicemail(self):

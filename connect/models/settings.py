@@ -901,6 +901,30 @@ class Settings(models.Model):
             model=model, file=audio_file, response_format="verbose_json",
             timestamp_granularities=["segment"], **kwargs)
 
+    @api.model
+    def _cron_transcribe_queue(self):
+        """Transcribe the queued voicemails, then the queued recordings.
+
+        Oldest first, committing after each: one transcription can take
+        minutes, and a crash or time-out must not redo the finished ones.
+        Voicemails go first because someone is waiting to read them.
+        """
+        cron = self.env["ir.cron"]
+        queues = [
+            self.env[model].search([("transcription_pending", "=", True)], order="id")
+            for model in ("connect.voicemail", "connect.recording")
+        ]
+        cron._commit_progress(remaining=sum(len(queue) for queue in queues))
+        for queue in queues:
+            for rec_id in queue.ids:
+                # A fresh record per step: the commit invalidates the cache,
+                # and the queue may have changed meanwhile.
+                rec = queue.browse(rec_id).exists()
+                if rec and rec.transcription_pending:
+                    rec._run_queued_transcription()
+                if not cron._commit_progress(1):
+                    return
+
     def action_test_whisper(self):
         client = self.get_whisper_client()
         if not client:

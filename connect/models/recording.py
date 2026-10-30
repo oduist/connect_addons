@@ -34,7 +34,7 @@ def twilio_mp3_url(media_url):
 class Recording(models.Model):
     _name = 'connect.recording'
     _description = 'Recording'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'connect.transcription.queue']
     _rec_name = 'id'
     _order = 'id desc'
 
@@ -174,12 +174,32 @@ class Recording(models.Model):
             return {'transcription_error': str(e)}
 
     def get_transcript(self, fail_silently=False):
+        """Queue the recording for the transcription cron.
+
+        fail_silently is the automatic path from create(): it applies the
+        transcription rules and logs instead of raising. The Transcribe button
+        raises on bad settings, and its user is notified when the cron is done.
+        """
         self.ensure_one()
         # Check if the call matches the transcription rules.
         if fail_silently and not self.env['connect.transcription_rule'].sudo().check_rules(
                 self.call.caller, self.call.called):
             debug(self, 'No transcription rules matched.')
             return False
+        if not self._check_transcription(fail_silently):
+            return False
+        if fail_silently:
+            self._queue_transcription()
+            return True
+        self._queue_transcription(requested_by=self.env.user)
+        return self._transcription_queued_action()
+
+    def _check_transcription(self, fail_silently=False):
+        """True when the settings and the recording allow a transcription.
+
+        Otherwise raise a ValidationError or, with fail_silently, log it and
+        return False.
+        """
         openai_key = self.env['connect.settings'].sudo().get_param('openai_api_key')
         if not openai_key:
             if fail_silently:
@@ -195,10 +215,19 @@ class Recording(models.Model):
                 logger.warning('%s Transcription will not be available.', stt_error)
                 return False
             raise ValidationError(stt_error)
-        summary_prompt = self.env['connect.settings'].get_param('summary_prompt')
         if not self.media_url:
+            if fail_silently:
+                logger.warning('Recording %s has no media URL to transcribe.', self.id)
+                return False
             raise ValidationError('Recording is not available yet!')
-        self.transcribe_recording(openai_key, summary_prompt)
+        return True
+
+    def _transcribe_queued(self):
+        # The settings may have changed since the recording was queued.
+        self._check_transcription()
+        settings = self.env['connect.settings']
+        self.transcribe_recording(
+            settings.sudo().get_param('openai_api_key'), settings.get_param('summary_prompt'))
 
     def update_transcript(self, data):
         # Update transcription and also erase access token.
@@ -289,10 +318,10 @@ class Recording(models.Model):
         transcript_calls = self.env['connect.settings'].sudo().get_param('transcript_calls')
         recs = super(Recording, self.with_context(
             mail_create_nosubscribe=True, mail_create_nolog=True)).create(vals_list)
-        # A transcription failure must not break the recording, but that is a
-        # savepoint's job, not a commit's: committing mid-request released the
-        # transaction-scoped advisory locks serializing the call's webhooks
-        # and broke the webhook's atomicity (half-applied state on rollback).
+        # Only queue here: the cron transcribes, so the recording webhook
+        # neither waits on the speech-to-text server nor holds the call's
+        # advisory locks meanwhile. A queueing failure must not lose the
+        # recording.
         if transcript_calls:
             for rec in recs:
                 try:

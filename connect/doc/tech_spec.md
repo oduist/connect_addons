@@ -378,6 +378,62 @@ step and always use OpenAI.
 `get_openai_client()` is unchanged and serves summaries, OpenAI transcription
 and chatter message generation.
 
+### Transcription queue
+
+Recordings and voicemail are never transcribed inside the request that creates
+them or presses **Transcribe**: that request only queues the record, and a
+cron transcribes it. A Twilio webhook therefore never waits on a
+speech-to-text server, and never holds the call's advisory locks while one
+runs. Voice messages are not queued (see *Voice messages*).
+
+**`connect.transcription.queue`** — AbstractModel inherited by
+`connect.recording` and `connect.voicemail`.
+
+| Field | Type | Attributes |
+|---|---|---|
+| `transcription_pending` | Boolean | `readonly`, `index`, `copy=False`. Set while the record waits for the cron. |
+| `transcription_requested_by` | Many2one `res.users` | `readonly`, `copy=False`, `ondelete='set null'`. The user who pressed **Transcribe**, empty when queued automatically. |
+
+- **`_queue_transcription(requested_by=False)`** — on an empty recordset does
+  nothing. Otherwise writes `transcription_pending=True` and
+  `transcription_requested_by` = that user (or empty), then `_trigger()`s the
+  cron `connect.transcribe_queue` (sudo) so it runs right away. A missing cron
+  record is logged as a warning; the records stay queued.
+- **`_transcription_queued_action()`** — the value the **Transcribe** buttons
+  return: client action `display_notification`, title "Transcription",
+  message "Queued. You will be notified when the transcript is ready.", type
+  `info`, `next` = client action `soft_reload` so the form shows the queued
+  state.
+- **`_transcribe_queued()`** — abstract; each model transcribes one record
+  now (see *Call recordings* and *Voicemail*).
+- **`_run_queued_transcription()`** (`ensure_one`) — remembers
+  `transcription_requested_by`, then runs `_transcribe_queued()` inside a
+  savepoint. An exception rolls the savepoint back, is logged, and its message
+  is written to `transcription_error`. In every case the record leaves the
+  queue (`transcription_pending=False`, `transcription_requested_by` empty),
+  so a failing record is never retried by itself. Then, when someone asked
+  for it, a `connect_notify` to that user: on error title
+  "Transcription failed", message `"<model description> <id>: <transcription_error>"`,
+  `warning=True`; otherwise title "Transcription", message
+  `"<model description> <id>: the transcript is ready."` (descriptions are
+  "Recording" and "Voicemail").
+
+**Cron `connect.transcribe_queue`** (`data/ir_cron.xml`, `noupdate`) — name
+"Connect: transcribe queued audio", model `connect.settings`, code
+`model._cron_transcribe_queue()`, every 10 minutes, active. The interval is
+only a backstop: every queued record triggers it. It needs Odoo cron workers
+(`max_cron_threads` ≥ 1); without them nothing is ever transcribed.
+
+**`_cron_transcribe_queue()`** (`@api.model` on `connect.settings`) — reads
+the pending voicemails, then the pending recordings, each in id order, and
+reports their total as the cron's remaining work
+(`ir.cron._commit_progress(remaining=…)`). Voicemails come first because
+someone is waiting to read them. For each id: re-browse it; when it still
+exists and is still pending, `_run_queued_transcription()`; then
+`_commit_progress(1)` (commit). When that reports no time left, stop; the
+cron framework re-runs the job for the rest. One transcription at a time per
+database: a cron job never runs concurrently with itself.
+
 ### Audio download
 
 `twilio_mp3_url(media_url)` (module function in `models/recording.py`): a URL
@@ -409,15 +465,24 @@ SID or token → `None`. When Twilio redirects the download to its storage,
 ### Call recordings
 
 - **`get_transcript(fail_silently=False)`** — the **Transcribe** button
-  (`fail_silently=False`) and `create()` (`fail_silently=True`). In order:
-  with `fail_silently`, return `False` when the transcription rules do not
-  match the call (see `check_rules` below); no `openai_api_key` → warning +
-  `False`, or
+  (`fail_silently=False`) and `create()` (`fail_silently=True`). It only
+  queues. With `fail_silently`, return `False` when the transcription rules
+  do not match the call (see `check_rules` below). Then
+  `_check_transcription(fail_silently)`; when that is falsy return `False`.
+  With `fail_silently`: `_queue_transcription()` and return `True`. Without:
+  `_queue_transcription(requested_by=env.user)` and return
+  `_transcription_queued_action()`.
+- **`_check_transcription(fail_silently=False)`** — in order: no
+  `openai_api_key` → warning + `False`, or
   `ValidationError("OpenAI key is not set!")` (the summary needs it, whatever
   the provider); `get_stt_error()` set → warning + `False`, or
-  `ValidationError(<that message>)`; no `media_url` →
-  `ValidationError("Recording is not available yet!")`; then
-  `transcribe_recording()`.
+  `ValidationError(<that message>)`; no `media_url` → warning + `False`, or
+  `ValidationError("Recording is not available yet!")`; else `True`.
+- **`_transcribe_queued()`** — what the cron runs:
+  `_check_transcription()` again (raising — the settings may have changed
+  since the recording was queued), then
+  `transcribe_recording(openai_api_key, summary_prompt)` with both read from
+  the settings at that moment.
 - **`transcribe_recording(openai_api_key, summary_prompt)`** — the summary
   prompt is the caller user's Connect `summary_prompt`, else the called
   user's, else the one passed in. Downloads per the table above to a temporary
@@ -431,8 +496,8 @@ SID or token → `None`. When Twilio redirects the download to its storage,
   in all cases.
 - `create()` (unless context `skip_transcription`): when `transcript_calls` is
   on, `get_transcript(fail_silently=True)` per new recording, each inside a
-  savepoint — a failure must not lose the recording, and a commit would
-  release the advisory locks that serialize the call's webhooks.
+  savepoint with exceptions logged — a queueing failure must not lose the
+  recording. No download or transcription happens in `create()`.
 - **`connect.transcription_rule`** (`_order = 'id'`): `settings`
   (Many2one `connect.settings`, required, default `1`), `calling_number` and
   `called_number` (Char, required) — Python regular expressions.
@@ -448,13 +513,17 @@ SID or token → `None`. When Twilio redirects the download to its storage,
 ### Voicemail
 
 - `create()` (unless context `skip_transcription`): when `get_stt_error()` is
-  set, log a warning and stop. Otherwise `transcribe_voicemail()` per new
-  voicemail, each inside a savepoint, exceptions logged. There is no
-  `transcript_calls`-style switch: voicemail is transcribed whenever its
-  provider is configured.
-- **`get_transcript()`** — the **Transcribe** button. `get_stt_error()` set →
+  set, log a warning and stop. Otherwise `_queue_transcription()` on the new
+  voicemails that have a `media_url`. There is no `transcript_calls`-style
+  switch: voicemail is transcribed whenever its provider is configured.
+- **`get_transcript()`** — the **Transcribe** button.
+  `_check_transcription()`, then
+  `_queue_transcription(requested_by=env.user)`; returns
+  `_transcription_queued_action()`.
+- **`_check_transcription()`** — `get_stt_error()` set →
   `ValidationError(<that message>)`; no `media_url` →
-  `ValidationError("Voicemail is not available yet!")`; then
+  `ValidationError("Voicemail is not available yet!")`.
+- **`_transcribe_queued()`** — `_check_transcription()` again, then
   `transcribe_voicemail()`.
 - **`transcribe_voicemail()`** (`ensure_one`) — downloads to a temporary file
   (always removed), `transcribe_audio()`, `transcript` = the segment texts
@@ -494,3 +563,11 @@ SID or token → `None`. When Twilio redirects the download to its storage,
   visible when `transcript_calls` is on: a note that summaries are generated
   by OpenAI with the key on the API Keys tab, `summary_prompt`,
   `register_summary`. Group "Transcribe Rules" as before.
+
+### Recording and voicemail forms
+
+The **Transcribe** header button is invisible while `transcription_pending`
+is set. At the top of the sheet, an `alert alert-info` block (`role="status"`)
+visible only while `transcription_pending` is set reads "Transcription queued.
+The transcript appears on the Transcript tab when it is ready."
+`transcription_pending` is in the view, invisible, for that modifier.

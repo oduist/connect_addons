@@ -141,7 +141,7 @@ Tab **Transcription**, in three groups.
 | **Transcript provider** | Which engine turns speech into text: **Open AI** (the default), **Self-hosted Whisper**, or **Elevenlabs** when that module is installed. |
 | **Model** | Self-hosted Whisper only. The model name the server expects; default `whisper-1`. |
 | **Language** | Self-hosted Whisper only. A language code (`en`, `fr`, `ru`...) when you know what language your calls are in. Leave it empty and the server detects it from the start of each recording. |
-| **Transcript calls** | Transcribe and summarise call recordings automatically, as soon as each recording arrives. Needs the OpenAI key, because the summary always comes from OpenAI. |
+| **Transcript calls** | Transcribe and summarise call recordings automatically, shortly after each recording arrives. Needs the OpenAI key, because the summary always comes from OpenAI. |
 | **Transcribe voice messages** | Transcribe incoming WhatsApp and MMS voice messages; the text becomes the message body. |
 
 What each provider covers:
@@ -152,10 +152,23 @@ What each provider covers:
 | Self-hosted Whisper | Whisper | Whisper | Open AI |
 | Elevenlabs | Elevenlabs | Open AI | Open AI |
 
-Voicemail is transcribed as soon as it arrives whenever its provider is
+Voicemail is transcribed shortly after it arrives whenever its provider is
 configured — the OpenAI key, or the Whisper URL when Whisper is selected; there
 is no separate switch for it. A recording, a voicemail or a message whose
 transcription failed shows the reason in its *Transcription error* field.
+
+**Transcription runs in the background.** A new recording or voicemail, or a
+press of **Transcribe**, only puts it in a queue; the scheduled action
+**Connect: transcribe queued audio** (Settings → Technical → Scheduled
+Actions) works through that queue right away, one item at a time, voicemail
+before recordings. Until then the record shows *Transcription queued*. A user
+who pressed **Transcribe** gets a notification when the transcript is ready
+or failed. This needs Odoo's cron workers — `max_cron_threads` of at least 1
+in the Odoo configuration (the Odoo default is 2). With no cron workers, or
+with that scheduled action archived, nothing is transcribed and records stay
+queued. Its 10-minute interval is only a safety net; there is no need to
+shorten it. Voice messages are the exception: they are still transcribed
+while the message is received, because the text becomes the message body.
 
 **Call Summary** — shown when *Transcript calls* is on.
 

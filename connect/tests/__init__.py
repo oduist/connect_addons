@@ -14,3 +14,4 @@ from . import test_exten
 from . import test_sms_composer
 from . import test_transfer_handover
 from . import test_whisper_transcription
+from . import test_transcription_queue

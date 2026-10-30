@@ -41,9 +41,14 @@
                 <header>
                     <button name="mark_listened" type="object" string="Mark as Listened"
                             invisible="not is_new"/>
-                    <button name="get_transcript" type="object" string="Transcribe"/>
+                    <button name="get_transcript" type="object" string="Transcribe"
+                            invisible="transcription_pending"/>
                 </header>
                 <sheet>
+                <field name="transcription_pending" invisible="1"/>
+                <div class="alert alert-info" role="status" invisible="not transcription_pending">
+                    Transcription queued. The transcript appears on the Transcript tab when it is ready.
+                </div>
                 <notebook>
                     <page name="info" string="Info">
                     <group>

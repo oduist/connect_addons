@@ -40,10 +40,15 @@
         <field name="arch" type="xml">
             <form edit="false" create="false">
                 <header>
-                    <button name="get_transcript" type="object" string="Transcribe"/>
+                    <button name="get_transcript" type="object" string="Transcribe"
+                            invisible="transcription_pending"/>
                     <button name="sync" type="object" string="Sync"/>
                 </header>
                 <sheet>
+                <field name="transcription_pending" invisible="1"/>
+                <div class="alert alert-info" role="status" invisible="not transcription_pending">
+                    Transcription queued. The transcript appears on the Transcript tab when it is ready.
+                </div>
                 <notebook>
                     <page string="Info">
                     <group>

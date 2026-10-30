@@ -48,6 +48,17 @@ class TestWhisperTranscription(TransactionCase):
         ]:
             cls.settings.set_param(param, value)
 
+    def setUp(self):
+        super().setUp()
+        # Outside a cron run _commit_progress commits, which a test cursor forbids.
+        self.patch(self.registry['ir.cron'], '_commit_progress',
+                   lambda cron_model, processed=0, remaining=None, **kwargs: 1)
+
+    def _transcribe(self, record):
+        """Press Transcribe, then run the queue as the cron does."""
+        record.get_transcript()
+        self.settings._cron_transcribe_queue()
+
     def _patch_clients(self):
         """Patch openai.OpenAI; return {'whisper'|'openai': [(kwargs, client)]}."""
         clients = {}
@@ -121,7 +132,7 @@ class TestWhisperTranscription(TransactionCase):
         recording = self._recording()
         with patch('odoo.addons.connect.models.recording.requests.get',
                    side_effect=fake_download) as download:
-            recording.get_transcript()
+            self._transcribe(recording)
         self.assertEqual(download.call_args.args[0], TWILIO_RECORDING + '.mp3')
         self.assertEqual(download.call_args.kwargs['auth'], TWILIO_AUTH)
         whisper_kwargs = clients['whisper'][0][0]
@@ -145,7 +156,7 @@ class TestWhisperTranscription(TransactionCase):
         clients = self._patch_clients()
         with patch('odoo.addons.connect.models.recording.requests.get',
                    side_effect=fake_download):
-            self._recording().get_transcript()
+            self._transcribe(self._recording())
         [transcribe] = self._calls(clients, 'whisper', 'transcribe')
         self.assertEqual(transcribe.kwargs['language'], 'fr')
 
@@ -155,7 +166,7 @@ class TestWhisperTranscription(TransactionCase):
         recording = self._recording()
         with patch('odoo.addons.connect.models.recording.requests.get',
                    side_effect=fake_download):
-            recording.get_transcript()
+            self._transcribe(recording)
         self.assertNotIn('whisper', clients)
         [transcribe] = self._calls(clients, 'openai', 'transcribe')
         self.assertEqual(transcribe.kwargs['model'], 'whisper-1')
@@ -183,6 +194,9 @@ class TestWhisperTranscription(TransactionCase):
             voicemail = self.env['connect.voicemail'].sudo().create({
                 'media_url': TWILIO_RECORDING, 'duration': 24,
             })
+            self.assertTrue(voicemail.transcription_pending)
+            download.assert_not_called()
+            self.settings._cron_transcribe_queue()
         self.assertEqual(download.call_args.args[0], TWILIO_RECORDING + '.mp3')
         self.assertEqual(download.call_args.kwargs['auth'], TWILIO_AUTH)
         self.assertNotIn('openai', clients)
