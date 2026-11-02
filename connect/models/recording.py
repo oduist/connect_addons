@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import re
 import requests
 from tempfile import NamedTemporaryFile
 from odoo import fields, models, api, release
@@ -13,11 +14,27 @@ from . import s3_utils
 
 logger = logging.getLogger(__name__)
 
+TWILIO_RECORDING_URL = re.compile(
+    r'^https://api\.([\w-]+\.)*twilio\.com/.+/Recordings/RE[0-9a-fA-F]+$')
+
+
+def twilio_mp3_url(media_url):
+    """URL of the MP3 rendition of a Twilio-hosted recording.
+
+    Twilio serves a recording as WAV unless the URL asks for '.mp3'. The MP3 is
+    a quarter of the size, which keeps calls of 50 minutes and more under the
+    25 MB speech-to-text upload limit (the WAV crosses it at ~13 minutes).
+    Any other URL is returned unchanged.
+    """
+    if media_url and TWILIO_RECORDING_URL.match(media_url):
+        return media_url + '.mp3'
+    return media_url
+
 
 class Recording(models.Model):
     _name = 'connect.recording'
     _description = 'Recording'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'connect.transcription.queue']
     _rec_name = 'id'
     _order = 'id desc'
 
@@ -83,7 +100,6 @@ class Recording(models.Model):
         result = {}
         temp_file_path = None
         try:
-            client = self.env['connect.settings'].get_openai_client()
             settings = self.env["connect.settings"].sudo()
             bucket = settings.get_param("aws_s3_bucket_name")
             if settings.get_param("s3_recordings_enabled") and s3_utils.is_s3_media_url(self.media_url, bucket):
@@ -92,7 +108,9 @@ class Recording(models.Model):
                     settings._get_s3_client().download_fileobj(bucket, key, temp_file)
                     temp_file_path = temp_file.name
             else:
-                response = requests.get(self.media_url, stream=True)
+                response = requests.get(
+                    twilio_mp3_url(self.media_url), stream=True,
+                    auth=settings.get_twilio_media_auth(self.media_url))
                 response.raise_for_status()
                 with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
                     for chunk in response.iter_content(chunk_size=8192):
@@ -100,21 +118,22 @@ class Recording(models.Model):
                             temp_file.write(chunk)
                     temp_file_path = temp_file.name
             file_size = os.path.getsize(temp_file_path)
-            if file_size > 26214400:
-                error_msg = 'File exceeds size limit (26MB). Please use the Elevenlabs module for larger files.'
+            # Nemotron gets the audio in 20-minute chunks; its server takes 100 MiB.
+            if file_size > 26214400 and settings.get_param('transcript_provider') != 'nemotron':
+                error_msg = 'File exceeds the 25 MB transcription size limit.'
                 logger.error(error_msg)
                 result['transcription_error'] = error_msg
                 return
             with open(temp_file_path, 'rb') as audio_file:
-                transcript = client.audio.transcriptions.create(
-                    model="whisper-1", file=audio_file,
-                    response_format='verbose_json', timestamp_granularities=["segment"])
+                transcript = self.env['connect.settings'].transcribe_audio(audio_file)
             segments = ''
             for s in transcript.segments:
                 seconds = int(s.start)
                 ts = f"{int(seconds // 3600):02d}:{int((seconds % 3600) // 60):02d}:{int(seconds % 60):02d}"
                 segments += '{} {}\n'.format(ts, s.text)
             result['transcript'] = segments
+            # Summaries always come from OpenAI, whichever engine transcribed.
+            client = self.env['connect.settings'].get_openai_client()
             result.update(self.make_summary(client, summary_prompt, result['transcript']))
             result['transcription_error'] = False
         except Exception as e:
@@ -156,12 +175,32 @@ class Recording(models.Model):
             return {'transcription_error': str(e)}
 
     def get_transcript(self, fail_silently=False):
+        """Queue the recording for the transcription cron.
+
+        fail_silently is the automatic path from create(): it applies the
+        transcription rules and logs instead of raising. The Transcribe button
+        raises on bad settings, and its user is notified when the cron is done.
+        """
         self.ensure_one()
         # Check if the call matches the transcription rules.
         if fail_silently and not self.env['connect.transcription_rule'].sudo().check_rules(
                 self.call.caller, self.call.called):
             debug(self, 'No transcription rules matched.')
             return False
+        if not self._check_transcription(fail_silently):
+            return False
+        if fail_silently:
+            self._queue_transcription()
+            return True
+        self._queue_transcription(requested_by=self.env.user)
+        return self._transcription_queued_action()
+
+    def _check_transcription(self, fail_silently=False):
+        """True when the settings and the recording allow a transcription.
+
+        Otherwise raise a ValidationError or, with fail_silently, log it and
+        return False.
+        """
         openai_key = self.env['connect.settings'].sudo().get_param('openai_api_key')
         if not openai_key:
             if fail_silently:
@@ -169,10 +208,27 @@ class Recording(models.Model):
                 return False
             else:
                 raise ValidationError('OpenAI key is not set!')
-        summary_prompt = self.env['connect.settings'].get_param('summary_prompt')
+        # The OpenAI key is needed for the summary; the transcript itself may
+        # come from another provider with settings of its own.
+        stt_error = self.env['connect.settings'].get_stt_error()
+        if stt_error:
+            if fail_silently:
+                logger.warning('%s Transcription will not be available.', stt_error)
+                return False
+            raise ValidationError(stt_error)
         if not self.media_url:
+            if fail_silently:
+                logger.warning('Recording %s has no media URL to transcribe.', self.id)
+                return False
             raise ValidationError('Recording is not available yet!')
-        self.transcribe_recording(openai_key, summary_prompt)
+        return True
+
+    def _transcribe_queued(self):
+        # The settings may have changed since the recording was queued.
+        self._check_transcription()
+        settings = self.env['connect.settings']
+        self.transcribe_recording(
+            settings.sudo().get_param('openai_api_key'), settings.get_param('summary_prompt'))
 
     def update_transcript(self, data):
         # Update transcription and also erase access token.
@@ -263,10 +319,10 @@ class Recording(models.Model):
         transcript_calls = self.env['connect.settings'].sudo().get_param('transcript_calls')
         recs = super(Recording, self.with_context(
             mail_create_nosubscribe=True, mail_create_nolog=True)).create(vals_list)
-        # A transcription failure must not break the recording, but that is a
-        # savepoint's job, not a commit's: committing mid-request released the
-        # transaction-scoped advisory locks serializing the call's webhooks
-        # and broke the webhook's atomicity (half-applied state on rollback).
+        # Only queue here: the cron transcribes, so the recording webhook
+        # neither waits on the speech-to-text server nor holds the call's
+        # advisory locks meanwhile. A queueing failure must not lose the
+        # recording.
         if transcript_calls:
             for rec in recs:
                 try:

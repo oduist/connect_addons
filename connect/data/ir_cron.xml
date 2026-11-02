@@ -30,5 +30,17 @@
             <field name="active">True</field>
         </record>
 
+        <!-- Started right away by every queued transcription; the interval
+             is only a backstop. -->
+        <record id="transcribe_queue" model="ir.cron">
+            <field name="name">Connect: transcribe queued audio</field>
+            <field name="interval_number">10</field>
+            <field name="interval_type">minutes</field>
+            <field name="model_id" ref="model_connect_settings"/>
+            <field name="code">model._cron_transcribe_queue()</field>
+            <field name="state">code</field>
+            <field name="active">True</field>
+        </record>
+
     </data>
 </odoo>

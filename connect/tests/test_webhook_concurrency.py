@@ -32,6 +32,7 @@ class TestWebhookConcurrency(TransactionCase):
         # The staging template database carries a real OpenAI key; make sure
         # nothing in these tests can reach for it.
         cls.env['connect.settings'].set_param('openai_api_key', False)
+        cls.env['connect.settings'].set_param('transcript_provider', 'openai')
         cls.users = cls.env['res.users']
         with patch.object(type(cls.env['connect.settings']), 'get_client',
                           return_value=MagicMock()):

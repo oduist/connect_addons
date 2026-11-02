@@ -6,11 +6,14 @@ Reverse-buildable contract for the module. Rules and shapes, not source.
 
 This spec covers the **softphone** — the web phone in the systray, the
 components it is built from, the ORM methods it calls and the TwiML parameters
-it reads — plus the directory lookup that serves it.
+it reads — plus the directory lookup that serves it, and **speech-to-text**:
+how recordings, voicemail and voice messages are turned into text, by which
+provider, and which recorded calls the transcription rules let through.
 
 The rest of `connect` (call and channel ledger, call flows, TwiML, recordings
-and S3, voicemail, transcription, SMS/WhatsApp, webhooks, settings) is **not
-yet specced**. Anything outside the sections below still has to be read from
+and S3, the rest of voicemail and transcription — summaries beyond who makes
+them, the external upload endpoint — SMS/WhatsApp,
+webhooks, the other settings) is **not yet specced**. Anything outside the sections below still has to be read from
 the code. Extend this file as those surfaces are touched; do not assume
 silence here means "no behaviour".
 
@@ -309,3 +312,383 @@ globs would otherwise sweep them in and darken the panel for everyone.
 - It must **not** swallow a denied microphone, which is also a
   `NotAllowedError`: that is the difference between the ringtone coming out of
   the wrong speaker and nobody being able to hear you.
+
+## Speech-to-text
+
+Three kinds of audio become text: call recordings (`connect.recording`),
+voicemail (`connect.voicemail`) and incoming WhatsApp/MMS voice messages
+(`connect.message`). All three go through one dispatcher on `connect.settings`,
+so the selected provider applies to all of them. Call summaries are a separate
+step and always use OpenAI.
+
+### Settings fields (`connect.settings`)
+
+| Field | Type | Attributes |
+|---|---|---|
+| `transcript_provider` | Selection | `openai` "Open AI", `whisper` "Self-hosted Whisper", `nemotron` "Self-hosted Nemotron"; `connect_elevenlabs` adds `elevenlabs`. Default `openai`, required. |
+| `whisper_api_url` | Char | Label "Whisper API URL". OpenAI-compatible base URL including `/v1`. |
+| `whisper_api_key` | Char | `groups="base.group_erp_manager"`. Written only through `display_whisper_api_key`. |
+| `display_whisper_api_key` | Char | In `PROTECTED_FIELDS`: on `write`, the value is moved to `whisper_api_key` (sudo) and the display field is overwritten with `*` × its length — the same rule as every other secret in settings. |
+| `whisper_model` | Char | Label "Whisper Model", default `whisper-1`. |
+| `whisper_language` | Char | Label "Whisper Language". Empty = let the server detect it. |
+| `whisper_prompt` | Text | Label "Whisper Prompt". No default. Text the model treats as preceding the audio (spelling and vocabulary hint). |
+| `nemotron_api_url` | Char | Label "Nemotron API URL". OpenAI-compatible base URL including `/v1`. |
+| `nemotron_api_key` | Char | `groups="base.group_erp_manager"`. Written only through `display_nemotron_api_key`. |
+| `display_nemotron_api_key` | Char | In `PROTECTED_FIELDS`, same rule as `display_whisper_api_key`. |
+| `nemotron_model` | Char | Label "Nemotron Model", default `nemotron-3.5-transcribe`. |
+| `nemotron_prompt` | Text | Label "Nemotron Prompt", default `NEMOTRON_DEFAULT_PROMPT` = "Transcribe the following audio. Output only the transcript in the original language." |
+
+`openai_api_key`, `transcript_calls`, `transcript_voice_message`,
+`summary_prompt` and `register_summary` predate this section and are unchanged.
+
+### Provider resolution
+
+| `transcript_provider` | Recordings | Voicemail, voice messages | Summary |
+|---|---|---|---|
+| `openai` | OpenAI | OpenAI | OpenAI |
+| `whisper` | Whisper server | Whisper server | OpenAI |
+| `nemotron` | Nemotron server | Nemotron server | OpenAI |
+| `elevenlabs` | ElevenLabs (`connect_elevenlabs` overrides `transcribe_recording`) | OpenAI | OpenAI |
+
+### Methods on `connect.settings`
+
+- **`get_whisper_client()`** (`@api.model`) — `False` when `whisper_api_url`
+  is empty. Otherwise an `openai.OpenAI` client with `base_url` = the URL
+  (stripped), `api_key` = `whisper_api_key` or the literal `"none"` (the SDK
+  rejects an empty key; a server without auth ignores it), `timeout` =
+  `WHISPER_HTTP_TIMEOUT` and `max_retries=0` — a retry would resend the whole
+  recording to a server most likely still busy with the first attempt.
+  `WHISPER_HTTP_TIMEOUT` is the environment variable of that name, in seconds,
+  default 300: a cold server loads its model before the first transcription.
+- **`get_nemotron_client()`** (`@api.model`) — `False` when
+  `nemotron_api_url` is empty. Otherwise an `openai.OpenAI` client with
+  `base_url` = the URL (stripped), `api_key` = `nemotron_api_key` or `"none"`,
+  `timeout` = `NEMOTRON_HTTP_TIMEOUT` (environment variable, seconds, default
+  1200 — per chunk) and `max_retries=0`.
+- **`get_stt_error()`** (`@api.model`) — the reason speech-to-text cannot run,
+  or `False`. Provider `whisper` without `whisper_api_url` →
+  `"Whisper API URL is not set!"`; provider `nemotron` without
+  `nemotron_api_url` → `"Nemotron API URL is not set!"`; any other provider
+  without `openai_api_key` → `"OpenAI key is not set!"`. Neither self-hosted
+  provider needs the OpenAI key.
+- **`transcribe_audio(audio_file)`** (`@api.model`) — raises `ValidationError`
+  with `get_stt_error()` when that is set. Otherwise calls
+  `audio.transcriptions.create` with `response_format="verbose_json"`,
+  `timestamp_granularities=["segment"]` and `file=audio_file` (anything the
+  SDK accepts: an open file or a `(name, bytes, content_type)` tuple), and
+  returns the response. Provider `nemotron`: returns
+  `_transcribe_nemotron(audio_file)` instead. Provider `whisper`: the Whisper client, `model` =
+  `whisper_model` (stripped) or `whisper-1`, `language` = the stripped
+  `whisper_language`, and `prompt` = the stripped `whisper_prompt`, each sent
+  only when non-empty. Any other provider:
+  `get_openai_client()` and `model="whisper-1"`, never a `language` or `prompt`.
+- **`_transcribe_nemotron(audio_file)`** (`@api.model`) — the audio bytes
+  and content type come from the tuple, or `read()` of the file (no type). A
+  missing or `application/octet-stream` type counts as `audio/mpeg`; the
+  MIME type sent is `stt_utils.sniff_audio_mime(bytes, <that type without
+  parameters>)` — the content decides, because recordings are always saved
+  to a `.mp3` temporary file while S3 keeps WAV. Chunks =
+  `stt_utils.split_audio(bytes, mime, NEMOTRON_CHUNK_SECONDS,
+  NEMOTRON_OVERLAP_SECONDS)`, or the whole audio as one chunk starting at 0
+  when that is `None`. Each chunk in order goes to `_nemotron_chunk()` with
+  `model` = `nemotron_model` (stripped) or `nemotron-3.5-transcribe`, and
+  `prompt` = `nemotron_prompt` (stripped) or `NEMOTRON_DEFAULT_PROMPT` when
+  empty. The texts go through `stt_utils.stitch()`. Returns an object with
+  `segments` — one per chunk whose stitched text is non-empty, with `start`
+  and `end` = the chunk's window in seconds (`end` is `None` for unsplit
+  audio) and `text` = a space + the stitched text — and `text` = the
+  segment texts, stripped, joined by spaces. That is the verbose_json shape
+  the recording, voicemail and voice-message code reads.
+- **`_nemotron_chunk(client, model, prompt, data, mime, start, end)`** —
+  `chat.completions.create` with `model`, one user message whose content is
+  `[{"type": "text", "text": prompt}, {"type": "audio_url", "audio_url":
+  {"url": "data:<mime>;base64,<data>"}}]`, `temperature=0`,
+  `max_tokens=NEMOTRON_MAX_TOKENS` (8192), and
+  `extra_body={"chat_template_kwargs": {"enable_thinking": False}}`. An
+  `openai.BadRequestError` whose text matches `NEMOTRON_TOO_LONG` (the audio
+  is over one of the server's per-request limits) becomes
+  `ValidationError("The audio is too long for one Nemotron request, and only
+  MP3 and PCM WAV audio can be split: <error>")`; any other error propagates.
+  `finish_reason == "length"` → `ValidationError("Nemotron cut the transcript
+  short at 8192 tokens (audio from <start>s).")`, so a partial transcript is
+  never stored. Returns the message content, stripped (`""` when empty).
+- **`action_test_whisper()`** / **`action_test_nemotron()`** — the TEST
+  CONNECTION buttons on the API Keys tab; both call
+  `_test_stt_server(client, name)` with the Whisper or Nemotron client and the
+  name "Whisper" or "Nemotron". No client → `ValidationError("<name> API URL
+  is not set!")`. Lists the server's models with a 15-second timeout; any
+  exception becomes `ValidationError("<name> server error: <message>")`.
+  Success sends a `connect_notify` to the current user, title `<name>`, text
+  "<name> server is reachable. Models: <ids, comma-separated>", and returns
+  `True`.
+
+Constants in `models/settings.py`, sized for the reference server (vLLM,
+32,768-token context, at most 1,800 s and 256 MiB of decoded PCM per request):
+
+- `NEMOTRON_CHUNK_SECONDS` = environment variable of that name, default 1200.
+  Audio costs ~12.6 tokens per second and shares the context with the prompt
+  and the transcript, and the server decodes Twilio's 22.05 kHz stereo MP3 to
+  ~172 KiB of PCM per second — 256 MiB at ~25 minutes. 20 minutes plus the
+  overlap (~15,200 audio tokens, ~203 MiB) stays inside every limit with room
+  for dense speech. A recording up to 1,210 s therefore goes in one request.
+- `NEMOTRON_OVERLAP_SECONDS` = 5.
+- `NEMOTRON_MAX_TOKENS` = 8192 — 20 minutes of dense speech is ~6,700 tokens,
+  and even 1,800 s of audio (~22,600 tokens) plus 8,192 fits the context.
+- `NEMOTRON_HTTP_TIMEOUT` — see `get_nemotron_client()`.
+- `NEMOTRON_DEFAULT_PROMPT` — see `nemotron_prompt`. Not NVIDIA's
+  "Audio transcription. Language: as spoken. Wording: verbatim…"
+  instruction: on phone calls that one wrote every backchannel, spelled names
+  letter by letter and sometimes added speaker tags (`<spk:0>`).
+- `NEMOTRON_TOO_LONG` = regular expression `maximum allowed duration|MiB of
+  PCM|encoder cache` — the server's refusals for audio over its duration
+  limit ("Audio exceeds maximum allowed duration of 1800s…"), over its
+  decoded-size guard ("Audio would allocate 311 MiB of PCM…") or, on older
+  setups, over its encoder cache ("…exceeds the pre-allocated encoder cache
+  size 4096").
+
+### Audio chunking (`models/stt_utils.py`)
+
+Pure functions, no Odoo imports. Audio is cut without decoding it (the Odoo
+image has no ffmpeg).
+
+- **`sniff_audio_mime(data, fallback='application/octet-stream')`** — by magic
+  bytes: `RIFF`…`WAVE` → `audio/wav`; `ID3`, or a first byte `0xFF` with the
+  next byte's top three bits set → `audio/mpeg`; `OggS` → `audio/ogg`; `fLaC`
+  → `audio/flac`; `#!AMR` → `audio/amr`; `ftyp` at offset 4 → `audio/mp4`;
+  `1A 45 DF A3` → `audio/webm`; otherwise `fallback`.
+- **`mp3_frames(data)`** — `[(offset, length, seconds)]` of the MPEG Layer III
+  frames. Skips an ID3v2 tag (synchsafe size + 10, + 10 more with the footer
+  flag). Walks byte by byte to the next valid header (sync `0xFFE`, version
+  not reserved, layer III, bitrate index not 0/15, sample-rate index not 3) —
+  so an ID3v1 tag or garbage is skipped. Frame length = (144 for MPEG-1, 72
+  for MPEG-2/2.5) × bitrate / sample rate + padding bit; duration = (1152 or
+  576) / sample rate.
+- **Windows** (`_windows(total, chunk, overlap)`) — from 0, each `chunk +
+  overlap` seconds long, starting `chunk` seconds after the previous one. When
+  a window would end at or after `total − overlap`, it ends at `total` and is
+  the last: a tail no longer than the overlap joins the previous chunk instead
+  of becoming its own request.
+- **`split_mp3(data, chunk, overlap)`** — `None` without frames. Otherwise
+  `[(start, end, bytes)]`, one per window that contains a frame start; the
+  bytes run from the first frame starting at or after `start` to the end of
+  the last frame starting before `end`.
+- **`split_wav(data, chunk, overlap)`** — `None` when the stdlib `wave` module
+  cannot read the data (`wave.Error`/`EOFError`, e.g. compressed WAV) or it
+  has no frames. Otherwise one new PCM WAV per window, same channels, sample
+  width and rate, with sample frames `int(start × rate)` up to
+  `int(end × rate)`.
+- **`split_audio(data, mime, chunk, overlap)`** — `split_mp3` for
+  `audio/mpeg`, `split_wav` for `audio/wav`, else `None`.
+- **`stitch(texts)`** — for each pair of consecutive texts, compares the last
+  40 words of the earlier with the first 40 of the later, each word
+  lower-cased with non-word characters removed, and takes the longest common
+  run (`difflib.SequenceMatcher`, `autojunk=False`). When that run has at
+  least 3 words, the earlier text is cut where the run starts and the later
+  one is kept from where the run starts; otherwise both stay whole. Pairs are
+  processed in order on the already-cut texts. Returns the texts (words
+  re-joined by single spaces), possibly empty.
+
+`get_openai_client()` is unchanged and serves summaries, OpenAI transcription
+and chatter message generation.
+
+### Transcription queue
+
+Recordings and voicemail are never transcribed inside the request that creates
+them or presses **Transcribe**: that request only queues the record, and a
+cron transcribes it. A Twilio webhook therefore never waits on a
+speech-to-text server, and never holds the call's advisory locks while one
+runs. Voice messages are not queued (see *Voice messages*).
+
+**`connect.transcription.queue`** — AbstractModel inherited by
+`connect.recording` and `connect.voicemail`.
+
+| Field | Type | Attributes |
+|---|---|---|
+| `transcription_pending` | Boolean | `readonly`, `index`, `copy=False`. Set while the record waits for the cron. |
+| `transcription_requested_by` | Many2one `res.users` | `readonly`, `copy=False`, `ondelete='set null'`. The user who pressed **Transcribe**, empty when queued automatically. |
+
+- **`_queue_transcription(requested_by=False)`** — on an empty recordset does
+  nothing. Otherwise writes `transcription_pending=True` and
+  `transcription_requested_by` = that user (or empty), then `_trigger()`s the
+  cron `connect.transcribe_queue` (sudo) so it runs right away. A missing cron
+  record is logged as a warning; the records stay queued.
+- **`_transcription_queued_action()`** — the value the **Transcribe** buttons
+  return: client action `display_notification`, title "Transcription",
+  message "Queued. You will be notified when the transcript is ready.", type
+  `info`, `next` = client action `soft_reload` so the form shows the queued
+  state.
+- **`_transcribe_queued()`** — abstract; each model transcribes one record
+  now (see *Call recordings* and *Voicemail*).
+- **`_run_queued_transcription()`** (`ensure_one`) — remembers
+  `transcription_requested_by`, then runs `_transcribe_queued()` inside a
+  savepoint. An exception rolls the savepoint back, is logged, and its message
+  is written to `transcription_error`. In every case the record leaves the
+  queue (`transcription_pending=False`, `transcription_requested_by` empty),
+  so a failing record is never retried by itself. Then, when someone asked
+  for it, a `connect_notify` to that user: on error title
+  "Transcription failed", message `"<model description> <id>: <transcription_error>"`,
+  `warning=True`; otherwise title "Transcription", message
+  `"<model description> <id>: the transcript is ready."` (descriptions are
+  "Recording" and "Voicemail").
+
+**Cron `connect.transcribe_queue`** (`data/ir_cron.xml`, `noupdate`) — name
+"Connect: transcribe queued audio", model `connect.settings`, code
+`model._cron_transcribe_queue()`, every 10 minutes, active. The interval is
+only a backstop: every queued record triggers it. It needs Odoo cron workers
+(`max_cron_threads` ≥ 1); without them nothing is ever transcribed.
+
+**`_cron_transcribe_queue()`** (`@api.model` on `connect.settings`) — reads
+the pending voicemails, then the pending recordings, each in id order, and
+reports their total as the cron's remaining work
+(`ir.cron._commit_progress(remaining=…)`). Voicemails come first because
+someone is waiting to read them. For each id: re-browse it; when it still
+exists and is still pending, `_run_queued_transcription()`; then
+`_commit_progress(1)` (commit). When that reports no time left, stop; the
+cron framework re-runs the job for the rest. One transcription at a time per
+database: a cron job never runs concurrently with itself.
+
+### Audio download
+
+`twilio_mp3_url(media_url)` (module function in `models/recording.py`): a URL
+matching `https://api.<optional region labels>.twilio.com/…/Recordings/RE<hex>`
+with no extension gets `.mp3` appended; anything else — S3 URLs, Twilio
+message media, an URL that already has an extension, empty — is returned
+unchanged. Twilio serves a bare recording URL as WAV (~32 KB/s), which passes
+the 25 MiB upload limit at about 13 minutes; the MP3 rendition is a quarter of
+the size.
+
+**`get_twilio_media_auth(media_url)`** (`@api.model` on `connect.settings`) —
+the HTTP Basic credentials for a media download, or `None`. A Twilio account
+can enforce HTTP auth on its recording and message media URLs, and then an
+anonymous GET gets 401. Only a URL matching `https://api.<optional labels>.twilio.com/`
+gets credentials: `(account_sid, auth_token)`. On a regional host (at least
+one label between `api.` and `twilio.com`) `region_auth_token` replaces
+`auth_token` when it is set. Any other URL (S3, `http://`, other hosts, a
+host that only starts with `api.twilio.com`), a missing URL, or a missing
+SID or token → `None`. When Twilio redirects the download to its storage,
+`requests` drops the credentials on the host change.
+
+| Audio | Fetched from |
+|---|---|
+| Recording, S3 storage on and the URL in the configured bucket | S3 object, as stored |
+| Recording, otherwise | `twilio_mp3_url(media_url)`, GET with `auth=get_twilio_media_auth(media_url)` |
+| Voicemail | `twilio_mp3_url(media_url)`, GET with `auth=get_twilio_media_auth(media_url)` |
+| Voice message | `MediaUrl0` as given, GET with a 60 s timeout and `auth=get_twilio_media_auth(MediaUrl0)` |
+
+### Call recordings
+
+- **`get_transcript(fail_silently=False)`** — the **Transcribe** button
+  (`fail_silently=False`) and `create()` (`fail_silently=True`). It only
+  queues. With `fail_silently`, return `False` when the transcription rules
+  do not match the call (see `check_rules` below). Then
+  `_check_transcription(fail_silently)`; when that is falsy return `False`.
+  With `fail_silently`: `_queue_transcription()` and return `True`. Without:
+  `_queue_transcription(requested_by=env.user)` and return
+  `_transcription_queued_action()`.
+- **`_check_transcription(fail_silently=False)`** — in order: no
+  `openai_api_key` → warning + `False`, or
+  `ValidationError("OpenAI key is not set!")` (the summary needs it, whatever
+  the provider); `get_stt_error()` set → warning + `False`, or
+  `ValidationError(<that message>)`; no `media_url` → warning + `False`, or
+  `ValidationError("Recording is not available yet!")`; else `True`.
+- **`_transcribe_queued()`** — what the cron runs:
+  `_check_transcription()` again (raising — the settings may have changed
+  since the recording was queued), then
+  `transcribe_recording(openai_api_key, summary_prompt)` with both read from
+  the settings at that moment.
+- **`transcribe_recording(openai_api_key, summary_prompt)`** — the summary
+  prompt is the caller user's Connect `summary_prompt`, else the called
+  user's, else the one passed in. Downloads per the table above to a temporary
+  file (always removed). Over 26 214 400 bytes, unless the provider is
+  `nemotron` (it gets the audio in chunks) → `transcription_error` =
+  "File exceeds the 25 MB transcription size limit." and nothing is sent.
+  Otherwise `transcribe_audio()`; the transcript is one line per segment,
+  `HH:MM:SS` of the segment start (truncated to whole seconds), a space, then
+  the segment text as returned (which starts with its own space). Then
+  `make_summary(get_openai_client(), …)`, and `transcription_error` = `False`.
+  Any exception → `transcription_error` = its message. The values are written
+  in all cases.
+- `create()` (unless context `skip_transcription`): when `transcript_calls` is
+  on, `get_transcript(fail_silently=True)` per new recording, each inside a
+  savepoint with exceptions logged — a queueing failure must not lose the
+  recording. No download or transcription happens in `create()`.
+- **`connect.transcription_rule`** (`_order = 'id'`): `settings`
+  (Many2one `connect.settings`, required, default `1`), `calling_number` and
+  `called_number` (Char, required) — Python regular expressions.
+  **`check_rules(calling_number, called_number)`** (`@api.model`, passed the
+  call's `caller` and `called`) is truthy when at least one rule, in id
+  order, matches both. A pattern matches when `re.search(pattern, number)`
+  finds it anywhere in the number. An empty or missing number skips that
+  side's test. A rule whose pattern raises an error is logged and skipped.
+  **No rules → no match**, so with `transcript_calls` on and an empty rule
+  list no recording is transcribed automatically. The **Transcribe** button
+  (`fail_silently=False`) does not consult the rules.
+
+### Voicemail
+
+- `create()` (unless context `skip_transcription`): when `get_stt_error()` is
+  set, log a warning and stop. Otherwise `_queue_transcription()` on the new
+  voicemails that have a `media_url`. There is no `transcript_calls`-style
+  switch: voicemail is transcribed whenever its provider is configured.
+- **`get_transcript()`** — the **Transcribe** button.
+  `_check_transcription()`, then
+  `_queue_transcription(requested_by=env.user)`; returns
+  `_transcription_queued_action()`.
+- **`_check_transcription()`** — `get_stt_error()` set →
+  `ValidationError(<that message>)`; no `media_url` →
+  `ValidationError("Voicemail is not available yet!")`.
+- **`_transcribe_queued()`** — `_check_transcription()` again, then
+  `transcribe_voicemail()`.
+- **`transcribe_voicemail()`** (`ensure_one`) — downloads to a temporary file
+  (always removed), `transcribe_audio()`, `transcript` = the segment texts
+  joined by newlines and stripped; `transcription_error` = `False`, or the
+  exception message on failure. No summary.
+
+### Voice messages
+
+- In `get_receive_message_values(params)`, for `MessageType == 'audio'`: when
+  `transcript_voice_message` is on and `get_stt_error()` is not set,
+  `transcribe_voice_message(MediaUrl0, MediaContentType0)` and merge its
+  result into the message values; when it is on but `get_stt_error()` is set,
+  log a warning.
+- **`transcribe_voice_message(media_url, content_type=None)`** — downloads into
+  memory; `content_type` falls back to the response `Content-Type`. Sends
+  `(_voice_file_name(content_type), bytes, content_type or
+  "application/octet-stream")`. Returns `{'body': <segment texts joined by
+  newlines, stripped>}`, or `{'transcription_error': <message>}` on any
+  exception; never raises.
+- **`_voice_file_name(content_type)`** (`@api.model`) — `voice.<ext>`, where
+  `<ext>` is the MIME subtype with parameters dropped, lower-cased, and mapped
+  `mpeg`→`mp3`, `mp4`→`m4a`, `x-m4a`→`m4a`, `x-wav`→`wav`, `opus`→`ogg`;
+  `voice.mp3` when there is no content type. Speech-to-text servers pick the
+  decoder by extension, and WhatsApp voice notes are `audio/ogg`.
+
+### Settings form
+
+- **API Keys** tab: group "Self-hosted Whisper" (always visible) with
+  `whisper_api_url` ("API URL", placeholder `http://192.168.1.10:9000/v1`),
+  `display_whisper_api_key` ("API Key", password) and the TEST CONNECTION
+  button (`action_test_whisper`); beside it group "Self-hosted Nemotron"
+  (always visible) with `nemotron_api_url` ("API URL", placeholder
+  `http://192.168.1.10:9001/v1`), `display_nemotron_api_key` ("API Key",
+  password) and TEST CONNECTION (`action_test_nemotron`).
+- **Transcription** tab, group "Speech-to-text": `transcript_provider` (always
+  visible — it drives voicemail and voice messages too), `whisper_model`
+  ("Model") and `whisper_language` ("Language", placeholder "Detected
+  automatically") and `whisper_prompt` ("Prompt", placeholder "Mirage Pools.
+  Hayward, Pentair, pool opening and closing.") visible only when the
+  provider is `whisper`,
+  `nemotron_model` ("Model") and `nemotron_prompt` ("Prompt") visible only
+  when the provider is `nemotron`,
+  `transcript_calls`, `transcript_voice_message`. Group "Call Summary",
+  visible when `transcript_calls` is on: a note that summaries are generated
+  by OpenAI with the key on the API Keys tab, `summary_prompt`,
+  `register_summary`. Group "Transcribe Rules" as before.
+
+### Recording and voicemail forms
+
+The **Transcribe** header button is invisible while `transcription_pending`
+is set. At the top of the sheet, an `alert alert-info` block (`role="status"`)
+visible only while `transcription_pending` is set reads "Transcription queued.
+The transcript appears on the Transcript tab when it is ready."
+`transcription_pending` is in the view, invisible, for that modifier.

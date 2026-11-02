@@ -8,6 +8,7 @@ Modification is prohibited under Oduist Proprietary License.
 See LICENSE and COPYRIGHT files for full terms.
 """
 
+import base64
 import inspect
 import json
 import logging
@@ -16,6 +17,7 @@ import random
 import re
 import string
 import sys
+from types import SimpleNamespace
 from urllib.parse import urljoin
 
 import httpx
@@ -27,6 +29,7 @@ from twilio.base.exceptions import TwilioRestException
 from twilio.http.http_client import TwilioHttpClient
 from twilio.rest import Client
 from . import s3_utils
+from . import stt_utils
 from odoo.addons.connect.models.license import ODUIST_MODULES
 ODUIST_MODULES.append('connect')
 
@@ -38,6 +41,38 @@ TWILIO_LOG_LEVEL = logging.WARNING
 # so an unbounded request must never pin a lock until the worker times
 # out. Overridable per deployment without a schema change.
 TWILIO_HTTP_TIMEOUT = float(os.environ.get('TWILIO_HTTP_TIMEOUT', '15'))
+# Upper bound for one self-hosted Whisper transcription. A warm server does an
+# hour-long call in about a minute, but the first request after a restart
+# waits for the model to load, which can take minutes.
+WHISPER_HTTP_TIMEOUT = float(os.environ.get('WHISPER_HTTP_TIMEOUT', '300'))
+# Self-hosted Nemotron transcribes at roughly 6-10x real time, so a 20-minute
+# chunk takes 2-4 minutes, and its first request after a restart compiles
+# kernels for minutes. Per audio chunk.
+NEMOTRON_HTTP_TIMEOUT = float(os.environ.get('NEMOTRON_HTTP_TIMEOUT', '1200'))
+# Audio per Nemotron request. The server rejects more than 1,800 s, and the
+# audio (~12.6 tokens per second), prompt and transcript share its
+# 32,768-token context; 20 minutes leaves room for the densest speech and
+# keeps Twilio's decoded stereo MP3 under the server's 256 MiB guard.
+NEMOTRON_CHUNK_SECONDS = float(os.environ.get('NEMOTRON_CHUNK_SECONDS', '1200'))
+# Audio shared by consecutive chunks, so a word cut at a seam is whole in one
+# of them; stt_utils.stitch() removes the repeated text.
+NEMOTRON_OVERLAP_SECONDS = 5.0
+# Ceiling of the transcript of one chunk; 20 minutes of dense speech is
+# ~6,700. Even with 30 minutes of audio (~22,600 tokens) it fits the context.
+NEMOTRON_MAX_TOKENS = 8192
+# NVIDIA's own verbatim instruction ("Audio transcription. Language: as
+# spoken. Wording: verbatim...") did worse on phone calls: it wrote every
+# backchannel, spelled names letter by letter and sometimes added speaker tags.
+NEMOTRON_DEFAULT_PROMPT = (
+    "Transcribe the following audio. Output only the transcript in the original language."
+)
+# How the server refuses the audio of one request: longer than its duration
+# limit, more decoded PCM than its memory guard, or (on older setups) more
+# audio tokens than its encoder cache.
+NEMOTRON_TOO_LONG = re.compile(r"maximum allowed duration|MiB of PCM|encoder cache")
+# Twilio's own REST hosts: api.twilio.com and the regional/edge variants such
+# as api.dublin.ie1.twilio.com. Media URLs on them may require Basic auth.
+TWILIO_API_URL = re.compile(r'^https://api\.([\w-]+\.)*twilio\.com/')
 
 MAX_EXTEN_LEN = 4
 
@@ -47,6 +82,8 @@ PROTECTED_FIELDS = [
     "display_twilio_api_secret",
     "display_openai_api_key",
     "display_aws_secret_access_key",
+    "display_whisper_api_key",
+    "display_nemotron_api_key",
 ]
 
 TWILIO_EDGES = [
@@ -293,6 +330,39 @@ class Settings(models.Model):
     twilio_balance = fields.Char(readonly=True)
     openai_api_key = fields.Char(groups="base.group_erp_manager")
     display_openai_api_key = fields.Char()
+    whisper_api_url = fields.Char(
+        string="Whisper API URL",
+        help="Base URL of the OpenAI-compatible speech-to-text server, "
+             "e.g. http://192.168.1.10:9000/v1",
+    )
+    whisper_api_key = fields.Char(groups="base.group_erp_manager")
+    display_whisper_api_key = fields.Char()
+    whisper_model = fields.Char(default="whisper-1", string="Whisper Model")
+    whisper_language = fields.Char(
+        string="Whisper Language",
+        help="Language code of the speech (en, fr, ru...). Leave empty to let "
+             "the server detect it.",
+    )
+    whisper_prompt = fields.Text(
+        string="Whisper Prompt",
+        help="Text Whisper reads as if it came just before the audio: names "
+             "and terms spelled the way you want them, e.g. 'Mirage Pools. "
+             "Hayward, Pentair, pool opening and closing.' A spelling hint, "
+             "not an instruction. Leave empty to send none.",
+    )
+    nemotron_api_url = fields.Char(
+        string="Nemotron API URL",
+        help="Base URL of the self-hosted Nemotron speech-to-text server "
+             "(OpenAI-compatible chat API), e.g. http://192.168.1.10:9001/v1",
+    )
+    nemotron_api_key = fields.Char(groups="base.group_erp_manager")
+    display_nemotron_api_key = fields.Char()
+    nemotron_model = fields.Char(default="nemotron-3.5-transcribe", string="Nemotron Model")
+    nemotron_prompt = fields.Text(
+        string="Nemotron Prompt", default=NEMOTRON_DEFAULT_PROMPT,
+        help="Instruction sent with the audio. Name your business, products "
+             "and staff in it: the model spells the names it is told about.",
+    )
     number_search_operation = fields.Selection(
         [("=", "Equal"), ("like", "Like")], default="=", required=True
     )
@@ -357,7 +427,12 @@ class Settings(models.Model):
     )
     transcript_calls = fields.Boolean()
     transcript_provider = fields.Selection(
-        selection=[("openai", "Open AI")], default="openai", required=True
+        selection=[("openai", "Open AI"), ("whisper", "Self-hosted Whisper"),
+                   ("nemotron", "Self-hosted Nemotron")],
+        default="openai", required=True,
+        help="Engine that turns speech into text. The self-hosted engines also "
+             "transcribe voicemail and voice messages; with any other provider "
+             "those go to OpenAI.",
     )
     summary_prompt = fields.Text(required=True, default="Summarise this phone call")
     register_summary = fields.Boolean(
@@ -789,6 +864,27 @@ class Settings(models.Model):
                 raise
 
     @api.model
+    def get_twilio_media_auth(self, media_url):
+        """Basic-auth credentials for downloading a Twilio-hosted media URL.
+
+        A Twilio account can require HTTP auth on its recording and message
+        media URLs, and then an anonymous GET gets 401. The credentials go
+        only to Twilio's API hosts, never to S3 or any other URL; requests
+        drops them itself when Twilio redirects to its storage.
+        """
+        match = TWILIO_API_URL.match(media_url or "")
+        if not match:
+            return None
+        account_sid = self.sudo().get_param("account_sid")
+        auth_token = self.sudo().get_param("auth_token")
+        if match.group(1):
+            # Regional host: the region's own auth token when one is set.
+            auth_token = self.sudo().get_param("region_auth_token") or auth_token
+        if not account_sid or not auth_token:
+            return None
+        return (account_sid, auth_token)
+
+    @api.model
     def get_openai_client(self):
         api_key = self.sudo().get_param("openai_api_key")
         if not api_key:
@@ -801,6 +897,183 @@ class Settings(models.Model):
         else:
             client = openai.OpenAI(api_key=api_key)
         return client
+
+    @api.model
+    def get_whisper_client(self):
+        url = self.sudo().get_param("whisper_api_url")
+        if not url:
+            return False
+        return openai.OpenAI(
+            base_url=url.strip(),
+            # The SDK refuses an empty key; a server without auth ignores it.
+            api_key=self.sudo().get_param("whisper_api_key") or "none",
+            timeout=WHISPER_HTTP_TIMEOUT,
+            # A retry would resend the whole recording to a server that is
+            # most likely still busy with the first attempt.
+            max_retries=0,
+        )
+
+    @api.model
+    def get_nemotron_client(self):
+        url = self.sudo().get_param("nemotron_api_url")
+        if not url:
+            return False
+        return openai.OpenAI(
+            base_url=url.strip(),
+            api_key=self.sudo().get_param("nemotron_api_key") or "none",
+            timeout=NEMOTRON_HTTP_TIMEOUT,
+            max_retries=0,
+        )
+
+    @api.model
+    def get_stt_error(self):
+        """Why speech-to-text cannot run with the current settings, or False."""
+        provider = self.sudo().get_param("transcript_provider")
+        if provider == "whisper":
+            if not self.sudo().get_param("whisper_api_url"):
+                return "Whisper API URL is not set!"
+        elif provider == "nemotron":
+            if not self.sudo().get_param("nemotron_api_url"):
+                return "Nemotron API URL is not set!"
+        elif not self.sudo().get_param("openai_api_key"):
+            return "OpenAI key is not set!"
+        return False
+
+    @api.model
+    def transcribe_audio(self, audio_file):
+        """Speech-to-text with the selected provider.
+
+        'whisper' and 'nemotron' send the audio to their self-hosted server,
+        every other provider to OpenAI (ElevenLabs transcribes call recordings
+        in its own module and leaves voicemail and voice messages to OpenAI).
+        `audio_file` is an open binary file or a (name, bytes, content_type)
+        tuple. Returns the verbose_json transcription, with segments.
+        """
+        error = self.get_stt_error()
+        if error:
+            raise ValidationError(error)
+        settings = self.sudo()
+        if settings.get_param("transcript_provider") == "nemotron":
+            return self._transcribe_nemotron(audio_file)
+        kwargs = {}
+        if settings.get_param("transcript_provider") == "whisper":
+            client = self.get_whisper_client()
+            model = (settings.get_param("whisper_model") or "whisper-1").strip()
+            language = (settings.get_param("whisper_language") or "").strip()
+            if language:
+                kwargs["language"] = language
+            prompt = (settings.get_param("whisper_prompt") or "").strip()
+            if prompt:
+                kwargs["prompt"] = prompt
+        else:
+            client = self.get_openai_client()
+            model = "whisper-1"
+        return client.audio.transcriptions.create(
+            model=model, file=audio_file, response_format="verbose_json",
+            timestamp_granularities=["segment"], **kwargs)
+
+    @api.model
+    def _transcribe_nemotron(self, audio_file):
+        """Transcribe with the self-hosted Nemotron chat API.
+
+        MP3 and PCM WAV longer than NEMOTRON_CHUNK_SECONDS (20 minutes) are
+        sent in overlapping chunks and the texts stitched back together; any
+        other format goes whole, up to the server's 30-minute limit. Returns
+        the shape of Whisper's verbose_json -- .text, and .segments with
+        .start, .end and .text -- with one segment per chunk, as Nemotron
+        returns no timestamps.
+        """
+        if isinstance(audio_file, tuple):
+            data, content_type = audio_file[1], audio_file[2] if len(audio_file) > 2 else None
+        else:
+            data, content_type = audio_file.read(), None
+        if content_type in (None, "application/octet-stream"):
+            content_type = "audio/mpeg"
+        mime = stt_utils.sniff_audio_mime(data, content_type.split(";")[0].strip())
+        chunks = stt_utils.split_audio(
+            data, mime, NEMOTRON_CHUNK_SECONDS, NEMOTRON_OVERLAP_SECONDS) or [(0.0, None, data)]
+        settings = self.sudo()
+        client = self.get_nemotron_client()
+        model = (settings.get_param("nemotron_model") or "nemotron-3.5-transcribe").strip()
+        prompt = (settings.get_param("nemotron_prompt") or "").strip() or NEMOTRON_DEFAULT_PROMPT
+        texts = []
+        for start, end, blob in chunks:
+            texts.append(self._nemotron_chunk(client, model, prompt, blob, mime, start, end))
+        segments = [
+            SimpleNamespace(start=start, end=end, text=" " + text)
+            for (start, end, _blob), text in zip(chunks, stt_utils.stitch(texts)) if text
+        ]
+        return SimpleNamespace(text=" ".join(s.text.strip() for s in segments), segments=segments)
+
+    @api.model
+    def _nemotron_chunk(self, client, model, prompt, data, mime, start, end):
+        audio_url = "data:{};base64,{}".format(mime, base64.b64encode(data).decode("ascii"))
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "audio_url", "audio_url": {"url": audio_url}},
+                ]}],
+                temperature=0,
+                max_tokens=NEMOTRON_MAX_TOKENS,
+                extra_body={"chat_template_kwargs": {"enable_thinking": False}},
+            )
+        except openai.BadRequestError as e:
+            if NEMOTRON_TOO_LONG.search(str(e)):
+                raise ValidationError(
+                    "The audio is too long for one Nemotron request, and only MP3 "
+                    "and PCM WAV audio can be split: %s" % e) from e
+            raise
+        choice = response.choices[0]
+        if choice.finish_reason == "length":
+            raise ValidationError(
+                "Nemotron cut the transcript short at %d tokens (audio from %ds)."
+                % (NEMOTRON_MAX_TOKENS, start))
+        return (choice.message.content or "").strip()
+
+    @api.model
+    def _cron_transcribe_queue(self):
+        """Transcribe the queued voicemails, then the queued recordings.
+
+        Oldest first, committing after each: one transcription can take
+        minutes, and a crash or time-out must not redo the finished ones.
+        Voicemails go first because someone is waiting to read them.
+        """
+        cron = self.env["ir.cron"]
+        queues = [
+            self.env[model].search([("transcription_pending", "=", True)], order="id")
+            for model in ("connect.voicemail", "connect.recording")
+        ]
+        cron._commit_progress(remaining=sum(len(queue) for queue in queues))
+        for queue in queues:
+            for rec_id in queue.ids:
+                # A fresh record per step: the commit invalidates the cache,
+                # and the queue may have changed meanwhile.
+                rec = queue.browse(rec_id).exists()
+                if rec and rec.transcription_pending:
+                    rec._run_queued_transcription()
+                if not cron._commit_progress(1):
+                    return
+
+    def action_test_whisper(self):
+        return self._test_stt_server(self.get_whisper_client(), "Whisper")
+
+    def action_test_nemotron(self):
+        return self._test_stt_server(self.get_nemotron_client(), "Nemotron")
+
+    def _test_stt_server(self, client, name):
+        if not client:
+            raise ValidationError("%s API URL is not set!" % name)
+        try:
+            models = client.with_options(timeout=15).models.list()
+        except Exception as e:
+            raise ValidationError("%s server error: %s" % (name, e))
+        self.connect_notify(
+            "%s server is reachable. Models: %s"
+            % (name, ", ".join(m.id for m in models)),
+            title=name, notify_uid=self.env.uid)
+        return True
 
     def check_api_url(self):
         message = None

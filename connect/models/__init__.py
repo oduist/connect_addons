@@ -26,6 +26,7 @@ from . import message
 from . import message_configuration
 from . import number
 from . import outgoing_callerid
+from . import transcription_queue
 from . import recording
 from . import recording_transcription_rules
 from . import res_partner

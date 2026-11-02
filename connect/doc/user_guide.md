@@ -155,6 +155,13 @@ written transcript and a short summary of what was said. When summaries are
 turned on, the summary is posted to the contact's chatter, so the next person
 who opens that contact sees what the call was about without listening to it.
 
+Transcripts are made in the background, so they appear a little after the
+call, not with the recording: a long call can take a few minutes. Until then
+the recording says *Transcription queued*. The same goes for voicemail. To
+transcribe a recording or a voicemail that has no transcript, press
+**Transcribe**; Odoo tells you when the transcript is ready, and you can keep
+working meanwhile.
+
 ## Messages
 
 **Messaging ▸ Messages** lists SMS and WhatsApp traffic — direction, status,
