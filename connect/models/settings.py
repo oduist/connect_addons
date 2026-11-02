@@ -333,6 +333,13 @@ class Settings(models.Model):
         help="Language code of the speech (en, fr, ru...). Leave empty to let "
              "the server detect it.",
     )
+    whisper_prompt = fields.Text(
+        string="Whisper Prompt",
+        help="Text Whisper reads as if it came just before the audio: names "
+             "and terms spelled the way you want them, e.g. 'Mirage Pools. "
+             "Hayward, Pentair, pool opening and closing.' A spelling hint, "
+             "not an instruction. Leave empty to send none.",
+    )
     nemotron_api_url = fields.Char(
         string="Nemotron API URL",
         help="Base URL of the self-hosted Nemotron speech-to-text server "
@@ -945,6 +952,9 @@ class Settings(models.Model):
             language = (settings.get_param("whisper_language") or "").strip()
             if language:
                 kwargs["language"] = language
+            prompt = (settings.get_param("whisper_prompt") or "").strip()
+            if prompt:
+                kwargs["prompt"] = prompt
         else:
             client = self.get_openai_client()
             model = "whisper-1"

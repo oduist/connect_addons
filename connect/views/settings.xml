@@ -149,6 +149,9 @@
                              invisible="transcript_provider != 'whisper'"/>
                       <field name="whisper_language" string="Language" placeholder="Detected automatically"
                              invisible="transcript_provider != 'whisper'"/>
+                      <field name="whisper_prompt" string="Prompt"
+                             placeholder="Mirage Pools. Hayward, Pentair, pool opening and closing."
+                             invisible="transcript_provider != 'whisper'"/>
                       <field name="nemotron_model" string="Model"
                              invisible="transcript_provider != 'nemotron'"/>
                       <field name="nemotron_prompt" string="Prompt"

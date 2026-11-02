@@ -331,6 +331,7 @@ step and always use OpenAI.
 | `display_whisper_api_key` | Char | In `PROTECTED_FIELDS`: on `write`, the value is moved to `whisper_api_key` (sudo) and the display field is overwritten with `*` × its length — the same rule as every other secret in settings. |
 | `whisper_model` | Char | Label "Whisper Model", default `whisper-1`. |
 | `whisper_language` | Char | Label "Whisper Language". Empty = let the server detect it. |
+| `whisper_prompt` | Text | Label "Whisper Prompt". No default. Text the model treats as preceding the audio (spelling and vocabulary hint). |
 | `nemotron_api_url` | Char | Label "Nemotron API URL". OpenAI-compatible base URL including `/v1`. |
 | `nemotron_api_key` | Char | `groups="base.group_erp_manager"`. Written only through `display_nemotron_api_key`. |
 | `display_nemotron_api_key` | Char | In `PROTECTED_FIELDS`, same rule as `display_whisper_api_key`. |
@@ -377,9 +378,10 @@ step and always use OpenAI.
   SDK accepts: an open file or a `(name, bytes, content_type)` tuple), and
   returns the response. Provider `nemotron`: returns
   `_transcribe_nemotron(audio_file)` instead. Provider `whisper`: the Whisper client, `model` =
-  `whisper_model` (stripped) or `whisper-1`, and `language` = the stripped
-  `whisper_language`, sent only when non-empty. Any other provider:
-  `get_openai_client()` and `model="whisper-1"`, never a `language`.
+  `whisper_model` (stripped) or `whisper-1`, `language` = the stripped
+  `whisper_language`, and `prompt` = the stripped `whisper_prompt`, each sent
+  only when non-empty. Any other provider:
+  `get_openai_client()` and `model="whisper-1"`, never a `language` or `prompt`.
 - **`_transcribe_nemotron(audio_file)`** (`@api.model`) — the audio bytes
   and content type come from the tuple, or `read()` of the file (no type). A
   missing or `application/octet-stream` type counts as `audio/mpeg`; the
@@ -656,7 +658,9 @@ SID or token → `None`. When Twilio redirects the download to its storage,
 - **Transcription** tab, group "Speech-to-text": `transcript_provider` (always
   visible — it drives voicemail and voice messages too), `whisper_model`
   ("Model") and `whisper_language` ("Language", placeholder "Detected
-  automatically") visible only when the provider is `whisper`,
+  automatically") and `whisper_prompt` ("Prompt", placeholder "Mirage Pools.
+  Hayward, Pentair, pool opening and closing.") visible only when the
+  provider is `whisper`,
   `nemotron_model` ("Model") and `nemotron_prompt` ("Prompt") visible only
   when the provider is `nemotron`,
   `transcript_calls`, `transcript_voice_message`. Group "Call Summary",

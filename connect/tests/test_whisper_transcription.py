@@ -42,6 +42,7 @@ class TestWhisperTranscription(TransactionCase):
             ('whisper_api_key', 'whisper-key'),
             ('whisper_model', 'large-v3-turbo'),
             ('whisper_language', False),
+            ('whisper_prompt', False),
             ('account_sid', TWILIO_AUTH[0]),
             ('auth_token', TWILIO_AUTH[1]),
             ('region_auth_token', False),
@@ -143,6 +144,7 @@ class TestWhisperTranscription(TransactionCase):
         self.assertEqual(transcribe.kwargs['model'], 'large-v3-turbo')
         self.assertEqual(transcribe.kwargs['response_format'], 'verbose_json')
         self.assertNotIn('language', transcribe.kwargs)
+        self.assertNotIn('prompt', transcribe.kwargs)
         self.assertFalse(self._calls(clients, 'whisper', 'summarise'))
         self.assertEqual(clients['openai'][0][0]['api_key'], 'sk-test')
         self.assertFalse(self._calls(clients, 'openai', 'transcribe'))
@@ -159,6 +161,23 @@ class TestWhisperTranscription(TransactionCase):
             self._transcribe(self._recording())
         [transcribe] = self._calls(clients, 'whisper', 'transcribe')
         self.assertEqual(transcribe.kwargs['language'], 'fr')
+
+    def test_whisper_prompt_is_sent_when_set(self):
+        self.settings.set_param('whisper_prompt', '  Mirage Pools. Hayward, Pentair.\n')
+        clients = self._patch_clients()
+        with patch('odoo.addons.connect.models.recording.requests.get',
+                   side_effect=fake_download):
+            self._transcribe(self._recording())
+        [transcribe] = self._calls(clients, 'whisper', 'transcribe')
+        self.assertEqual(transcribe.kwargs['prompt'], 'Mirage Pools. Hayward, Pentair.')
+        # The OpenAI provider never gets it.
+        self.settings.set_param('transcript_provider', 'openai')
+        clients = self._patch_clients()
+        with patch('odoo.addons.connect.models.recording.requests.get',
+                   side_effect=fake_download):
+            self._transcribe(self._recording())
+        [transcribe] = self._calls(clients, 'openai', 'transcribe')
+        self.assertNotIn('prompt', transcribe.kwargs)
 
     def test_openai_provider_unchanged(self):
         self.settings.set_param('transcript_provider', 'openai')
