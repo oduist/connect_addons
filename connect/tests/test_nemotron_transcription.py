@@ -12,6 +12,7 @@ from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 from odoo.tools import mute_logger
 
+from odoo.addons.connect.models import settings as connect_settings
 from odoo.addons.connect.models import stt_utils
 
 TWILIO_RECORDING = ('https://api.twilio.com/2010-04-01/Accounts/AC0000/'
@@ -72,6 +73,14 @@ class TestSttUtils(TransactionCase):
         chunks = stt_utils.split_mp3(mp3(21.5), 10, 1)
         self.assertEqual([start for start, _end, _blob in chunks], [0.0, 10.0])
         self.assertEqual(len(stt_utils.split_mp3(mp3(8), 10, 1)), 1)
+
+    def test_default_chunk_is_twenty_minutes(self):
+        def windows(seconds):
+            return [(start, round(end)) for start, end, _blob in stt_utils.split_mp3(
+                mp3(seconds), connect_settings.NEMOTRON_CHUNK_SECONDS,
+                connect_settings.NEMOTRON_OVERLAP_SECONDS)]
+        self.assertEqual(windows(1209), [(0.0, 1209)])
+        self.assertEqual(windows(1980), [(0.0, 1205), (1200.0, 1980)])
 
     def test_split_wav(self):
         chunks = stt_utils.split_audio(wav(25), 'audio/wav', 10, 1)
@@ -184,7 +193,7 @@ class TestNemotronTranscription(TransactionCase):
         for request in requests:
             self.assertEqual(request.kwargs['model'], 'nemotron-3.5-transcribe')
             self.assertEqual(request.kwargs['temperature'], 0)
-            self.assertEqual(request.kwargs['max_tokens'], 2048)
+            self.assertEqual(request.kwargs['max_tokens'], 8192)
             self.assertEqual(request.kwargs['extra_body'],
                              {'chat_template_kwargs': {'enable_thinking': False}})
             prompt = request.kwargs['messages'][0]['content'][0]
@@ -235,12 +244,28 @@ class TestNemotronTranscription(TransactionCase):
         self.assertEqual(self._audio(request), ('audio/ogg', ogg))
 
     def test_audio_too_long_for_one_request(self):
-        error = openai.BadRequestError.__new__(openai.BadRequestError)
-        Exception.__init__(error, 'Error code: 400 - The decoder prompt contains a(n) audio item with '
-                                  '6281 embedding tokens, which exceeds the pre-allocated encoder cache size 4096.')
-        self.replies[:] = [error]
-        with self.assertRaisesRegex(ValidationError, 'only MP3 and PCM WAV audio can be split'):
-            self.settings.transcribe_audio(('voice.ogg', b'OggS' + b'\0' * 100, 'audio/ogg'))
+        for message in [
+            'Audio exceeds maximum allowed duration of 1800s (metadata reports 1860.0s). '
+            'Set VLLM_MAX_AUDIO_DECODE_DURATION_S to increase this limit.',
+            'Audio would allocate 311 MiB of PCM (~1851.3s at 22050Hz x 2ch), exceeding the '
+            '256 MiB limit. Set VLLM_MAX_AUDIO_DECODE_BYTES to increase this limit.',
+            'The decoder prompt contains a(n) audio item with 6281 embedding tokens, which '
+            'exceeds the pre-allocated encoder cache size 4096.',
+        ]:
+            error = openai.BadRequestError.__new__(openai.BadRequestError)
+            Exception.__init__(error, 'Error code: 400 - ' + message)
+            self.replies[:] = [error]
+            with self.subTest(message=message), \
+                    self.assertRaisesRegex(ValidationError, 'only MP3 and PCM WAV audio can be split'):
+                self.settings.transcribe_audio(('voice.ogg', b'OggS' + b'\0' * 100, 'audio/ogg'))
+
+    def test_default_prompt(self):
+        self.settings.set_param('nemotron_prompt', False)
+        self.replies[:] = [completion('Hello.')]
+        self.settings.transcribe_audio(('call.mp3', mp3(5), 'audio/mpeg'))
+        [request] = self._requests()
+        self.assertEqual(request.kwargs['messages'][0]['content'][0]['text'],
+                         connect_settings.NEMOTRON_DEFAULT_PROMPT)
 
     def test_missing_configuration(self):
         self.settings.set_param('nemotron_api_url', False)

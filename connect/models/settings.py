@@ -45,21 +45,31 @@ TWILIO_HTTP_TIMEOUT = float(os.environ.get('TWILIO_HTTP_TIMEOUT', '15'))
 # hour-long call in about a minute, but the first request after a restart
 # waits for the model to load, which can take minutes.
 WHISPER_HTTP_TIMEOUT = float(os.environ.get('WHISPER_HTTP_TIMEOUT', '300'))
-# Self-hosted Nemotron transcribes at roughly 6-10x real time, and its first
-# request after a restart compiles kernels for minutes. Per audio chunk.
-NEMOTRON_HTTP_TIMEOUT = float(os.environ.get('NEMOTRON_HTTP_TIMEOUT', '600'))
-# Audio per Nemotron request. The server embeds ~12.6 tokens per second of
-# audio into a 4096-token encoder cache (~5.4 minutes), so 240 s plus the
-# overlap leaves a margin. Raise it only together with that server setting.
-NEMOTRON_CHUNK_SECONDS = float(os.environ.get('NEMOTRON_CHUNK_SECONDS', '240'))
+# Self-hosted Nemotron transcribes at roughly 6-10x real time, so a 20-minute
+# chunk takes 2-4 minutes, and its first request after a restart compiles
+# kernels for minutes. Per audio chunk.
+NEMOTRON_HTTP_TIMEOUT = float(os.environ.get('NEMOTRON_HTTP_TIMEOUT', '1200'))
+# Audio per Nemotron request. The server rejects more than 1,800 s, and the
+# audio (~12.6 tokens per second), prompt and transcript share its
+# 32,768-token context; 20 minutes leaves room for the densest speech and
+# keeps Twilio's decoded stereo MP3 under the server's 256 MiB guard.
+NEMOTRON_CHUNK_SECONDS = float(os.environ.get('NEMOTRON_CHUNK_SECONDS', '1200'))
 # Audio shared by consecutive chunks, so a word cut at a seam is whole in one
 # of them; stt_utils.stitch() removes the repeated text.
 NEMOTRON_OVERLAP_SECONDS = 5.0
-# Ceiling of the transcript of one chunk; 240 s of fast speech is ~1,200.
-NEMOTRON_MAX_TOKENS = 2048
+# Ceiling of the transcript of one chunk; 20 minutes of dense speech is
+# ~6,700. Even with 30 minutes of audio (~22,600 tokens) it fits the context.
+NEMOTRON_MAX_TOKENS = 8192
+# NVIDIA's own verbatim instruction ("Audio transcription. Language: as
+# spoken. Wording: verbatim...") did worse on phone calls: it wrote every
+# backchannel, spelled names letter by letter and sometimes added speaker tags.
 NEMOTRON_DEFAULT_PROMPT = (
     "Transcribe the following audio. Output only the transcript in the original language."
 )
+# How the server refuses the audio of one request: longer than its duration
+# limit, more decoded PCM than its memory guard, or (on older setups) more
+# audio tokens than its encoder cache.
+NEMOTRON_TOO_LONG = re.compile(r"maximum allowed duration|MiB of PCM|encoder cache")
 # Twilio's own REST hosts: api.twilio.com and the regional/edge variants such
 # as api.dublin.ie1.twilio.com. Media URLs on them may require Basic auth.
 TWILIO_API_URL = re.compile(r'^https://api\.([\w-]+\.)*twilio\.com/')
@@ -966,11 +976,12 @@ class Settings(models.Model):
     def _transcribe_nemotron(self, audio_file):
         """Transcribe with the self-hosted Nemotron chat API.
 
-        The server takes ~5 minutes of audio per request, so MP3 and PCM WAV
-        are sent in overlapping chunks and the texts stitched back together;
-        any other format goes whole. Returns the shape of Whisper's
-        verbose_json -- .text, and .segments with .start, .end and .text --
-        with one segment per chunk, as Nemotron returns no timestamps.
+        MP3 and PCM WAV longer than NEMOTRON_CHUNK_SECONDS (20 minutes) are
+        sent in overlapping chunks and the texts stitched back together; any
+        other format goes whole, up to the server's 30-minute limit. Returns
+        the shape of Whisper's verbose_json -- .text, and .segments with
+        .start, .end and .text -- with one segment per chunk, as Nemotron
+        returns no timestamps.
         """
         if isinstance(audio_file, tuple):
             data, content_type = audio_file[1], audio_file[2] if len(audio_file) > 2 else None
@@ -1009,7 +1020,7 @@ class Settings(models.Model):
                 extra_body={"chat_template_kwargs": {"enable_thinking": False}},
             )
         except openai.BadRequestError as e:
-            if "encoder cache" in str(e):
+            if NEMOTRON_TOO_LONG.search(str(e)):
                 raise ValidationError(
                     "The audio is too long for one Nemotron request, and only MP3 "
                     "and PCM WAV audio can be split: %s" % e) from e

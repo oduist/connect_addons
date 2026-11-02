@@ -364,7 +364,7 @@ step and always use OpenAI.
   `nemotron_api_url` is empty. Otherwise an `openai.OpenAI` client with
   `base_url` = the URL (stripped), `api_key` = `nemotron_api_key` or `"none"`,
   `timeout` = `NEMOTRON_HTTP_TIMEOUT` (environment variable, seconds, default
-  600 — per chunk) and `max_retries=0`.
+  1200 — per chunk) and `max_retries=0`.
 - **`get_stt_error()`** (`@api.model`) — the reason speech-to-text cannot run,
   or `False`. Provider `whisper` without `whisper_api_url` →
   `"Whisper API URL is not set!"`; provider `nemotron` without
@@ -403,15 +403,15 @@ step and always use OpenAI.
   `chat.completions.create` with `model`, one user message whose content is
   `[{"type": "text", "text": prompt}, {"type": "audio_url", "audio_url":
   {"url": "data:<mime>;base64,<data>"}}]`, `temperature=0`,
-  `max_tokens=NEMOTRON_MAX_TOKENS` (2048), and
+  `max_tokens=NEMOTRON_MAX_TOKENS` (8192), and
   `extra_body={"chat_template_kwargs": {"enable_thinking": False}}`. An
-  `openai.BadRequestError` whose text contains "encoder cache" (the audio is
-  over the server's per-request limit) becomes `ValidationError("The audio is
-  too long for one Nemotron request, and only MP3 and PCM WAV audio can be
-  split: <error>")`; any other error propagates. `finish_reason == "length"`
-  → `ValidationError("Nemotron cut the transcript short at 2048 tokens (audio
-  from <start>s).")`, so a partial transcript is never stored. Returns the
-  message content, stripped (`""` when empty).
+  `openai.BadRequestError` whose text matches `NEMOTRON_TOO_LONG` (the audio
+  is over one of the server's per-request limits) becomes
+  `ValidationError("The audio is too long for one Nemotron request, and only
+  MP3 and PCM WAV audio can be split: <error>")`; any other error propagates.
+  `finish_reason == "length"` → `ValidationError("Nemotron cut the transcript
+  short at 8192 tokens (audio from <start>s).")`, so a partial transcript is
+  never stored. Returns the message content, stripped (`""` when empty).
 - **`action_test_whisper()`** / **`action_test_nemotron()`** — the TEST
   CONNECTION buttons on the API Keys tab; both call
   `_test_stt_server(client, name)` with the Whisper or Nemotron client and the
@@ -422,12 +422,29 @@ step and always use OpenAI.
   "<name> server is reachable. Models: <ids, comma-separated>", and returns
   `True`.
 
-Constants in `models/settings.py`: `NEMOTRON_CHUNK_SECONDS` = environment
-variable of that name, default 240 — the server embeds ~12.6 tokens per
-second of audio into a 4096-token encoder cache (~5.4 minutes);
-`NEMOTRON_OVERLAP_SECONDS` = 5; `NEMOTRON_MAX_TOKENS` = 2048 (240 s of fast
-speech is ~1,200 tokens, and audio plus output must fit the server's
-8,192-token context).
+Constants in `models/settings.py`, sized for the reference server (vLLM,
+32,768-token context, at most 1,800 s and 256 MiB of decoded PCM per request):
+
+- `NEMOTRON_CHUNK_SECONDS` = environment variable of that name, default 1200.
+  Audio costs ~12.6 tokens per second and shares the context with the prompt
+  and the transcript, and the server decodes Twilio's 22.05 kHz stereo MP3 to
+  ~172 KiB of PCM per second — 256 MiB at ~25 minutes. 20 minutes plus the
+  overlap (~15,200 audio tokens, ~203 MiB) stays inside every limit with room
+  for dense speech. A recording up to 1,210 s therefore goes in one request.
+- `NEMOTRON_OVERLAP_SECONDS` = 5.
+- `NEMOTRON_MAX_TOKENS` = 8192 — 20 minutes of dense speech is ~6,700 tokens,
+  and even 1,800 s of audio (~22,600 tokens) plus 8,192 fits the context.
+- `NEMOTRON_HTTP_TIMEOUT` — see `get_nemotron_client()`.
+- `NEMOTRON_DEFAULT_PROMPT` — see `nemotron_prompt`. Not NVIDIA's
+  "Audio transcription. Language: as spoken. Wording: verbatim…"
+  instruction: on phone calls that one wrote every backchannel, spelled names
+  letter by letter and sometimes added speaker tags (`<spk:0>`).
+- `NEMOTRON_TOO_LONG` = regular expression `maximum allowed duration|MiB of
+  PCM|encoder cache` — the server's refusals for audio over its duration
+  limit ("Audio exceeds maximum allowed duration of 1800s…"), over its
+  decoded-size guard ("Audio would allocate 311 MiB of PCM…") or, on older
+  setups, over its encoder cache ("…exceeds the pre-allocated encoder cache
+  size 4096").
 
 ### Audio chunking (`models/stt_utils.py`)
 

@@ -155,7 +155,7 @@ Tab **Transcription**, in three groups.
 | **Transcript provider** | Which engine turns speech into text: **Open AI** (the default), **Self-hosted Whisper**, **Self-hosted Nemotron**, or **Elevenlabs** when that module is installed. |
 | **Model** | Self-hosted Whisper: the model name the server expects, default `whisper-1`. Self-hosted Nemotron: default `nemotron-3.5-transcribe`. |
 | **Language** | Self-hosted Whisper only. A language code (`en`, `fr`, `ru`...) when you know what language your calls are in. Leave it empty and the server detects it from the start of each recording. |
-| **Prompt** | Self-hosted Whisper and Self-hosted Nemotron, each with its own text. They work differently. **Nemotron** reads an instruction; the default asks for a plain transcript in the original language. Add your business name, product names and the names callers ask for — for example "It is a phone call to Mirage Pools, a pool and spa company" — and keep "Output only the transcript" in it. **Whisper** does not follow instructions: it reads the prompt as text said just before the call, so write the words the way they should be spelled — for example "Mirage Pools. Hayward, Pentair, pool opening and closing." Empty by default, and then nothing is sent. Either way the model spells those names right instead of guessing. **Test the Whisper prompt before relying on it:** some servers (vLLM builds among them) use it as the start of the transcript instead of as preceding text, so the model skips any speech that matches it, and a longer prompt can lose most of a call. Compare a few transcripts with and without it, and leave it empty if they get shorter. |
+| **Prompt** | Self-hosted Whisper and Self-hosted Nemotron, each with its own text. They work differently. **Nemotron** reads an instruction; the default asks for a plain transcript in the original language. Add your business name, product names and the names callers ask for — for example "It is a phone call to Mirage Pools, a pool and spa company" — and keep "Output only the transcript" in it. Do not ask for a "verbatim" transcript: the model then writes every "yeah" and stutter, spells names letter by letter and sometimes inserts speaker tags such as `<spk:0>`. **Whisper** does not follow instructions: it reads the prompt as text said just before the call, so write the words the way they should be spelled — for example "Mirage Pools. Hayward, Pentair, pool opening and closing." Empty by default, and then nothing is sent. Either way the model spells those names right instead of guessing. **Test the Whisper prompt before relying on it:** some servers (vLLM builds among them) use it as the start of the transcript instead of as preceding text, so the model skips any speech that matches it, and a longer prompt can lose most of a call. Compare a few transcripts with and without it, and leave it empty if they get shorter. |
 | **Transcript calls** | Transcribe and summarise call recordings automatically, shortly after each recording arrives. Needs the OpenAI key, because the summary always comes from OpenAI. |
 | **Transcribe voice messages** | Transcribe incoming WhatsApp and MMS voice messages; the text becomes the message body. |
 
@@ -228,21 +228,25 @@ Limits worth knowing:
   first transcription waits while the model loads, which can take minutes. Odoo
   waits up to five minutes per transcription; the `WHISPER_HTTP_TIMEOUT`
   environment variable of the Odoo server (in seconds) changes that.
-- **Self-hosted Nemotron** takes about five minutes of audio per request, so
-  Connect sends recordings and voicemail in 4-minute pieces that overlap by
-  5 seconds, and joins the texts where they repeat each other. The transcript
-  therefore has a timestamp every 4 minutes, not one per sentence, and no
-  speaker labels. MP3 and WAV are split this way; any other format — for
-  example a WhatsApp voice note — goes in one request, and fails with a
-  "too long" error past about five minutes. Nemotron is much slower than
-  Whisper — about 6 to 10 times faster than real time, so a 20-minute call
-  takes 2 to 4 minutes — which the background queue absorbs; voice messages
-  are short enough to transcribe on receipt. Its first request after the
-  server restarts compiles for several minutes. Two environment variables of
-  the Odoo server change the defaults: `NEMOTRON_HTTP_TIMEOUT` (seconds Odoo
-  waits per piece, default 600) and `NEMOTRON_CHUNK_SECONDS` (length of a
-  piece, default 240). Raise the piece length only after raising the server's
-  audio limit (its encoder cache), or long calls fail.
+- **Self-hosted Nemotron** gets up to 20 minutes of audio per request, so
+  nearly every call goes in one piece. Longer recordings are sent in
+  20-minute pieces that overlap by 5 seconds, and Connect joins the texts
+  where they repeat each other. Nemotron returns no timestamps: the
+  transcript has one at the start of each piece — for most calls only
+  `00:00:00` — and no speaker labels. MP3 and WAV are split this way; any
+  other format — for example a WhatsApp voice note — goes in one request,
+  and fails with a "too long" error past what the server accepts (30 minutes
+  on the reference setup). Nemotron is much slower than Whisper — about 6 to
+  10 times faster than real time, so a 20-minute call takes 2 to 4 minutes —
+  which the background queue absorbs; voice messages are short enough to
+  transcribe on receipt. Its first request after the server restarts compiles
+  for several minutes. Two environment variables of the Odoo server change
+  the defaults: `NEMOTRON_HTTP_TIMEOUT` (seconds Odoo waits per piece,
+  default 1200) and `NEMOTRON_CHUNK_SECONDS` (length of a piece in seconds,
+  default 1200). Do not raise the piece length past what the server accepts:
+  the reference server takes at most 30 minutes, and decoding Twilio's stereo
+  recordings reaches its 256 MiB memory limit at about 25 minutes, so longer
+  pieces make long calls fail.
 
 ## Chatter
 

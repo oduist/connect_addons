@@ -118,7 +118,7 @@ class Recording(models.Model):
                             temp_file.write(chunk)
                     temp_file_path = temp_file.name
             file_size = os.path.getsize(temp_file_path)
-            # Nemotron gets the audio in chunks, each far below the limit.
+            # Nemotron gets the audio in 20-minute chunks; its server takes 100 MiB.
             if file_size > 26214400 and settings.get_param('transcript_provider') != 'nemotron':
                 error_msg = 'File exceeds the 25 MB transcription size limit.'
                 logger.error(error_msg)
