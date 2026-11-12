@@ -43,9 +43,14 @@ class TestCallParking(TransactionCase):
         })
         return call
 
+    def _refer_target(self, number):
+        return '<sip:%s@%s>' % (number, self.domain.domain_name)
+
     def _park(self, call_sid, slot='702'):
+        # Parking is the phone transferring its call (SIP REFER) to *70X.
         return self.env['connect.call'].park_call(
-            {'CallSid': call_sid, 'Caller': self.agent_uri},
+            {'CallSid': call_sid, 'Caller': self.agent_uri,
+             'ReferTransferTarget': self._refer_target('*%s' % slot)},
             {'ExtenNumber': '*%s' % slot})
 
     def test_park_records_slot_on_the_call(self):
@@ -218,3 +223,64 @@ class TestCallParking(TransactionCase):
         # The retrieval Dial keeps a referUrl, which is what lets the agent
         # park the very same conversation a second time.
         self.assertIn('referUrl=', twiml)
+
+    # One-key park phones (Yealink "Call Park" key in Transfer mode): during a
+    # call the key transfers to the bare slot (702), on an idle phone it dials
+    # the park code plus the slot (*702) — the reverse of *70X park, 70X pick up.
+
+    def test_a_transfer_to_the_bare_slot_parks_the_call(self):
+        parked = self._make_call('CAcustomer', '+12898283865', '+13658257665',
+                                 'incoming', self.partner)
+        twilio = MagicMock()
+        with patch.object(type(self.env['connect.settings']), 'get_client',
+                          return_value=twilio):
+            response = self.env['connect.call'].unpark_call(
+                {'CallSid': 'CAagentleg', 'ParentCallSid': 'CAcustomer',
+                 'Caller': self.agent_uri,
+                 'ReferTransferTarget': self._refer_target('702')},
+                {'ExtenNumber': '702'})
+        # The customer is moved into the slot and the agent's leg released.
+        twilio.calls.assert_called_once_with('CAcustomer')
+        twiml = twilio.calls.return_value.update.call_args.kwargs['twiml']
+        self.assertIn('<Enqueue>park-702</Enqueue>', twiml)
+        self.assertIn('<Hangup', str(response))
+        self.assertNotIn('<Queue', str(response))
+        self.assertEqual(parked.park_slot, '702')
+        self.assertEqual(parked.park_call_sid, 'CAcustomer')
+
+    def test_an_idle_phone_dialing_the_park_code_retrieves_the_call(self):
+        parked = self._make_call('CAcustomer', '+12898283865', '+13658257665',
+                                 'incoming', self.partner)
+        self._park('CAcustomer')
+        retrieval = self._make_call('CAretrieval', '206', '*702', 'outgoing')
+        twilio = MagicMock()
+        with patch.object(type(self.env['connect.settings']), 'get_client',
+                          return_value=twilio):
+            response = self.env['connect.call'].park_call(
+                {'CallSid': 'CAretrieval', 'Caller': self.agent_uri},
+                {'ExtenNumber': '*702'})
+        self.assertIn('<Hangup', str(response))
+        self.assertNotIn('<Enqueue', str(response))
+        twilio.calls.assert_called_once_with('CAcustomer')
+        twiml = twilio.calls.return_value.update.call_args.kwargs['twiml']
+        self.assertIn('callerId="+12898283865"', twiml)
+        self.assertFalse(parked.park_slot)
+        self.assertFalse(retrieval.exists())
+
+    def test_an_idle_phone_dialing_an_empty_slot_is_not_parked_itself(self):
+        retrieval = self._make_call('CAretrieval', '206', '*702', 'outgoing')
+        response = self.env['connect.call'].park_call(
+            {'CallSid': 'CAretrieval', 'Caller': self.agent_uri},
+            {'ExtenNumber': '*702'})
+        self.assertIn('<Queue>park-702</Queue>', str(response))
+        self.assertNotIn('<Enqueue', str(response))
+        self.assertFalse(retrieval.park_slot)
+
+    def test_a_call_flow_sending_a_caller_to_the_park_code_still_parks(self):
+        parked = self._make_call('CAcustomer', '+12898283865', '+13658257665',
+                                 'incoming', self.partner)
+        response = self.env['connect.call'].park_call(
+            {'CallSid': 'CAcustomer', 'Caller': '+12898283865'},
+            {'ExtenNumber': '*702'})
+        self.assertIn('<Enqueue>park-702</Enqueue>', str(response))
+        self.assertEqual(parked.park_slot, '702')

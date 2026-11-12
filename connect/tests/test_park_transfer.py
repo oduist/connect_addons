@@ -101,7 +101,9 @@ class TestParkTransfer(TransactionCase):
         parked = self._make_call('CAcustomer', '+12898283865', '+13658257665',
                                  'incoming', self.partner)
         self.env['connect.call'].park_call(
-            {'CallSid': 'CAcustomer', 'Caller': self.retriever_uri},
+            {'CallSid': 'CAcustomer', 'Caller': self.retriever_uri,
+             'ReferTransferTarget': '<sip:*%s@%s>' % (
+                 slot, self.domain.domain_name)},
             {'ExtenNumber': '*%s' % slot})
         # The leg the retriever dialed the slot with.
         self._make_call('CAretrieval', '7801', slot, 'outgoing')
@@ -162,7 +164,8 @@ class TestParkTransfer(TransactionCase):
         parked = self._park_and_retrieve()
         # The agent parks the call again, in another slot.
         self.env['connect.call'].park_call(
-            {'CallSid': 'CAcustomer', 'Caller': self.retriever_uri},
+            {'CallSid': 'CAcustomer', 'Caller': self.retriever_uri,
+             'ReferTransferTarget': '<sip:*703@%s>' % self.domain.domain_name},
             {'ExtenNumber': '*703'})
         parked.invalidate_recordset()
         self.assertEqual(parked.park_slot, '703')
@@ -291,7 +294,8 @@ class TestParkTransfer(TransactionCase):
         self._make_call('CAcustomer', '+12898283865', '+13658257665',
                         'incoming', self.partner)
         self.env['connect.call'].park_call(
-            {'CallSid': 'CAcustomer', 'Caller': self.retriever_uri},
+            {'CallSid': 'CAcustomer', 'Caller': self.retriever_uri,
+             'ReferTransferTarget': '<sip:*702@%s>' % self.domain.domain_name},
             {'ExtenNumber': '*702'})
         self._make_call('CAretrieval', '7801', '702', 'outgoing')
         twilio = MagicMock()
