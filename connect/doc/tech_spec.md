@@ -6,9 +6,10 @@ Reverse-buildable contract for the module. Rules and shapes, not source.
 
 This spec covers the **softphone** — the web phone in the systray, the
 components it is built from, the ORM methods it calls and the TwiML parameters
-it reads — plus the directory lookup that serves it, and **speech-to-text**:
+it reads — plus the directory lookup that serves it, **speech-to-text**:
 how recordings, voicemail and voice messages are turned into text, by which
-provider, and which recorded calls the transcription rules let through.
+provider, and which recorded calls the transcription rules let through, and
+**call parking**.
 
 The rest of `connect` (call and channel ledger, call flows, TwiML, recordings
 and S3, the rest of voicemail and transcription — summaries beyond who makes
@@ -692,3 +693,141 @@ is set. At the top of the sheet, an `alert alert-info` block (`role="status"`)
 visible only while `transcription_pending` is set reads "Transcription queued.
 The transcript appears on the Transcript tab when it is ready."
 `transcription_pending` is in the view, invisible, for that modifier.
+
+## Call parking
+
+A parked caller waits in the Twilio queue `park-<slot>` until someone picks
+them up. The slots are `701`–`710`.
+
+### Seed data (`data/twiml.xml`)
+
+- `connect.twiml` `twiml_park_call` ("Park Call") and `twiml_unpark_call`
+  ("Unpark Call"), both `code_type = 'model_method'` on `connect.call`, with
+  methods `park_call` and `unpark_call`.
+- `connect.exten` `exten_park_701`…`exten_park_710`, numbers `*701`…`*710` →
+  `twiml_park_call`; `exten_unpark_701`…`exten_unpark_710`, numbers
+  `701`…`710` → `twiml_unpark_call`.
+- Both methods take `(request, params)`. `request` is the Twilio webhook
+  payload. `params['ExtenNumber']` is the extension number, set by
+  `connect.exten.render`. The slot is `ExtenNumber` with leading `*`
+  stripped. The SIP-domain voice URL and `/twilio/webhook/sip_refer` (SIP
+  REFER, whose payload carries `ReferTransferTarget`) both reach them through
+  `connect.exten.render`.
+
+### Fields on `connect.call`
+
+| Field | Type | Attributes |
+| --- | --- | --- |
+| `park_slot` | Char "Parking Slot" | readonly, index. The slot the call waits in. Cleared on retrieval. |
+| `park_call_sid` | Char "Parked Call SID" | readonly. CallSid of the leg in the queue. |
+| `parked_at` | Datetime "Parked At" | readonly |
+| `parked_by_pbx_user` | Many2one `connect.user` "Parked By" | readonly, `ondelete='set null'` |
+
+### Park or retrieve
+
+The way a request arrives decides the action. The number alone does not:
+
+1. A request with `ReferTransferTarget` **parks**, whether the target was
+   `*70X` or `70X`. A transfer hands the call away and never retrieves.
+   `unpark_call` passes such a request to `park_call` unchanged.
+2. `park_call` **retrieves** when three things hold: the request has no
+   `ReferTransferTarget`, no parent call resolves, and `Caller` resolves to a
+   `connect.user` (`get_user_by_uri`, `sip:` or `client:`). It returns
+   `unpark_call(request, params)` with `ExtenNumber` set to the bare slot. A
+   Connect user's phone dialing `*70X` has no call to park.
+3. Otherwise `park_call` parks and `unpark_call` retrieves.
+
+Rules 1 and 2 exist for one-key park phones. A Yealink "Call Park" key in
+Transfer mode sends the REFER to the bare value (`703`). When idle it dials
+`<Call Park Code><value>` (`*703`).
+
+### `park_call(request, params)`
+
+- Parent: `ParentCallSid`. When it is missing, take the `connect.channel`
+  with `sid = CallSid` and follow `parent_channel` to the root. The parent is
+  the root's sid when it differs from `CallSid`.
+- With a parent: REST `calls(parent).update(twiml=<Enqueue>park-<slot></Enqueue>)`.
+  When that succeeds, register the parent as parked. When it raises, log the
+  error and register nothing. Either way, return `<Hangup/>`, which releases
+  the agent's leg.
+- Without a parent: apply the retrieve rule above. Otherwise register
+  `CallSid` as parked and return `<Enqueue>park-<slot></Enqueue>`.
+- Registering (`_register_parked_call`): find the `connect.call` of the
+  SID's channel. If there is none, log a warning and track nothing. Else write
+  `park_slot`, `park_call_sid`, `parked_at = now` and `parked_by_pbx_user` =
+  the user of `Caller`. That user is often empty, because Twilio sends the
+  customer as `Caller` on a REFER. Post the chatter note "Call parked in slot
+  %(slot)s by %(user)s.", with the user shown as "an unknown user" when unset.
+
+### `unpark_call(request, params)`
+
+- A REFER parks (rule 1).
+- Retriever: the `connect.user` of `Caller`. Parked call: the oldest
+  (`parked_at asc, id asc`) `connect.call` with `park_slot = slot`, with
+  `park_call_sid` set, and whose status is not an end status (`completed`,
+  `busy`, `failed`, `no-answer`, `canceled`).
+- Linking the retrieval leg: take the call of `CallSid`'s channel, when it
+  exists and is not the parked call. If a parked call was found, set the
+  retrieval call's `parent_call` to it, copy its `partner` when the retrieval
+  call has none, and post "Call retrieved from parking slot %(slot)s by
+  %(user)s." on the parked call. In every case post "Retrieval of the call
+  parked in slot %(slot)s." on the retrieval call.
+- **Dial-back**, when both a parked call and a retriever exist:
+  1. Build the TwiML (below). `None` means fall back.
+  2. Claim the slot with
+     `UPDATE connect_call SET park_slot = NULL WHERE id = <parked> AND park_slot IS NOT NULL RETURNING park_call_sid`.
+     No row back means another retrieval won, so fall back.
+  3. REST-redirect `park_call_sid` with that TwiML. On an exception, put
+     `park_slot` back (only where it is still NULL) and fall back.
+  4. On success, absorb the retrieval call: take the advisory lock
+     `(CALL_LOCK_CLASS, parked.id)`, move its channels onto the parked call,
+     and `_drop_orphan_call(retrieval, parked)`. Return `<Hangup/>`.
+     `park_call_sid` is kept, so an unanswered dial-back can re-park.
+- **Fallback (queue bridge)**: `<Dial timeout="1"><Queue>park-<slot></Queue></Dial>`.
+  The retrieval call stays, and it is the conversation.
+
+### Dial-back TwiML (`_build_park_retrieval_twiml`)
+
+- Returns `None` when the parked call has no `caller`, or when the retriever
+  has no usable endpoint.
+- Endpoint: the web client when `client_enabled` holds and either `Caller`
+  starts with `client:` or SIP is disabled. Otherwise SIP. The retriever is
+  called back on the device they dialed from.
+- `<Dial>`: `timeout` = the endpoint's ring timeout (`client_ring_timeout` or
+  `sip_ring_timeout`, default 30). `callerId` = the parked call's `caller`.
+  `action` = `/twilio/webhook/park_retrieve/<call id>/<slot>`. SIP adds
+  `referUrl` = `/twilio/webhook/sip_refer`, so the call can be parked again.
+  Recording is `record-from-answer-dual` plus a `recordingStatusCallback`, used
+  when `_should_record_park_retrieval(retriever)` holds. That needs
+  `disable_recording` unset, and then reads the `record_calls` of
+  `answered_pbx_user`, else `parked_by_pbx_user`, else the retriever.
+- Client: `<Client statusCallbackEvent="initiated answered completed">` with
+  the retriever's identity and the parameters `CallerName` (partner name, or
+  the caller number) and `Partner` (partner id, or `False`). SIP: `<Sip>` to
+  `sip:<retriever.uri>`, plus `;secure=true` when the domain has
+  `secure_media`, with the same status events. Status callbacks go to
+  `/twilio/webhook/callstatus`.
+- Every URL is joined onto `api_url` with the fragment `#e=<twilio_edge>`.
+
+### `on_park_retrieve_action(call_id, slot, params)`
+
+This is the dial-back's `<Dial action>`. The route is `POST
+/twilio/webhook/park_retrieve/<int:call_id>/<string:slot>`: public, no CSRF,
+with a Twilio signature check, run as `connect.user_connect_webhook`.
+
+- The call has a `park_slot`: it was parked again in the meantime, so this
+  action is stale. Return `<Enqueue>park-<current slot></Enqueue>` and write
+  nothing.
+- `DialCallStatus == 'completed'`, or no slot: clear `park_slot` and
+  `park_call_sid`, then return `<Hangup/>`.
+- Otherwise the retriever did not answer: set `park_slot = slot` and
+  `parked_at = now`, then return `<Enqueue>park-<slot></Enqueue>`.
+
+### End of call and transfers
+
+- `_finalize_call_details()` clears `park_slot` and `park_call_sid` on a
+  finished call. A dead call left registered would capture the next retrieval
+  of its slot.
+- `_is_park_retrieval()` holds when `park_call_sid` is set on the call or on
+  its `parent_call`. The transfer wizard uses it to allow a direct redirect
+  for an outgoing call that has no tracked external leg.

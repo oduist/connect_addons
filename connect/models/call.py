@@ -1945,11 +1945,17 @@ class Call(models.Model):
         The returned TwiML applies to the child call.
         We must redirect the parent call (customer) to Enqueue via REST API
         and hang up the agent's SIP leg.
+
+        A phone of ours dialing *701-*710 with no call in hand has nothing to
+        park: one-key park phones (Yealink "Call Park" key in Transfer mode)
+        dial the park code plus the slot when idle to pick the call back up,
+        so that is a retrieval.
         """
         exten = params.get('ExtenNumber', '')
         slot = exten.lstrip('*')
         call_sid = request.get('CallSid')
         parent_call_sid = request.get('ParentCallSid')
+        is_refer = bool(request.get('ReferTransferTarget'))
         # Twilio omits ParentCallSid for SIP REFER fired from a Dial inside a
         # callflow path. Fall back to our channel records, where the parent
         # relation is stored from prior status webhooks.
@@ -1977,6 +1983,10 @@ class Call(models.Model):
             else:
                 self._register_parked_call(parent_call_sid, slot, request)
         else:
+            if not is_refer and self.env['connect.user'].sudo().get_user_by_uri(
+                    request.get('Caller')):
+                debug(self, 'park_call: idle phone dialed %s, retrieving slot %s' % (exten, slot))
+                return self.unpark_call(request, dict(params, ExtenNumber=slot))
             # No parent call — this is a direct call to *701, just enqueue it
             debug(self, 'park_call: No ParentCallSid, enqueueing CallSid=%s' % call_sid)
             self._register_parked_call(call_sid, slot, request)
@@ -2058,7 +2068,14 @@ class Call(models.Model):
         call to dial the retriever back, presenting the original caller.
         When the parked call is unknown (parked before this feature, tracking
         lost, Twilio API error, ...) we fall back to the plain queue bridge.
+
+        A SIP REFER to 701-710 is a park, not a retrieval: a transfer hands
+        the call away, and one-key park phones (Yealink "Call Park" key in
+        Transfer mode) transfer to the bare slot number.
         """
+        if request.get('ReferTransferTarget'):
+            debug(self, 'unpark_call: transfer to slot %s, parking' % params.get('ExtenNumber'))
+            return self.park_call(request, params)
         slot = params.get('ExtenNumber', '')
         debug(self, 'unpark_call: Retrieving from slot %s' % slot)
         retriever = self.env['connect.user'].sudo().get_user_by_uri(request.get('Caller'))[:1]

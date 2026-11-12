@@ -291,6 +291,39 @@ reached at all:
   overrides it for people whose calls must never be recorded.
 - **Extension** is created from the user form with the **Extension** button.
 
+## Call parking
+
+Ten parking slots ship with the module as extensions under **Connect ▸ Voice ▸
+Extensions**. `*701`–`*710` point at the **Park Call** TwiML app, and
+`701`–`710` point at **Unpark Call**. They need no setup. Do not renumber
+them: the slot is the number without the star, and the two sets must match.
+
+Whether a request parks or picks up depends on how it arrives, not only on
+the number dialed:
+
+| How the phone reaches the slot | Result |
+| --- | --- |
+| Transfers its call to `*703` **or** to `703` | The call is parked in slot 703. |
+| A Connect user's phone dials `703` **or** `*703` with no call in hand | The user picks up the call waiting in slot 703. |
+| An outside caller reaches `*703` through a call flow | That caller is parked in slot 703. |
+
+Accepting both numbers is what makes one-key park buttons work. Some phones
+transfer to the bare slot number and dial the starred one when idle, which is
+the reverse of the `*70X` park / `70X` pick-up convention.
+
+**Yealink park key (one key parks and picks up).** The phone behavior below
+was observed on a T34W:
+
+1. **Features ▸ Pick up & Park**: **Call Park Mode** = *Transfer*, **Call
+   Park** = *Enabled*, **Call Park Code** = `*`, **Park Retrieve Code** empty.
+2. **Dsskey ▸ Line Key**: **Type** = *Call Park*, **Value** = the slot
+   (`703`), **Label** as you like, **Line** = the Connect account.
+
+During a call the key does a blind transfer to the value (`703`), which
+parks. On an idle phone it dials the Call Park Code plus the value (`*703`),
+which picks up. Set up one key per slot. The key's light and icon do not show
+whether a call is waiting, because Twilio sends the phone no slot status.
+
 ## Messaging configuration
 
 Under **Connect ▸ Messaging** (all admin-only except the message list itself):

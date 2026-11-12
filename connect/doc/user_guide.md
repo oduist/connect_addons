@@ -106,6 +106,31 @@ If you do not pick up, what happens next — voicemail, a colleague, your mobile
 depends on how your administrator set up your fallback. You can ask to be
 notified about calls you missed.
 
+## Parking a call
+
+Parking puts a caller on hold in a numbered slot, so anyone can pick them up
+from another phone. This is useful when the person they need is away from
+their desk. There are ten slots, numbered 701 to 710. The caller hears hold
+music while they wait.
+
+You park a call from a desk phone:
+
+- **To park**, transfer the call to `*701`–`*710` (a star, then the slot
+  number). Your phone is free straight away.
+- **To pick up**, dial the slot number, `701`–`710`, from any phone. The web
+  phone works too. The call rings you showing the caller's own number, not the
+  slot. The call history shows the whole exchange as one call with the
+  customer.
+
+If you do not answer when the picked-up call rings, the caller goes back to
+their slot and keeps waiting.
+
+**Park keys.** Your desk phone may have a key set up for one slot, for
+example a key labelled "703". Press it during a call to park the caller in
+703. Press it again when you have no call to pick them up. The key's light
+does not show whether someone is waiting in the slot. Your administrator sets
+these keys up.
+
 ## Your personal phone settings
 
 Open **Connect ▸ Voice ▸ Users** and find your own record. Depending on your
